@@ -159,6 +159,56 @@ public sealed class BridgeCopyBackupMediaResult {
   }
 }
 
+public data class BridgeMediaBackupInfo(
+  val backupDir: String,
+  val mediaDir: String,
+  val usedSpace: Long,
+) {
+  public companion object {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(
+      backup_dir: Any?,
+      media_dir: Any?,
+      used_space: Any?,
+    ): BridgeMediaBackupInfo =
+      BridgeMediaBackupInfo(
+        backupDir =
+          identity(backup_dir as String),
+        mediaDir =
+          identity(media_dir as String),
+        usedSpace =
+          identity(used_space as Long),
+      )
+  }
+}
+
+public data class BridgeMessageBackupInfo(
+  val backupDir: String,
+  val cdn: Int,
+  val backupName: String,
+) {
+  public companion object {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(
+      backup_dir: Any?,
+      cdn: Any?,
+      backup_name: Any?,
+    ): BridgeMessageBackupInfo =
+      BridgeMessageBackupInfo(
+        backupDir =
+          identity(backup_dir as String),
+        cdn =
+          identity(cdn as Int),
+        backupName =
+          identity(backup_name as String),
+      )
+  }
+}
+
 public data class CopyBackupMediaNextChunk(
   val chunk: List<org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>,
   val termination: Any?,
@@ -648,6 +698,72 @@ public object NativeNice {
         org.signal.libsignal.net.BackupCdnCredentials
           .fromFfiHeaders(it)
       }
+  }
+
+  public fun UnauthenticatedChatConnection_backup_get_media_backup_info(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    credential: org.signal.libsignal.zkgroup.backups.BackupAuthCredential,
+    serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
+    signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<org.signal.libsignal.internal.BridgeMediaBackupInfo> {
+    val ffi_chat = identity(chat)
+    val ffi_credential =
+      (org.signal.libsignal.zkgroup.backups.BackupAuthCredential::getInternalContentsForJNI)(credential)
+    val ffi_server_keys =
+      (org.signal.libsignal.zkgroup.GenericServerPublicParams::getInternalContentsForJNI)(serverKeys)
+    val ffi_signing_key = identity(signingKey)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_backup_get_media_backup_info(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_credential,
+          ffi_server_keys,
+          ffi_signing_key,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeMediaBackupInfo>(it) }
+  }
+
+  public fun UnauthenticatedChatConnection_backup_get_message_backup_info(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    credential: org.signal.libsignal.zkgroup.backups.BackupAuthCredential,
+    serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
+    signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<org.signal.libsignal.internal.BridgeMessageBackupInfo> {
+    val ffi_chat = identity(chat)
+    val ffi_credential =
+      (org.signal.libsignal.zkgroup.backups.BackupAuthCredential::getInternalContentsForJNI)(credential)
+    val ffi_server_keys =
+      (org.signal.libsignal.zkgroup.GenericServerPublicParams::getInternalContentsForJNI)(serverKeys)
+    val ffi_signing_key = identity(signingKey)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_backup_get_message_backup_info(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_credential,
+          ffi_server_keys,
+          ffi_signing_key,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeMessageBackupInfo>(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_get_svrb_credentials(

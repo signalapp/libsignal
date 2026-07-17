@@ -38,7 +38,8 @@ use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagl
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
 use libsignal_net_chat::grpc::backups::{
-    CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome,
+    CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, MediaBackupInfo,
+    MessageBackupInfo,
 };
 use libsignal_net_chat::stream_util::{
     BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
@@ -861,6 +862,46 @@ pub struct BridgeCopyBackupMediaItem {
     pub object_length: i64,
     pub media_id: [u8; MEDIA_ID_LEN],
     pub encryption_key: [u8; MEDIA_ENCRYPTION_KEY_LEN],
+}
+
+// TODO: This can go away when we implement u32 and u64 Nice bridging to Kotlin.
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeMessageBackupInfo {
+    pub backup_dir: String,
+    pub cdn: i32,
+    pub backup_name: String,
+}
+
+impl From<MessageBackupInfo> for BridgeMessageBackupInfo {
+    fn from(value: MessageBackupInfo) -> Self {
+        Self {
+            backup_dir: value.backup_dir,
+            cdn: value.cdn.try_into().expect("CDN numbers are small"),
+            backup_name: value.backup_name,
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeMediaBackupInfo {
+    pub backup_dir: String,
+    pub media_dir: String,
+    pub used_space: i64,
+}
+
+impl From<MediaBackupInfo> for BridgeMediaBackupInfo {
+    fn from(value: MediaBackupInfo) -> Self {
+        Self {
+            backup_dir: value.backup_dir,
+            media_dir: value.media_dir,
+            used_space: value
+                .used_space
+                .try_into()
+                .expect("space measurements fit in i64"),
+        }
+    }
 }
 
 impl From<CopyBackupMediaItem> for BridgeCopyBackupMediaItem {

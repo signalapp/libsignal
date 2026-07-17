@@ -200,6 +200,10 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_GetDevicesTests(): Array<Object>
   @JvmStatic
+  public external fun TESTING_GetMediaBackupInfoTests(): Array<Object>
+  @JvmStatic
+  public external fun TESTING_GetMessageBackupInfoTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): ByteArray
   @JvmStatic
   public external fun TESTING_JoinStringArray(array: Array<Object>, joinWith: String): String

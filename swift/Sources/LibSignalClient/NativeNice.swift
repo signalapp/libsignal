@@ -905,6 +905,80 @@ extension SignalCPromiseUuid: SignalCPromise {
 
 }
 
+extension SignalCPromiseBridgeMediaBackupInfoFfiResult: SignalCPromise {
+
+    typealias Result = SignalBridgeMediaBackupInfoFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalBridgeMediaBackupInfoFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalBridgeMediaBackupInfoFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseBridgeMessageBackupInfoFfiResult: SignalCPromise {
+
+    typealias Result = SignalBridgeMessageBackupInfoFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalBridgeMessageBackupInfoFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalBridgeMessageBackupInfoFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: SignalCPromise {
 
     typealias Result = SignalCopyBackupMediaNextChunkFfiResult
@@ -1368,6 +1442,20 @@ internal enum BridgeCopyBackupMediaResult {
     case outOfSpace
 }
 
+internal struct BridgeMediaBackupInfo {
+    var backupDir: String
+    var mediaDir: String
+    var usedSpace: Int64
+
+}
+
+internal struct BridgeMessageBackupInfo {
+    var backupDir: String
+    var cdn: Int32
+    var backupName: String
+
+}
+
 internal struct CopyBackupMediaNextChunk {
     var chunk: [BridgeCopyBackupMediaOutcome]
     var termination: BulkPolledStreamTermination?
@@ -1457,6 +1545,46 @@ internal enum DerivedReturnConverterBridgeCopyBackupMediaResult: NiceReturnConve
         default:
             throw SignalError.internalError("Unexpected enum tag for BridgeCopyBackupMediaResult: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterBridgeMediaBackupInfo: NiceReturnConverter {
+    typealias NiceReturn = BridgeMediaBackupInfo
+    typealias FfiReturn = SignalBridgeMediaBackupInfoFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeMediaBackupInfoFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let backup_dir = Result { try StringConverter.convertReturn(consuming: ffiValue.backup_dir) }
+        let media_dir = Result { try StringConverter.convertReturn(consuming: ffiValue.media_dir) }
+        let used_space = Result { try IdentityConverter<Int64>.convertReturn(consuming: ffiValue.used_space) }
+
+        return BridgeMediaBackupInfo(
+            backupDir: try backup_dir.get(),
+            mediaDir: try media_dir.get(),
+            usedSpace: try used_space.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterBridgeMessageBackupInfo: NiceReturnConverter {
+    typealias NiceReturn = BridgeMessageBackupInfo
+    typealias FfiReturn = SignalBridgeMessageBackupInfoFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeMessageBackupInfoFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let backup_dir = Result { try StringConverter.convertReturn(consuming: ffiValue.backup_dir) }
+        let cdn = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.cdn) }
+        let backup_name = Result { try StringConverter.convertReturn(consuming: ffiValue.backup_name) }
+
+        return BridgeMessageBackupInfo(
+            backupDir: try backup_dir.get(),
+            cdn: try cdn.get(),
+            backupName: try backup_name.get()
+        )
     }
 }
 
@@ -2173,6 +2301,84 @@ internal enum NativeNice {
                     }
             }
         return try BackupCdnCredentialsConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_backup_get_media_backup_info(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: BackupAuthCredential,
+        serverKeys server_keys: GenericServerPublicParams,
+        signingKey signing_key: PrivateKey,
+        rng: Int64,
+    ) async throws -> BridgeMediaBackupInfo {
+        let rawOutput: DerivedReturnConverterBridgeMediaBackupInfo.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<BackupAuthCredential>.convertArgBorrowed(credential) { credentialFfi in
+                            ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(server_keys) {
+                                server_keysFfi in
+                                BridgeHandleRefConverter<SignalMutPointerPrivateKey, PrivateKey>.convertArgBorrowed(
+                                    signing_key
+                                ) { signing_keyFfi in
+                                    IdentityConverter.convertArgBorrowed(rng) { rngFfi in
+                                        SignalFfi.signal_unauthenticated_chat_connection_backup_get_media_backup_info(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            credentialFfi,
+                                            server_keysFfi,
+                                            signing_keyFfi,
+                                            rngFfi,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterBridgeMediaBackupInfo.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_backup_get_message_backup_info(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: BackupAuthCredential,
+        serverKeys server_keys: GenericServerPublicParams,
+        signingKey signing_key: PrivateKey,
+        rng: Int64,
+    ) async throws -> BridgeMessageBackupInfo {
+        let rawOutput: DerivedReturnConverterBridgeMessageBackupInfo.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<BackupAuthCredential>.convertArgBorrowed(credential) { credentialFfi in
+                            ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(server_keys) {
+                                server_keysFfi in
+                                BridgeHandleRefConverter<SignalMutPointerPrivateKey, PrivateKey>.convertArgBorrowed(
+                                    signing_key
+                                ) { signing_keyFfi in
+                                    IdentityConverter.convertArgBorrowed(rng) { rngFfi in
+                                        SignalFfi.signal_unauthenticated_chat_connection_backup_get_message_backup_info(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            credentialFfi,
+                                            server_keysFfi,
+                                            signing_keyFfi,
+                                            rngFfi,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterBridgeMessageBackupInfo.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_backup_get_svrb_credentials(

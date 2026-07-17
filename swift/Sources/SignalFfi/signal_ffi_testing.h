@@ -650,6 +650,38 @@ typedef struct {
 static_assert_64bit(offsetof(SignalGetDevicesOutFfiResult, devices) == 0);
 static_assert_64bit(sizeof(SignalGetDevicesOutFfiResult) == 24);
 static_assert_64bit(alignof(SignalGetDevicesOutFfiResult) == 8);
+typedef enum {
+  SignalGetMediaBackupInfoOutFfiResultSuccess,
+  SignalGetMediaBackupInfoOutFfiResultCredentialRejected,
+  SignalGetMediaBackupInfoOutFfiResultMissingResponse,
+} SignalGetMediaBackupInfoOutFfiResult_Tag;
+typedef struct {
+  SignalBridgeMediaBackupInfoFfiResult _0;
+} SignalGetMediaBackupInfoOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetMediaBackupInfoOutFfiResult_Tag tag;
+  union {
+    SignalGetMediaBackupInfoOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetMediaBackupInfoOutFfiResult;
+static_assert_64bit(sizeof(SignalGetMediaBackupInfoOutFfiResult) == 32);
+static_assert_64bit(alignof(SignalGetMediaBackupInfoOutFfiResult) == 8);
+typedef enum {
+  SignalGetMessageBackupInfoOutFfiResultSuccess,
+  SignalGetMessageBackupInfoOutFfiResultCredentialRejected,
+  SignalGetMessageBackupInfoOutFfiResultMissingResponse,
+} SignalGetMessageBackupInfoOutFfiResult_Tag;
+typedef struct {
+  SignalBridgeMessageBackupInfoFfiResult _0;
+} SignalGetMessageBackupInfoOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetMessageBackupInfoOutFfiResult_Tag tag;
+  union {
+    SignalGetMessageBackupInfoOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetMessageBackupInfoOutFfiResult;
+static_assert_64bit(sizeof(SignalGetMessageBackupInfoOutFfiResult) == 32);
+static_assert_64bit(alignof(SignalGetMessageBackupInfoOutFfiResult) == 8);
 typedef struct {
   uint8_t id;
 } SignalRemoveDeviceArgsFfiResult;
@@ -1330,6 +1362,12 @@ SignalFfiError* signal_testing_future_success(
   uint8_t input
 );
 SignalFfiError* signal_testing_get_devices_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_media_backup_info_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_message_backup_info_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_handle_type_clone(

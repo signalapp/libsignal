@@ -502,9 +502,11 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
-    use libsignal_bridge_types::net::chat::BridgeCopyBackupMediaOutcome;
     #[cfg(feature = "ffi")]
     use libsignal_bridge_types::net::chat::BridgeCopyBackupMediaOutcomeFfiResult;
+    use libsignal_bridge_types::net::chat::{
+        BridgeCopyBackupMediaOutcome, BridgeMediaBackupInfo, BridgeMessageBackupInfo,
+    };
     use libsignal_net_chat::grpc::devices::LinkedDevice;
     use uuid::Uuid;
 
@@ -573,6 +575,24 @@ mod remote_derives {
         CredentialRejected,
         CredentialRejectedWithoutAppropriateServerInfo,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::GetMessageBackupInfoOut)]
+    #[bridge(arg = false)]
+    pub(super) enum GetMessageBackupInfoOut {
+        Success(BridgeMessageBackupInfo),
+        CredentialRejected,
+        MissingResponse,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::GetMediaBackupInfoOut)]
+    #[bridge(arg = false)]
+    pub(super) enum GetMediaBackupInfoOut {
+        Success(BridgeMediaBackupInfo),
+        CredentialRejected,
+        MissingResponse,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -640,6 +660,17 @@ fn TESTING_SetRegistrationRecoveryPasswordTests() -> GrpcTestCases<[u8; 32], ()>
 fn TESTING_SetDiscoverableByPhoneNumberTests() -> GrpcTestCases<bool, ()> {
     libsignal_net_chat::grpc::accounts::test_cases::set_discoverable_by_phone_number_test_cases()
         .into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetMessageBackupInfoTests() -> GrpcTestCases<(), remote_derives::GetMessageBackupInfoOut>
+{
+    libsignal_net_chat::grpc::backups::test_cases::get_message_backup_info_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetMediaBackupInfoTests() -> GrpcTestCases<(), remote_derives::GetMediaBackupInfoOut> {
+    libsignal_net_chat::grpc::backups::test_cases::get_media_backup_info_test_cases().into()
 }
 
 #[bridge_fn(nice = true)]

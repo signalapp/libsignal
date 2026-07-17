@@ -15,11 +15,13 @@ use libsignal_net_grpc::proto::chat::backup::get_upload_form_request::{
 };
 use libsignal_net_grpc::proto::chat::backup::{
     BackupStreamClosed, CopyMediaRequest, CopyMediaResponse, DeleteAllRequest, DeleteAllResponse,
-    DeleteMediaItem, DeleteMediaRequest, DeleteMediaResponse, GetCdnCredentialsRequest,
-    GetCdnCredentialsResponse, GetSvrBCredentialsRequest, GetSvrBCredentialsResponse,
+    DeleteMediaItem, DeleteMediaRequest, DeleteMediaResponse, GetBackupInfoRequest,
+    GetCdnCredentialsRequest, GetCdnCredentialsResponse, GetMediaBackupInfoResponse,
+    GetMessageBackupInfoResponse, GetSvrBCredentialsRequest, GetSvrBCredentialsResponse,
     GetUploadFormRequest, GetUploadFormResponse, RefreshRequest, RefreshResponse,
     SetPublicKeyRequest, SetPublicKeyResponse, SignedPresentation, backup_stream_closed,
     copy_media_response, delete_all_response, get_cdn_credentials_response,
+    get_media_backup_info_response, get_message_backup_info_response,
     get_svr_b_credentials_response, get_upload_form_response, refresh_response,
     set_public_key_response,
 };
@@ -108,6 +110,43 @@ impl DeleteBackupMediaItem {
             media_id: media_id.to_vec(),
         }
     }
+}
+
+/// Information about the currently stored message backup.
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct MessageBackupInfo {
+    /// The base directory of the backup data on the CDN.
+    ///
+    /// Always non-empty, even if a backup has not actually been stored to the CDN. If a backup was
+    /// previously uploaded and has not expired, it can be found in [`Self::cdn`] at
+    /// `/backup_dir/backup_name`.
+    pub backup_dir: String,
+    /// The CDN type where the message backup is stored. Media may be stored elsewhere.
+    pub cdn: u32,
+    /// The location of the message backup on the CDN.
+    ///
+    /// Always non-empty, even if a backup has not actually been stored to the CDN.
+    pub backup_name: String,
+}
+
+/// Information about the currently stored media backup.
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct MediaBackupInfo {
+    /// The base directory of the backup data on the CDN.
+    ///
+    /// Always non-empty, even if no media has been stored to the CDN or the credential is for a
+    /// tier that does not support media.
+    pub backup_dir: String,
+    /// The prefix path component for media objects on a CDN.
+    ///
+    /// Stored media for a `media_id` can be found at `/backup_dir/media_dir/media_id`, where the
+    /// `media_id` is encoded in unpadded url-safe base64. Always non-empty, even if no media has
+    /// been stored to the CDN or the credential is for a tier that does not support media.
+    pub media_dir: String,
+    /// The amount of space used to store media, in bytes.
+    pub used_space: u64,
 }
 
 #[async_trait]
@@ -335,6 +374,112 @@ impl<T: GrpcServiceProvider> Unauth<T> {
             delete_all_response::Response::FailedAuthentication(FailedZkAuthentication {
                 description,
             }) => {
+                log::warn!("failed zk auth: {description}");
+                Err(RequestError::Other(BackupAuthCredentialRejected))
+            }
+        }
+    }
+
+    /// Retrieves information about the currently stored message backup.
+    ///
+    /// The `auth` should be for a messages credential.
+    ///
+    /// Note that the server does not distinguish an invalid credential from a backup-id that has
+    /// never been provisioned: if [`set_backup_public_key`](Self::set_backup_public_key) has never
+    /// been called for this backup-id, this request also fails with
+    /// [`BackupAuthCredentialRejected`]. Callers using this to check whether a backup exists
+    /// should treat that case as "backups not set up" rather than as a fatal error.
+    pub async fn get_message_backup_info(
+        &self,
+        auth: &BackupAuth<'_>,
+        rng: &mut (dyn rand::CryptoRng + Send),
+    ) -> Result<MessageBackupInfo, RequestError<BackupAuthCredentialRejected>> {
+        let mut backup_service = BackupsAnonymousClient::new(self.0.service());
+
+        let auth = auth.present(rng)?;
+
+        let request = GetBackupInfoRequest {
+            signed_presentation: Some(auth.into()),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        let response: GetMessageBackupInfoResponse =
+            log_and_send("unauth", &log_safe_description, || {
+                backup_service.get_message_backup_info(request)
+            })
+            .await?
+            .into_inner();
+
+        let response = response.response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
+        })?;
+        match response {
+            get_message_backup_info_response::Response::BackupInfo(
+                get_message_backup_info_response::MessageBackupInfo {
+                    backup_dir,
+                    cdn,
+                    backup_name,
+                },
+            ) => Ok(MessageBackupInfo {
+                backup_dir,
+                cdn,
+                backup_name,
+            }),
+            get_message_backup_info_response::Response::FailedAuthentication(
+                FailedZkAuthentication { description },
+            ) => {
+                log::warn!("failed zk auth: {description}");
+                Err(RequestError::Other(BackupAuthCredentialRejected))
+            }
+        }
+    }
+
+    /// Retrieves information about the currently stored media backup.
+    ///
+    /// The `auth` should be for a media credential.
+    ///
+    /// Note that the server does not distinguish an invalid credential from a backup-id that has
+    /// never been provisioned: if [`set_backup_public_key`](Self::set_backup_public_key) has never
+    /// been called for this backup-id, this request also fails with
+    /// [`BackupAuthCredentialRejected`]. Callers using this to check whether a backup exists
+    /// should treat that case as "backups not set up" rather than as a fatal error.
+    pub async fn get_media_backup_info(
+        &self,
+        auth: &BackupAuth<'_>,
+        rng: &mut (dyn rand::CryptoRng + Send),
+    ) -> Result<MediaBackupInfo, RequestError<BackupAuthCredentialRejected>> {
+        let mut backup_service = BackupsAnonymousClient::new(self.0.service());
+
+        let auth = auth.present(rng)?;
+
+        let request = GetBackupInfoRequest {
+            signed_presentation: Some(auth.into()),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        let response: GetMediaBackupInfoResponse =
+            log_and_send("unauth", &log_safe_description, || {
+                backup_service.get_media_backup_info(request)
+            })
+            .await?
+            .into_inner();
+
+        let response = response.response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
+        })?;
+        match response {
+            get_media_backup_info_response::Response::BackupInfo(
+                get_media_backup_info_response::MediaBackupInfo {
+                    backup_dir,
+                    media_dir,
+                    used_space,
+                },
+            ) => Ok(MediaBackupInfo {
+                backup_dir,
+                media_dir,
+                used_space,
+            }),
+            get_media_backup_info_response::Response::FailedAuthentication(
+                FailedZkAuthentication { description },
+            ) => {
                 log::warn!("failed zk auth: {description}");
                 Err(RequestError::Other(BackupAuthCredentialRejected))
             }
@@ -606,6 +751,7 @@ macro_rules! redact_no_arg_backup_request {
 }
 
 redact_no_arg_backup_request!(GetSvrBCredentialsRequest);
+redact_no_arg_backup_request!(GetBackupInfoRequest);
 redact_no_arg_backup_request!(RefreshRequest);
 redact_no_arg_backup_request!(DeleteAllRequest);
 
@@ -948,6 +1094,148 @@ pub mod test_cases {
         ]
     }
 
+    /// The presentation produced by [`BackupAuth::generate_for_testing`] with a `Media` credential
+    /// and a fixed-seed RNG.
+    ///
+    /// This is always the Media credential, even for tests of requests that would use a Messages
+    /// credential in production, because it's the one precomputed fixture we have. Our tests
+    /// never actually verify these presentations, so it works.
+    fn test_signed_presentation() -> SignedPresentation {
+        SignedPresentation {
+            presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+            presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum GetMessageBackupInfoOut {
+        Success(MessageBackupInfo),
+        CredentialRejected,
+        MissingResponse,
+    }
+
+    pub fn get_message_backup_info_test_cases() -> Vec<
+        GrpcTestCase<
+            (),
+            GetBackupInfoRequest,
+            GetMessageBackupInfoResponse,
+            GetMessageBackupInfoOut,
+        >,
+    > {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/GetMessageBackupInfo";
+        let request_grpc = GetBackupInfoRequest {
+            signed_presentation: Some(test_signed_presentation()),
+        };
+        vec![
+            GrpcTestCase {
+                name: "success".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: GetMessageBackupInfoResponse {
+                    response: Some(get_message_backup_info_response::Response::BackupInfo(
+                        get_message_backup_info_response::MessageBackupInfo {
+                            backup_dir: "backup-dir".to_owned(),
+                            cdn: 3,
+                            backup_name: "backup-name".to_owned(),
+                        },
+                    )),
+                },
+                response: GetMessageBackupInfoOut::Success(MessageBackupInfo {
+                    backup_dir: "backup-dir".to_owned(),
+                    cdn: 3,
+                    backup_name: "backup-name".to_owned(),
+                }),
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: GetMessageBackupInfoResponse {
+                    response: Some(
+                        get_message_backup_info_response::Response::FailedAuthentication(
+                            FailedZkAuthentication {
+                                description: "bad!".to_owned(),
+                            },
+                        ),
+                    ),
+                },
+                response: GetMessageBackupInfoOut::CredentialRejected,
+            },
+            GrpcTestCase {
+                name: "missing response".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc,
+                response_grpc: GetMessageBackupInfoResponse { response: None },
+                response: GetMessageBackupInfoOut::MissingResponse,
+            },
+        ]
+    }
+
+    #[derive(Debug)]
+    pub enum GetMediaBackupInfoOut {
+        Success(MediaBackupInfo),
+        CredentialRejected,
+        MissingResponse,
+    }
+
+    pub fn get_media_backup_info_test_cases() -> Vec<
+        GrpcTestCase<(), GetBackupInfoRequest, GetMediaBackupInfoResponse, GetMediaBackupInfoOut>,
+    > {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/GetMediaBackupInfo";
+        let request_grpc = GetBackupInfoRequest {
+            signed_presentation: Some(test_signed_presentation()),
+        };
+        vec![
+            GrpcTestCase {
+                name: "success".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: GetMediaBackupInfoResponse {
+                    response: Some(get_media_backup_info_response::Response::BackupInfo(
+                        get_media_backup_info_response::MediaBackupInfo {
+                            backup_dir: "backup-dir".to_owned(),
+                            media_dir: "media-dir".to_owned(),
+                            used_space: 123456789,
+                        },
+                    )),
+                },
+                response: GetMediaBackupInfoOut::Success(MediaBackupInfo {
+                    backup_dir: "backup-dir".to_owned(),
+                    media_dir: "media-dir".to_owned(),
+                    used_space: 123456789,
+                }),
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: GetMediaBackupInfoResponse {
+                    response: Some(
+                        get_media_backup_info_response::Response::FailedAuthentication(
+                            FailedZkAuthentication {
+                                description: "bad!".to_owned(),
+                            },
+                        ),
+                    ),
+                },
+                response: GetMediaBackupInfoOut::CredentialRejected,
+            },
+            GrpcTestCase {
+                name: "missing response".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc,
+                response_grpc: GetMediaBackupInfoResponse { response: None },
+                response: GetMediaBackupInfoOut::MissingResponse,
+            },
+        ]
+    }
+
     fn backup_stream_unauthorized(include_stream_closed_info: bool) -> tonic::Status {
         let backup_info = if include_stream_closed_info {
             vec![BackupStreamClosed {
@@ -980,7 +1268,7 @@ mod test {
     use crate::api::testutil::fixed_seed_test_rng;
     use crate::grpc::testutil::{
         GrpcOverrideRequestValidator, RequestValidator, collect_up_to_and_including_first_error,
-        err, ok, req, run_tests_with_generic_responses,
+        err, ok, req, run_tests, run_tests_with_generic_responses,
     };
 
     /// A variation of `==` that ignores header order, since the gRPC encoding of this type uses a
@@ -1341,6 +1629,76 @@ mod test {
             )
             .now_or_never()
             .expect("sync")
+    }
+
+    #[test]
+    fn test_get_message_backup_info() {
+        use super::test_cases::*;
+        run_tests(
+            get_message_backup_info_test_cases(),
+            |chat: Unauth<_>, ()| async move {
+                chat.get_message_backup_info(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
+                    &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |resp, result| match resp {
+                GetMessageBackupInfoOut::Success(expected) => {
+                    assert_eq!(expected, result.expect("success"))
+                }
+                GetMessageBackupInfoOut::CredentialRejected => {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Other(BackupAuthCredentialRejected))
+                    )
+                }
+                GetMessageBackupInfoOut::MissingResponse => {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Unexpected { log_safe }) if log_safe == "missing response"
+                    )
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_media_backup_info() {
+        use super::test_cases::*;
+        run_tests(
+            get_media_backup_info_test_cases(),
+            |chat: Unauth<_>, ()| async move {
+                chat.get_media_backup_info(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
+                    &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |resp, result| match resp {
+                GetMediaBackupInfoOut::Success(expected) => {
+                    assert_eq!(expected, result.expect("success"))
+                }
+                GetMediaBackupInfoOut::CredentialRejected => {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Other(BackupAuthCredentialRejected))
+                    )
+                }
+                GetMediaBackupInfoOut::MissingResponse => {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Unexpected { log_safe }) if log_safe == "missing response"
+                    )
+                }
+            },
+        );
     }
 
     #[test]

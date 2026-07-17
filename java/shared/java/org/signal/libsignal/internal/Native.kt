@@ -1407,7 +1407,11 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_cdn_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, cdn: Int, rng: Long): CompletableFuture<Array<Object>>
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_media_backup_info(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Object>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_media_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, credential: ByteArray, serverKeys: ByteArray, signingKey: ObjectHandle, uploadSize: Long, rng: Long): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_message_backup_info(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Object>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_svrb_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Pair<String, String>>
   @JvmStatic

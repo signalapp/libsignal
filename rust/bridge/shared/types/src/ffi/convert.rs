@@ -2177,6 +2177,8 @@ macro_rules! ffi_result_type {
     (BridgeCopyBackupMediaItem) => (BridgeCopyBackupMediaItemFfiResult);
     (BridgeCopyBackupMediaOutcome) => (BridgeCopyBackupMediaOutcomeFfiResult);
     (BridgeCopyBackupMediaResult) => (BridgeCopyBackupMediaResultFfiResult);
+    (BridgeMediaBackupInfo) => ($crate::net::chat::BridgeMediaBackupInfoFfiResult);
+    (BridgeMessageBackupInfo) => ($crate::net::chat::BridgeMessageBackupInfoFfiResult);
     (CopyBackupMediaNextChunk) => (CopyBackupMediaNextChunkFfiResult);
     (LinkedDevice) => ($crate::net::chat::remote_derives::LinkedDeviceInternalFfiResult);
 

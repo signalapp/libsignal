@@ -243,6 +243,70 @@ describe('UnauthBackupsService', () => {
     );
   });
 
+  describe('getMessageBackupInfo', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetMessageBackupInfoTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, _args, expected) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const actual = chat.getMessageBackupInfo({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (typeof expected !== 'string') {
+          expect(await actual).to.deep.equal(expected.success);
+        } else {
+          switch (expected) {
+            case 'credentialRejected':
+              await expect(actual)
+                .to.eventually.be.rejectedWith(LibSignalErrorBase)
+                .and.deep.include({ code: ErrorCode.RequestUnauthorized });
+              break;
+            case 'missingResponse':
+              await expect(actual)
+                .to.eventually.be.rejectedWith(LibSignalErrorBase)
+                .and.deep.include({ code: ErrorCode.IoError });
+              break;
+            default:
+              expected satisfies never;
+          }
+        }
+      }
+    );
+  });
+
+  describe('getMediaBackupInfo', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetMediaBackupInfoTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, _args, expected) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const actual = chat.getMediaBackupInfo({
+          auth: TEST_AUTH,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (typeof expected !== 'string') {
+          expect(await actual).to.deep.equal(expected.success);
+        } else {
+          switch (expected) {
+            case 'credentialRejected':
+              await expect(actual)
+                .to.eventually.be.rejectedWith(LibSignalErrorBase)
+                .and.deep.include({ code: ErrorCode.RequestUnauthorized });
+              break;
+            case 'missingResponse':
+              await expect(actual)
+                .to.eventually.be.rejectedWith(LibSignalErrorBase)
+                .and.deep.include({ code: ErrorCode.IoError });
+              break;
+            default:
+              expected satisfies never;
+          }
+        }
+      }
+    );
+  });
+
   it('getSvrBCredentials', async () => {
     const credentials = await testSimpleGrpcRequest(
       'org.signal.chat.backup.GetSvrBCredentialsRequest',

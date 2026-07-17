@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 import org.signal.libsignal.internal.BridgeCopyBackupMediaItem
 import org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome
 import org.signal.libsignal.internal.BridgeCopyBackupMediaResult
+import org.signal.libsignal.internal.BridgeMediaBackupInfo
+import org.signal.libsignal.internal.BridgeMessageBackupInfo
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeNice
@@ -39,6 +41,67 @@ public data class BackupCdnCredentials(
     @Suppress("UNCHECKED_CAST")
     internal fun fromFfiHeaders(headers: Array<Object>): BackupCdnCredentials =
       BackupCdnCredentials((headers as Array<Pair<String, String>>).toMap())
+  }
+}
+
+public data class MessageBackupInfo(
+  /**
+   * The base directory of the backup data on the CDN.
+   *
+   * Always non-empty, even if a backup has not actually been stored to the CDN. If a backup was
+   * previously uploaded and has not expired, it can be found in [cdn] at
+   * `/backupDir/backupName`.
+   */
+  val backupDir: String,
+  /**
+   * The CDN type where the message backup is stored. Media may be stored elsewhere.
+   */
+  val cdn: Int,
+  /**
+   * The location of the message backup on the CDN.
+   *
+   * Always non-empty, even if a backup has not actually been stored to the CDN.
+   */
+  val backupName: String,
+) {
+  public companion object {
+    public fun fromInternal(it: BridgeMessageBackupInfo): MessageBackupInfo =
+      MessageBackupInfo(
+        backupDir = it.backupDir,
+        cdn = it.cdn,
+        backupName = it.backupName,
+      )
+  }
+}
+
+public data class MediaBackupInfo(
+  /**
+   * The base directory of the backup data on the CDN.
+   *
+   * Always non-empty, even if no media has been stored to the CDN or the credential is for a tier
+   * that does not support media.
+   */
+  val backupDir: String,
+  /**
+   * The prefix path component for media objects on a CDN.
+   *
+   * Stored media for a `mediaId` can be found at `/backupDir/mediaDir/mediaId`, where the
+   * `mediaId` is encoded in unpadded url-safe base64. Always non-empty, even if no media has been
+   * stored to the CDN or the credential is for a tier that does not support media.
+   */
+  val mediaDir: String,
+  /**
+   * The amount of space used to store media, in bytes.
+   */
+  val usedSpace: Long,
+) {
+  public companion object {
+    public fun fromInternal(it: BridgeMediaBackupInfo): MediaBackupInfo =
+      MediaBackupInfo(
+        backupDir = it.backupDir,
+        mediaDir = it.mediaDir,
+        usedSpace = it.usedSpace,
+      )
   }
 }
 
@@ -260,6 +323,72 @@ public class UnauthBackupsService(
           rng = rngSeedForTesting,
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Retrieves information about the currently stored message backup.
+   *
+   * The `auth` should be for a messages credential.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed. Note that the server does not distinguish an invalid credential from a backup-id that
+   * has never been provisioned: if [setPublicKey] has never been called for this backup-id, this
+   * request also fails with [RequestUnauthorizedException]. Callers using this to check whether a
+   * backup exists should treat that case as "backups not set up" rather than as a fatal error.
+   */
+  public fun getMessageBackupInfo(
+    auth: BackupAuth,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<MessageBackupInfo, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_get_message_backup_info(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(MessageBackupInfo.fromInternal(it)) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Retrieves information about the currently stored media backup.
+   *
+   * The `auth` should be for a media credential.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed. Note that the server does not distinguish an invalid credential from a backup-id that
+   * has never been provisioned: if [setPublicKey] has never been called for this backup-id, this
+   * request also fails with [RequestUnauthorizedException]. Callers using this to check whether a
+   * backup exists should treat that case as "backups not set up" rather than as a fatal error.
+   */
+  public fun getMediaBackupInfo(
+    auth: BackupAuth,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<MediaBackupInfo, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_get_media_backup_info(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(MediaBackupInfo.fromInternal(it)) },
           onError = { it.toRequestResult<RequestUnauthorizedException>() },
         )
     } catch (e: Throwable) {

@@ -513,6 +513,18 @@ internal struct GetDevicesOut {
 
 }
 
+internal enum GetMediaBackupInfoOut {
+    case success(BridgeMediaBackupInfo)
+    case credentialRejected
+    case missingResponse
+}
+
+internal enum GetMessageBackupInfoOut {
+    case success(BridgeMessageBackupInfo)
+    case credentialRejected
+    case missingResponse
+}
+
 internal enum MyRemoteDeriveEnum {
     case unit
     case tuple(Int32, Int32)
@@ -652,6 +664,58 @@ internal enum DerivedReturnConverterGetDevicesOut: NiceReturnConverter {
         }
 
         return GetDevicesOut(devices: try devices.get())
+    }
+}
+
+internal enum DerivedReturnConverterGetMediaBackupInfoOut: NiceReturnConverter {
+    typealias NiceReturn = GetMediaBackupInfoOut
+    typealias FfiReturn = SignalGetMediaBackupInfoOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetMediaBackupInfoOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetMediaBackupInfoOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterBridgeMediaBackupInfo.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetMediaBackupInfoOut.success(try _0.get())
+        case SignalGetMediaBackupInfoOutFfiResultCredentialRejected:
+            return GetMediaBackupInfoOut.credentialRejected
+        case SignalGetMediaBackupInfoOutFfiResultMissingResponse:
+            return GetMediaBackupInfoOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetMediaBackupInfoOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetMessageBackupInfoOut: NiceReturnConverter {
+    typealias NiceReturn = GetMessageBackupInfoOut
+    typealias FfiReturn = SignalGetMessageBackupInfoOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetMessageBackupInfoOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetMessageBackupInfoOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterBridgeMessageBackupInfo.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetMessageBackupInfoOut.success(try _0.get())
+        case SignalGetMessageBackupInfoOutFfiResultCredentialRejected:
+            return GetMessageBackupInfoOut.credentialRejected
+        case SignalGetMessageBackupInfoOutFfiResultMissingResponse:
+            return GetMessageBackupInfoOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetMessageBackupInfoOut: \(ffiTag)")
+        }
     }
 }
 
@@ -1696,6 +1760,32 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetDevicesOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_GetMediaBackupInfoTests() throws -> [GrpcTestCase<Void, GetMediaBackupInfoOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetMediaBackupInfoOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_media_backup_info_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetMediaBackupInfoOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_GetMessageBackupInfoTests() throws -> [GrpcTestCase<Void, GetMessageBackupInfoOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetMessageBackupInfoOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_message_backup_info_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetMessageBackupInfoOut>.convertReturn(
             consuming: rawOutput
         )
 

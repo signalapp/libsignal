@@ -181,6 +181,18 @@ export type ReturnFfiBridgeCopyBackupMediaResult =
       __type: 3;
     };
 
+export type ReturnFfiBridgeMediaBackupInfo = {
+  backup_dir: string;
+  media_dir: string;
+  used_space: bigint;
+};
+
+export type ReturnFfiBridgeMessageBackupInfo = {
+  backup_dir: string;
+  cdn: number;
+  backup_name: string;
+};
+
 export type ReturnFfiCopyBackupMediaNextChunk = {
   chunk: Array<ReturnFfiBridgeCopyBackupMediaOutcome>;
   termination: ('finished' | Error) | null;
@@ -204,6 +216,30 @@ export type ReturnFfiCopyBackupMediaOut =
 export type ReturnFfiGetDevicesOut = {
   devices: Array<ReturnFfiLinkedDeviceInternal>;
 };
+
+export type ReturnFfiGetMediaBackupInfoOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeMediaBackupInfo;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiGetMessageBackupInfoOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeMessageBackupInfo;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
 
 export type ReturnFfiLinkedDeviceInternal = {
   id: number;
@@ -2461,6 +2497,12 @@ type NativeFunctions = {
   TESTING_GetDevicesTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetDevicesOut>
   >;
+  TESTING_GetMediaBackupInfoTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetMediaBackupInfoOut>
+  >;
+  TESTING_GetMessageBackupInfoTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetMessageBackupInfoOut>
+  >;
   TESTING_InputStreamReadIntoZeroLengthSlice: (
     caps_alphabet_input: InputStream
   ) => Promise<Uint8Array<ArrayBuffer>>;
@@ -2763,6 +2805,14 @@ type NativeFunctions = {
     cdn: number,
     rng: RandomNumberGenerator
   ) => CancellablePromise<[[string, string]]>;
+  UnauthenticatedChatConnection_backup_get_media_backup_info: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<ReturnFfiBridgeMediaBackupInfo>;
   UnauthenticatedChatConnection_backup_get_media_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2772,6 +2822,14 @@ type NativeFunctions = {
     upload_size: bigint,
     rng: RandomNumberGenerator
   ) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_backup_get_message_backup_info: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<ReturnFfiBridgeMessageBackupInfo>;
   UnauthenticatedChatConnection_backup_get_svrb_credentials: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -3528,6 +3586,8 @@ const {
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
   TESTING_GetDevicesTests,
+  TESTING_GetMediaBackupInfoTests,
+  TESTING_GetMessageBackupInfoTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -3650,7 +3710,9 @@ const {
   UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
+  UnauthenticatedChatConnection_backup_get_media_backup_info,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
+  UnauthenticatedChatConnection_backup_get_message_backup_info,
   UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
   UnauthenticatedChatConnection_backup_refresh,
@@ -4251,6 +4313,8 @@ export {
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
   TESTING_GetDevicesTests,
+  TESTING_GetMediaBackupInfoTests,
+  TESTING_GetMessageBackupInfoTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -4373,7 +4437,9 @@ export {
   UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
+  UnauthenticatedChatConnection_backup_get_media_backup_info,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
+  UnauthenticatedChatConnection_backup_get_message_backup_info,
   UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
   UnauthenticatedChatConnection_backup_refresh,

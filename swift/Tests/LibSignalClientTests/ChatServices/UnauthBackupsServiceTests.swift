@@ -258,6 +258,58 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
         }
     }
 
+    func testGetMessageBackupInfo() async throws {
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetMessageBackupInfoTests(),
+            invoke: { api, _ in
+                try await api.getMessageBackupInfo(auth: TEST_AUTH, rngForTesting: 0)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let expected):
+                    XCTAssertEqual(MessageBackupInfo.fromInternal(expected), try actual.get())
+                case .credentialRejected:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.requestUnauthorized(_) {}
+                case .missingResponse:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
+    }
+
+    func testGetMediaBackupInfo() async throws {
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetMediaBackupInfoTests(),
+            invoke: { api, _ in
+                try await api.getMediaBackupInfo(auth: TEST_AUTH, rngForTesting: 0)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let expected):
+                    XCTAssertEqual(MediaBackupInfo.fromInternal(expected), try actual.get())
+                case .credentialRejected:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.requestUnauthorized(_) {}
+                case .missingResponse:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
+    }
+
     func testGetSvrBCredentials() async throws {
         let credentials: Auth = try await testSimpleGrpcRequest(
             requestName: "org.signal.chat.backup.GetSvrBCredentialsRequest",

@@ -37,6 +37,45 @@ export type BackupAuth = {
   signingKey: PrivateKey;
 };
 
+export type MessageBackupInfo = {
+  /**
+   * The base directory of the backup data on the CDN.
+   *
+   * Always non-empty, even if a backup has not actually been stored to the CDN. If a backup was
+   * previously uploaded and has not expired, it can be found in {@link MessageBackupInfo#cdn} at
+   * `/backupDir/backupName`.
+   */
+  backupDir: string;
+  /** The CDN type where the message backup is stored. Media may be stored elsewhere. */
+  cdn: number;
+  /**
+   * The location of the message backup on the CDN.
+   *
+   * Always non-empty, even if a backup has not actually been stored to the CDN.
+   */
+  backupName: string;
+};
+
+export type MediaBackupInfo = {
+  /**
+   * The base directory of the backup data on the CDN.
+   *
+   * Always non-empty, even if no media has been stored to the CDN or the credential is for a tier
+   * that does not support media.
+   */
+  backupDir: string;
+  /**
+   * The prefix path component for media objects on a CDN.
+   *
+   * Stored media for a `mediaId` can be found at `/backupDir/mediaDir/mediaId`, where the
+   * `mediaId` is encoded in unpadded url-safe base64. Always non-empty, even if no media has been
+   * stored to the CDN or the credential is for a tier that does not support media.
+   */
+  mediaDir: string;
+  /** The amount of space used to store media, in bytes. */
+  usedSpace: bigint;
+};
+
 /**
  * A single item to copy from the attachment CDN to the backup CDN.
  *
@@ -122,6 +161,46 @@ export interface UnauthBackupsService {
     request: { auth: BackupAuth; cdn: number; rng?: Rng },
     options?: RequestOptions
   ) => Promise<CdnCredentials>;
+
+  /**
+   * Retrieves information about the currently stored message backup.
+   *
+   * The `auth` should be for a messages credential.
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails. Note that the
+   * server does not distinguish an invalid credential from a backup-id that
+   * has never been provisioned: if {@link #setBackupPublicKey} has never been
+   * called for this backup-id, this request also fails with
+   * {@link RequestUnauthorizedError}. Callers using this to check whether a
+   * backup exists should treat that case as "backups not set up" rather than
+   * as a fatal error.
+   * @throws {StandardNetworkError}
+   */
+  getMessageBackupInfo: (
+    request: { auth: BackupAuth; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<MessageBackupInfo>;
+
+  /**
+   * Retrieves information about the currently stored media backup.
+   *
+   * The `auth` should be for a media credential.
+   *
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails. Note that the
+   * server does not distinguish an invalid credential from a backup-id that
+   * has never been provisioned: if {@link #setBackupPublicKey} has never been
+   * called for this backup-id, this request also fails with
+   * {@link RequestUnauthorizedError}. Callers using this to check whether a
+   * backup exists should treat that case as "backups not set up" rather than
+   * as a fatal error.
+   * @throws {StandardNetworkError}
+   */
+  getMediaBackupInfo: (
+    request: { auth: BackupAuth; rng?: Rng },
+    options?: RequestOptions
+  ) => Promise<MediaBackupInfo>;
 
   /**
    * Fetches the credentials for connecting to SVR-B (a username/password pair).
@@ -286,6 +365,40 @@ UnauthenticatedChatConnection.prototype.getBackupCdnCredentials =
       }
     );
   };
+
+UnauthenticatedChatConnection.prototype.getMessageBackupInfo = async function (
+  { auth: { credential, serverKeys, signingKey }, rng },
+  options
+) {
+  return await NativeNice.UnauthenticatedChatConnection_backup_get_message_backup_info(
+    {
+      asyncContext: this._asyncContext,
+      chat: this._chatService,
+      credential,
+      serverKeys,
+      signingKey,
+      rng,
+      abortSignal: options?.abortSignal,
+    }
+  );
+};
+
+UnauthenticatedChatConnection.prototype.getMediaBackupInfo = async function (
+  { auth: { credential, serverKeys, signingKey }, rng },
+  options
+) {
+  return await NativeNice.UnauthenticatedChatConnection_backup_get_media_backup_info(
+    {
+      asyncContext: this._asyncContext,
+      chat: this._chatService,
+      credential,
+      serverKeys,
+      signingKey,
+      rng,
+      abortSignal: options?.abortSignal,
+    }
+  );
+};
 
 UnauthenticatedChatConnection.prototype.getBackupSvrBCredentials =
   async function (

@@ -19,9 +19,13 @@ import type {
   ReturnFfiBridgeCopyBackupMediaItem,
   ReturnFfiBridgeCopyBackupMediaOutcome,
   ReturnFfiBridgeCopyBackupMediaResult,
+  ReturnFfiBridgeMediaBackupInfo,
+  ReturnFfiBridgeMessageBackupInfo,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
   ReturnFfiGetDevicesOut,
+  ReturnFfiGetMediaBackupInfoOut,
+  ReturnFfiGetMessageBackupInfoOut,
   ReturnFfiLinkedDeviceInternal,
   ReturnFfiMyRemoteDeriveEnum,
   ReturnFfiMyRemoteDeriveStruct,
@@ -79,6 +83,18 @@ export type BridgeCopyBackupMediaResult =
   | 'wrongSourceLength'
   | 'outOfSpace';
 
+export type BridgeMediaBackupInfo = {
+  backupDir: string;
+  mediaDir: string;
+  usedSpace: bigint;
+};
+
+export type BridgeMessageBackupInfo = {
+  backupDir: string;
+  cdn: number;
+  backupName: string;
+};
+
 export type CopyBackupMediaNextChunk = {
   chunk: Array<BridgeCopyBackupMediaOutcome>;
   termination: ('finished' | Error) | null;
@@ -95,6 +111,20 @@ export type CopyBackupMediaOut =
 export type GetDevicesOut = {
   devices: Array<LinkedDeviceInternal>;
 };
+
+export type GetMediaBackupInfoOut =
+  | {
+      success: BridgeMediaBackupInfo;
+    }
+  | 'credentialRejected'
+  | 'missingResponse';
+
+export type GetMessageBackupInfoOut =
+  | {
+      success: BridgeMessageBackupInfo;
+    }
+  | 'credentialRejected'
+  | 'missingResponse';
 
 export type LinkedDeviceInternal = {
   id: DeviceId;
@@ -233,6 +263,26 @@ export function returnConverterBridgeCopyBackupMediaResult(
   }
 }
 
+export function returnConverterBridgeMediaBackupInfo(
+  ffiInput: Native.ReturnFfiBridgeMediaBackupInfo
+): BridgeMediaBackupInfo {
+  return {
+    backupDir: identity(ffiInput.backup_dir),
+    mediaDir: identity(ffiInput.media_dir),
+    usedSpace: identity(ffiInput.used_space),
+  };
+}
+
+export function returnConverterBridgeMessageBackupInfo(
+  ffiInput: Native.ReturnFfiBridgeMessageBackupInfo
+): BridgeMessageBackupInfo {
+  return {
+    backupDir: identity(ffiInput.backup_dir),
+    cdn: identity(ffiInput.cdn),
+    backupName: identity(ffiInput.backup_name),
+  };
+}
+
 export function returnConverterCopyBackupMediaNextChunk(
   ffiInput: Native.ReturnFfiCopyBackupMediaNextChunk
 ): CopyBackupMediaNextChunk {
@@ -271,6 +321,46 @@ export function returnConverterGetDevicesOut(
     devices: ((arr: Array<ReturnFfiLinkedDeviceInternal>) =>
       arr.map(returnConverterLinkedDeviceInternal))(ffiInput.devices),
   };
+}
+
+export function returnConverterGetMediaBackupInfoOut(
+  ffiInput: Native.ReturnFfiGetMediaBackupInfoOut
+): GetMediaBackupInfoOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterBridgeMediaBackupInfo(ffiInput._0),
+      };
+    case 1:
+      return 'credentialRejected';
+    case 2:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetMediaBackupInfoOut');
+  }
+}
+
+export function returnConverterGetMessageBackupInfoOut(
+  ffiInput: Native.ReturnFfiGetMessageBackupInfoOut
+): GetMessageBackupInfoOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterBridgeMessageBackupInfo(ffiInput._0),
+      };
+    case 1:
+      return 'credentialRejected';
+    case 2:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for GetMessageBackupInfoOut'
+      );
+  }
 }
 
 export function returnConverterLinkedDeviceInternal(
@@ -988,6 +1078,24 @@ export function TESTING_GetDevicesTests(): Array<
     identity,
     returnConverterGetDevicesOut
   )(Native.TESTING_GetDevicesTests());
+}
+
+export function TESTING_GetMediaBackupInfoTests(): Array<
+  GrpcTestCase<void, GetMediaBackupInfoOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetMediaBackupInfoOut
+  )(Native.TESTING_GetMediaBackupInfoTests());
+}
+
+export function TESTING_GetMessageBackupInfoTests(): Array<
+  GrpcTestCase<void, GetMessageBackupInfoOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetMessageBackupInfoOut
+  )(Native.TESTING_GetMessageBackupInfoTests());
 }
 
 export function TESTING_MyRemoteDeriveEnum_identity({
@@ -1882,6 +1990,68 @@ export async function UnauthenticatedChatConnection_backup_get_cdn_credentials({
         ByteArray.prototype.getContents.call(server_keys),
         identity(signing_key),
         identity(cdn),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_get_media_backup_info({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  rng: Rng | undefined;
+}): Promise<BridgeMediaBackupInfo> {
+  return returnConverterBridgeMediaBackupInfo(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_get_media_backup_info(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_get_message_backup_info({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  rng: Rng | undefined;
+}): Promise<BridgeMessageBackupInfo> {
+  return returnConverterBridgeMessageBackupInfo(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_get_message_backup_info(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
         ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )

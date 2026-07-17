@@ -79,6 +79,68 @@ public data class GetDevicesOut(
   }
 }
 
+public sealed class GetMediaBackupInfoOut {
+  public data class Success(
+    val _0: org.signal.libsignal.internal.BridgeMediaBackupInfo,
+  ) : GetMediaBackupInfoOut() {
+    public companion object {
+      @JvmStatic
+      @JvmName("fromNative")
+      @CalledFromNative
+      internal fun fromNative(_0: Any?): Success =
+        Success(
+          _0 =
+            downcastFromObject<org.signal.libsignal.internal.BridgeMediaBackupInfo>(_0 as Object),
+        )
+    }
+  }
+
+  public data object CredentialRejected : GetMediaBackupInfoOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejected = CredentialRejected
+  }
+
+  public data object MissingResponse : GetMediaBackupInfoOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): MissingResponse = MissingResponse
+  }
+}
+
+public sealed class GetMessageBackupInfoOut {
+  public data class Success(
+    val _0: org.signal.libsignal.internal.BridgeMessageBackupInfo,
+  ) : GetMessageBackupInfoOut() {
+    public companion object {
+      @JvmStatic
+      @JvmName("fromNative")
+      @CalledFromNative
+      internal fun fromNative(_0: Any?): Success =
+        Success(
+          _0 =
+            downcastFromObject<org.signal.libsignal.internal.BridgeMessageBackupInfo>(_0 as Object),
+        )
+    }
+  }
+
+  public data object CredentialRejected : GetMessageBackupInfoOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejected = CredentialRejected
+  }
+
+  public data object MissingResponse : GetMessageBackupInfoOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): MissingResponse = MissingResponse
+  }
+}
+
 public sealed class MySimpleTestEnum {
   public data object A : MySimpleTestEnum() {
     @JvmStatic
@@ -622,6 +684,26 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetDevicesOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetDevicesOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetMediaBackupInfoTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetMediaBackupInfoOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetMediaBackupInfoTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetMediaBackupInfoOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetMediaBackupInfoOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetMessageBackupInfoTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetMessageBackupInfoOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetMessageBackupInfoTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetMessageBackupInfoOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetMessageBackupInfoOut>(it) })(ffiOut)
   }
 
   public fun TESTING_MySimpleTestEnum_BridgeVec_identity(

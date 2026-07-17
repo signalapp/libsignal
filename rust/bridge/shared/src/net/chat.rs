@@ -588,6 +588,40 @@ async fn UnauthenticatedChatConnection_backup_get_svrb_credentials(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_message_backup_info(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<BridgeMessageBackupInfo, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .get_message_backup_info(&backup_auth, &mut rng)
+        .await
+        .map(BridgeMessageBackupInfo::from)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_media_backup_info(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<BridgeMediaBackupInfo, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .get_media_backup_info(&backup_auth, &mut rng)
+        .await
+        .map(BridgeMediaBackupInfo::from)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_refresh(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,

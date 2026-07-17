@@ -19,6 +19,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.CopyBackupMediaOut
+import org.signal.libsignal.internal.GetMediaBackupInfoOut
+import org.signal.libsignal.internal.GetMessageBackupInfoOut
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.TokioAsyncContext
@@ -421,6 +423,70 @@ class UnauthBackupsServiceTest {
       )
     }
   }
+
+  @Test
+  fun testGetMessageBackupInfo() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetMessageBackupInfoTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.getMessageBackupInfo(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetMessageBackupInfoOut.Success ->
+              assertEquals(
+                MessageBackupInfo.fromInternal(expected._0),
+                assertIs<RequestResult.Success<MessageBackupInfo>>(actual).result,
+              )
+            GetMessageBackupInfoOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            GetMessageBackupInfoOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
+      )
+    }
+
+  @Test
+  fun testGetMediaBackupInfo() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetMediaBackupInfoTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.getMediaBackupInfo(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetMediaBackupInfoOut.Success ->
+              assertEquals(
+                MediaBackupInfo.fromInternal(expected._0),
+                assertIs<RequestResult.Success<MediaBackupInfo>>(actual).result,
+              )
+            GetMediaBackupInfoOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            GetMediaBackupInfoOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
+      )
+    }
 
   @Test
   fun testGetSvrBCredentials() {
