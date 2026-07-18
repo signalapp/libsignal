@@ -67,7 +67,6 @@ zerocopy = { workspace = true }
 subtle = { workspace = true, features = ["core_hint_black_box"] }
 
 jni = { workspace = true, optional = true }
-libc = { workspace = true, optional = true }
 linkme = { workspace = true, optional = true }
 neon = { workspace = true, optional = true, default-features = false, features = ["napi-6"] }
 signal-neon-futures = { workspace = true, optional = true }
@@ -76,12 +75,13 @@ simd_cesu8 = { workspace = true, optional = true }
 [dev-dependencies]
 libsignal-net-grpc = { workspace = true }
 
+libc = { workspace = true }
 nonzero_ext = { workspace = true }
 test-case = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "time", "macros"] }
 
 [features]
-ffi = ["dep:libc"]
+ffi = []
 jni = ["dep:jni", "dep:simd_cesu8"]
 jni-type-tagging = []
 jni-invoke-annotated = []

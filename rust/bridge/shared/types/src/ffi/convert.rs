@@ -1094,6 +1094,14 @@ impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
     }
 }
 
+// This constant isn't available from libc on windows.
+const MAP_FAILED: *mut std::ffi::c_void = !0 as *mut std::ffi::c_void;
+#[cfg(not(windows))]
+#[test]
+fn test_map_failed_matches() {
+    assert_eq!(libc::MAP_FAILED, MAP_FAILED);
+}
+
 /// A low-level three-state enum: 0 (still going), `MAP_FAILED` (finished), or a valid pointer
 /// (error).
 ///
@@ -1114,7 +1122,7 @@ impl<T: IntoFfiError> ResultTypeInfo for Option<BulkPolledStreamTerminationReaso
             Some(BulkPolledStreamTerminationReason::Error(e)) => {
                 crate::support::BridgedError(e).convert_into()?
             }
-            Some(BulkPolledStreamTerminationReason::Finished) => libc::MAP_FAILED.cast(),
+            Some(BulkPolledStreamTerminationReason::Finished) => MAP_FAILED.cast(),
             None => std::ptr::null_mut(),
         };
         Ok(FfiBulkPolledStreamTerminationReason { raw })
