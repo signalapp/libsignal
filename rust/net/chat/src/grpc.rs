@@ -351,7 +351,6 @@ where
 ///
 /// `make_request` will need to capture any parameters that don't change between requests, including
 /// the service or service provider itself. See existing callers for details.
-#[allow(dead_code)]
 fn chunk_request<T, TProto, R: 'static, E: 'static, S>(
     chunk_size: usize,
     items: impl IntoIterator<Item = T, IntoIter: 'static>,
@@ -1091,6 +1090,35 @@ pub(crate) mod testutil {
         }
     }
 
+    #[derive(Clone)]
+    pub(crate) struct FnValidator(
+        #[allow(clippy::type_complexity)]
+        pub  Arc<
+            dyn Fn(
+                    http::Request<tonic::body::Body>,
+                ) -> http::Response<BoxBody<bytes::Bytes, Infallible>>
+                + Send
+                + Sync,
+        >,
+    );
+
+    impl tower_service::Service<http::Request<tonic::body::Body>> for FnValidator {
+        type Response = http::Response<BoxBody<bytes::Bytes, Infallible>>;
+        type Error = hyper::Error;
+        type Future = std::future::Ready<Result<Self::Response, Self::Error>>;
+
+        fn poll_ready(
+            &mut self,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Result<(), Self::Error>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+
+        fn call(&mut self, req: http::Request<tonic::body::Body>) -> Self::Future {
+            std::future::ready(Ok((self.0)(req)))
+        }
+    }
+
     /// A protoscope-like helper type for decoding arbitrary protobuf messages.
     ///
     /// Always succeeds as long as the input is not malformed. Only intended for debugging.
@@ -1108,7 +1136,7 @@ pub(crate) mod testutil {
         Nested(DynMessage),
     }
 
-    trait MessageExt: Sized {
+    pub(crate) trait MessageExt: Sized {
         fn decode_single_grpc_body(
             body: impl bytes::Buf + Send + 'static,
         ) -> Result<Self, tonic::Status>;

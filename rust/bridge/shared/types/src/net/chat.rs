@@ -173,7 +173,7 @@ impl UnauthenticatedChatConnection {
 
     pub fn blocking_require_grpc(
         &self,
-    ) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider + 'static> {
+    ) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider + Clone + 'static> {
         let guard = self.as_ref().blocking_read();
         let MaybeChatConnection::Running(inner) = &*guard else {
             panic!("listener was not set")

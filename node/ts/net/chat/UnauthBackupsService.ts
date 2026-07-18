@@ -255,9 +255,10 @@ export interface UnauthBackupsService {
    * may be reflected in the responses. However, there is no need to retry the items that did
    * receive a response.
    *
-   * The stream may be terminated at any time with the standard Signal network exceptions.
-   * In addition, the stream may immediately terminate with {@link RequestUnauthorizedError}
-   * if there are authorization issues.
+   * The stream may be terminated at any time with the standard Signal network exceptions. In
+   * addition, the stream may terminate with {@link RequestUnauthorizedError} if there are
+   * authorization issues. Large numbers of items may result in multiple requests to the server,
+   * which means a `RequestUnauthorizedError` can happen in the middle of the stream.
    */
   copyBackupMedia: (request: {
     auth: BackupAuth;
