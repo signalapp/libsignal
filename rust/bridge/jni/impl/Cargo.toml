@@ -22,7 +22,6 @@ signal-crypto = { workspace = true }
 cfg-if = { workspace = true }
 jni = { workspace = true }
 log = { workspace = true }
-log-panics = { workspace = true, features = ["with-backtrace"] }
 zerocopy = { workspace = true }
 
 [features]

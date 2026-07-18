@@ -37,7 +37,6 @@ libsignal-protocol = { workspace = true }
 futures = { workspace = true }
 linkme = { workspace = true }
 log = { workspace = true }
-log-panics = { workspace = true, features = ["with-backtrace"] }
 minidump = { workspace = true }
 minidump-processor = { workspace = true }
 minidump-unwind = { workspace = true }

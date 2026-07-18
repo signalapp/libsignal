@@ -5,3 +5,4 @@ v0.97.5
   - UnauthBackupsService.getMediaBackupInfo()
 
 - Remove dependency on platform-specific libc
+- Report unsymbolized backtraces on panic

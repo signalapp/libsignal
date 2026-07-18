@@ -38,7 +38,6 @@ signal-media = { workspace = true }
 
 hex = { workspace = true }
 log = { workspace = true }
-log-panics = { workspace = true, features = ["with-backtrace"] }
 paste = { workspace = true }
 uuid = { workspace = true }
 zerocopy = { workspace = true }

@@ -69,7 +69,7 @@ extension SignalConstPointerTestStream: SignalConstPointer {
     }
 }
 
-final class BridgingTests: XCTestCase {
+final class BridgingTests: TestCaseBase {
     func testErrorOnBorrow() async throws {
         do {
             try checkError(signal_testing_error_on_borrow_sync(nil))

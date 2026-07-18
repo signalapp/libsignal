@@ -104,9 +104,7 @@ pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogg
             // These strings are explicitly looked for by build_ffi.sh.
             log::debug!("THIS BUILD HAS DEBUG-LEVEL LOGS ENABLED");
             log::trace!("THIS BUILD HAS TRACE-LEVEL LOGS ENABLED");
-            log_panics::Config::new()
-                .backtrace_mode(log_panics::BacktraceMode::Unresolved)
-                .install_panic_hook();
+            libsignal_bridge::logging::set_panic_hook();
             true
         }
         Err(_) => {

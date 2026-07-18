@@ -212,7 +212,7 @@ pub(crate) fn init_logger(mut cx: FunctionContext) -> JsResult<JsUndefined> {
             // These strings are explicitly looked for by build_node_bridge.py.
             log::debug!("THIS BUILD HAS DEBUG-LEVEL LOGS ENABLED");
             log::trace!("THIS BUILD HAS TRACE-LEVEL LOGS ENABLED");
-            log_panics::init();
+            libsignal_bridge::logging::set_panic_hook();
         }
         Err(_) => {
             log::warn!("logging already initialized for libsignal; ignoring later call");

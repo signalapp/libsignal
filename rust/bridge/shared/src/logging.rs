@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::ffi::{CStr, c_void};
+use std::fmt::Formatter;
+
+use backtrace::Backtrace;
+
 /// An implementation of [`log::Log::enabled`] suitable for production Signal apps.
 ///
 /// Apps may apply additional logging filters on top of what libsignal reports.
@@ -30,9 +35,7 @@ pub fn log_enabled_in_apps(metadata: &log::Metadata) -> bool {
         // Other libsignal crates:
         b'a' => check("attest"),
         b'd' => check("device_transfer"),
-        // target == "panic" isn't a libsignal crate, it's the log_panics crate
-        // In log_panics, they manually override the log target to be "panic" rather than log_panics
-        b'p' => check("poksho") || target == "panic",
+        b'p' => check("poksho"),
         b'u' => check("usernames"),
         b'z' => check("zkgroup") || check("zkcredential"),
 
@@ -45,21 +48,122 @@ pub fn log_enabled_in_apps(metadata: &log::Metadata) -> bool {
     }
 }
 
+#[derive(Default)]
+struct DlAddrInfo<'a> {
+    module_base_address: Option<*mut c_void>,
+    image_name: Option<&'a str>,
+}
+fn dladdr<T>(ip: *mut c_void, cb: impl FnOnce(DlAddrInfo) -> T) -> T {
+    #[cfg(unix)]
+    {
+        if ip.is_null() {
+            return cb(Default::default());
+        }
+        unsafe {
+            let mut info: libc::Dl_info = std::mem::zeroed();
+            let rc = libc::dladdr(ip, &mut info);
+            if rc != 0 {
+                cb(DlAddrInfo {
+                    module_base_address: Some(info.dli_fbase),
+                    image_name: if info.dli_fname.is_null() {
+                        None
+                    } else {
+                        CStr::from_ptr(info.dli_fname).to_str().ok()
+                    },
+                })
+            } else {
+                cb(Default::default())
+            }
+        }
+    }
+    // The backtrace crate only supports module base addresses on Windows, anyway.
+    #[cfg(not(unix))]
+    cb(Default::default())
+}
+
+fn rstrip_until(x: &str, pattern: char) -> &str {
+    let Some((_, out)) = x.rsplit_once(pattern) else {
+        return x;
+    };
+    out
+}
+
+fn image_base_name(image_name: &str) -> &str {
+    rstrip_until(rstrip_until(image_name, '/'), '\\')
+}
+#[test]
+fn test_image_base_name() {
+    assert_eq!(image_base_name("/a/b"), "b");
+    assert_eq!(image_base_name("/a/foo\\b"), "b");
+    assert_eq!(image_base_name("C:\\x\\a/b"), "b");
+    assert_eq!(image_base_name("C:\\a\\b"), "b");
+}
+
+struct BacktraceDisplay<'a>(&'a Backtrace);
+impl<'a> std::fmt::Display for BacktraceDisplay<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let b = self.0;
+        for frame in b.frames() {
+            let ip = frame.ip();
+            dladdr(
+                ip,
+                |DlAddrInfo {
+                     module_base_address,
+                     image_name,
+                 }|
+                 -> std::fmt::Result {
+                    let module_base_address = module_base_address
+                        .or_else(|| frame.module_base_address())
+                        .unwrap_or_default();
+                    // On macos and ios, symbol_address() just returns the IP, so we zero this out to
+                    // let us know.
+                    let symbol_address = if cfg!(any(target_os = "macos", target_os = "ios")) {
+                        Default::default()
+                    } else {
+                        frame.symbol_address()
+                    };
+                    write!(f, "BACKTRACE: {{\"image_name\": ")?;
+                    if let Some(image_name) = image_name {
+                        write!(f, "\"{}\"", image_base_name(image_name).escape_default())?;
+                    } else {
+                        write!(f, "null")?;
+                    }
+                    writeln!(
+                        f,
+                        ", \"image_base\": \"{:016X}\", \"symbol\": \"{:016X}\", \"ip\": \"{:016X}\"}}",
+                        module_base_address as u64, symbol_address as u64, ip as u64,
+                    )
+                },
+            )?;
+        }
+        writeln!(f)?;
+        Ok(())
+    }
+}
+
+pub fn set_panic_hook() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let old_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let backtrace = Backtrace::new_unresolved();
+            old_hook(info);
+            let thread = std::thread::current();
+            let thread_name = thread.name().unwrap_or("<unnamed>");
+            let thread_id = thread.id();
+            log::error!(
+                "thread '{thread_name}' ({thread_id:?}) {info}\n{}",
+                BacktraceDisplay(&backtrace)
+            );
+        }));
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use test_case::test_matrix;
 
     use super::*;
-
-    #[test]
-    fn test_panic() {
-        assert!(log_enabled_in_apps(
-            &log::Metadata::builder()
-                .target("panic")
-                .level(log::Level::Error)
-                .build()
-        ));
-    }
 
     #[test_matrix([
         "libsignal_foo",

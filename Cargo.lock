@@ -2482,6 +2482,7 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "attest",
+ "backtrace",
  "base64",
  "bincode",
  "device-transfer",
@@ -2491,6 +2492,7 @@ dependencies = [
  "http",
  "itertools 0.15.0",
  "jni 0.22.4",
+ "libc",
  "libsignal-account-keys",
  "libsignal-bridge-macros",
  "libsignal-bridge-types",
@@ -2710,7 +2712,6 @@ dependencies = [
  "libsignal-net-chat",
  "libsignal-protocol",
  "log",
- "log-panics",
  "paste",
  "signal-media",
  "uuid",
@@ -2754,7 +2755,6 @@ dependencies = [
  "libsignal-core",
  "libsignal-protocol",
  "log",
- "log-panics",
  "rustls-platform-verifier",
  "signal-crypto",
  "zerocopy",
@@ -3113,7 +3113,6 @@ dependencies = [
  "libsignal-protocol",
  "linkme",
  "log",
- "log-panics",
  "minidump",
  "minidump-processor",
  "minidump-unwind",
@@ -3276,16 +3275,6 @@ name = "log"
 version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
-
-[[package]]
-name = "log-panics"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68f9dd8546191c1850ecf67d22f5ff00a935b890d0e84713159a55495cc2ac5f"
-dependencies = [
- "backtrace",
- "log",
-]
 
 [[package]]
 name = "macro_rules_attribute"
