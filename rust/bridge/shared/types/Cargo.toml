@@ -88,10 +88,3 @@ jni-invoke-annotated = []
 extra-jni-checks = ["jni-type-tagging", "jni-invoke-annotated"]
 node = ["neon", "linkme", "signal-neon-futures"]
 metadata = ["linkme", "serde/derive"]
-
-[target.'cfg(not(any(windows, target_arch = "x86")))'.dependencies]
-# sha2's asm implementation uses standalone .S files that aren't compiled correctly on Windows,
-# and aren't linked correctly on x86 Android.
-# This will be fixed in sha2 0.11, which also removes the "asm" feature and turns it on by default.
-# So when sha2 0.11 is released, this section will go away.
-sha2 = { workspace = true, features = ["asm"] }

@@ -97,7 +97,7 @@ checksum = "797087750c4103075e96bb7a60202a040812f8679ae2f7263148a1cc0b298d28"
 
 # curve25519-dalek was derived from a Go project
 [curve25519-dalek.clarify]
-license = "BSD-3-Clause"
+license = "BSD-3-Clause AND MIT"
 
 [[curve25519-dalek.clarify.files]]
 # The Rust implementation
@@ -109,11 +109,19 @@ checksum = "db7e563b03fa70fa9998fbcae9b432057b7430740a58672c9a8df17af6e078d7"
 
 [[curve25519-dalek.clarify.files]]
 # The Go implementation used as a reference
-path = "LICENSE"
+path = "ACKNOWLEDGEMENTS.md"
 license = "BSD-3-Clause"
 start = "Copyright (c) 2012 The Go Authors. All rights reserved."
 end = "SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 checksum = "b790bcf9428074d098a455163df68ec35589ae22536051f3555a592c1e4dd772"
+
+[[curve25519-dalek.clarify.files]]
+# The Lizard implementation by Bas Westerbaan
+path = "ACKNOWLEDGEMENTS.md"
+license = "MIT"
+start = "Copyright (c) 2019 Bas Westerbaan"
+end = "SOFTWARE."
+checksum = "1804d157a6ab05ff4ac72763fff022339aee96c56dacbc5f3a34563046704137"
 
 
 # dyn-clonable is embedded in a larger repo

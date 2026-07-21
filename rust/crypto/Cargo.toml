@@ -19,13 +19,13 @@ libsignal-core = { workspace = true }
 libsignal-debug = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }
-cbc = { workspace = true, features = ["std", "zeroize"] }
+cbc = { workspace = true, features = ["alloc", "zeroize"] }
 ctr = { workspace = true, features = ["zeroize"] }
 derive_more = { workspace = true }
 displaydoc = { workspace = true }
 ghash = { workspace = true, features = ["zeroize"] }
 hkdf = { workspace = true }
-hmac = { workspace = true, features = ["reset"] }
+hmac = { workspace = true }
 hpke-rs = { workspace = true }
 hpke-rs-crypto = { workspace = true }
 rand_chacha = { workspace = true }

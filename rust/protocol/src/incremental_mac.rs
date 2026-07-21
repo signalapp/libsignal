@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use aes::cipher::Unsigned;
 use hmac::Mac;
-use hmac::digest::generic_array::{ArrayLength, GenericArray};
+use sha2::digest::typenum::Unsigned;
 use sha2::digest::{FixedOutput, MacError, Output};
 
 #[derive(Clone)]
@@ -29,7 +28,6 @@ const TARGET_TOTAL_DIGEST_SIZE: usize = 8 * 1024;
 pub const fn calculate_chunk_size<D>(data_size: usize) -> usize
 where
     D: FixedOutput,
-    D::OutputSize: ArrayLength<u8>,
 {
     assert!(
         0 == TARGET_TOTAL_DIGEST_SIZE % D::OutputSize::USIZE,
@@ -58,10 +56,8 @@ impl<M: Mac + Clone> Incremental<M> {
     pub fn validating<'a, A, I>(self, macs: I) -> Validating<M>
     where
         // This is a clunky way to spell an iterator over `&'a [u8; M::OutputSize]`, which requires
-        // feature(generic_const_exprs). The Sized requirement is because the older version of
-        // generic-array we're using (via the digest crate) provides From<&[u8]>; it was removed in
-        // generic-array 1.0.
-        A: Into<&'a GenericArray<u8, M::OutputSize>> + std::ops::Deref<Target: Sized>,
+        // feature(generic_const_exprs).
+        A: Into<&'a sha2::digest::array::Array<u8, M::OutputSize>>,
         I: IntoIterator<Item = A, IntoIter: DoubleEndedIterator>,
     {
         let expected = macs
@@ -140,7 +136,7 @@ impl<M: Mac + Clone> Validating<M> {
 #[cfg(test)]
 mod test {
     use const_str::hex;
-    use hmac::Hmac;
+    use hmac::{Hmac, KeyInit as _};
     use proptest::prelude::*;
     use rand::distr::uniform::{UniformSampler as _, UniformUsize};
     use rand::prelude::{Rng, ThreadRng};

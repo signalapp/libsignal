@@ -3,10 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use crypto_common::KeyInit;
-use hmac::Hmac;
+use hmac::digest::OutputSizeUser;
 use hmac::digest::typenum::Unsigned;
-use hmac::digest::{OutputSizeUser, crypto_common};
+use hmac::{Hmac, KeyInit as _};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::incremental_mac::*;
 use libsignal_protocol::incremental_mac::{Incremental, calculate_chunk_size};

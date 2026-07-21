@@ -7,10 +7,10 @@
 //!
 //! See `encrypt_backup` or `generation/mod.rs` for how they fit together.
 
-use aes::cipher::{BlockEncryptMut as _, BlockSizeUser as _, KeyIvInit as _};
+use aes::cipher::{BlockModeEncrypt as _, BlockSizeUser as _, KeyIvInit as _};
 use async_compression::futures::bufread::GzipEncoder;
 use futures::{AsyncBufRead, AsyncReadExt as _};
-use hmac::Mac as _;
+use hmac::{KeyInit as _, Mac as _};
 use sha2::Sha256;
 
 use crate::frame::{AES_IV_SIZE, AES_KEY_SIZE};
@@ -42,7 +42,7 @@ pub fn aes_cbc_encrypt(
     contents.resize(len_to_encrypt + aes::Aes256::block_size(), 0);
     let encryptor = cbc::Encryptor::<aes::Aes256>::new(aes_key.into(), iv.into());
     let len_encrypted = encryptor
-        .encrypt_padded_mut::<aes::cipher::block_padding::Pkcs7>(&mut *contents, len_to_encrypt)
+        .encrypt_padded::<aes::cipher::block_padding::Pkcs7>(&mut *contents, len_to_encrypt)
         .expect("provided enough room for padding")
         .len();
     contents.truncate(len_encrypted);

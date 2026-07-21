@@ -105,7 +105,7 @@ impl PinHash {
 /// It is built on HMAC-SHA256, making use of _a_ synthetic IV (not to be
 /// confused with [SIV](https://datatracker.ietf.org/doc/html/rfc5297)).
 mod hmac_sha256_siv {
-    use hmac::{Hmac, Mac as _};
+    use hmac::{Hmac, KeyInit as _, Mac as _};
     use sha2::Sha256;
     use subtle::ConstantTimeEq;
 

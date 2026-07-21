@@ -7,7 +7,7 @@ use std::result::Result;
 
 use aes::Aes256;
 use aes::cipher::{KeyIvInit, StreamCipher};
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit as _, Mac as _};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 
@@ -32,7 +32,7 @@ fn aes_256_ctr_encrypt(ptext: &[u8], key: &[u8]) -> Result<Vec<u8>, EncryptionEr
     let key: [u8; 32] = key.try_into().map_err(|_| EncryptionError::BadKeyOrIv)?;
 
     let zero_nonce = [0u8; 16];
-    let mut cipher = ctr::Ctr32BE::<Aes256>::new(key[..].into(), zero_nonce[..].into());
+    let mut cipher = ctr::Ctr32BE::<Aes256>::new(&key.into(), &zero_nonce.into());
 
     let mut ctext = ptext.to_vec();
     cipher.apply_keystream(&mut ctext);

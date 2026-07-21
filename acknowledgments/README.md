@@ -17,6 +17,7 @@ Then:
 Apart from the projects in this very repo, there are a few other crates that unavoidably have "synthesized" licenses based on their Cargo manifests:
 
 - cesu8: Very old crate whose repository contains a license file for the Rust project itself, rather than the crate.
+- curve25519-dalek **4.1.3**: used only as a dev-dependency; our real version has a proper license via about.toml
 - hpke-rs-\*: Uploaded without a license file, though a license is listed in the Cargo.toml for each crate.
 
 [cargo-about]: https://embarkstudios.github.io/cargo-about/

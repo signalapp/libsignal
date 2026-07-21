@@ -15,7 +15,7 @@ pub use backup::*;
 pub use error::{Error, Result};
 pub use hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 use hkdf::Hkdf;
-use hmac::{Hmac, Mac as _};
+use hmac::{Hmac, KeyInit as _, Mac as _};
 use rand::distr::slice;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;

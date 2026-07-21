@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use aes::cipher::{BlockEncrypt as _, KeyInit as _};
+use aes::cipher::{BlockCipherEncrypt as _, KeyInit as _};
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
@@ -72,7 +72,7 @@ impl ProfileKey {
         // and then since our "plaintext" is zeros, this becomes simply raw AES([0, 0, ..., 2]).
         static_assertions::const_assert_eq!(ACCESS_KEY_LEN, {
             type BlockSize = <::aes::Aes256Enc as ::aes::cipher::BlockSizeUser>::BlockSize;
-            <BlockSize as ::aes::cipher::Unsigned>::USIZE
+            <BlockSize as ::aes::cipher::typenum::Unsigned>::USIZE
         });
         let aes = ::aes::Aes256Enc::new((&self.bytes).into());
         let mut buf = [0u8; ACCESS_KEY_LEN];

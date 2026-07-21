@@ -7,7 +7,7 @@ use std::result::Result;
 
 use aes::Aes256;
 use aes::cipher::block_padding::Pkcs7;
-use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use aes::cipher::{BlockModeDecrypt as _, BlockModeEncrypt as _, KeyIvInit};
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum EncryptionError {
@@ -31,7 +31,7 @@ pub fn aes_256_cbc_encrypt(
     let _trace = libsignal_debug::trace_block!("aes_256_cbc_encrypt");
     Ok(cbc::Encryptor::<Aes256>::new_from_slices(key, iv)
         .map_err(|_| EncryptionError::BadKeyOrIv)?
-        .encrypt_padded_vec_mut::<Pkcs7>(ptext))
+        .encrypt_padded_vec::<Pkcs7>(ptext))
 }
 
 pub fn aes_256_cbc_decrypt(
@@ -48,7 +48,7 @@ pub fn aes_256_cbc_decrypt(
 
     cbc::Decryptor::<Aes256>::new_from_slices(key, iv)
         .map_err(|_| DecryptionError::BadKeyOrIv)?
-        .decrypt_padded_vec_mut::<Pkcs7>(ctext)
+        .decrypt_padded_vec::<Pkcs7>(ctext)
         .map_err(|_| DecryptionError::BadCiphertext("failed to decrypt"))
 }
 

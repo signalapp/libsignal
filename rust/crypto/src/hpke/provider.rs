@@ -6,9 +6,8 @@
 use hkdf::Hkdf;
 use hpke_rs_crypto::error::Error as HpkeError;
 use hpke_rs_crypto::types::{AeadAlgorithm, KdfAlgorithm, KemAlgorithm};
-use hpke_rs_crypto::{CryptoRng, HpkeCrypto, HpkeTestRng, RngCore};
+use hpke_rs_crypto::{HpkeCrypto, HpkeTestRng};
 use libsignal_core::curve::{PrivateKey, PublicKey};
-use rand_core::{SeedableRng, TryRngCore};
 
 /// An implementation of [`HpkeCrypto`] that only supports what we use, to save on code size.
 #[derive(Debug, Default)]
@@ -182,6 +181,7 @@ impl HpkeCrypto for CryptoProvider {
 // Matching https://github.com/cryspen/hpke-rs/blob/v0.6.0/rust_crypto_provider/src/lib.rs#L40
 type RngImpl = rand_chacha::ChaCha20Rng;
 
+// Bridges libsignal's preferred `rand_core` with hpke's.
 pub struct Rng {
     rng: RngImpl,
 }
@@ -194,32 +194,35 @@ impl zeroize::Zeroize for Rng {
 impl Default for Rng {
     fn default() -> Self {
         Self {
-            rng: RngImpl::from_os_rng(),
+            rng: <RngImpl as rand_core::SeedableRng>::from_os_rng(),
         }
     }
 }
 
-impl RngCore for Rng {
-    fn next_u32(&mut self) -> u32 {
-        self.rng.next_u32()
+impl hpke_rs_crypto::TryRng for Rng {
+    type Error = std::convert::Infallible;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        Ok(rand_core::RngCore::next_u32(&mut self.rng))
     }
 
-    fn next_u64(&mut self) -> u64 {
-        self.rng.next_u64()
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        Ok(rand_core::RngCore::next_u64(&mut self.rng))
     }
 
-    fn fill_bytes(&mut self, dst: &mut [u8]) {
-        self.rng.fill_bytes(dst);
+    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+        rand_core::RngCore::fill_bytes(&mut self.rng, dst);
+        Ok(())
     }
 }
 
-impl CryptoRng for Rng where RngImpl: CryptoRng {}
+impl hpke_rs_crypto::TryCryptoRng for Rng where RngImpl: rand_core::TryCryptoRng {}
 
 impl HpkeTestRng for Rng {
-    type Error = <RngImpl as TryRngCore>::Error;
+    type Error = std::convert::Infallible;
 
     fn try_fill_test_bytes(&mut self, dest: &mut [u8]) -> Result<(), Self::Error> {
-        self.rng.try_fill_bytes(dest)
+        hpke_rs_crypto::TryRng::try_fill_bytes(self, dest)
     }
 
     fn seed(&mut self, seed: &[u8]) {
@@ -231,6 +234,6 @@ impl HpkeTestRng for Rng {
         } else {
             padded_or_truncated_seed[..seed.len()].copy_from_slice(seed);
         }
-        self.rng = SeedableRng::from_seed(padded_or_truncated_seed);
+        self.rng = rand_core::SeedableRng::from_seed(padded_or_truncated_seed);
     }
 }

@@ -5,7 +5,7 @@
 
 #![allow(non_snake_case)]
 
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::RistrettoPoint;
 use libsignal_core::ServiceId;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};

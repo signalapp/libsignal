@@ -4,7 +4,8 @@
 //
 
 use blake2::{Blake2b, Blake2b512};
-use chacha20poly1305::{AeadInPlace, ChaCha20Poly1305, KeyInit};
+use chacha20poly1305::aead::AeadInOut as _;
+use chacha20poly1305::{ChaCha20Poly1305, KeyInit};
 use libcrux_ml_kem::mlkem1024;
 use rand_core::TryRngCore as _;
 use sha2::{Digest, Sha256};
@@ -133,11 +134,11 @@ impl Hash for HashBLAKE2b {
     }
 
     fn input(&mut self, data: &[u8]) {
-        self.hasher.update(data);
+        blake2::Digest::update(&mut self.hasher, data);
     }
 
     fn result(&mut self, out: &mut [u8]) {
-        let hash = self.hasher.finalize_reset();
+        let hash = blake2::Digest::finalize_reset(&mut self.hasher);
         out[..64].copy_from_slice(&hash);
     }
 }
@@ -170,7 +171,11 @@ impl Cipher for CipherChaChaPoly {
         copy_slices!(plaintext, out);
 
         let tag = ChaCha20Poly1305::new(&self.key.into())
-            .encrypt_in_place_detached(&nonce_bytes.into(), authtext, &mut out[0..plaintext.len()])
+            .encrypt_inout_detached(
+                &nonce_bytes.into(),
+                authtext,
+                (&mut out[0..plaintext.len()]).into(),
+            )
             .expect("can encrypt");
 
         copy_slices!(tag, &mut out[plaintext.len()..]);
@@ -189,14 +194,17 @@ impl Cipher for CipherChaChaPoly {
         copy_slices!(&nonce.to_le_bytes(), &mut nonce_bytes[4..]);
 
         let message_len = ciphertext.len() - TAGLEN;
+        let (ciphertext, tag) = ciphertext
+            .split_last_chunk::<TAGLEN>()
+            .expect("long enough for a tag");
 
-        copy_slices!(ciphertext[..message_len], out);
+        copy_slices!(ciphertext, out);
 
-        let result = ChaCha20Poly1305::new(&self.key.into()).decrypt_in_place_detached(
+        let result = ChaCha20Poly1305::new(&self.key.into()).decrypt_inout_detached(
             &nonce_bytes.into(),
             authtext,
-            &mut out[..message_len],
-            ciphertext[message_len..].into(),
+            (&mut out[..message_len]).into(),
+            tag.into(),
         );
 
         match result {

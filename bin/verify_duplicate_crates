@@ -11,20 +11,53 @@
 # You can use the `cargo tree` command below to see where they come from,
 # and then document them here.
 #
+# aead, aes, cipher, ctr, inout, polyval, universal-hash: waiting on aes-gcm-siv
+# block-buffer, digest: tungstenite's sha1 is unlikely to be updated, also waiting on argon2/blake2
+# cpufeatures: tungstenite's sha1 is unlikely to be updated, also waiting on aes-gcm-siv
+# crypto-common: tungstenite's sha1 is unlikely to be updated, also waiting on aes-gcm-siv and argon2/blake2
+# getrandom, rand_core, rand: unfortunately ecosystem updates are slow
+# jni, jni-sys: used directly by us but also by rustls-platform-verifier on Android (update available)
+# sha1: tungstenite's sha1 is unlikely to be updated
 # thiserror: minimal and highly inlinable, most of the code is synthesized at the use site
-# rand_core, getrandom: waiting to update all the RustCrypto crates together
-# jni: used directly by us but also by rustls-platform-verifier on Android (update available)
 EXPECTED="
+aead v0.5.2
+aead v0.6.1
+aes v0.8.4
+aes v0.9.1
+block-buffer v0.10.4
+block-buffer v0.12.1
+cipher v0.4.4
+cipher v0.5.2
+cpufeatures v0.2.17
+cpufeatures v0.3.0
+crypto-common v0.1.7
+crypto-common v0.2.2
+ctr v0.9.2
+ctr v0.10.1
+digest v0.10.7
+digest v0.11.3
 getrandom v0.2.17
 getrandom v0.3.4
+getrandom v0.4.3
+inout v0.1.4
+inout v0.2.2
 jni v0.21.1
 jni v0.22.4
 jni-sys v0.3.1
 jni-sys v0.4.1
+polyval v0.6.2
+polyval v0.7.3
+rand v0.9.4
+rand v0.10.2
 rand_core v0.6.4
 rand_core v0.9.5
+rand_core v0.10.1
+sha1 v0.10.6
+sha1 v0.11.0
 thiserror v1.0.69
-thiserror v2.0.18"
+thiserror v2.0.18
+universal-hash v0.5.1
+universal-hash v0.6.1"
 
 check_cargo_tree() {
     # Only check the mobile targets, where we care most about code size.

@@ -6,3 +6,4 @@ v0.97.5
 
 - Remove dependency on platform-specific libc
 - Report unsymbolized backtraces on panic
+- Update spqr, dalek-cryptography, RustCrypto, and Cryspen dependencies

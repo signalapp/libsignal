@@ -10,8 +10,8 @@ use std::task::Poll;
 
 use aes::Aes256;
 use cbc::cipher::block_padding::Pkcs7;
-use cbc::cipher::generic_array::GenericArray;
-use cbc::cipher::{BlockSizeUser, IvSizeUser, KeyIvInit, KeySizeUser, Unsigned};
+use cbc::cipher::typenum::Unsigned;
+use cbc::cipher::{BlockSizeUser, IvSizeUser, KeyIvInit, KeySizeUser};
 use futures::{AsyncRead, TryStreamExt};
 
 use crate::frame::block_stream::ExactReadBlockStream;
@@ -89,7 +89,7 @@ type Aes256CbcUnpadLast<S> =
 /// The final block yielded will still have padding.
 type BlockStream<R> = futures::prelude::stream::MapOk<
     ExactReadBlockStream<AES_BLOCK_SIZE, R>,
-    fn([u8; AES_BLOCK_SIZE]) -> GenericArray<u8, <Aes256 as BlockSizeUser>::BlockSize>,
+    fn([u8; AES_BLOCK_SIZE]) -> aes::cipher::Array<u8, <Aes256 as BlockSizeUser>::BlockSize>,
 >;
 
 /// A [`futures::Stream`] that decrypts individual blocks using AES256-CBC.
@@ -118,7 +118,7 @@ mod test {
     use aes::Aes256;
     use assert_matches::assert_matches;
     use cbc::cipher::block_padding::Pkcs7;
-    use cbc::cipher::{BlockEncryptMut, KeyIvInit};
+    use cbc::cipher::{BlockModeEncrypt, KeyIvInit};
     use futures::executor::block_on;
     use futures::io::{AsyncReadExt, Cursor, ErrorKind};
     use futures::{FutureExt, TryStreamExt, pin_mut};
@@ -135,7 +135,7 @@ mod test {
     #[test_case(&(0..=255).cycle().take(1024).collect::<Vec<u8>>(); "long")]
     fn aes_reader_round_trip(plaintext: &[u8]) {
         let encrypted = cbc::Encryptor::<Aes256>::new((&FAKE_KEY).into(), (&FAKE_IV).into())
-            .encrypt_padded_vec_mut::<Pkcs7>(plaintext);
+            .encrypt_padded_vec::<Pkcs7>(plaintext);
 
         let mut reader = Aes256CbcReader::new(&FAKE_KEY, &FAKE_IV, encrypted.as_slice());
         let mut decrypted = Vec::new();
@@ -146,7 +146,7 @@ mod test {
 
     fn aes_encrypted_bytes(plaintext: &[u8]) -> Vec<u8> {
         let ciphertext = cbc::Encryptor::<Aes256>::new((&FAKE_KEY).into(), (&FAKE_IV).into())
-            .encrypt_padded_vec_mut::<Pkcs7>(plaintext);
+            .encrypt_padded_vec::<Pkcs7>(plaintext);
         assert_eq!(
             ciphertext.len(),
             plaintext.len().div_ceil(AES_BLOCK_SIZE) * AES_BLOCK_SIZE

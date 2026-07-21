@@ -9,8 +9,8 @@ use std::task::Poll;
 
 use aes::cipher::BlockSizeUser;
 use arrayvec::ArrayVec;
-use cbc::cipher::Block;
-use cbc::cipher::block_padding::{Padding, UnpadError};
+use cbc::cipher::block_padding::Padding;
+use cbc::cipher::{Block, block_padding};
 use futures::{Stream, StreamExt as _, ready};
 
 /// Stream wrapper that un-pads the last block.
@@ -38,7 +38,7 @@ impl<S: Stream, P, B: BlockSizeUser, const N: usize> UnpadLast<S, P, B, N> {
 impl<S, P, B, const N: usize> Stream for UnpadLast<S, P, B, N>
 where
     S: Stream<Item = futures::io::Result<Block<B>>> + Unpin,
-    P: Padding<B::BlockSize> + Unpin,
+    P: Padding + Unpin,
     B: BlockSizeUser,
     Block<B>: Unpin + Into<[u8; N]>,
 {
@@ -75,8 +75,8 @@ where
             }
             None => {
                 *maybe_stream = None;
-                let tail =
-                    P::unpad(&*buffer).map_err(|UnpadError| futures::io::ErrorKind::InvalidData)?;
+                let tail = P::unpad(&*buffer)
+                    .map_err(|block_padding::Error| futures::io::ErrorKind::InvalidData)?;
 
                 if tail.is_empty() {
                     None
