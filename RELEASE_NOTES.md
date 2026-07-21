@@ -1,3 +1,2 @@
-v0.98.0
+v0.98.1
 
-- registration: RegistrationLock svr2_credentials is now optional (to reflect the server side)
