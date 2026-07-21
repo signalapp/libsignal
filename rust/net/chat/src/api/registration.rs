@@ -231,8 +231,10 @@ impl LogSafeDisplay for VerificationCodeNotDeliverable {}
 pub struct RegistrationLock {
     #[serde_as(as = "DurationMilliSeconds")]
     pub time_remaining: Duration,
-    #[debug("_")]
-    pub svr2_credentials: Auth,
+    /// The server omits these when the stored lock has no SVR2 secret, so this
+    /// is optional. Redacted in `Debug`, but presence still shows.
+    #[debug("{}", svr2_credentials.as_ref().map_or("None", |_| "Some(...)"))]
+    pub svr2_credentials: Option<Auth>,
 }
 
 /// The subset of account attributes that don't need any additional validation.
@@ -487,5 +489,26 @@ impl TryFrom<String> for VerificationTransport {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         FromStr::from_str(&value)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case(None, "RegistrationLock { time_remaining: 1s, svr2_credentials: None }"; "absent")]
+    #[test_case(Some(Auth {
+        username: "secret-username".to_owned(),
+        password: "secret-password".to_owned(),
+    }), "RegistrationLock { time_remaining: 1s, svr2_credentials: Some(...) }"; "present")]
+    fn registration_lock_debug_redacts_credentials(creds: Option<Auth>, expected: &'static str) {
+        let reg_lock = RegistrationLock {
+            time_remaining: Duration::from_secs(1),
+            svr2_credentials: creds,
+        };
+        let actual = format!("{reg_lock:?}");
+        assert_eq!(actual, expected);
     }
 }

@@ -315,15 +315,16 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw RegistrationError.recoveryVerificationFailed(errStr)
     case SignalErrorCodeRegistrationLock:
         var timeRemaining: UInt64 = 0
-        var svr2Password = ""
-        let svr2Username = try invokeFnReturningString { svr2Username in
-            var bridgedPassword: UnsafePointer<CChar>? = nil
-            let err = signal_error_get_registration_lock(&timeRemaining, svr2Username, &bridgedPassword, error)
-            if err == nil {
-                svr2Password = String(cString: bridgedPassword!)
-                signal_free_string(bridgedPassword)
-            }
-            return err
+        var credentials = SignalPairOfCStringPtrCStringPtr()
+        try checkError(signal_error_get_registration_lock(&timeRemaining, &credentials, error))
+        // Despite the type, username and password are either both present or both absent
+        let svr2Username = credentials.first.map { username in
+            defer { signal_free_string(username) }
+            return String(cString: username)
+        }
+        let svr2Password = credentials.second.map { password in
+            defer { signal_free_string(password) }
+            return String(cString: password)
         }
 
         throw RegistrationError.registrationLock(

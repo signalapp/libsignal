@@ -33,12 +33,20 @@ public class RegistrationLockException extends RegistrationException {
     return this.timeRemaining;
   }
 
-  /** SVR username to use to recover the secret used to derive the registration lock password. */
+  /**
+   * SVR username to use to recover the secret used to derive the registration lock password.
+   *
+   * <p>{@code null} when the existing lock has no associated SVR2 secret.
+   */
   public String getSvr2Username() {
     return this.svr2Username;
   }
 
-  /** SVR password to use to recover the secret used to derive the registration lock password. */
+  /**
+   * SVR password to use to recover the secret used to derive the registration lock password.
+   *
+   * <p>{@code null} when the existing lock has no associated SVR2 secret.
+   */
   public String getSvr2Password() {
     return this.svr2Password;
   }

@@ -253,7 +253,7 @@ where
             .await
             .map_err(SendError::into_request_error)?;
 
-        response.try_into_response().map_err(Into::into)
+        response.try_into_response().map_err(Self::Error::from)
     }
 }
 

@@ -1844,6 +1844,9 @@ static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaIt
 typedef SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult* SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult) == 8);
+typedef SignalPairOfCStringPtrCStringPtr* SignalType_MutPointer_SignalPairOfCStringPtrCStringPtr;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalPairOfCStringPtrCStringPtr) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalPairOfCStringPtrCStringPtr) == 8);
 typedef struct {
   const int8_t* first;
   bool second;
@@ -3862,8 +3865,7 @@ SignalFfiError* signal_error_get_registration_error_not_deliverable(
 );
 SignalFfiError* signal_error_get_registration_lock(
   uint64_t* out_time_remaining_seconds,
-  SignalCStringPtr* out_svr2_username,
-  SignalCStringPtr* out_svr2_password,
+  SignalPairOfCStringPtrCStringPtr* out_svr2_credentials,
   const SignalFfiError* err
 );
 SignalFfiError* signal_error_get_retry_after_seconds(

@@ -848,9 +848,12 @@ mod registration {
                                 "RegistrationLock.time_remaining_seconds too large".to_owned(),
                             )
                         })?;
-                    let (svr2_username, svr2_password) = try_scoped(|| {
-                        let Auth { username, password } = svr2_credentials;
-                        Ok((env.new_string(username)?, env.new_string(password)?))
+                    let (svr2_username, svr2_password) = try_scoped(|| match svr2_credentials {
+                        Some(Auth { username, password }) => Ok((
+                            JObject::from(env.new_string(username)?),
+                            JObject::from(env.new_string(password)?),
+                        )),
+                        None => Ok((JObject::null(), JObject::null())),
                     })
                     .check_exceptions(env, "RegisterAccountError::to_throwable")?;
                     return new_instance(

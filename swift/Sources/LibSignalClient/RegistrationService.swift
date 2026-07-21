@@ -57,9 +57,9 @@ public enum RegistrationError: Error {
     /// When the websocket transport is in use, this corresponds to a `HTTP 423` response to a POST request to `/v1/registration`.
     ///
     /// - Parameter timeRemaining: How much time is remaining before the existing registration lock expires.
-    /// - Parameter svr2Username: The SVR username to use to recover the secret used to derive the registration lock password.
-    /// - Parameter svr2Password: The SVR password to use to recover the secret used to derive the registration lock password.
-    case registrationLock(timeRemaining: TimeInterval, svr2Username: String, svr2Password: String)
+    /// - Parameter svr2Username: The SVR username to use to recover the secret used to derive the registration lock password. `nil` when the existing lock has no associated SVR2 secret.
+    /// - Parameter svr2Password: The SVR password to use to recover the secret used to derive the registration lock password. `nil` when the existing lock has no associated SVR2 secret.
+    case registrationLock(timeRemaining: TimeInterval, svr2Username: String?, svr2Password: String?)
     /// An unknow error occurred during registration.
     case unknown(String)
 }

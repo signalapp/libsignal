@@ -4,6 +4,7 @@
 //
 
 use http::HeaderMap;
+use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat::Response as ChatResponse;
 
 use crate::api::registration::{
@@ -206,13 +207,18 @@ impl<D> From<ResponseError> for RequestError<RegisterAccountError, D> {
                 403 => RegisterAccountError::RegistrationRecoveryVerificationFailed,
                 409 => RegisterAccountError::DeviceTransferIsPossibleButNotSkipped,
                 423 => {
-                    let Some(registration_lock) = body
-                        .as_deref()
-                        .and_then(|body| parse_json_from_body(headers, Some(body)).ok())
-                    else {
-                        return CustomError::NoCustomHandling;
-                    };
-                    RegisterAccountError::RegistrationLock(registration_lock)
+                    // parse_json_from_body already handles missing bodies.
+                    match parse_json_from_body(headers, body.as_deref()) {
+                        Ok(registration_lock) => {
+                            RegisterAccountError::RegistrationLock(registration_lock)
+                        }
+                        Err(e) => {
+                            let e: ResponseError = e;
+                            static_assertions::assert_impl_all!(ResponseError: LogSafeDisplay);
+                            log::warn!("Failed to parse registration lock response: {e}");
+                            return CustomError::NoCustomHandling;
+                        }
+                    }
                 }
                 _ => return CustomError::NoCustomHandling,
             })
@@ -225,6 +231,7 @@ mod test {
     use std::convert::Infallible;
     use std::fmt::Debug;
 
+    use assert_matches::assert_matches;
     use http::{HeaderMap, StatusCode};
     use itertools::Itertools;
     use libsignal_net::infra::AsHttpHeader;
@@ -470,5 +477,37 @@ mod test {
         T: CollectSortedStatuses + IntoDiscriminant<Discriminant: AsStatus> + Debug,
     {
         round_trip_all_variants::<T>();
+    }
+
+    // The server's [`RegistrationLockFailure`] marks `svr2Credentials` as
+    // nullable, so a real 423 body can be just `{"timeRemaining": ...}`.
+    // Such a response must still map to [`RegisterAccountError::RegistrationLock`].
+    // If the body fails to parse, the 423 arm falls through to a generic
+    // "unexpected status" error and the client loses the lock (including its
+    // time remaining).
+    //
+    // [`RegistrationLockFailure`]: https://github.com/signalapp/Signal-Server/blob/6a8bf7f78e3516421382f7773762bf2f7f0a78a9/service/src/main/java/org/whispersystems/textsecuregcm/entities/RegistrationLockFailure.java#L20
+    #[test]
+    fn register_account_423_without_svr2_credentials_is_registration_lock() {
+        let headers = HeaderMap::from_iter([CONTENT_TYPE_JSON]);
+        let status = StatusCode::from_u16(423).unwrap();
+        let error = ResponseError::UnrecognizedStatus {
+            status,
+            response: ChatResponse {
+                status,
+                message: None,
+                headers,
+                body: Some(
+                    serde_json::to_vec(&serde_json::json!({ "timeRemaining": 1234 }))
+                        .unwrap()
+                        .into(),
+                ),
+            },
+        };
+
+        assert_matches!(
+            RequestError::<RegisterAccountError, Infallible>::from(error),
+            RequestError::Other(RegisterAccountError::RegistrationLock(_))
+        );
     }
 }

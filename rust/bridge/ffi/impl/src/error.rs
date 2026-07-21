@@ -83,8 +83,7 @@ fn Error_GetRegistrationErrorNotDeliverable(
 #[c_export]
 pub unsafe extern "C" fn signal_error_get_registration_lock(
     out_time_remaining_seconds: *mut u64,
-    out_svr2_username: *mut *const c_char,
-    out_svr2_password: *mut *const c_char,
+    out_svr2_credentials: *mut ffi::PairOf<*const c_char, *const c_char>,
     err: *const SignalFfiError,
 ) -> *mut SignalFfiError {
     run_ffi_safe(|| {
@@ -92,18 +91,19 @@ pub unsafe extern "C" fn signal_error_get_registration_lock(
 
         let libsignal_net_chat::api::registration::RegistrationLock {
             time_remaining,
-            svr2_credentials:
-                libsignal_net::auth::Auth {
-                    username: svr2_username,
-                    password: svr2_password,
-                },
+            svr2_credentials,
         } = err.provide_registration_lock().map_err(|_| {
             IllegalArgumentError::new(format!("cannot get registration error from error ({err})"))
         })?;
+        let svr2_credentials = match svr2_credentials {
+            Some(libsignal_net::auth::Auth { username, password }) => {
+                (Some(username.as_str()), Some(password.as_str()))
+            }
+            None => (None, None),
+        };
         unsafe {
             write_result_to(out_time_remaining_seconds, time_remaining.as_secs())?;
-            write_result_to(out_svr2_username, svr2_username.as_str())?;
-            write_result_to(out_svr2_password, svr2_password.as_str())?;
+            write_result_to(out_svr2_credentials, svr2_credentials)?;
         }
         Ok(())
     })

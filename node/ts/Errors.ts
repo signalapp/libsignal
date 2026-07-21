@@ -463,8 +463,9 @@ export type RegistrationVerificationCodeNotDeliverableError =
 export type RegistrationLockError = LibSignalErrorCommon & {
   code: ErrorCode.RegistrationLock;
   readonly timeRemainingSeconds: number;
-  readonly svr2Username: string;
-  readonly svr2Password: string;
+  // null when the existing lock has no associated SVR2 secret.
+  readonly svr2Username: string | null;
+  readonly svr2Password: string | null;
 };
 
 export type RegistrationDeviceTransferPossibleNotSkippedError =

@@ -402,10 +402,10 @@ fn TESTING_RegistrationService_RegisterAccountErrorConvert(
             TestingRegisterAccountError::RegistrationLockFor50Seconds => {
                 RegisterAccountError::RegistrationLock(RegistrationLock {
                     time_remaining: Duration::from_secs(50),
-                    svr2_credentials: Auth {
+                    svr2_credentials: Some(Auth {
                         username: "user".to_owned(),
                         password: "pass".to_owned(),
-                    },
+                    }),
                 })
             }
         }))
