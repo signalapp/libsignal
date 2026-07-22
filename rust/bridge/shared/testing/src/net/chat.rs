@@ -502,8 +502,6 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
-    #[cfg(feature = "ffi")]
-    use libsignal_bridge_types::net::chat::BridgeCopyBackupMediaOutcomeFfiResult;
     use libsignal_bridge_types::net::chat::{
         BridgeCopyBackupMediaOutcome, BridgeMediaBackupInfo, BridgeMessageBackupInfo,
     };

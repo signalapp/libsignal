@@ -5,10 +5,10 @@
 
 use std::ffi::c_char;
 
+use libsignal_bridge::IllegalArgumentError;
 use libsignal_bridge::ffi::{
     self, NullPointerError, SignalFfiError, run_ffi_safe, write_result_to,
 };
-use libsignal_bridge::{IllegalArgumentError, ffi_arg_type, ffi_result_type};
 use libsignal_bridge_macros::{bridge_fn, c_export};
 use libsignal_core::ProtocolAddress;
 use libsignal_net::infra::errors::RetryLater;

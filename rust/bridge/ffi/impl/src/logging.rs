@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_bridge::{ffi, ffi_result_type};
+use libsignal_bridge::ffi;
 use libsignal_bridge_macros::{IsCType, bridge_callbacks, c_export};
 
 #[repr(C)]

@@ -8,8 +8,8 @@
 
 use std::ffi::{CString, c_char, c_uchar};
 
+use libsignal_bridge::IllegalArgumentError;
 use libsignal_bridge::ffi::{self, *};
-use libsignal_bridge::{IllegalArgumentError, ffi_arg_type};
 use libsignal_bridge_macros::{bridge_fn, c_export};
 #[cfg(feature = "libsignal-bridge-testing")]
 #[allow(unused_imports)]

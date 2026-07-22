@@ -117,8 +117,6 @@ mod grpc_ffi_testing {
     }
 }
 
-#[cfg(feature = "ffi")]
-pub(super) use grpc_ffi_testing::*;
 pub struct GrpcTestCaseBridged<Req, Resp> {
     name: String,
     method: String,
