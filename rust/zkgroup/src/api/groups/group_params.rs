@@ -199,12 +199,17 @@ impl GroupSecretParams {
     }
 
     pub fn decrypt_blob(&self, ciphertext: &[u8]) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
-        if ciphertext.len() < AESGCM_NONCE_LEN + 1 {
+        let Some((&reserved_byte, ciphertext)) = ciphertext.split_last() else {
+            return Err(ZkGroupVerificationFailure);
+        };
+        if ciphertext.len() < AESGCM_NONCE_LEN {
             // AESGCM_NONCE_LEN = 12 bytes for IV
             return Err(ZkGroupVerificationFailure);
         }
-        let unreserved_len = ciphertext.len() - 1;
-        let (ciphertext, nonce) = ciphertext[..unreserved_len]
+        if reserved_byte != 0 {
+            return Err(ZkGroupVerificationFailure);
+        }
+        let (ciphertext, nonce) = ciphertext
             .split_last_chunk::<AESGCM_NONCE_LEN>()
             .expect("checked length already");
         self.decrypt_blob_aesgcmsiv(&self.blob_key, nonce, ciphertext)
@@ -379,5 +384,18 @@ mod tests {
                 .unwrap();
             assert_eq!(calc_plaintext[..], plaintext[..]);
         }
+    }
+
+    #[test]
+    fn test_decrypt_rejects_nonzero_reserved_byte() {
+        let group_secret_params = GroupSecretParams::generate([0u8; RANDOMNESS_LEN]);
+        let plaintext = b"secret team";
+        let mut ciphertext = group_secret_params.encrypt_blob([0u8; RANDOMNESS_LEN], plaintext);
+
+        *ciphertext
+            .last_mut()
+            .expect("encrypted blob has reserved byte") = 1;
+
+        assert!(group_secret_params.decrypt_blob(&ciphertext).is_err());
     }
 }
