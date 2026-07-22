@@ -73,5 +73,6 @@ rand_chacha = { workspace = true }
 scopeguard = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
+testing_logger = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
 tower-service = { workspace = true }

@@ -3178,6 +3178,7 @@ dependencies = [
  "subtle",
  "test-case",
  "test-log",
+ "testing_logger",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",

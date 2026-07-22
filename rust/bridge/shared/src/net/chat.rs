@@ -744,7 +744,7 @@ fn UnauthenticatedChatConnection_backup_delete_media(
     let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
     let stream = chat.blocking_require_grpc().delete_backup_media(
         &backup_auth,
-        &items
+        items
             .0
             .into_iter()
             .map(

@@ -572,9 +572,11 @@ public class UnauthBackupsService(
    * However, there is no need to retry the items that did receive a response.
    *
    * The flow may be terminated at any time with the standard Signal network exceptions.
-   * In addition, the flow may immediately terminate with [RequestUnauthorizedException]
-   * if there are authorization issues. You can use [Throwable.toRequestResult] to classify
-   * exceptions produced by the flow similarly to the non-streaming endpoints.
+   * In addition, the flow may terminate with [RequestUnauthorizedException] if there are
+   * authorization issues. You can use [Throwable.toRequestResult] to classify exceptions produced
+   * by the flow similarly to the non-streaming endpoints. Large numbers of items may result in
+   * multiple requests to the server, which means a `RequestUnauthorizedException` can happen in the
+   * middle of the stream.
    *
    * The flow can only be collected once; trying to collect it multiple times will throw
    * [IllegalStateException].

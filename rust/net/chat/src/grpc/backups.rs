@@ -507,29 +507,16 @@ impl<T: GrpcServiceProvider> Unauth<T> {
         // privacy leak...but it has our backup ID in it anyway; it's already linkable.
         let auth = auth.present::<BackupAuthCredentialRejected>(rng);
 
-        // Keep track of progress if we're going to make more than one request.
-        let total_count = items.len();
-        let mut cumulative_count_for_logs = (total_count > MAX_CHUNK_SIZE).then_some(0);
-
         // We don't actually need the async here; we just want the auth Err case to end up in the
         // stream, and try_flatten_stream is a convenient way to do that.
         async move {
             let auth: SignedPresentation = auth?.into();
             Ok(chunk_request(
+                "copy_backup_media",
                 MAX_CHUNK_SIZE,
                 items,
                 Into::into,
                 move |next_chunk| {
-                    if let Some(cumulative_count_for_logs) = cumulative_count_for_logs.as_mut() {
-                        let prev_count = *cumulative_count_for_logs;
-                        *cumulative_count_for_logs += next_chunk.len();
-                        log::info!(
-                            "copy_backup_media: copying items {}..{} of {}",
-                            prev_count,
-                            cumulative_count_for_logs,
-                            total_count
-                        );
-                    }
                     Self::copy_backup_media_chunk(
                         service_provider.service(),
                         auth.clone(),
@@ -616,20 +603,59 @@ impl<T: GrpcServiceProvider> Unauth<T> {
     pub fn delete_backup_media(
         &self,
         auth: &BackupAuth<'_>,
-        items: &[DeleteBackupMediaItem],
+        items: Vec<DeleteBackupMediaItem>,
         rng: &mut (dyn rand::CryptoRng + Send),
+    ) -> impl Stream<Item = StreamResult<DeleteBackupMediaItem, BackupAuthCredentialRejected>> + 'static
+    where
+        T: Clone + 'static,
+        T::Service: 'static,
+    {
+        // From the definition of DeleteMediaRequest in backups.proto.
+        const MAX_CHUNK_SIZE: usize = 1000;
+
+        // Since we might make multiple requests, we need to hang on to the server provider for
+        // later.
+        let service_provider = self.0.clone();
+        // Note that we *are* reusing presentations across the batched requests, which is normally a
+        // privacy leak...but it has our backup ID in it anyway; it's already linkable.
+        let auth = auth.present::<BackupAuthCredentialRejected>(rng);
+
+        // We don't actually need the async here; we just want the auth Err case to end up in the
+        // stream, and try_flatten_stream is a convenient way to do that.
+        async move {
+            let auth: SignedPresentation = auth?.into();
+            Ok(chunk_request(
+                "delete_backup_media",
+                MAX_CHUNK_SIZE,
+                items,
+                |item| item.to_proto(),
+                move |next_chunk| {
+                    Self::delete_backup_media_chunk(
+                        service_provider.service(),
+                        auth.clone(),
+                        next_chunk,
+                    )
+                },
+            ))
+        }
+        .try_flatten_stream()
+    }
+
+    pub fn delete_backup_media_chunk(
+        service: T::Service,
+        auth: SignedPresentation,
+        items: Vec<proto::DeleteMediaItem>,
     ) -> impl Stream<Item = StreamResult<DeleteBackupMediaItem, BackupAuthCredentialRejected>> + 'static
     where
         T::Service: 'static,
     {
         send_request_with_streaming_response(
             "unauth",
-            self.0.service(),
+            service,
             || {
-                let auth = auth.present(rng)?;
                 Ok(DeleteMediaRequest {
-                    signed_presentation: Some(auth.into()),
-                    items: items.iter().map(|item| item.to_proto()).collect(),
+                    signed_presentation: Some(auth),
+                    items,
                 })
             },
             |service, request| async move {
@@ -1980,7 +2006,7 @@ mod test {
                         zkgroup::backups::BackupCredentialType::Media,
                         &mut fixed_seed_test_rng(),
                     ),
-                    &items,
+                    items,
                     &mut fixed_seed_test_rng(),
                 ))
                 .await
@@ -2025,6 +2051,144 @@ mod test {
                     }
                 }
             },
+        );
+    }
+
+    #[test]
+    fn test_delete_media_in_several_chunks() {
+        let validator = FnValidator(Arc::new(|req| {
+            let req_body = DeleteMediaRequest::decode_single_grpc_body(
+                req.into_body()
+                    .collect()
+                    .now_or_never()
+                    .expect("full body available")
+                    .expect("valid")
+                    .aggregate(),
+            )
+            .unwrap_or_else(|e| panic!("body is not valid: {}", e));
+
+            assert_eq!(
+                req_body.signed_presentation,
+                Some(SignedPresentation {
+                    presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                    presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
+                })
+            );
+
+            assert!(req_body.items.len() == 1000 || req_body.items.len() == 20);
+
+            let response_items = req_body.items.into_iter().map(|next| DeleteMediaResponse {
+                deleted_item: Some(next),
+            });
+
+            stream(response_items.collect(), None).map(IntoHttpBody::into_http_body)
+        }));
+
+        let media_id_from_index = |i: u32| {
+            let mut id = [0; MEDIA_ID_LEN];
+            id[..4].copy_from_slice(&i.to_le_bytes());
+            id
+        };
+        let items = (0..2020).map(|i| DeleteBackupMediaItem {
+            media_id: media_id_from_index(i),
+            cdn: 3,
+        });
+
+        let result: Vec<_> = Unauth(validator)
+            .delete_backup_media(
+                &BackupAuth::generate_for_testing(
+                    zkgroup::backups::BackupCredentialType::Media,
+                    &mut fixed_seed_test_rng(),
+                ),
+                items.collect(),
+                &mut fixed_seed_test_rng(),
+            )
+            .collect()
+            .now_or_never()
+            .expect("sync");
+        assert_eq!(result.len(), 2020);
+        for (i, next) in (0..2020).zip(result) {
+            assert_eq!(next.expect("success").media_id, media_id_from_index(i));
+        }
+    }
+
+    #[test]
+    fn test_delete_media_in_several_chunks_but_second_chunk_fails() {
+        let requests_seen = Arc::new(AtomicU32::new(0));
+        let requests_seen_for_validator = requests_seen.clone();
+
+        let validator = FnValidator(Arc::new(move |req| {
+            let requests_seen =
+                requests_seen_for_validator.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            if requests_seen > 0 {
+                return stream(Vec::<()>::new(), Some(backup_stream_unauthorized(true)))
+                    .map(IntoHttpBody::into_http_body);
+            }
+
+            let req_body = DeleteMediaRequest::decode_single_grpc_body(
+                req.into_body()
+                    .collect()
+                    .now_or_never()
+                    .expect("full body available")
+                    .expect("valid")
+                    .aggregate(),
+            )
+            .unwrap_or_else(|e| panic!("body is not valid: {}", e));
+
+            assert_eq!(
+                req_body.signed_presentation,
+                Some(SignedPresentation {
+                    presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
+                    presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
+                })
+            );
+
+            assert!(req_body.items.len() == 1000);
+
+            let response_items = req_body.items.into_iter().map(|next| DeleteMediaResponse {
+                deleted_item: Some(next),
+            });
+
+            stream(response_items.collect(), None).map(IntoHttpBody::into_http_body)
+        }));
+
+        let media_id_from_index = |i: u32| {
+            let mut id = [0; MEDIA_ID_LEN];
+            id[..4].copy_from_slice(&i.to_le_bytes());
+            id
+        };
+        let items = (0..2020).map(|i| DeleteBackupMediaItem {
+            media_id: media_id_from_index(i),
+            cdn: 3,
+        });
+
+        let result: Vec<_> = Unauth(validator)
+            .delete_backup_media(
+                &BackupAuth::generate_for_testing(
+                    zkgroup::backups::BackupCredentialType::Media,
+                    &mut fixed_seed_test_rng(),
+                ),
+                items.collect(),
+                &mut fixed_seed_test_rng(),
+            )
+            .collect()
+            .now_or_never()
+            .expect("sync");
+        assert_eq!(requests_seen.load(std::sync::atomic::Ordering::Relaxed), 2);
+        assert_eq!(result.len(), 1001);
+        for (i, next) in (0..1000).zip(&result) {
+            assert_eq!(
+                next.as_ref().expect("success").media_id,
+                media_id_from_index(i)
+            );
+        }
+        assert_matches!(
+            result
+                .last()
+                .expect("non-empty")
+                .as_ref()
+                .expect_err("should have failed"),
+            RequestError::Other(BackupAuthCredentialRejected)
         );
     }
 }

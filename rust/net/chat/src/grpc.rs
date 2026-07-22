@@ -352,8 +352,9 @@ where
 /// `make_request` will need to capture any parameters that don't change between requests, including
 /// the service or service provider itself. See existing callers for details.
 fn chunk_request<T, TProto, R: 'static, E: 'static, S>(
+    operation: &'static str,
     chunk_size: usize,
-    items: impl IntoIterator<Item = T, IntoIter: 'static>,
+    items: impl IntoIterator<Item = T, IntoIter: ExactSizeIterator + 'static>,
     mut transform_item: impl FnMut(T) -> TProto + 'static,
     mut make_request: impl FnMut(Vec<TProto>) -> S + 'static,
 ) -> impl Stream<Item = Result<R, E>> + 'static
@@ -361,6 +362,11 @@ where
     S: Stream<Item = Result<R, E>> + 'static,
 {
     let mut items = items.into_iter();
+
+    // Keep track of progress if we're going to make more than one request.
+    let total_count = items.len();
+    let mut cumulative_count_for_logs = (total_count > chunk_size).then_some(0);
+
     let streams = std::iter::from_fn(move || {
         // We have to do this conversion outside of the call to `make_request` to avoid Rust
         // thinking we're capturing the outer iterator.
@@ -371,6 +377,17 @@ where
             .collect();
         if next_chunk.is_empty() {
             return None;
+        }
+        if let Some(cumulative_count_for_logs) = cumulative_count_for_logs.as_mut() {
+            let prev_count = *cumulative_count_for_logs;
+            *cumulative_count_for_logs += next_chunk.len();
+            // Use Swift/Kotlin half-open range syntax "..<", it's less ambiguous across languages.
+            log::info!(
+                "{operation}: processing items {}..<{} of {}",
+                prev_count,
+                cumulative_count_for_logs,
+                total_count
+            );
         }
         Some(make_request(next_chunk))
     });
@@ -1786,7 +1803,10 @@ mod test {
 
     #[test]
     fn test_chunking() {
+        testing_logger::setup();
+
         let contents: Vec<u8> = chunk_request(
+            "test",
             5,
             0..24, // deliberately short on the last chunk
             |i| i * 10,
@@ -1806,11 +1826,58 @@ mod test {
                 [230, 220, 210, 200]
             )
         );
+
+        testing_logger::validate(|logs| {
+            assert_eq!(
+                logs.iter().map(|log| &log.body).collect_vec(),
+                [
+                    "test: processing items 0..<5 of 24",
+                    "test: processing items 5..<10 of 24",
+                    "test: processing items 10..<15 of 24",
+                    "test: processing items 15..<20 of 24",
+                    "test: processing items 20..<24 of 24",
+                ]
+            )
+        });
+    }
+
+    #[test]
+    fn test_single_chunk() {
+        testing_logger::setup();
+
+        let contents: Vec<u8> = chunk_request(
+            "test",
+            100,
+            0..24,
+            |i| i * 10,
+            |items| futures_util::stream::iter(items.into_iter().rev().map(Ok::<u8, Infallible>)),
+        )
+        .try_collect()
+        .now_or_never()
+        .expect("not actually async")
+        .expect("no failures");
+        assert_eq!(
+            &contents[..],
+            [
+                230, 220, 210, 200, 190, 180, 170, 160, 150, 140, 130, 120, 110, 100, 90, 80, 70,
+                60, 50, 40, 30, 20, 10, 0
+            ],
+        );
+
+        testing_logger::validate(|logs| {
+            assert_eq!(
+                logs.iter().map(|log| &log.body).collect_vec(),
+                &[] as &[&str]
+            )
+        });
     }
 
     #[test]
     fn test_chunking_early_exit() {
+        testing_logger::setup();
+
         let contents: Vec<_> = chunk_request(
+            "test",
             5,
             0..24, // deliberately short on the last chunk
             |i| i * 10,
@@ -1840,5 +1907,16 @@ mod test {
             const_str::concat_bytes!([40, 30, 20, 10, 0], [90, 80, 70, 60, 50], [140, 130])
         );
         assert_eq!(*failure, Err(120));
+
+        testing_logger::validate(|logs| {
+            assert_eq!(
+                logs.iter().map(|log| &log.body).collect_vec(),
+                [
+                    "test: processing items 0..<5 of 24",
+                    "test: processing items 5..<10 of 24",
+                    "test: processing items 10..<15 of 24",
+                ]
+            )
+        });
     }
 }

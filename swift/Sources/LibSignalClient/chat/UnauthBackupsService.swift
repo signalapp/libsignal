@@ -206,9 +206,10 @@ public protocol UnauthBackupsService: Sendable {
     /// complete. If an error is encountered, not all requests may be reflected in the responses.
     /// However, there is no need to retry the items that did receive a response.
     ///
-    /// The stream may be terminated at any time with the standard Signal network errors.
-    /// In addition, the stream may immediately terminate with ``SignalError/requestUnauthorized(_:)``
-    /// if there are authorization issues.
+    /// The stream may be terminated at any time with the standard Signal network errors. In
+    /// addition, the stream may terminate with ``SignalError/requestUnauthorized(_:)`` if there are
+    /// authorization issues. Large numbers of items may result in multiple requests to the server,
+    /// which means `requestUnauthorized` can happen in the middle of the stream.
     ///
     /// The stream can be manually cancelled to free resources immediately (rather than waiting for
     /// deinitialization). If the stream is cancelled and then read from again, it may produce a
