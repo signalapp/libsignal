@@ -164,11 +164,8 @@ fn test_integration_auth_zkc() {
     auth_credential_bytes.copy_from_slice(&bincode::serialize(&auth_credential).unwrap());
 }
 
-fn test_integration_expiring_profile<const V: u8>()
-where
-    zkgroup::profiles::AnyProfileKeyCredentialPresentation:
-        From<zkgroup::profiles::ExpiringProfileKeyCredentialPresentation<V>>,
-{
+#[test]
+fn test_integration_expiring_profile() {
     // SERVER
     let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
     let server_public_params = server_secret_params.get_public_params();
@@ -233,12 +230,11 @@ where
     // Create presentation
     let randomness = zkgroup::TEST_ARRAY_32_5;
 
-    let presentation: zkgroup::profiles::ExpiringProfileKeyCredentialPresentation<V> =
-        server_public_params.create_expiring_profile_key_credential_presentation(
-            randomness,
-            group_secret_params,
-            profile_key_credential,
-        );
+    let presentation = server_public_params.create_expiring_profile_key_credential_presentation(
+        randomness,
+        group_secret_params,
+        profile_key_credential,
+    );
     assert_eq!(expiration, presentation.get_expiration_time());
     let presentation_bytes = &bincode::serialize(&presentation).unwrap();
 
@@ -246,14 +242,14 @@ where
         presentation.into();
     let presentation_any_bytes = &bincode::serialize(&presentation_any).unwrap();
 
-    let expected_hex = match V {
-        zkgroup::PRESENTATION_VERSION_3 => PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT,
-        zkgroup::PRESENTATION_VERSION_4 => PROFILE_KEY_CREDENTIAL_PRESENTATION_V4_RESULT,
-        _ => panic!("unexpected ExpiringProfileKeyCredentialPresentation version {V}"),
-    };
-
-    assert_hex_eq!(expected_hex, &presentation_bytes[..]);
-    assert_hex_eq!(expected_hex, &presentation_any_bytes[..]);
+    assert_hex_eq!(
+        PROFILE_KEY_CREDENTIAL_PRESENTATION_V4_RESULT,
+        &presentation_bytes[..]
+    );
+    assert_hex_eq!(
+        PROFILE_KEY_CREDENTIAL_PRESENTATION_V4_RESULT,
+        &presentation_any_bytes[..]
+    );
 
     server_secret_params
         .verify_profile_key_credential_presentation(
@@ -315,16 +311,6 @@ where
     profile_key_credential_request_context_bytes
         .copy_from_slice(&bincode::serialize(&context).unwrap());
     profile_key_credential_response_bytes.copy_from_slice(&bincode::serialize(&response).unwrap());
-}
-
-#[test]
-fn test_integration_expiring_profile_v1() {
-    test_integration_expiring_profile::<{ zkgroup::PRESENTATION_VERSION_3 }>();
-}
-
-#[test]
-fn test_integration_expiring_profile_v2() {
-    test_integration_expiring_profile::<{ zkgroup::PRESENTATION_VERSION_4 }>();
 }
 
 #[test]
@@ -415,6 +401,31 @@ fn test_profile_key_credential_presentation_expiring_as_v1() {
         presentation.get_profile_key_ciphertext()
             == presentation_as_v1.get_profile_key_ciphertext()
     );
+}
+
+#[test]
+fn test_profile_key_credential_presentation_v3_does_not_verify() {
+    let server_secret_params = zkgroup::ServerSecretParams::generate(zkgroup::TEST_ARRAY_32);
+    let group_secret_params = zkgroup::groups::GroupSecretParams::derive_from_master_key(
+        zkgroup::groups::GroupMasterKey::new(zkgroup::TEST_ARRAY_32_1),
+    );
+
+    let presentation = zkgroup::profiles::AnyProfileKeyCredentialPresentation::new(
+        PROFILE_KEY_CREDENTIAL_PRESENTATION_V3_RESULT,
+    )
+    .expect("V3 presentations should remain deserializable");
+    assert!(matches!(
+        &presentation,
+        zkgroup::profiles::AnyProfileKeyCredentialPresentation::V3(_)
+    ));
+
+    server_secret_params
+        .verify_profile_key_credential_presentation(
+            group_secret_params.get_public_params(),
+            &presentation,
+            Timestamp::from_epoch_seconds(0),
+        )
+        .expect_err("V3 presentations should no longer be accepted by the server");
 }
 
 #[test]
