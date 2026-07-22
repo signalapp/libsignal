@@ -414,6 +414,46 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
             }
         )
     }
+
+    func testDeleteMedia() async throws {
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_DeleteBackupMediaTests(),
+            invoke: { (api, args: [BridgeDeleteBackupMediaItem]) in
+                let items = args.map {
+                    DeleteBackupMediaItem($0)
+                }
+                return try await api.deleteBackupMedia(auth: TEST_AUTH, items: items, rngForTesting: 0)
+                    .collectUntilError()
+            },
+            check: { (expected: [DeleteBackupMediaOut], actual) in
+                var (actualItems, maybeError) = try! actual.get()
+                for nextExpected in expected {
+                    switch nextExpected {
+                    case .item(let nextItem):
+                        let actualItem: DeleteBackupMediaItem = actualItems.removeFirst()
+                        XCTAssertEqual(DeleteBackupMediaItem(nextItem), actualItem)
+                    case .invalidDataInStream:
+                        if case SignalError.networkProtocolError(_)? = maybeError {
+                        } else {
+                            XCTFail("expected error not seen: \(maybeError, default: "<none>")")
+                        }
+                    case .credentialRejected:
+                        if case SignalError.requestUnauthorized(_)? = maybeError {
+                        } else {
+                            XCTFail("expected error not seen: \(maybeError, default: "<none>")")
+                        }
+                    case .credentialRejectedWithoutAppropriateServerInfo:
+                        if case SignalError.networkProtocolError(_)? = maybeError {
+                        } else {
+                            XCTFail("expected error not seen: \(maybeError, default: "<none>")")
+                        }
+                    }
+                }
+                XCTAssertEqual(actualItems, [])
+            }
+        )
+    }
 }
 
 extension CopyBackupMediaOutcome: Equatable {

@@ -8,8 +8,10 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use ::zkgroup::groups::GroupSendFullToken;
+use futures_util::TryStreamExt;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
+use itertools::Itertools as _;
 use libsignal_account_keys::SvrKey;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
@@ -48,6 +50,7 @@ bridge_handle_fns!(UnauthenticatedChatConnection, clone = false);
 bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
 bridge_handle_fns!(ProvisioningChatConnection, clone = false);
 bridge_handle_fns!(CopyBackupMediaStream, clone = false);
+bridge_handle_fns!(DeleteBackupMediaStream, clone = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -726,6 +729,61 @@ fn CopyBackupMediaStream_cancel(stream: BridgeHandleRef<'_, CopyBackupMediaStrea
 fn CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem()
 -> BridgeVec<BridgeCopyBackupMediaItem> {
     unreachable!()
+}
+
+#[bridge_fn(nice = true)]
+fn UnauthenticatedChatConnection_backup_delete_media(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    items: BridgeVec<BridgeDeleteBackupMediaItem>,
+    rng: RandomNumberGenerator,
+) -> DeleteBackupMediaStream {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    let stream = chat.blocking_require_grpc().delete_backup_media(
+        &backup_auth,
+        &items
+            .0
+            .into_iter()
+            .map(
+                |next| libsignal_net_chat::grpc::backups::DeleteBackupMediaItem {
+                    media_id: next.media_id,
+                    cdn: next.cdn.try_into().expect("CDN numbers are non-negative"),
+                },
+            )
+            .collect_vec(),
+        &mut rng,
+    );
+    DeleteBackupMediaStream::from(BridgeBulkPolledStream::new(
+        stream.map_ok(Into::into),
+        BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE,
+        BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME,
+    ))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn DeleteBackupMediaStream_next(
+    stream: BridgeHandleRef<'_, DeleteBackupMediaStream>,
+) -> DeleteBackupMediaNextChunk {
+    match stream.next_chunk().await {
+        Ok(BulkPolledStreamChunk { chunk, termination }) => DeleteBackupMediaNextChunk {
+            chunk: chunk.into(),
+            termination,
+        },
+        Err(StreamCancelled) => DeleteBackupMediaNextChunk {
+            chunk: Default::default(),
+            termination: Some(BulkPolledStreamTerminationReason::Error(
+                RequestError::Timeout,
+            )),
+        },
+    }
+}
+
+#[bridge_fn]
+fn DeleteBackupMediaStream_cancel(stream: BridgeHandleRef<'_, DeleteBackupMediaStream>) {
+    stream.cancel();
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]

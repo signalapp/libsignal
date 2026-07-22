@@ -38,8 +38,8 @@ use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagl
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
 use libsignal_net_chat::grpc::backups::{
-    CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, MediaBackupInfo,
-    MessageBackupInfo,
+    CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
+    MediaBackupInfo, MessageBackupInfo,
 };
 use libsignal_net_chat::stream_util::{
     BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
@@ -1059,6 +1059,40 @@ bridge_as_handle!(
     CopyBackupMediaStream,
     swift_type = "CopyBackupMediaStream",
     jni_class = "org.signal.libsignal.net.internal.CopyBackupMediaStream",
+);
+
+#[derive(BridgedAsValue)]
+pub struct BridgeDeleteBackupMediaItem {
+    pub media_id: [u8; MEDIA_ID_LEN],
+    pub cdn: i32,
+}
+
+impl From<DeleteBackupMediaItem> for BridgeDeleteBackupMediaItem {
+    fn from(value: DeleteBackupMediaItem) -> Self {
+        Self {
+            media_id: value.media_id,
+            cdn: value.cdn.try_into().expect("CDN numbers are small"),
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct DeleteBackupMediaNextChunk {
+    pub chunk: BridgeVec<BridgeDeleteBackupMediaItem>,
+    pub termination:
+        Option<BulkPolledStreamTerminationReason<RequestError<BackupAuthCredentialRejected>>>,
+}
+
+#[derive(derive_more::From, derive_more::Deref)]
+pub struct DeleteBackupMediaStream(
+    BridgeBulkPolledStream<BridgeDeleteBackupMediaItem, RequestError<BackupAuthCredentialRejected>>,
+);
+
+bridge_as_handle!(
+    DeleteBackupMediaStream,
+    swift_type = "DeleteBackupMediaStream",
+    jni_class = "org.signal.libsignal.net.internal.DeleteBackupMediaStream",
 );
 
 pub mod remote_derives {

@@ -62,6 +62,47 @@ public sealed class CopyBackupMediaOut {
   }
 }
 
+public sealed class DeleteBackupMediaOut {
+  public data class Item(
+    val _0: org.signal.libsignal.internal.BridgeDeleteBackupMediaItem,
+  ) : DeleteBackupMediaOut() {
+    public companion object {
+      @JvmStatic
+      @JvmName("fromNative")
+      @CalledFromNative
+      internal fun fromNative(_0: Any?): Item =
+        Item(
+          _0 =
+            downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(
+              _0 as Object,
+            ),
+        )
+    }
+  }
+
+  public data object InvalidDataInStream : DeleteBackupMediaOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): InvalidDataInStream = InvalidDataInStream
+  }
+
+  public data object CredentialRejected : DeleteBackupMediaOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejected = CredentialRejected
+  }
+
+  public data object CredentialRejectedWithoutAppropriateServerInfo : DeleteBackupMediaOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejectedWithoutAppropriateServerInfo =
+      CredentialRejectedWithoutAppropriateServerInfo
+  }
+}
+
 public data class GetDevicesOut(
   val devices: List<org.signal.libsignal.internal.LinkedDeviceInternal>,
 ) {
@@ -654,6 +695,22 @@ public object NativeTestingNice {
       }, {
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.CopyBackupMediaOut>({
           downcastFromObject<org.signal.libsignal.internal.CopyBackupMediaOut>(it)
+        })(it)
+      })(ffiOut)
+  }
+
+  public fun TESTING_DeleteBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>> {
+    val ffiOut =
+      NativeTesting.TESTING_DeleteBackupMediaTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Array<*>, Array<*>, List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>({
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>({
+          downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(it)
+        })(it)
+      }, {
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.DeleteBackupMediaOut>({
+          downcastFromObject<org.signal.libsignal.internal.DeleteBackupMediaOut>(it)
         })(it)
       })(ffiOut)
   }

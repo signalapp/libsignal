@@ -3,9 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-// Eventually there will be more streams here.
-@file:Suppress("ktlint:standard:filename")
-
 package org.signal.libsignal.net.internal
 
 import org.signal.libsignal.internal.Native
@@ -19,5 +16,15 @@ public class CopyBackupMediaStream(
 ) : NativeHandleGuard.SimpleOwner(handle) {
   override fun release(nativeHandle: ObjectHandle) {
     Native.CopyBackupMediaStream_Destroy(nativeHandle)
+  }
+}
+
+// `public` so that NativeNice's methods can reference it, which are in turn public for testing
+// reasons.
+public class DeleteBackupMediaStream(
+  handle: ObjectHandle,
+) : NativeHandleGuard.SimpleOwner(handle) {
+  override fun release(nativeHandle: ObjectHandle) {
+    Native.DeleteBackupMediaStream_Destroy(nativeHandle)
   }
 }

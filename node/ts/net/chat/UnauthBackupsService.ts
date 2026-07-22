@@ -103,6 +103,11 @@ export type CopyBackupMediaResult =
   | 'wrongSourceLength'
   | 'outOfSpace';
 
+export type DeleteBackupMediaItem = {
+  mediaId: Uint8Array<ArrayBuffer>;
+  cdn: number;
+};
+
 export interface UnauthBackupsService {
   /**
    * Get a messages backup upload form
@@ -265,6 +270,23 @@ export interface UnauthBackupsService {
     items: ReadonlyArray<CopyBackupMediaItem>;
     rng?: Rng;
   }) => ReadableStream<CopyBackupMediaOutcome>;
+
+  /**
+   * Delete media objects stored with this backup ID.
+   *
+   * The delete operation is not atomic and responses will be returned as delete operations
+   * complete. If an error is encountered, not all requests may be reflected in the responses.
+   * However, there is no need to retry the items that did receive a response.
+   *
+   * The stream may be terminated at any time with the standard Signal network exceptions. In
+   * addition, the stream may immediately terminate with {@link RequestUnauthorizedError} if there
+   * are authorization issues.
+   */
+  deleteBackupMedia: (request: {
+    auth: BackupAuth;
+    items: ReadonlyArray<DeleteBackupMediaItem>;
+    rng?: Rng;
+  }) => ReadableStream<DeleteBackupMediaItem>;
 }
 
 UnauthenticatedChatConnection.prototype.getUploadForm = async function (
@@ -480,6 +502,32 @@ UnauthenticatedChatConnection.prototype.copyBackupMedia = function ({
             typeof niceResult === 'object'
               ? { cdn: niceResult.success }
               : niceResult,
+        });
+      },
+    })
+  );
+};
+
+UnauthenticatedChatConnection.prototype.deleteBackupMedia = function ({
+  auth: { credential, serverKeys, signingKey },
+  items,
+  rng,
+}) {
+  const makeStream =
+    NativeNice.UnauthenticatedChatConnection_backup_delete_media({
+      chat: this._chatService,
+      credential,
+      serverKeys,
+      signingKey,
+      items: [...items],
+      rng,
+    });
+  return makeStream(this._asyncContext).pipeThrough(
+    new TransformStream({
+      transform: ({ media_id, cdn }, controller) => {
+        controller.enqueue({
+          mediaId: media_id,
+          cdn,
         });
       },
     })

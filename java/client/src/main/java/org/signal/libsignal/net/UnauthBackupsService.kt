@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import org.signal.libsignal.internal.BridgeCopyBackupMediaItem
 import org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome
 import org.signal.libsignal.internal.BridgeCopyBackupMediaResult
+import org.signal.libsignal.internal.BridgeDeleteBackupMediaItem
 import org.signal.libsignal.internal.BridgeMediaBackupInfo
 import org.signal.libsignal.internal.BridgeMessageBackupInfo
 import org.signal.libsignal.internal.CompletableFuture
@@ -20,7 +21,6 @@ import org.signal.libsignal.messagebackup.BackupKey
 import org.signal.libsignal.protocol.ecc.ECPrivateKey
 import org.signal.libsignal.zkgroup.GenericServerPublicParams
 import org.signal.libsignal.zkgroup.backups.BackupAuthCredential
-import java.util.Arrays
 import java.util.Objects
 
 /**
@@ -125,12 +125,20 @@ public data class CopyBackupMediaItem(
     return sourceAttachmentCdn == other.sourceAttachmentCdn &&
       sourceKey == other.sourceKey &&
       objectLength == other.objectLength &&
-      mediaId.contentEquals(other.mediaId) &&
+      mediaId.contentEquals(
+        other.mediaId,
+      ) &&
       encryptionKey.contentEquals(other.encryptionKey)
   }
 
   override fun hashCode(): Int =
-    Objects.hash(sourceAttachmentCdn, sourceKey, objectLength, Arrays.hashCode(mediaId), Arrays.hashCode(encryptionKey))
+    Objects.hash(
+      sourceAttachmentCdn,
+      sourceKey,
+      objectLength,
+      mediaId.contentHashCode(),
+      encryptionKey.contentHashCode(),
+    )
 }
 
 public sealed class CopyBackupMediaOutcome(
@@ -184,6 +192,22 @@ public sealed class CopyBackupMediaOutcome(
     // and hashing this class is unlikely. Let's keep it simple.
     return mediaId.contentHashCode()
   }
+}
+
+public data class DeleteBackupMediaItem(
+  val mediaId: ByteArray,
+  val cdn: Int,
+) {
+  internal constructor(value: BridgeDeleteBackupMediaItem) : this(value.mediaId, value.cdn) {}
+
+  override fun equals(other: Any?): Boolean {
+    if (other !is DeleteBackupMediaItem) {
+      return false
+    }
+    return mediaId.contentEquals(other.mediaId) && cdn == other.cdn
+  }
+
+  override fun hashCode(): Int = Objects.hash(mediaId.contentHashCode(), cdn)
 }
 
 public data class DeterministicRandomSeedUseOnlyForTesting(
@@ -537,6 +561,52 @@ public class UnauthBackupsService(
       },
       convertItem = CopyBackupMediaOutcome::fromFfi,
       cancel = Native::CopyBackupMediaStream_cancel,
+    )
+  }
+
+  /**
+   * Delete media objects stored with this backup ID.
+   *
+   * The delete operation is not atomic and responses will be returned as delete operations
+   * complete. If an error is encountered, not all requests  may be reflected in the responses.
+   * However, there is no need to retry the items that did receive a response.
+   *
+   * The flow may be terminated at any time with the standard Signal network exceptions.
+   * In addition, the flow may immediately terminate with [RequestUnauthorizedException]
+   * if there are authorization issues. You can use [Throwable.toRequestResult] to classify
+   * exceptions produced by the flow similarly to the non-streaming endpoints.
+   *
+   * The flow can only be collected once; trying to collect it multiple times will throw
+   * [IllegalStateException].
+   */
+  public fun deleteMedia(
+    auth: BackupAuth,
+    items: List<DeleteBackupMediaItem>,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): Flow<DeleteBackupMediaItem> {
+    val stream =
+      NativeNice.UnauthenticatedChatConnection_backup_delete_media(
+        chat = connection,
+        credential = auth.credential,
+        serverKeys = auth.serverKeys,
+        signingKey = auth.signingKey,
+        items =
+          items.map {
+            BridgeDeleteBackupMediaItem(
+              mediaId = it.mediaId,
+              cdn = it.cdn,
+            )
+          },
+        rng = rngSeedForTesting,
+      )
+    return wrapStream(
+      connection.tokioAsyncContext,
+      stream,
+      pull = { asyncRuntime, stream ->
+        NativeNice.DeleteBackupMediaStream_next(asyncRuntime, stream).thenApply { Pair(it.chunk, it.termination) }
+      },
+      convertItem = ::DeleteBackupMediaItem,
+      cancel = Native::DeleteBackupMediaStream_cancel,
     )
   }
 }

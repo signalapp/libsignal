@@ -6,6 +6,8 @@
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_types::net::TokioAsyncContext;
+#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
+use libsignal_bridge_types::net::chat::BridgeDeleteBackupMediaItem;
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, BridgeCopyBackupMediaItem, ChatListener, HttpRequest,
     ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
@@ -503,7 +505,8 @@ use grpc_test_cases::*;
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::{
-        BridgeCopyBackupMediaOutcome, BridgeMediaBackupInfo, BridgeMessageBackupInfo,
+        BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem, BridgeMediaBackupInfo,
+        BridgeMessageBackupInfo,
     };
     use libsignal_net_chat::grpc::devices::LinkedDevice;
     use uuid::Uuid;
@@ -569,6 +572,16 @@ mod remote_derives {
     #[bridge(arg = false)]
     pub(super) enum CopyBackupMediaOut {
         Item(BridgeCopyBackupMediaOutcome),
+        InvalidDataInStream,
+        CredentialRejected,
+        CredentialRejectedWithoutAppropriateServerInfo,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::DeleteBackupMediaOut)]
+    #[bridge(arg = false)]
+    pub(super) enum DeleteBackupMediaOut {
+        Item(BridgeDeleteBackupMediaItem),
         InvalidDataInStream,
         CredentialRejected,
         CredentialRejectedWithoutAppropriateServerInfo,
@@ -684,5 +697,21 @@ fn TESTING_CopyBackupMediaTests() -> GrpcTestCases<
 #[bridge_fn(jni = false, node = false, nice = true)]
 fn TESTING_forceEmitVecOfBridgeCopyBackupMediaOut() -> BridgeVec<remote_derives::CopyBackupMediaOut>
 {
+    unreachable!()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_DeleteBackupMediaTests() -> GrpcTestCases<
+    BridgeVec<BridgeDeleteBackupMediaItem>,
+    BridgeVec<remote_derives::DeleteBackupMediaOut>,
+> {
+    GrpcTestCases::from_generalized_test_cases(
+        libsignal_net_chat::grpc::backups::test_cases::delete_media_test_cases(),
+    )
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn TESTING_forceEmitVecOfBridgeDeleteBackupMediaOut()
+-> BridgeVec<remote_derives::DeleteBackupMediaOut> {
     unreachable!()
 }

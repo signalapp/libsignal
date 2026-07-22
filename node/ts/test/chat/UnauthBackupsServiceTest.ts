@@ -442,4 +442,45 @@ describe('UnauthBackupsService', () => {
       }
     );
   });
+
+  describe('deleteBackupMedia', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_DeleteBackupMediaTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, items, expected) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+
+        const stream = chat.deleteBackupMedia({
+          auth: TEST_AUTH,
+          items,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        const [actualItems, maybeError] = await util.collectUntilError(stream);
+
+        for (const nextExpected of expected) {
+          if (typeof nextExpected === 'object') {
+            const actualItem = actualItems.shift();
+            expect(actualItem).deep.equals(nextExpected.item);
+          } else {
+            switch (nextExpected) {
+              case 'invalidDataInStream':
+              case 'credentialRejectedWithoutAppropriateServerInfo':
+                expect(maybeError)
+                  .instanceOf(LibSignalErrorBase)
+                  .with.property('code', ErrorCode.IoError);
+                break;
+              case 'credentialRejected':
+                expect(maybeError)
+                  .instanceOf(LibSignalErrorBase)
+                  .with.property('code', ErrorCode.RequestUnauthorized);
+                break;
+              default:
+                nextExpected satisfies never;
+            }
+          }
+        }
+        expect(actualItems).deep.equals([]);
+      }
+    );
+  });
 });

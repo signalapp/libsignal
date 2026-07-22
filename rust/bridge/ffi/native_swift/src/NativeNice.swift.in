@@ -215,11 +215,9 @@ import SignalFfi
     let ffiStructKeepAlive: (
         {%- for (field, ty) in struct.fields %}{{ty.converter_type}}.KeepAlive?,{% endfor -%}
     )? =
-        (
-            {%- for (field, ty) in struct.fields %} {{ field }}_keepalive != nil || {% endfor -%} false
-        ) ? (
-            {%- for (field, ty) in struct.fields %} {{ field }}_keepalive, {% endfor -%}
-        ) : nil
+        ( {%- for (field, ty) in struct.fields %} {{ field }}_keepalive != nil || {% endfor -%} false)
+        ? ( {%- for (field, ty) in struct.fields %} {{ field }}_keepalive, {% endfor -%} )
+        : nil
 {% endmacro %}
 
 {% macro convertArgBorrowed_struct(struct, constructor) %}

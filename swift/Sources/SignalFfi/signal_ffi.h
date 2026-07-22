@@ -674,6 +674,17 @@ typedef const SignalBridgeCopyBackupMediaItemFfiArg* SignalType_ConstPointer_Sig
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalBridgeCopyBackupMediaItemFfiArg) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalBridgeCopyBackupMediaItemFfiArg) == 8);
 typedef struct {
+  const SignalType_FixedArray15_uint8_t* media_id;
+  int32_t cdn;
+} SignalBridgeDeleteBackupMediaItemFfiArg;
+static_assert_64bit(offsetof(SignalBridgeDeleteBackupMediaItemFfiArg, media_id) == 0);
+static_assert_64bit(offsetof(SignalBridgeDeleteBackupMediaItemFfiArg, cdn) == 8);
+static_assert_64bit(sizeof(SignalBridgeDeleteBackupMediaItemFfiArg) == 16);
+static_assert_64bit(alignof(SignalBridgeDeleteBackupMediaItemFfiArg) == 8);
+typedef const SignalBridgeDeleteBackupMediaItemFfiArg* SignalType_ConstPointer_SignalBridgeDeleteBackupMediaItemFfiArg;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalBridgeDeleteBackupMediaItemFfiArg) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalBridgeDeleteBackupMediaItemFfiArg) == 8);
+typedef struct {
   const int8_t* backup_dir;
   const int8_t* media_dir;
   int64_t used_space;
@@ -761,6 +772,42 @@ typedef struct SignalCopyBackupMediaStream SignalCopyBackupMediaStream;
 typedef const SignalCopyBackupMediaStream* SignalType_ConstPointer_SignalCopyBackupMediaStream;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalCopyBackupMediaStream) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalCopyBackupMediaStream) == 8);
+typedef struct {
+  SignalType_FixedArray15_uint8_t media_id;
+  int32_t cdn;
+} SignalBridgeDeleteBackupMediaItemFfiResult;
+static_assert_64bit(offsetof(SignalBridgeDeleteBackupMediaItemFfiResult, media_id) == 0);
+static_assert_64bit(offsetof(SignalBridgeDeleteBackupMediaItemFfiResult, cdn) == 16);
+static_assert_64bit(sizeof(SignalBridgeDeleteBackupMediaItemFfiResult) == 20);
+static_assert_64bit(alignof(SignalBridgeDeleteBackupMediaItemFfiResult) == 4);
+typedef SignalBridgeDeleteBackupMediaItemFfiResult* SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult) == 8);
+typedef struct {
+  SignalBridgeDeleteBackupMediaItemFfiResult* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult) == 8);
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult chunk;
+  SignalFfiBulkPolledStreamTerminationReason termination;
+} SignalDeleteBackupMediaNextChunkFfiResult;
+static_assert_64bit(offsetof(SignalDeleteBackupMediaNextChunkFfiResult, chunk) == 0);
+static_assert_64bit(offsetof(SignalDeleteBackupMediaNextChunkFfiResult, termination) == 24);
+static_assert_64bit(sizeof(SignalDeleteBackupMediaNextChunkFfiResult) == 32);
+static_assert_64bit(alignof(SignalDeleteBackupMediaNextChunkFfiResult) == 8);
+typedef const SignalDeleteBackupMediaNextChunkFfiResult* SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult) == 8);
+typedef struct SignalDeleteBackupMediaStream SignalDeleteBackupMediaStream;
+typedef const SignalDeleteBackupMediaStream* SignalType_ConstPointer_SignalDeleteBackupMediaStream;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalDeleteBackupMediaStream) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalDeleteBackupMediaStream) == 8);
 typedef int32_t (*SignalType_FunctionPointer_int32_t_SignalType_MutPointer_void)(SignalType_MutPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_int32_t_SignalType_MutPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_int32_t_SignalType_MutPointer_void) == 8);
@@ -1467,6 +1514,18 @@ static_assert_64bit(alignof(SignalMutPointerCopyBackupMediaStream) == 8);
 typedef SignalMutPointerCopyBackupMediaStream* SignalType_MutPointer_SignalMutPointerCopyBackupMediaStream;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerCopyBackupMediaStream) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerCopyBackupMediaStream) == 8);
+typedef SignalDeleteBackupMediaStream* SignalType_MutPointer_SignalDeleteBackupMediaStream;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalDeleteBackupMediaStream) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalDeleteBackupMediaStream) == 8);
+typedef struct {
+  SignalDeleteBackupMediaStream* raw;
+} SignalMutPointerDeleteBackupMediaStream;
+static_assert_64bit(offsetof(SignalMutPointerDeleteBackupMediaStream, raw) == 0);
+static_assert_64bit(sizeof(SignalMutPointerDeleteBackupMediaStream) == 8);
+static_assert_64bit(alignof(SignalMutPointerDeleteBackupMediaStream) == 8);
+typedef SignalMutPointerDeleteBackupMediaStream* SignalType_MutPointer_SignalMutPointerDeleteBackupMediaStream;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerDeleteBackupMediaStream) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerDeleteBackupMediaStream) == 8);
 typedef SignalHttpRequest* SignalType_MutPointer_SignalHttpRequest;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalHttpRequest) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalHttpRequest) == 8);
@@ -2334,6 +2393,22 @@ static_assert_64bit(alignof(SignalCPromiseCopyBackupMediaNextChunkFfiResult) == 
 typedef SignalCPromiseCopyBackupMediaNextChunkFfiResult* SignalType_MutPointer_SignalCPromiseCopyBackupMediaNextChunkFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseCopyBackupMediaNextChunkFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseCopyBackupMediaNextChunkFfiResult) == 8);
+typedef void (*SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseDeleteBackupMediaNextChunkFfiResult;
+static_assert_64bit(offsetof(SignalCPromiseDeleteBackupMediaNextChunkFfiResult, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseDeleteBackupMediaNextChunkFfiResult, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseDeleteBackupMediaNextChunkFfiResult, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseDeleteBackupMediaNextChunkFfiResult) == 24);
+static_assert_64bit(alignof(SignalCPromiseDeleteBackupMediaNextChunkFfiResult) == 8);
+typedef SignalCPromiseDeleteBackupMediaNextChunkFfiResult* SignalType_MutPointer_SignalCPromiseDeleteBackupMediaNextChunkFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseDeleteBackupMediaNextChunkFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseDeleteBackupMediaNextChunkFfiResult) == 8);
 typedef uint16_t* SignalType_MutPointer_uint16_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_uint16_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_uint16_t) == 8);
@@ -2425,6 +2500,14 @@ static_assert_64bit(offsetof(SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiAr
 static_assert_64bit(sizeof(SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg) == 16);
 static_assert_64bit(alignof(SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg) == 8);
 typedef struct {
+  const SignalBridgeDeleteBackupMediaItemFfiArg* base;
+  size_t length;
+} SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg;
+static_assert_64bit(offsetof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg, base) == 0);
+static_assert_64bit(offsetof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg, length) == 8);
+static_assert_64bit(sizeof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg) == 16);
+static_assert_64bit(alignof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg) == 8);
+typedef struct {
   const uint32_t* base;
   size_t length;
 } SignalBorrowedSliceOfu32;
@@ -2504,6 +2587,12 @@ typedef struct {
 static_assert_64bit(offsetof(SignalConstPointerCopyBackupMediaStream, raw) == 0);
 static_assert_64bit(sizeof(SignalConstPointerCopyBackupMediaStream) == 8);
 static_assert_64bit(alignof(SignalConstPointerCopyBackupMediaStream) == 8);
+typedef struct {
+  const SignalDeleteBackupMediaStream* raw;
+} SignalConstPointerDeleteBackupMediaStream;
+static_assert_64bit(offsetof(SignalConstPointerDeleteBackupMediaStream, raw) == 0);
+static_assert_64bit(sizeof(SignalConstPointerDeleteBackupMediaStream) == 8);
+static_assert_64bit(alignof(SignalConstPointerDeleteBackupMediaStream) == 8);
 typedef struct {
   const SignalFfiChatListenerStruct* raw;
 } SignalConstPointerFfiChatListenerStruct;
@@ -3742,6 +3831,17 @@ SignalFfiError* signal_decryption_error_message_get_timestamp(
 SignalFfiError* signal_decryption_error_message_serialize(
   SignalOwnedBuffer* out,
   SignalConstPointerDecryptionErrorMessage obj
+);
+SignalFfiError* signal_delete_backup_media_stream_cancel(
+  SignalConstPointerDeleteBackupMediaStream stream
+);
+SignalFfiError* signal_delete_backup_media_stream_destroy(
+  SignalMutPointerDeleteBackupMediaStream p
+);
+SignalFfiError* signal_delete_backup_media_stream_next(
+  SignalCPromiseDeleteBackupMediaNextChunkFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerDeleteBackupMediaStream stream
 );
 SignalFfiError* signal_device_transfer_generate_certificate(
   SignalOwnedBuffer* out,
@@ -5672,6 +5772,15 @@ SignalFfiError* signal_unauthenticated_chat_connection_backup_delete_all(
   SignalBorrowedBuffer credential,
   SignalBorrowedBuffer server_keys,
   SignalConstPointerPrivateKey signing_key,
+  int64_t rng
+);
+SignalFfiError* signal_unauthenticated_chat_connection_backup_delete_media(
+  SignalMutPointerDeleteBackupMediaStream* out,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalBorrowedBuffer credential,
+  SignalBorrowedBuffer server_keys,
+  SignalConstPointerPrivateKey signing_key,
+  SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg items,
   int64_t rng
 );
 SignalFfiError* signal_unauthenticated_chat_connection_backup_get_cdn_credentials(

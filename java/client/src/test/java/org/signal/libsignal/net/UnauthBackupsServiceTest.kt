@@ -19,6 +19,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.CopyBackupMediaOut
+import org.signal.libsignal.internal.DeleteBackupMediaOut
 import org.signal.libsignal.internal.GetMediaBackupInfoOut
 import org.signal.libsignal.internal.GetMessageBackupInfoOut
 import org.signal.libsignal.internal.NativeTesting
@@ -29,6 +30,7 @@ import org.signal.libsignal.zkgroup.GenericServerPublicParams
 import org.signal.libsignal.zkgroup.backups.BackupAuthCredential
 import java.net.URI
 import kotlin.io.encoding.Base64
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
@@ -574,6 +576,66 @@ class UnauthBackupsServiceTest {
 
               is CopyBackupMediaOut.InvalidDataInStream,
               is CopyBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo,
+              -> {
+                val error = assertIs<RequestResult.ApplicationError>(next)
+                assertIs<UnexpectedResponseException>(error.cause)
+              }
+            }
+          }
+          assertFalse(actualIter.hasNext())
+        },
+      )
+    }
+
+  @Test
+  fun testDeleteMedia() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runSuspendingTests(
+        NativeTestingNice.TESTING_DeleteBackupMediaTests(),
+        { asyncRuntime, listener ->
+          UnauthenticatedChatConnection.fakeConnect(
+            asyncRuntime,
+            listener,
+            Network.Environment.STAGING,
+          )
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, items ->
+          val inputs =
+            items.map {
+              DeleteBackupMediaItem(
+                mediaId = it.mediaId,
+                cdn = it.cdn,
+              )
+            }
+          chat
+            .deleteMedia(
+              TEST_AUTH,
+              inputs,
+              DeterministicRandomSeedUseOnlyForTesting(0),
+            ).map { it as Any }
+            .catch { emit(it.toRequestResult<RequestUnauthorizedException>() as Any) }
+            .toList()
+        },
+        check = { expected, actual ->
+          val actualIter = actual.iterator()
+          for (entry in expected) {
+            val next = actualIter.next()
+            when (entry) {
+              is DeleteBackupMediaOut.Item -> {
+                assertIs<DeleteBackupMediaItem>(next)
+                assertContentEquals(entry._0.mediaId, next.mediaId)
+                assertEquals(entry._0.cdn, next.cdn)
+              }
+
+              is DeleteBackupMediaOut.CredentialRejected -> {
+                val nonSuccess = assertIs<RequestResult.NonSuccess<*>>(next)
+                assertIs<RequestUnauthorizedException>(nonSuccess.error)
+              }
+
+              is DeleteBackupMediaOut.InvalidDataInStream,
+              is DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo,
               -> {
                 val error = assertIs<RequestResult.ApplicationError>(next)
                 assertIs<UnexpectedResponseException>(error.cause)

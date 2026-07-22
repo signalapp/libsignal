@@ -2378,6 +2378,25 @@ impl NiceResultConverter for crate::net::chat::CopyBackupMediaStream {
     }
 }
 
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for crate::net::chat::DeleteBackupMediaStream {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: concat!(
+                "(",
+                "(asyncContext: TokioAsyncContext)",
+                // Note that we delay converting this to a nice type for TS module dependency cycle
+                // reasons.
+                "=> ReadableStream<Native.ReturnFfiBridgeDeleteBackupMediaItem>",
+                ")"
+            )
+            .to_owned(),
+            ffi_type: "Native.DeleteBackupMediaStream".to_owned(),
+            converter_function: "deleteBackupMediaStreamConverter".to_owned(),
+        }
+    }
+}
+
 /// The name of the property on JavaScript objects that wrap a boxed Rust value.
 pub(crate) const NATIVE_HANDLE_PROPERTY: &str = "_nativeHandle";
 

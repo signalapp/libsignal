@@ -3641,9 +3641,11 @@ macro_rules! jni_result_type {
     (BridgeCopyBackupMediaItem) => {::jni::objects::JObject<'local>};
     (BridgeCopyBackupMediaOutcome) => {::jni::objects::JObject<'local>};
     (BridgeCopyBackupMediaResult) => {::jni::objects::JObject<'local>};
+    (BridgeDeleteBackupMediaItem) => {::jni::objects::JObject<'local>};
     (BridgeMediaBackupInfo) => {::jni::objects::JObject<'local>};
     (BridgeMessageBackupInfo) => {::jni::objects::JObject<'local>};
     (CopyBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
+    (DeleteBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
 
     // Testing derived types
     (MySimpleTestEnum) => {::jni::objects::JObject<'local>};

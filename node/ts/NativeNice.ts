@@ -10,6 +10,7 @@ import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
   GrpcTestCase,
   ArgFfiBridgeCopyBackupMediaItem,
+  ArgFfiBridgeDeleteBackupMediaItem,
   ArgFfiMyRemoteDeriveEnum,
   ArgFfiMyRemoteDeriveStruct,
   ArgFfiMySimpleTestEnum,
@@ -19,10 +20,13 @@ import type {
   ReturnFfiBridgeCopyBackupMediaItem,
   ReturnFfiBridgeCopyBackupMediaOutcome,
   ReturnFfiBridgeCopyBackupMediaResult,
+  ReturnFfiBridgeDeleteBackupMediaItem,
   ReturnFfiBridgeMediaBackupInfo,
   ReturnFfiBridgeMessageBackupInfo,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
+  ReturnFfiDeleteBackupMediaNextChunk,
+  ReturnFfiDeleteBackupMediaOut,
   ReturnFfiGetDevicesOut,
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
@@ -56,6 +60,7 @@ import {
   Timestamp,
   cdnCredentialReturnConverter,
   copyBackupMediaStreamConverter,
+  deleteBackupMediaStreamConverter,
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,
@@ -83,6 +88,11 @@ export type BridgeCopyBackupMediaResult =
   | 'wrongSourceLength'
   | 'outOfSpace';
 
+export type BridgeDeleteBackupMediaItem = {
+  mediaId: Uint8Array<ArrayBuffer>;
+  cdn: number;
+};
+
 export type BridgeMediaBackupInfo = {
   backupDir: string;
   mediaDir: string;
@@ -103,6 +113,19 @@ export type CopyBackupMediaNextChunk = {
 export type CopyBackupMediaOut =
   | {
       item: BridgeCopyBackupMediaOutcome;
+    }
+  | 'invalidDataInStream'
+  | 'credentialRejected'
+  | 'credentialRejectedWithoutAppropriateServerInfo';
+
+export type DeleteBackupMediaNextChunk = {
+  chunk: Array<BridgeDeleteBackupMediaItem>;
+  termination: ('finished' | Error) | null;
+};
+
+export type DeleteBackupMediaOut =
+  | {
+      item: BridgeDeleteBackupMediaItem;
     }
   | 'invalidDataInStream'
   | 'credentialRejected'
@@ -263,6 +286,15 @@ export function returnConverterBridgeCopyBackupMediaResult(
   }
 }
 
+export function returnConverterBridgeDeleteBackupMediaItem(
+  ffiInput: Native.ReturnFfiBridgeDeleteBackupMediaItem
+): BridgeDeleteBackupMediaItem {
+  return {
+    mediaId: identity(ffiInput.media_id),
+    cdn: identity(ffiInput.cdn),
+  };
+}
+
 export function returnConverterBridgeMediaBackupInfo(
   ffiInput: Native.ReturnFfiBridgeMediaBackupInfo
 ): BridgeMediaBackupInfo {
@@ -311,6 +343,37 @@ export function returnConverterCopyBackupMediaOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for CopyBackupMediaOut');
+  }
+}
+
+export function returnConverterDeleteBackupMediaNextChunk(
+  ffiInput: Native.ReturnFfiDeleteBackupMediaNextChunk
+): DeleteBackupMediaNextChunk {
+  return {
+    chunk: ((arr: Array<ReturnFfiBridgeDeleteBackupMediaItem>) =>
+      arr.map(returnConverterBridgeDeleteBackupMediaItem))(ffiInput.chunk),
+    termination: identity(ffiInput.termination),
+  };
+}
+
+export function returnConverterDeleteBackupMediaOut(
+  ffiInput: Native.ReturnFfiDeleteBackupMediaOut
+): DeleteBackupMediaOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        item: returnConverterBridgeDeleteBackupMediaItem(ffiInput._0),
+      };
+    case 1:
+      return 'invalidDataInStream';
+    case 2:
+      return 'credentialRejected';
+    case 3:
+      return 'credentialRejectedWithoutAppropriateServerInfo';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for DeleteBackupMediaOut');
   }
 }
 
@@ -596,6 +659,13 @@ export function argConverterBridgeCopyBackupMediaItem(
     media_id: identity(media_id),
     encryption_key: identity(encryption_key),
   };
+}
+
+export function argConverterBridgeDeleteBackupMediaItem(
+  niceInput: BridgeDeleteBackupMediaItem
+): Native.ArgFfiBridgeDeleteBackupMediaItem {
+  const { mediaId: media_id, cdn: cdn } = niceInput;
+  return { media_id: identity(media_id), cdn: identity(cdn) };
 }
 
 export function argConverterMyRemoteDeriveEnum(
@@ -991,6 +1061,22 @@ export async function CopyBackupMediaStream_next({
     )
   );
 }
+export async function DeleteBackupMediaStream_next({
+  asyncContext,
+  abortSignal,
+  stream: stream,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  stream: Native.Wrapper<Native.DeleteBackupMediaStream>;
+}): Promise<DeleteBackupMediaNextChunk> {
+  return returnConverterDeleteBackupMediaNextChunk(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.DeleteBackupMediaStream_next(asyncContext, identity(stream))
+    )
+  );
+}
 
 export function SvrKey_DeriveLoggingKey({
   svrKey: svr_key,
@@ -1051,6 +1137,17 @@ export function TESTING_CopyBackupMediaTests(): Array<
     (arr: Array<ReturnFfiCopyBackupMediaOut>) =>
       arr.map(returnConverterCopyBackupMediaOut)
   )(Native.TESTING_CopyBackupMediaTests());
+}
+
+export function TESTING_DeleteBackupMediaTests(): Array<
+  GrpcTestCase<Array<BridgeDeleteBackupMediaItem>, Array<DeleteBackupMediaOut>>
+> {
+  return grpcTestCaseConverter(
+    (arr: Array<ReturnFfiBridgeDeleteBackupMediaItem>) =>
+      arr.map(returnConverterBridgeDeleteBackupMediaItem),
+    (arr: Array<ReturnFfiDeleteBackupMediaOut>) =>
+      arr.map(returnConverterDeleteBackupMediaOut)
+  )(Native.TESTING_DeleteBackupMediaTests());
 }
 
 export function TESTING_DeleteUsernameHashTests(): Array<
@@ -1958,6 +2055,36 @@ export async function UnauthenticatedChatConnection_backup_delete_all({
         identity(signing_key),
         ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
+    )
+  );
+}
+
+export function UnauthenticatedChatConnection_backup_delete_media({
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  items: items,
+  rng: rng,
+}: {
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  items: Array<BridgeDeleteBackupMediaItem>;
+  rng: Rng | undefined;
+}): (
+  asyncContext: TokioAsyncContext
+) => ReadableStream<Native.ReturnFfiBridgeDeleteBackupMediaItem> {
+  return deleteBackupMediaStreamConverter(
+    Native.UnauthenticatedChatConnection_backup_delete_media(
+      identity(chat),
+      ByteArray.prototype.getContents.call(credential),
+      ByteArray.prototype.getContents.call(server_keys),
+      identity(signing_key),
+      ((arr: Array<BridgeDeleteBackupMediaItem>) =>
+        arr.map(argConverterBridgeDeleteBackupMediaItem))(items),
+      ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
     )
   );
 }

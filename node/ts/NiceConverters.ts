@@ -46,6 +46,19 @@ export function copyBackupMediaStreamConverter(
   };
 }
 
+export function deleteBackupMediaStreamConverter(
+  streamHandle: Native.DeleteBackupMediaStream
+): (
+  asyncContext: TokioAsyncContext
+) => ReadableStream<Native.ReturnFfiBridgeDeleteBackupMediaItem> {
+  return (asyncContext) => {
+    return wrapStream(asyncContext, newNativeHandle(streamHandle), {
+      pull: Native.DeleteBackupMediaStream_next,
+      cancel: Native.DeleteBackupMediaStream_cancel,
+    });
+  };
+}
+
 export function grpcTestCaseConverter<ReqIn, ReqOut, RespIn, RespOut>(
   reqConverter: (x: ReqIn) => ReqOut,
   respConverter: (x: RespIn) => RespOut

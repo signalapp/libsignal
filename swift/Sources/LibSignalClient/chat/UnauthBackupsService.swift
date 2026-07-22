@@ -199,6 +199,24 @@ public protocol UnauthBackupsService: Sendable {
         auth: BackupAuth,
         items: some Sequence<CopyBackupMediaItem>
     ) throws -> ColdAsyncStream<CopyBackupMediaOutcome>
+
+    /// Delete media objects stored with this backup ID.
+    ///
+    /// The delete operation is not atomic and responses will be returned as delete operations
+    /// complete. If an error is encountered, not all requests may be reflected in the responses.
+    /// However, there is no need to retry the items that did receive a response.
+    ///
+    /// The stream may be terminated at any time with the standard Signal network errors.
+    /// In addition, the stream may immediately terminate with ``SignalError/requestUnauthorized(_:)``
+    /// if there are authorization issues.
+    ///
+    /// The stream can be manually cancelled to free resources immediately (rather than waiting for
+    /// deinitialization). If the stream is cancelled and then read from again, it may produce a
+    /// timeout error. It is not required to cancel the stream even if it is not read to completion.
+    func deleteBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<DeleteBackupMediaItem>
+    ) throws -> ColdAsyncStream<DeleteBackupMediaItem>
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsService {
@@ -251,6 +269,12 @@ extension UnauthenticatedChatConnection: UnauthBackupsService {
     ) throws -> ColdAsyncStream<CopyBackupMediaOutcome> {
         try self.copyBackupMedia(auth: auth, items: items, rngForTesting: -1)
     }
+    public func deleteBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<DeleteBackupMediaItem>
+    ) throws -> ColdAsyncStream<DeleteBackupMediaItem> {
+        try self.deleteBackupMedia(auth: auth, items: items, rngForTesting: -1)
+    }
 }
 
 internal protocol UnauthBackupsServiceImpl: Sendable {
@@ -282,6 +306,11 @@ internal protocol UnauthBackupsServiceImpl: Sendable {
         items: some Sequence<CopyBackupMediaItem>,
         rngForTesting: Int64
     ) throws -> ColdAsyncStream<CopyBackupMediaOutcome>
+    func deleteBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<DeleteBackupMediaItem>,
+        rngForTesting: Int64
+    ) throws -> ColdAsyncStream<DeleteBackupMediaItem>
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
@@ -470,6 +499,34 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
             cancel: signal_copy_backup_media_stream_cancel,
         )
     }
+
+    func deleteBackupMedia(
+        auth: BackupAuth,
+        items: some Sequence<DeleteBackupMediaItem>,
+        rngForTesting: Int64
+    ) throws -> ColdAsyncStream<DeleteBackupMediaItem> {
+        let stream = try NativeNice.UnauthenticatedChatConnection_backup_delete_media(
+            chat: self,
+            credential: auth.credential,
+            serverKeys: auth.serverKeys,
+            signingKey: auth.signingKey,
+            items: items.map { $0.toBridge() },
+            rng: rngForTesting
+        )
+
+        return ColdAsyncStream(
+            asyncContext: self.tokioAsyncContext,
+            stream: stream,
+            pull: NativeNice.DeleteBackupMediaStream_next,
+            convert: { value in
+                return (
+                    value.chunk.map { DeleteBackupMediaItem($0) },
+                    value.termination
+                )
+            },
+            cancel: signal_delete_backup_media_stream_cancel,
+        )
+    }
 }
 
 /// A single item to copy from the attachment CDN to the backup CDN.
@@ -541,6 +598,24 @@ public struct CopyBackupMediaOutcome {
     }
 }
 
+public struct DeleteBackupMediaItem: Equatable, Hashable, Sendable {
+    public var mediaId: Data
+    public var cdn: Int32
+
+    public init(mediaId: Data, cdn: Int32) {
+        self.mediaId = mediaId
+        self.cdn = cdn
+    }
+
+    internal init(_ item: BridgeDeleteBackupMediaItem) {
+        self.init(mediaId: item.mediaId, cdn: item.cdn)
+    }
+
+    fileprivate func toBridge() -> BridgeDeleteBackupMediaItem {
+        BridgeDeleteBackupMediaItem(mediaId: mediaId, cdn: cdn)
+    }
+}
+
 extension UnauthServiceSelector where Self == UnauthServiceSelectorHelper<any UnauthBackupsService> {
     public static var backups: Self { .init() }
 }
@@ -573,6 +648,36 @@ extension SignalMutPointerCopyBackupMediaStream: SignalMutPointer {
 
 }
 extension SignalConstPointerCopyBackupMediaStream: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+}
+
+internal class DeleteBackupMediaStream: NativeHandleOwner<SignalMutPointerDeleteBackupMediaStream> {
+    override class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerDeleteBackupMediaStream>
+    ) -> SignalFfiErrorRef? {
+        signal_delete_backup_media_stream_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerDeleteBackupMediaStream: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerDeleteBackupMediaStream
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> SignalConstPointerDeleteBackupMediaStream {
+        .init(raw: self.raw)
+    }
+
+}
+extension SignalConstPointerDeleteBackupMediaStream: SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }

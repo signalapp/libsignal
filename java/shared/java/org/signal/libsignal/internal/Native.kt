@@ -514,6 +514,13 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun DecryptionErrorMessage_GetTimestamp(obj: ObjectHandle): Long
 
+  @JvmStatic
+  public external fun DeleteBackupMediaStream_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic
+  public external fun DeleteBackupMediaStream_cancel(stream: SimpleOwner): Unit
+  @JvmStatic
+  public external fun DeleteBackupMediaStream_next(asyncRuntime: ObjectHandle, stream: SimpleOwner): CompletableFuture<Object>
+
   @JvmStatic @Throws(Exception::class)
   public external fun DeviceTransfer_GenerateCertificate(privateKey: ByteArray, name: String, daysToExpire: Int): ByteArray
   @JvmStatic
@@ -1404,6 +1411,8 @@ internal object Native {
   public external fun UnauthenticatedChatConnection_backup_copy_media(chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, items: Array<*>, rng: Long): ObjectHandle
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_delete_all(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_delete_media(chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, items: Array<*>, rng: Long): ObjectHandle
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_cdn_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, cdn: Int, rng: Long): CompletableFuture<Array<Object>>
   @JvmStatic

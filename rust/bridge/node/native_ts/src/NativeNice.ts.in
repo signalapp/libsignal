@@ -29,6 +29,7 @@ import {
   Timestamp,
   cdnCredentialReturnConverter,
   copyBackupMediaStreamConverter,
+  deleteBackupMediaStreamConverter,
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,

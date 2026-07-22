@@ -1016,6 +1016,43 @@ extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseDeleteBackupMediaNextChunkFfiResult: SignalCPromise {
+
+    typealias Result = SignalDeleteBackupMediaNextChunkFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalDeleteBackupMediaNextChunkFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
 
     typealias First = SignalCStringPtr?
@@ -1290,6 +1327,19 @@ enum
     }
 }
 
+enum
+    FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg_DerivedArgConverterBridgeDeleteBackupMediaItem:
+        FfiBorrowedSliceConstructor
+{
+    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg
+    typealias Element = DerivedArgConverterBridgeDeleteBackupMediaItem.FfiArg
+    static func construct(
+        _ buffer: UnsafeBufferPointer<Element>,
+    ) -> BorrowedSlice {
+        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
+    }
+}
+
 enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32:
     FfiBorrowedSliceConstructor
 {
@@ -1333,6 +1383,31 @@ enum
 {
     typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult
     typealias Element = DerivedReturnConverterBridgeCopyBackupMediaOutcome.FfiReturn
+    static func empty() -> Buffer {
+        Buffer()
+    }
+    static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
+
+enum
+    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult_DerivedReturnConverterBridgeDeleteBackupMediaItem:
+        FfiOwnedBufferOfMaxAlignedProject
+{
+    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult
+    typealias Element = DerivedReturnConverterBridgeDeleteBackupMediaItem.FfiReturn
     static func empty() -> Buffer {
         Buffer()
     }
@@ -1442,6 +1517,12 @@ internal enum BridgeCopyBackupMediaResult {
     case outOfSpace
 }
 
+internal struct BridgeDeleteBackupMediaItem {
+    var mediaId: Data
+    var cdn: Int32
+
+}
+
 internal struct BridgeMediaBackupInfo {
     var backupDir: String
     var mediaDir: String
@@ -1458,6 +1539,12 @@ internal struct BridgeMessageBackupInfo {
 
 internal struct CopyBackupMediaNextChunk {
     var chunk: [BridgeCopyBackupMediaOutcome]
+    var termination: BulkPolledStreamTermination?
+
+}
+
+internal struct DeleteBackupMediaNextChunk {
+    var chunk: [BridgeDeleteBackupMediaItem]
     var termination: BulkPolledStreamTermination?
 
 }
@@ -1548,6 +1635,23 @@ internal enum DerivedReturnConverterBridgeCopyBackupMediaResult: NiceReturnConve
     }
 }
 
+internal enum DerivedReturnConverterBridgeDeleteBackupMediaItem: NiceReturnConverter {
+    typealias NiceReturn = BridgeDeleteBackupMediaItem
+    typealias FfiReturn = SignalBridgeDeleteBackupMediaItemFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeDeleteBackupMediaItemFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let media_id = Result {
+            try FixedByteArrayConverter<FixedByteArrayHelper15>.convertReturn(consuming: ffiValue.media_id)
+        }
+        let cdn = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.cdn) }
+
+        return BridgeDeleteBackupMediaItem(mediaId: try media_id.get(), cdn: try cdn.get())
+    }
+}
+
 internal enum DerivedReturnConverterBridgeMediaBackupInfo: NiceReturnConverter {
     typealias NiceReturn = BridgeMediaBackupInfo
     typealias FfiReturn = SignalBridgeMediaBackupInfoFfiResult
@@ -1607,6 +1711,28 @@ internal enum DerivedReturnConverterCopyBackupMediaNextChunk: NiceReturnConverte
         }
 
         return CopyBackupMediaNextChunk(chunk: try chunk.get(), termination: try termination.get())
+    }
+}
+
+internal enum DerivedReturnConverterDeleteBackupMediaNextChunk: NiceReturnConverter {
+    typealias NiceReturn = DeleteBackupMediaNextChunk
+    typealias FfiReturn = SignalDeleteBackupMediaNextChunkFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalDeleteBackupMediaNextChunkFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let chunk = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterBridgeDeleteBackupMediaItem,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult_DerivedReturnConverterBridgeDeleteBackupMediaItem
+            >.convertReturn(consuming: ffiValue.chunk)
+        }
+        let termination = Result {
+            try BulkPolledStreamTerminationConverter.convertReturn(consuming: ffiValue.termination)
+        }
+
+        return DeleteBackupMediaNextChunk(chunk: try chunk.get(), termination: try termination.get())
     }
 }
 
@@ -1698,7 +1824,8 @@ internal enum DerivedArgConverterBridgeCopyBackupMediaItem: NiceArgConverter {
                 ? (
                     source_attachment_cdn_keepalive, source_key_keepalive, object_length_keepalive, media_id_keepalive,
                     encryption_key_keepalive,
-                ) : nil
+                )
+                : nil
 
         return (ffiStructArg, ffiStructKeepAlive)
     }
@@ -1736,6 +1863,62 @@ internal enum DerivedArgConverterBridgeCopyBackupMediaItem: NiceArgConverter {
                         }
                     }
                 }
+            }
+        }
+
+    }
+}
+
+internal enum DerivedArgConverterBridgeDeleteBackupMediaItem: NiceArgConverter {
+    typealias NiceArg = BridgeDeleteBackupMediaItem
+    typealias FfiArg = SignalBridgeDeleteBackupMediaItemFfiArg
+
+    typealias KeepAlive = (
+        FixedByteArrayConverter<FixedByteArrayHelper15>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?,
+    )
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let media_id = niceArg.mediaId
+        let cdn = niceArg.cdn
+
+        let (media_id_ffi, media_id_keepalive):
+            (
+                FixedByteArrayConverter<FixedByteArrayHelper15>.FfiArg,
+                FixedByteArrayConverter<FixedByteArrayHelper15>.KeepAlive?,
+            ) = FixedByteArrayConverter<FixedByteArrayHelper15>.convertArg(media_id)
+        let (cdn_ffi, cdn_keepalive):
+            (
+                IdentityConverter<Int32>.FfiArg,
+                IdentityConverter<Int32>.KeepAlive?,
+            ) = IdentityConverter<Int32>.convertArg(cdn)
+
+        let ffiStructArg = FfiArg(media_id: media_id_ffi, cdn: cdn_ffi, )
+        let ffiStructKeepAlive:
+            (FixedByteArrayConverter<FixedByteArrayHelper15>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
+                (media_id_keepalive != nil || cdn_keepalive != nil || false)
+                ? (media_id_keepalive, cdn_keepalive,)
+                : nil
+
+        return (ffiStructArg, ffiStructKeepAlive)
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        let media_id = niceArg.mediaId
+        let cdn = niceArg.cdn
+
+        return try FixedByteArrayConverter<FixedByteArrayHelper15>.convertArgBorrowed(media_id) {
+            ffi_media_id in
+            return try IdentityConverter<Int32>.convertArgBorrowed(cdn) {
+                ffi_cdn in
+
+                return try niceThunk(
+                    FfiArg(
+                        media_id: ffi_media_id,
+                        cdn: ffi_cdn,
+                    )
+                )
+
             }
         }
 
@@ -2091,6 +2274,26 @@ internal enum NativeNice {
         return try DerivedReturnConverterCopyBackupMediaNextChunk.convertReturn(consuming: rawOutput)
 
     }
+    internal static func DeleteBackupMediaStream_next(
+        asyncContext: TokioAsyncContext,
+        stream: DeleteBackupMediaStream,
+    ) async throws -> DeleteBackupMediaNextChunk {
+        let rawOutput: DerivedReturnConverterDeleteBackupMediaNextChunk.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerDeleteBackupMediaStream, DeleteBackupMediaStream>
+                    .convertArgBorrowed(stream) { streamFfi in
+                        SignalFfi.signal_delete_backup_media_stream_next(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            streamFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterDeleteBackupMediaNextChunk.convertReturn(consuming: rawOutput)
+
+    }
     internal static func SvrKey_DeriveLoggingKey(
         svrKey svr_key: Data,
     ) throws -> Data {
@@ -2258,6 +2461,52 @@ internal enum NativeNice {
                     }
             }
         return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_backup_delete_media(
+        chat: UnauthenticatedChatConnection,
+        credential: BackupAuthCredential,
+        serverKeys server_keys: GenericServerPublicParams,
+        signingKey signing_key: PrivateKey,
+        items: [BridgeDeleteBackupMediaItem],
+        rng: Int64,
+    ) throws -> DeleteBackupMediaStream {
+        try BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+            .convertArgBorrowed(chat) { chatFfi in
+                try ByteArrayConverter<BackupAuthCredential>.convertArgBorrowed(credential) { credentialFfi in
+                    try ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(server_keys) {
+                        server_keysFfi in
+                        try BridgeHandleRefConverter<SignalMutPointerPrivateKey, PrivateKey>.convertArgBorrowed(
+                            signing_key
+                        ) { signing_keyFfi in
+                            try ArrayArgConverter<
+                                DerivedArgConverterBridgeDeleteBackupMediaItem,
+                                FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg_DerivedArgConverterBridgeDeleteBackupMediaItem
+                            >.convertArgBorrowed(items) { itemsFfi in
+                                try IdentityConverter.convertArgBorrowed(rng) { rngFfi in
+                                    var rawOutput = BridgeHandleConverter<
+                                        SignalMutPointerDeleteBackupMediaStream, DeleteBackupMediaStream
+                                    >.emptyFfiReturn()
+                                    try checkError(
+                                        SignalFfi.signal_unauthenticated_chat_connection_backup_delete_media(
+                                            &rawOutput,
+                                            chatFfi,
+                                            credentialFfi,
+                                            server_keysFfi,
+                                            signing_keyFfi,
+                                            itemsFfi,
+                                            rngFfi,
+                                        )
+                                    )
+                                    return try BridgeHandleConverter<
+                                        SignalMutPointerDeleteBackupMediaStream, DeleteBackupMediaStream
+                                    >.convertReturn(consuming: rawOutput)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
     }
     internal static func UnauthenticatedChatConnection_backup_get_cdn_credentials(

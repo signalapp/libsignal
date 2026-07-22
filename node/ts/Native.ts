@@ -181,6 +181,11 @@ export type ReturnFfiBridgeCopyBackupMediaResult =
       __type: 3;
     };
 
+export type ReturnFfiBridgeDeleteBackupMediaItem = {
+  media_id: Uint8Array<ArrayBuffer>;
+  cdn: number;
+};
+
 export type ReturnFfiBridgeMediaBackupInfo = {
   backup_dir: string;
   media_dir: string;
@@ -202,6 +207,26 @@ export type ReturnFfiCopyBackupMediaOut =
   | {
       __type: 0;
       _0: ReturnFfiBridgeCopyBackupMediaOutcome;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiDeleteBackupMediaNextChunk = {
+  chunk: Array<ReturnFfiBridgeDeleteBackupMediaItem>;
+  termination: ('finished' | Error) | null;
+};
+
+export type ReturnFfiDeleteBackupMediaOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeDeleteBackupMediaItem;
     }
   | {
       __type: 1;
@@ -371,6 +396,11 @@ export type ArgFfiBridgeCopyBackupMediaItem = {
   object_length: bigint;
   media_id: Uint8Array<ArrayBuffer>;
   encryption_key: Uint8Array<ArrayBuffer>;
+};
+
+export type ArgFfiBridgeDeleteBackupMediaItem = {
+  media_id: Uint8Array<ArrayBuffer>;
+  cdn: number;
 };
 
 export type ArgFfiMyRemoteDeriveEnum =
@@ -1022,6 +1052,13 @@ type NativeFunctions = {
   DecryptionErrorMessage_Serialize: (
     obj: Wrapper<DecryptionErrorMessage>
   ) => Uint8Array<ArrayBuffer>;
+  DeleteBackupMediaStream_cancel: (
+    stream: Wrapper<DeleteBackupMediaStream>
+  ) => void;
+  DeleteBackupMediaStream_next: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    stream: Wrapper<DeleteBackupMediaStream>
+  ) => CancellablePromise<ReturnFfiDeleteBackupMediaNextChunk>;
   DonationPermitDerivedKeyPair_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2363,6 +2400,12 @@ type NativeFunctions = {
     secret: Uint8Array<ArrayBuffer>
   ) => string;
   TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
+  TESTING_DeleteBackupMediaTests: () => Array<
+    GrpcTestCaseFfi<
+      Array<ReturnFfiBridgeDeleteBackupMediaItem>,
+      Array<ReturnFfiDeleteBackupMediaOut>
+    >
+  >;
   TESTING_DeleteUsernameHashTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_DeleteUsernameLinkTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_EnableDeterministicRngForTesting: () => void;
@@ -2796,6 +2839,14 @@ type NativeFunctions = {
     signing_key: Wrapper<PrivateKey>,
     rng: RandomNumberGenerator
   ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_backup_delete_media: (
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    items: Array<ArgFfiBridgeDeleteBackupMediaItem>,
+    rng: RandomNumberGenerator
+  ) => DeleteBackupMediaStream;
   UnauthenticatedChatConnection_backup_get_cdn_credentials: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -3176,6 +3227,8 @@ const {
   DecryptionErrorMessage_GetRatchetKey,
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
+  DeleteBackupMediaStream_cancel,
+  DeleteBackupMediaStream_next,
   DonationPermitDerivedKeyPair_CheckValidContents,
   DonationPermitDerivedKeyPair_ForExpiration,
   DonationPermitRequestContext_CheckValidContents,
@@ -3547,6 +3600,7 @@ const {
   TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
   TESTING_EnableDeterministicRngForTesting,
@@ -3709,6 +3763,7 @@ const {
   UnauthenticatedChatConnection_account_exists,
   UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
+  UnauthenticatedChatConnection_backup_delete_media,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
   UnauthenticatedChatConnection_backup_get_media_backup_info,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
@@ -3903,6 +3958,8 @@ export {
   DecryptionErrorMessage_GetRatchetKey,
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
+  DeleteBackupMediaStream_cancel,
+  DeleteBackupMediaStream_next,
   DonationPermitDerivedKeyPair_CheckValidContents,
   DonationPermitDerivedKeyPair_ForExpiration,
   DonationPermitRequestContext_CheckValidContents,
@@ -4274,6 +4331,7 @@ export {
   TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
   TESTING_EnableDeterministicRngForTesting,
@@ -4436,6 +4494,7 @@ export {
   UnauthenticatedChatConnection_account_exists,
   UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
+  UnauthenticatedChatConnection_backup_delete_media,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
   UnauthenticatedChatConnection_backup_get_media_backup_info,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
@@ -4608,6 +4667,9 @@ export interface CopyBackupMediaStream {
   readonly __type: unique symbol;
 }
 export interface DecryptionErrorMessage {
+  readonly __type: unique symbol;
+}
+export interface DeleteBackupMediaStream {
   readonly __type: unique symbol;
 }
 export interface ExpiringProfileKeyCredential {

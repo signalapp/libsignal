@@ -409,6 +409,31 @@ enum
 }
 
 enum
+    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut:
+        FfiOwnedBufferOfMaxAlignedProject
+{
+    public typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult
+    public typealias Element = DerivedReturnConverterDeleteBackupMediaOut.FfiReturn
+    public static func empty() -> Buffer {
+        Buffer()
+    }
+    public static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    public static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
+
+enum
     FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult_DerivedReturnConverterMySimpleTestEnum:
         FfiOwnedBufferOfMaxAlignedProject
 {
@@ -503,6 +528,13 @@ internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
 
 internal enum CopyBackupMediaOut {
     case item(BridgeCopyBackupMediaOutcome)
+    case invalidDataInStream
+    case credentialRejected
+    case credentialRejectedWithoutAppropriateServerInfo
+}
+
+internal enum DeleteBackupMediaOut {
+    case item(BridgeDeleteBackupMediaItem)
     case invalidDataInStream
     case credentialRejected
     case credentialRejectedWithoutAppropriateServerInfo
@@ -644,6 +676,34 @@ internal enum DerivedReturnConverterCopyBackupMediaOut: NiceReturnConverter {
             return CopyBackupMediaOut.credentialRejectedWithoutAppropriateServerInfo
         default:
             throw SignalError.internalError("Unexpected enum tag for CopyBackupMediaOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterDeleteBackupMediaOut: NiceReturnConverter {
+    typealias NiceReturn = DeleteBackupMediaOut
+    typealias FfiReturn = SignalDeleteBackupMediaOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalDeleteBackupMediaOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalDeleteBackupMediaOutFfiResultItem:
+            let _0 = Result {
+                try DerivedReturnConverterBridgeDeleteBackupMediaItem.convertReturn(
+                    consuming: ffiValue.item._0
+                )
+            }
+            return DeleteBackupMediaOut.item(try _0.get())
+        case SignalDeleteBackupMediaOutFfiResultInvalidDataInStream:
+            return DeleteBackupMediaOut.invalidDataInStream
+        case SignalDeleteBackupMediaOutFfiResultCredentialRejected:
+            return DeleteBackupMediaOut.credentialRejected
+        case SignalDeleteBackupMediaOutFfiResultCredentialRejectedWithoutAppropriateServerInfo:
+            return DeleteBackupMediaOut.credentialRejectedWithoutAppropriateServerInfo
+        default:
+            throw SignalError.internalError("Unexpected enum tag for DeleteBackupMediaOut: \(ffiTag)")
         }
     }
 }
@@ -1110,7 +1170,9 @@ internal enum DerivedArgConverterMyRemoteDeriveEnum: NiceArgConverter {
 
             let ffiStructArg = SignalMyRemoteDeriveEnumFfiArgSignalTuple_Body(_0: _0_ffi, _1: _1_ffi, )
             let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
-                (_0_keepalive != nil || _1_keepalive != nil || false) ? (_0_keepalive, _1_keepalive,) : nil
+                (_0_keepalive != nil || _1_keepalive != nil || false)
+                ? (_0_keepalive, _1_keepalive,)
+                : nil
 
             return (
                 SignalMyRemoteDeriveEnumFfiArg.init(
@@ -1138,7 +1200,9 @@ internal enum DerivedArgConverterMyRemoteDeriveEnum: NiceArgConverter {
 
             let ffiStructArg = SignalMyRemoteDeriveEnumFfiArgSignalRecord_Body(x: x_ffi, y: y_ffi, )
             let ffiStructKeepAlive: (StringConverter.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
-                (x_keepalive != nil || y_keepalive != nil || false) ? (x_keepalive, y_keepalive,) : nil
+                (x_keepalive != nil || y_keepalive != nil || false)
+                ? (x_keepalive, y_keepalive,)
+                : nil
 
             return (
                 SignalMyRemoteDeriveEnumFfiArg.init(
@@ -1242,7 +1306,9 @@ internal enum DerivedArgConverterMyRemoteDeriveStruct: NiceArgConverter {
 
         let ffiStructArg = FfiArg(x: x_ffi, y: y_ffi, )
         let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
-            (x_keepalive != nil || y_keepalive != nil || false) ? (x_keepalive, y_keepalive,) : nil
+            (x_keepalive != nil || y_keepalive != nil || false)
+            ? (x_keepalive, y_keepalive,)
+            : nil
 
         return (ffiStructArg, ffiStructKeepAlive)
     }
@@ -1343,7 +1409,9 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
 
             let ffiStructArg = SignalMyTestEnumFfiArgSignalSingle_Body(_0: _0_ffi, )
             let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, )? =
-                (_0_keepalive != nil || false) ? (_0_keepalive,) : nil
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
 
             return (
                 SignalMyTestEnumFfiArg.init(
@@ -1365,7 +1433,9 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
 
             let ffiStructArg = SignalMyTestEnumFfiArgSignalSingleNamed_Body(x: x_ffi, )
             let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, )? =
-                (x_keepalive != nil || false) ? (x_keepalive,) : nil
+                (x_keepalive != nil || false)
+                ? (x_keepalive,)
+                : nil
 
             return (
                 SignalMyTestEnumFfiArg.init(
@@ -1393,7 +1463,9 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
 
             let ffiStructArg = SignalMyTestEnumFfiArgSignalDouble_Body(_0: _0_ffi, _1: _1_ffi, )
             let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
-                (_0_keepalive != nil || _1_keepalive != nil || false) ? (_0_keepalive, _1_keepalive,) : nil
+                (_0_keepalive != nil || _1_keepalive != nil || false)
+                ? (_0_keepalive, _1_keepalive,)
+                : nil
 
             return (
                 SignalMyTestEnumFfiArg.init(
@@ -1444,7 +1516,8 @@ internal enum DerivedArgConverterMyTestEnum: NiceArgConverter {
                 )? =
                     (person_name_keepalive != nil || person_age_keepalive != nil || position_keepalive != nil
                         || fun_struct_keepalive != nil || false)
-                    ? (person_name_keepalive, person_age_keepalive, position_keepalive, fun_struct_keepalive,) : nil
+                    ? (person_name_keepalive, person_age_keepalive, position_keepalive, fun_struct_keepalive,)
+                    : nil
 
             return (
                 SignalMyTestEnumFfiArg.init(
@@ -1600,7 +1673,9 @@ internal enum DerivedArgConverterMyTestPoint: NiceArgConverter {
 
         let ffiStructArg = FfiArg(_0: _0_ffi, _1: _1_ffi, )
         let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
-            (_0_keepalive != nil || _1_keepalive != nil || false) ? (_0_keepalive, _1_keepalive,) : nil
+            (_0_keepalive != nil || _1_keepalive != nil || false)
+            ? (_0_keepalive, _1_keepalive,)
+            : nil
 
         return (ffiStructArg, ffiStructKeepAlive)
     }
@@ -1652,7 +1727,8 @@ internal enum DerivedArgConverterMyTestStruct: NiceArgConverter {
         let ffiStructArg = FfiArg(my_numeric_field: my_numeric_field_ffi, my_string_field: my_string_field_ffi, )
         let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, StringConverter.KeepAlive?, )? =
             (my_numeric_field_keepalive != nil || my_string_field_keepalive != nil || false)
-            ? (my_numeric_field_keepalive, my_string_field_keepalive,) : nil
+            ? (my_numeric_field_keepalive, my_string_field_keepalive,)
+            : nil
 
         return (ffiStructArg, ffiStructKeepAlive)
     }
@@ -1728,6 +1804,36 @@ internal enum NativeTestingNice {
             ArrayReturnConverter<
                 DerivedReturnConverterCopyBackupMediaOut,
                 FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult_DerivedReturnConverterCopyBackupMediaOut
+            >
+        >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_DeleteBackupMediaTests() throws -> [GrpcTestCase<
+        [BridgeDeleteBackupMediaItem], [DeleteBackupMediaOut]
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            ArrayReturnConverter<
+                DerivedReturnConverterBridgeDeleteBackupMediaItem,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult_DerivedReturnConverterBridgeDeleteBackupMediaItem
+            >,
+            ArrayReturnConverter<
+                DerivedReturnConverterDeleteBackupMediaOut,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut
+            >
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_delete_backup_media_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            ArrayReturnConverter<
+                DerivedReturnConverterBridgeDeleteBackupMediaItem,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult_DerivedReturnConverterBridgeDeleteBackupMediaItem
+            >,
+            ArrayReturnConverter<
+                DerivedReturnConverterDeleteBackupMediaOut,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut
             >
         >.convertReturn(consuming: rawOutput)
 
@@ -2596,6 +2702,22 @@ internal enum NativeTestingNice {
         return try ArrayReturnConverter<
             DerivedReturnConverterCopyBackupMediaOut,
             FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult_DerivedReturnConverterCopyBackupMediaOut
+        >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_forceEmitVecOfBridgeDeleteBackupMediaOut() throws -> [DeleteBackupMediaOut] {
+        var rawOutput = ArrayReturnConverter<
+            DerivedReturnConverterDeleteBackupMediaOut,
+            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_force_emit_vec_of_bridge_delete_backup_media_out(
+                &rawOutput,
+            )
+        )
+        return try ArrayReturnConverter<
+            DerivedReturnConverterDeleteBackupMediaOut,
+            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut
         >.convertReturn(consuming: rawOutput)
 
     }
