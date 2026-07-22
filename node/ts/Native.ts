@@ -4554,6 +4554,7 @@ export /*trait*/ type ChatListener = {
   ) => void;
   receivedQueueEmpty: () => void;
   receivedAlerts: (alerts: Array<string>) => void;
+  receivedServerTimestamp: (timestamp: Timestamp) => void;
   connectionInterrupted: (disconnectCause: Error | null) => void;
 };
 

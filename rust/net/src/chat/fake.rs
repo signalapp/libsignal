@@ -28,7 +28,7 @@ use crate::chat::{
     ResponseProto, ws,
 };
 use crate::connect_state::RouteInfo;
-use crate::env::ALERT_HEADER_NAME;
+use crate::env::{ALERT_HEADER_NAME, TIMESTAMP_HEADER_NAME};
 
 /// The remote end of a fake connection to the chat server.
 #[derive(Debug)]
@@ -110,13 +110,23 @@ impl ChatConnection {
             remote_idle_timeout: Duration::from_secs(86400),
             initial_request_id: 0,
         };
-        let headers = http::HeaderMap::from_iter(alerts.into_iter().map(|alert| {
-            (
-                http::HeaderName::from_static(ALERT_HEADER_NAME),
-                http::HeaderValue::from_str(alert)
-                    .expect("valid headers only for a fake connection"),
-            )
-        }));
+        let headers = http::HeaderMap::from_iter(
+            alerts
+                .into_iter()
+                .map(|alert| {
+                    (
+                        http::HeaderName::from_static(ALERT_HEADER_NAME),
+                        http::HeaderValue::from_str(alert)
+                            .expect("valid headers only for a fake connection"),
+                    )
+                })
+                .chain([(
+                    http::HeaderName::from_static(TIMESTAMP_HEADER_NAME),
+                    // We could pass this down like the alerts, but none of the tests need that
+                    // flexibility.
+                    http::HeaderValue::from_static("500"),
+                )]),
+        );
         let chat = Self {
             inner: crate::chat::ws::Chat::new(
                 tokio_runtime,

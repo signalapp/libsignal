@@ -174,6 +174,7 @@ public class ChatServiceTest {
   @Test
   public void testConnectionListenerCallbacks() throws Throwable {
     class Listener implements ChatConnectionListener {
+      boolean receivedTimestamp;
       boolean receivedAlerts;
       boolean receivedMessage1;
       boolean receivedMessage2;
@@ -189,6 +190,7 @@ public class ChatServiceTest {
         try {
           switch ((int) serverDeliveryTimestamp) {
             case 1000:
+              assertTrue(receivedTimestamp);
               assertTrue(receivedAlerts);
               assertFalse(receivedMessage1);
               assertFalse(receivedMessage2);
@@ -196,6 +198,7 @@ public class ChatServiceTest {
               receivedMessage1 = true;
               break;
             case 2000:
+              assertTrue(receivedTimestamp);
               assertTrue(receivedAlerts);
               assertTrue(receivedMessage1);
               assertFalse(receivedMessage2);
@@ -214,6 +217,7 @@ public class ChatServiceTest {
 
       public void onQueueEmpty(ChatConnection chat) {
         try {
+          assertTrue(receivedTimestamp);
           assertTrue(receivedAlerts);
           assertTrue(receivedMessage1);
           assertTrue(receivedMessage2);
@@ -226,8 +230,26 @@ public class ChatServiceTest {
         }
       }
 
+      public void onServerTimestamp(ChatConnection chat, long timestamp) {
+        try {
+          assertFalse(receivedTimestamp);
+          assertFalse(receivedAlerts);
+          assertFalse(receivedMessage1);
+          assertFalse(receivedMessage2);
+          assertFalse(receivedQueueEmpty);
+          // This value is hardcoded in fake.rs.
+          assertEquals(500, timestamp);
+          receivedTimestamp = true;
+        } catch (Throwable error) {
+          if (anyError == null) {
+            anyError = error;
+          }
+        }
+      }
+
       public void onReceivedAlerts(ChatConnection chat, String[] alerts) {
         try {
+          assertTrue(receivedTimestamp);
           assertFalse(receivedAlerts);
           assertFalse(receivedMessage1);
           assertFalse(receivedMessage2);
@@ -244,6 +266,7 @@ public class ChatServiceTest {
       public void onConnectionInterrupted(
           ChatConnection chat, ChatServiceException disconnectReason) {
         try {
+          assertTrue(receivedTimestamp);
           assertTrue(receivedAlerts);
           assertTrue(receivedMessage1);
           assertTrue(receivedMessage2);

@@ -501,11 +501,14 @@ describe('chat service api', () => {
         onIncomingMessage: sinon.stub(),
         onQueueEmpty: sinon.stub(),
         onReceivedAlerts: sinon.stub(),
+        onServerTimestamp: sinon.stub(),
         onConnectionInterrupted: sinon.stub(),
       };
 
       // We have to set this up ahead of time because the callback is scheduled as part of the
       // connect action.
+      const receivedServerTimestamp = new CompletablePromise();
+      listener.onServerTimestamp.callsFake(receivedServerTimestamp.resolve);
       const receivedAlerts = new CompletablePromise();
       listener.onReceivedAlerts.callsFake(receivedAlerts.resolve);
 
@@ -515,6 +518,11 @@ describe('chat service api', () => {
         listener,
         [],
         ['UPPERcase', 'lowercase']
+      );
+
+      await receivedServerTimestamp.done();
+      expect(listener.onServerTimestamp).to.have.been.calledOnceWithExactly(
+        500 // This value is hardcoded in fake.rs.
       );
 
       await receivedAlerts.done();

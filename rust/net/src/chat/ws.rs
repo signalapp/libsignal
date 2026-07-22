@@ -11,6 +11,7 @@ use std::net::IpAddr;
 use std::ops::ControlFlow;
 use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
+use std::str::FromStr as _;
 use std::sync::Arc;
 
 use futures_util::future::Either;
@@ -39,6 +40,7 @@ use crate::chat::{
 };
 use crate::env::{
     ALERT_HEADER_NAME, CONNECTED_ELSEWHERE_CLOSE_CODE, CONNECTION_INVALIDATED_CLOSE_CODE,
+    TIMESTAMP_HEADER_NAME,
 };
 use crate::infra::ws::TextOrBinary;
 use crate::infra::ws::connection::{MessageEvent, NextEventError, TungsteniteSendError};
@@ -94,6 +96,9 @@ pub struct Config {
 
 #[derive(Debug)]
 pub enum ListenerEvent {
+    /// Reports the time the server thinks it is.
+    ServerTimestamp(libsignal_protocol::Timestamp),
+
     /// Zero or more alerts were received from the server.
     ///
     /// These are more lightweight than the full requests of [`Self::ReceivedMessage`].
@@ -640,6 +645,25 @@ impl ListenerState {
         connect_response_headers: http::HeaderMap,
         tokio_rt: &tokio::runtime::Handle,
     ) {
+        if let Some(timestamp_header) = connect_response_headers.get(TIMESTAMP_HEADER_NAME) {
+            match timestamp_header
+                .to_str()
+                .ok()
+                .and_then(|value| u64::from_str(value).ok())
+            {
+                Some(timestamp_millis) => {
+                    self.send_event(
+                        tokio_rt,
+                        ListenerEvent::ServerTimestamp(
+                            libsignal_protocol::Timestamp::from_epoch_millis(timestamp_millis),
+                        ),
+                    )
+                    .await
+                }
+                None => log::warn!("unexpected {TIMESTAMP_HEADER_NAME} (not a positive integer)"),
+            }
+        }
+
         let alerts = connect_response_headers
             .get_all(ALERT_HEADER_NAME)
             .iter()
@@ -2489,13 +2513,14 @@ mod test {
     }
 
     #[tokio::test]
-    async fn reports_alerts() {
+    async fn reports_alerts_and_the_server_timestamp() {
         let tokio_rt = tokio::runtime::Handle::current();
         let (listener_tx, mut listener_rx) = mpsc::unbounded_channel();
         let mut listener_tx = ListenerState::new(Box::new(move |evt| {
             listener_tx.send(evt).expect("can send")
         }));
 
+        // No alerts, no timestamp
         listener_tx
             .report_alerts(http::HeaderMap::default(), &tokio_rt)
             .await;
@@ -2505,6 +2530,7 @@ mod test {
         );
         assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
 
+        // Alerts (and other headers), no timestamp
         listener_tx
             .report_alerts(
                 http::HeaderMap::from_iter(
@@ -2526,6 +2552,61 @@ mod test {
             )
             .await;
 
+        assert_matches!(
+            listener_rx.try_recv().expect("present"),
+            ListenerEvent::ReceivedAlerts(alerts) if alerts == ["first", "second", "third", "fourth"]
+        );
+        assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
+
+        // Timestamp, no alerts
+        listener_tx
+            .report_alerts(
+                http::HeaderMap::from_iter([(TIMESTAMP_HEADER_NAME, "1784592000000")].map(
+                    |(name, val)| {
+                        (
+                            http::HeaderName::from_static(name),
+                            http::HeaderValue::from_static(val),
+                        )
+                    },
+                )),
+                &tokio_rt,
+            )
+            .await;
+
+        assert_matches!(
+            listener_rx.try_recv().expect("present"),
+            ListenerEvent::ServerTimestamp(timestamp) if timestamp.epoch_millis() == 1784592000000
+        );
+        assert_matches!(
+            listener_rx.try_recv().expect("present"),
+            ListenerEvent::ReceivedAlerts(alerts) if alerts.is_empty()
+        );
+        assert_matches!(listener_rx.try_recv(), Err(TryRecvError::Empty));
+
+        // Timestamp and alerts
+        listener_tx
+            .report_alerts(
+                http::HeaderMap::from_iter(
+                    [
+                        (ALERT_HEADER_NAME, "first"),
+                        (ALERT_HEADER_NAME, "second,third, fourth"),
+                        (TIMESTAMP_HEADER_NAME, "1784592000000"),
+                    ]
+                    .map(|(name, val)| {
+                        (
+                            http::HeaderName::from_static(name),
+                            http::HeaderValue::from_static(val),
+                        )
+                    }),
+                ),
+                &tokio_rt,
+            )
+            .await;
+
+        assert_matches!(
+            listener_rx.try_recv().expect("present"),
+            ListenerEvent::ServerTimestamp(timestamp) if timestamp.epoch_millis() == 1784592000000
+        );
         assert_matches!(
             listener_rx.try_recv().expect("present"),
             ListenerEvent::ReceivedAlerts(alerts) if alerts == ["first", "second", "third", "fourth"]

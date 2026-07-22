@@ -43,11 +43,20 @@ public protocol ChatConnectionListener: ConnectionEventsListener<AuthenticatedCh
     ///
     /// The default implementation of this method does nothing.
     func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveAlerts alerts: [String])
+
+    /// Called with the server's current clock time.
+    ///
+    /// Like ``chatConnection(_:didReceiveIncomingMessage:serverDeliveryTimestamp:sendAck:)``,
+    /// this timestamp is in milliseconds since the Unix epoch.
+    ///
+    /// The default implementation of this method does nothing.
+    func chatConnection(_ chat: AuthenticatedChatConnection, reportedServerTimestamp timestamp: UInt64)
 }
 
 extension ChatConnectionListener {
     public func chatConnectionDidReceiveQueueEmpty(_ chat: AuthenticatedChatConnection) {}
     public func chatConnection(_ chat: AuthenticatedChatConnection, didReceiveAlerts alerts: [String]) {}
+    public func chatConnection(_ chat: AuthenticatedChatConnection, reportedServerTimestamp timestamp: UInt64) {}
 }
 
 private protocol ChatListenerConnection {
@@ -143,6 +152,16 @@ internal class ChatListenerBridge {
             return 0
         }
 
+        let receivedServerTimestamp: SignalFfiChatListenerReceivedServerTimestamp = { rawCtx, timestamp in
+            let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
+            guard let chatConnection = bridge.chatConnection else {
+                // The client no longer listening is not an error.
+                return 0
+            }
+            bridge.chatListener.chatConnection(chatConnection, reportedServerTimestamp: timestamp)
+            return 0
+        }
+
         let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<ChatListenerBridge>.fromOpaque(rawCtx!).takeUnretainedValue()
             let error = convertError(maybeError)
@@ -161,6 +180,7 @@ internal class ChatListenerBridge {
             received_incoming_message: receivedIncomingMessage,
             received_queue_empty: receivedQueueEmpty,
             received_alerts: receivedAlerts,
+            received_server_timestamp: receivedServerTimestamp,
             connection_interrupted: connectionInterrupted,
             destroy: { rawCtx in
                 _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()
@@ -249,6 +269,17 @@ internal class UnauthConnectionEventsListenerBridge {
             // We don't need to log *another* error.
             return 0
         }
+        let receivedServerTimestamp: SignalFfiChatListenerReceivedServerTimestamp = { _, _ in
+            // Not used in the unauth chat listener
+            LoggerBridge.shared?.logger.log(
+                level: .error,
+                file: #fileID,
+                line: #line,
+                message: "unauth socket received a server timestamp"
+            )
+            // We don't need to log *another* error.
+            return 0
+        }
         let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
             let bridge = Unmanaged<UnauthConnectionEventsListenerBridge>.fromOpaque(rawCtx!)
                 .takeUnretainedValue()
@@ -268,6 +299,7 @@ internal class UnauthConnectionEventsListenerBridge {
             received_incoming_message: receivedIncomingMessage,
             received_queue_empty: receivedQueueEmpty,
             received_alerts: receivedAlerts,
+            received_server_timestamp: receivedServerTimestamp,
             connection_interrupted: connectionInterrupted,
             destroy: { rawCtx in
                 _ = Unmanaged<AnyObject>.fromOpaque(rawCtx!).takeRetainedValue()

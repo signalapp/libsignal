@@ -438,7 +438,9 @@ pub(crate) async fn connect_registration_chat(
     let mut on_disconnect = Some(drop_on_disconnect);
     let listener = move |event| match event {
         ListenerEvent::Finished(_) => drop(on_disconnect.take()),
-        ListenerEvent::ReceivedAlerts(_) | ListenerEvent::ReceivedMessage(_, _) => (),
+        ListenerEvent::ServerTimestamp(_)
+        | ListenerEvent::ReceivedAlerts(_)
+        | ListenerEvent::ReceivedMessage(_, _) => (),
     };
 
     Ok(Unauth(ChatConnection::finish_connect(
@@ -718,6 +720,7 @@ pub trait ChatListener: Send {
     );
     fn received_queue_empty(&mut self);
     fn received_alerts(&mut self, alerts: Box<[String]>);
+    fn received_server_timestamp(&mut self, timestamp: Timestamp);
     fn connection_interrupted(&mut self, disconnect_cause: Option<BridgedError<SendError>>);
 }
 
@@ -739,6 +742,9 @@ impl dyn ChatListener {
             chat::server_requests::ServerEvent::QueueEmpty => self.received_queue_empty(),
             chat::server_requests::ServerEvent::Alerts(alerts) => {
                 self.received_alerts(alerts.into_boxed_slice())
+            }
+            chat::server_requests::ServerEvent::ServerTimestamp(timestamp) => {
+                self.received_server_timestamp(timestamp)
             }
             chat::server_requests::ServerEvent::Stopped(error) => {
                 self.connection_interrupted(match error {
@@ -802,6 +808,9 @@ impl dyn ProvisioningListener {
     /// trait.
     fn received_server_request(&mut self, request: chat::server_requests::ProvisioningEvent) {
         match request {
+            chat::server_requests::ProvisioningEvent::ServerTimestamp(_) => {
+                // For now, we don't expose this to the apps.
+            }
             chat::server_requests::ProvisioningEvent::ReceivedAddress { address, send_ack } => {
                 self.received_address(address, ServerMessageAck::new(send_ack))
             }

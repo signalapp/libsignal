@@ -20,6 +20,8 @@ public interface BridgeChatListener {
 
   void receivedAlerts(String[] alerts);
 
+  void receivedServerTimestamp(long timestamp);
+
   // disconnectReason should always be a ChatServiceError, but it is converted to a Throwable
   //   just to be easily passed across the bridge.
   void connectionInterrupted(Throwable disconnectReason);

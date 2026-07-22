@@ -361,6 +361,7 @@ mod testutil {
             T: Send + 'static,
         {
             Box::new(move |event| match event {
+                ListenerEvent::ServerTimestamp(_) => {}
                 ListenerEvent::ReceivedAlerts(alerts) => {
                     if !alerts.is_empty() {
                         unreachable!("unexpected alerts: {alerts:?}")

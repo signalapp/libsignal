@@ -92,6 +92,14 @@ public abstract class ChatConnection extends NativeHandleGuard.SimpleOwner {
       chat.chatListener.onReceivedAlerts(chat, alerts);
     }
 
+    public void receivedServerTimestamp(long timestamp) {
+      ChatConnection chat = this.chat.get();
+      if (chat == null) return;
+      if (chat.chatListener == null) return;
+
+      chat.chatListener.onServerTimestamp(chat, timestamp);
+    }
+
     public void connectionInterrupted(Throwable disconnectReason) {
       ChatConnection chat = this.chat.get();
       if (chat == null) return;

@@ -81,6 +81,13 @@ export interface ChatServiceListener extends ConnectionEventsListener {
    * In practice this happens as part of the connecting process.
    */
   onReceivedAlerts?: (alerts: string[]) => void;
+
+  /**
+   * Called with the server's current clock time.
+   *
+   * Like {@link #onIncomingMessage}, this timestamp is in milliseconds since the Unix epoch.
+   */
+  onServerTimestamp?: (timestamp: number) => void;
 }
 
 export interface ProvisioningConnectionListener
@@ -541,6 +548,9 @@ class WeakListenerWrapper implements Native.ChatListener {
   receivedAlerts(alerts: string[]): void {
     this.listener.deref()?.receivedAlerts(alerts);
   }
+  receivedServerTimestamp(timestamp: number): void {
+    this.listener.deref()?.receivedServerTimestamp(timestamp);
+  }
 }
 
 /** Like {@link WeakListenerWrapper}, but for {@link ProvisioningConnection}. */
@@ -586,6 +596,9 @@ function makeNativeChatListener(
       receivedAlerts(alerts: string[]): void {
         listener.onReceivedAlerts?.(alerts);
       },
+      receivedServerTimestamp(timestamp: number): void {
+        listener.onServerTimestamp?.(timestamp);
+      },
       connectionInterrupted(cause: Error | null): void {
         listener.onConnectionInterrupted(cause as LibSignalError | null);
       },
@@ -601,6 +614,9 @@ function makeNativeChatListener(
       throw new Error('Event not supported on unauthenticated connection');
     },
     receivedQueueEmpty(): void {
+      throw new Error('Event not supported on unauthenticated connection');
+    },
+    receivedServerTimestamp(): void {
       throw new Error('Event not supported on unauthenticated connection');
     },
     receivedAlerts(alerts: string[]): void {

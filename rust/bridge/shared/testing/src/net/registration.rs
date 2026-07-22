@@ -77,7 +77,8 @@ impl ConnectUnauthChat for ConnectFakeChat {
         let mut on_disconnect = Some(on_disconnect);
         let listener = move |event| match event {
             libsignal_net::chat::ws::ListenerEvent::Finished(_) => drop(on_disconnect.take()),
-            libsignal_net::chat::ws::ListenerEvent::ReceivedAlerts(_)
+            libsignal_net::chat::ws::ListenerEvent::ServerTimestamp(_)
+            | libsignal_net::chat::ws::ListenerEvent::ReceivedAlerts(_)
             | libsignal_net::chat::ws::ListenerEvent::ReceivedMessage(_, _) => (),
         };
 

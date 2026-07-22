@@ -211,6 +211,7 @@ final class ChatConnectionTests: TestCaseBase {
     func testListenerCallbacks() async throws {
         class Listener: ChatConnectionListener {
             let queueEmpty: XCTestExpectation
+            let serverTimestampReceived: XCTestExpectation
             let alertsReceived: XCTestExpectation
             let firstMessageReceived: XCTestExpectation
             let secondMessageReceived: XCTestExpectation
@@ -218,19 +219,21 @@ final class ChatConnectionTests: TestCaseBase {
 
             var expectations: [XCTestExpectation] {
                 [
-                    self.alertsReceived, self.firstMessageReceived, self.secondMessageReceived, self.queueEmpty,
-                    self.connectionInterrupted,
+                    self.serverTimestampReceived, self.alertsReceived, self.firstMessageReceived,
+                    self.secondMessageReceived, self.queueEmpty, self.connectionInterrupted,
                 ]
             }
 
             init(
                 queueEmpty: XCTestExpectation,
+                serverTimestampReceived: XCTestExpectation,
                 alertsReceived: XCTestExpectation,
                 firstMessageReceived: XCTestExpectation,
                 secondMessageReceived: XCTestExpectation,
                 connectionInterrupted: XCTestExpectation
             ) {
                 self.queueEmpty = queueEmpty
+                self.serverTimestampReceived = serverTimestampReceived
                 self.alertsReceived = alertsReceived
                 self.firstMessageReceived = firstMessageReceived
                 self.secondMessageReceived = secondMessageReceived
@@ -264,6 +267,11 @@ final class ChatConnectionTests: TestCaseBase {
                 self.alertsReceived.fulfill()
             }
 
+            func chatConnection(_ chat: AuthenticatedChatConnection, reportedServerTimestamp timestamp: UInt64) {
+                XCTAssertEqual(timestamp, 500)  // This value is hardcoded in fake.rs.
+                self.serverTimestampReceived.fulfill()
+            }
+
             func connectionWasInterrupted(_: AuthenticatedChatConnection, error: Error?) {
                 XCTAssertNotNil(error)
                 self.connectionInterrupted.fulfill()
@@ -273,6 +281,7 @@ final class ChatConnectionTests: TestCaseBase {
         let tokioAsyncContext = TokioAsyncContext()
         let listener = Listener(
             queueEmpty: expectation(description: "queue empty"),
+            serverTimestampReceived: expectation(description: "server timestamp received"),
             alertsReceived: expectation(description: "alerts received"),
             firstMessageReceived: expectation(description: "first message received"),
             secondMessageReceived: expectation(description: "second message received"),
