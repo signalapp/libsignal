@@ -3,17 +3,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use libsignal_account_keys::PinHash;
 use libsignal_core::{LogSafeDisplay, assert_log_safe_display};
 use libsignal_net_infra::errors::RetryLater;
 use libsignal_net_infra::ws::attested::AttestedConnectionError;
 use libsignal_net_infra::ws::{WebSocketConnectError, WebSocketError};
 use prost::Message as _;
+use subtle::ConstantTimeEq as _;
 use thiserror::Error;
 
 use crate::proto::svr2 as proto;
 
 pub mod ops;
-use ops::{Svr2Protocol, do_backup, do_expose};
+use ops::{Svr2Protocol, do_backup, do_expose, do_restore};
 
 mod types;
 use types::{MaxTries, Svr2Data};
@@ -47,6 +49,8 @@ pub enum Error {
     AllConnectionAttemptsFailed,
     /// Failed to decrypt the restored data
     DecryptionError,
+    /// Migration attempt failed due to data mismatch
+    DataMismatch,
 }
 
 impl LogSafeDisplay for Error {
@@ -76,7 +80,8 @@ impl LogSafeDisplay for Error {
             | Error::DataMissing
             | Error::EnclaveNotFound
             | Error::AllConnectionAttemptsFailed
-            | Error::DecryptionError => self,
+            | Error::DecryptionError
+            | Error::DataMismatch => self,
         }
     }
 }
@@ -125,8 +130,8 @@ pub enum BackupSession {
 }
 
 #[derive(Debug, Error, displaydoc::Display)]
-pub enum BackupSessionDecodeError {
-    /// Failed to decode BackupSession proto: {0}
+pub enum StoredSessionDecodeError {
+    /// Failed to decode serialized session proto: {0}
     Decode(#[from] prost::DecodeError),
     /// Pin must be 32 bytes, got {0}
     InvalidPinLength(usize),
@@ -136,7 +141,7 @@ pub enum BackupSessionDecodeError {
     InvalidMaxTries(#[from] InvalidMaxTries),
 }
 
-impl LogSafeDisplay for BackupSessionDecodeError {}
+impl LogSafeDisplay for StoredSessionDecodeError {}
 
 impl BackupSession {
     pub fn serialize(&self) -> Vec<u8> {
@@ -165,7 +170,7 @@ impl BackupSession {
         proto.encode_to_vec()
     }
 
-    pub fn deserialize(bytes: &[u8]) -> Result<Self, BackupSessionDecodeError> {
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, StoredSessionDecodeError> {
         let proto::BackupSession {
             pin,
             data,
@@ -178,7 +183,7 @@ impl BackupSession {
             let len = pin.len();
             let pin = pin
                 .try_into()
-                .map_err(|_| BackupSessionDecodeError::InvalidPinLength(len))?;
+                .map_err(|_| StoredSessionDecodeError::InvalidPinLength(len))?;
             let data = Svr2Data::try_from(data)?;
             let max_tries = MaxTries::try_from(max_tries)?;
             Ok(BackupSession::Partial {
@@ -244,13 +249,143 @@ impl BackupSession {
     }
 }
 
+/// In-progress SVR2 enclave migration.
+///
+/// Writes the master key forward to the current enclave. The previous enclave is
+/// left untouched so an older client that only knows _it_ is still able to
+/// restore. Like [`BackupSession`] it can be serialized between steps so a
+/// long-running client job can drive it to completion across restarts.
+///
+/// The session records the current enclave it was built against, so a caller can
+/// pass a completed session back to [`migrate`](Self::migrate) on every launch and
+/// get a no-op with no enclave round trips as long as the current enclave has not
+/// changed.
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
+pub struct MigrationSession {
+    /// Write of the master key to the current enclave.
+    backup: BackupSession,
+    /// mrenclave of the current enclave this session migrated the key to.
+    current_mrenclave: Vec<u8>,
+}
+
+impl MigrationSession {
+    /// Whether the master key is written to and exposed in the current enclave.
+    pub fn is_complete(&self) -> bool {
+        matches!(self.backup, BackupSession::Complete)
+    }
+
+    pub fn serialize(&self) -> Vec<u8> {
+        proto::MigrationSession {
+            backup: self.backup.serialize(),
+            current_mrenclave: self.current_mrenclave.clone(),
+        }
+        .encode_to_vec()
+    }
+
+    pub fn deserialize(bytes: &[u8]) -> Result<Self, StoredSessionDecodeError> {
+        let proto::MigrationSession {
+            backup,
+            current_mrenclave,
+        } = proto::MigrationSession::decode(bytes)?;
+        Ok(Self {
+            backup: BackupSession::deserialize(&backup)?,
+            current_mrenclave,
+        })
+    }
+
+    /// Runs an enclave migration as far as it can in one call.
+    ///
+    /// Given the session persisted from a previous call (or `None` on the first
+    /// call), this does the right thing without the caller choosing a phase:
+    ///
+    /// - a completed session for the enclaves configured now needs no work, so it
+    ///   is returned unchanged without contacting any enclave (and without deriving
+    ///   the pin hash);
+    /// - an "incomplete" session to the current enclave is finished by sending
+    ///   the Expose, never a fresh Backup;
+    /// - otherwise, the `master_key` is written to the current enclave, unless
+    ///   it already holds it (a fresh `BackupRequest` would reset the
+    ///   remaining-tries counter).
+    ///
+    /// The previous enclave is never contacted, the caller supplies the master key
+    /// it already holds. `current_mrenclave` is the configured current enclave,
+    /// recorded in the returned session so a later call can recognize it as already
+    /// done. `current_pin_hash` is derived only when a fresh write is needed, so the
+    /// no-op and resume paths do not perform any heavy crypto.
+    ///
+    /// Returns an error only up to and including the current-enclave
+    /// `BackupRequest` (all safe to retry). Once the write succeeds the session is
+    /// returned even if the follow-on Expose did not. In such case caller
+    /// should persist it and call `migrate` again to complete the migration.
+    pub async fn migrate<CurFut, CurClient, Hash>(
+        existing_migration: Option<MigrationSession>,
+        connect_current: CurFut,
+        current_pin_hash: Hash,
+        current_mrenclave: &[u8],
+        master_key: &[u8; 32],
+        max_tries: MaxTries,
+    ) -> Result<Self, Error>
+    where
+        CurFut: Future<Output = Result<CurClient, Error>>,
+        CurClient: Svr2Protocol,
+        Hash: FnOnce() -> PinHash,
+    {
+        if let Some(mut migration) = existing_migration
+            && migration.current_mrenclave == current_mrenclave
+        {
+            // If the backup session is incomplete - finish it.
+            if !migration.is_complete() {
+                migration.backup.finish(connect_current).await?;
+            }
+            return Ok(migration);
+        }
+
+        // Write the master key to the current enclave. Don't overwrite it if it
+        // already holds the value, as a fresh BackupRequest would reset the
+        // remaining-tries counter.
+        let current_pin_hash = current_pin_hash();
+        let mut current_conn = connect_current.await?;
+        let restore_result = do_restore(&mut current_conn, &current_pin_hash.access_key).await;
+        let data = || Svr2Data::from(current_pin_hash.encode_master_key(master_key));
+        let backup = match restore_result {
+            Ok(stored) => {
+                if !bool::from(stored.data.ct_eq(data().as_ref())) {
+                    // The stored value does not match master key provided.
+                    // Let the caller decide what to do with it.
+                    return Err(Error::DataMismatch);
+                }
+                // If the data matches - carry on. Nothing else to do.
+                BackupSession::Complete
+            }
+            // Nothing in current. Let's write it.
+            Err(Error::DataMissing) => {
+                BackupSession::start(
+                    &mut current_conn,
+                    current_pin_hash.access_key,
+                    data(),
+                    max_tries,
+                )
+                .await?
+            }
+            Err(e) => return Err(e),
+        };
+
+        Ok(Self {
+            backup,
+            current_mrenclave: current_mrenclave.to_vec(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fmt::{Debug, Formatter};
+    use std::sync::atomic::{AtomicBool, Ordering};
 
     use assert_matches::assert_matches;
     use futures_util::FutureExt as _;
-    use test_case::test_matrix;
+    use test_case::{test_case, test_matrix};
 
     use super::ops::{do_delete, do_restore};
     use super::*;
@@ -292,7 +427,7 @@ mod tests {
         } else {
             assert_matches!(
                 BackupSession::deserialize(&bytes),
-                Err(BackupSessionDecodeError::InvalidPinLength(16))
+                Err(StoredSessionDecodeError::InvalidPinLength(16))
             );
         }
     }
@@ -301,11 +436,29 @@ mod tests {
     fn deserialize_rejects_bad_input() {
         assert_matches!(
             BackupSession::deserialize(&[0; 42]),
-            Err(BackupSessionDecodeError::Decode(_))
+            Err(StoredSessionDecodeError::Decode(_))
         );
     }
 
-    struct TestConnection<T>(T);
+    struct TestConnection<T = fn(proto::Request) -> Result<proto::Response, Error>>(T);
+
+    impl TestConnection {
+        /// A connection whose response to each request is chosen by `route` based
+        /// on the request's inner variant.
+        fn with_inner_handler(
+            route: impl Fn(&proto::request::Inner) -> Result<proto::Response, Error>,
+        ) -> TestConnection<impl Fn(proto::Request) -> Result<proto::Response, Error>> {
+            TestConnection(move |request: proto::Request| {
+                let inner = request.inner.as_ref().expect("request has inner");
+                route(inner)
+            })
+        }
+
+        /// A connection that panics on any request; use where no request is expected.
+        fn failing() -> TestConnection<impl Fn(proto::Request) -> Result<proto::Response, Error>> {
+            TestConnection(|request: proto::Request| panic!("unexpected request: {request:?}"))
+        }
+    }
 
     impl<T> Debug for TestConnection<T> {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -573,5 +726,246 @@ mod tests {
     async fn do_remove_empty_inner_is_protocol_error() {
         let mut conn = TestConnection(|_| Ok(empty_response()));
         assert_matches!(do_delete(&mut conn).await, Err(Error::Protocol(_)));
+    }
+
+    const MIGRATE_MASTER_KEY: [u8; 32] = [9u8; 32];
+    const CURRENT_MRENCLAVE: &[u8] = &[0xc0; 32];
+    const OTHER_MRENCLAVE: &[u8] = &[0x0e; 32];
+
+    fn test_pin_hash(seed: u8) -> PinHash {
+        PinHash {
+            encryption_key: [seed; 32],
+            access_key: [seed ^ 0xff; 32],
+        }
+    }
+
+    #[test_case(MigrationSession {
+        backup: BackupSession::Complete,
+        current_mrenclave: CURRENT_MRENCLAVE.to_vec(),
+    }; "complete")]
+    #[test_case(MigrationSession {
+        backup: BackupSession::Partial {
+            pin: PIN,
+            data: test_data(),
+            max_tries: MAX_TRIES,
+        },
+        current_mrenclave: CURRENT_MRENCLAVE.to_vec(),
+    }; "partial backup")]
+    fn migration_serialize_round_trip(session: MigrationSession) {
+        let decoded = MigrationSession::deserialize(&session.serialize()).expect("decodes");
+        assert_eq!(decoded, session);
+    }
+
+    #[tokio::test]
+    async fn migration_writes_current() {
+        let current_pin_hash = test_pin_hash(2);
+        let expected_data = current_pin_hash.encode_master_key(&MIGRATE_MASTER_KEY);
+        let expected_pin = current_pin_hash.access_key;
+
+        // The caller's master key is written under the current pin hash. The
+        // previous enclave is never contacted.
+        let current = TestConnection::with_inner_handler(move |inner| match inner {
+            proto::request::Inner::Restore(_) => Ok(restore_response(
+                proto::restore_response::Status::Missing,
+                0,
+                vec![],
+            )),
+            proto::request::Inner::Backup(backup) => {
+                assert_eq!(backup.data, expected_data);
+                assert_eq!(backup.pin, expected_pin);
+                Ok(backup_response(proto::backup_response::Status::Ok))
+            }
+            proto::request::Inner::Expose(_) => {
+                Ok(expose_response(proto::expose_response::Status::Ok))
+            }
+            other => panic!("unexpected current request: {other:?}"),
+        });
+
+        let session = MigrationSession::migrate(
+            None,
+            async { Ok(current) },
+            move || current_pin_hash,
+            CURRENT_MRENCLAVE,
+            &MIGRATE_MASTER_KEY,
+            MAX_TRIES,
+        )
+        .await
+        .expect("migration completes in one call");
+        assert!(session.is_complete());
+        assert_eq!(session.current_mrenclave, CURRENT_MRENCLAVE);
+    }
+
+    #[tokio::test]
+    async fn migration_skips_write_when_current_already_has_data() {
+        let current_pin_hash = test_pin_hash(2);
+        let stored_data = current_pin_hash
+            .encode_master_key(&MIGRATE_MASTER_KEY)
+            .to_vec();
+
+        // The current enclave already holds the key. A `BackupRequest` here would
+        // reset the remaining-tries counter, so it must not happen.
+        let current = TestConnection::with_inner_handler(move |inner| match inner {
+            proto::request::Inner::Restore(_) => Ok(restore_response(
+                proto::restore_response::Status::Ok,
+                5,
+                stored_data.clone(),
+            )),
+            other => panic!("current enclave must not be rewritten: {other:?}"),
+        });
+
+        let session = MigrationSession::migrate(
+            None,
+            async { Ok(current) },
+            move || current_pin_hash,
+            CURRENT_MRENCLAVE,
+            &MIGRATE_MASTER_KEY,
+            MAX_TRIES,
+        )
+        .await
+        .expect("migration completes without a rewrite");
+        assert!(session.is_complete());
+    }
+
+    #[tokio::test]
+    async fn migration_reports_data_mismatch_when_current_holds_different_data() {
+        let current_pin_hash = test_pin_hash(2);
+
+        let current = TestConnection::with_inner_handler(|inner| match inner {
+            proto::request::Inner::Restore(_) => Ok(restore_response(
+                proto::restore_response::Status::Ok,
+                5,
+                vec![0u8; 48],
+            )),
+            other => panic!("current enclave must not be rewritten: {other:?}"),
+        });
+
+        assert_matches!(
+            MigrationSession::migrate(
+                None,
+                async { Ok(current) },
+                move || current_pin_hash,
+                CURRENT_MRENCLAVE,
+                &MIGRATE_MASTER_KEY,
+                MAX_TRIES,
+            )
+            .await,
+            Err(Error::DataMismatch)
+        );
+    }
+
+    #[tokio::test]
+    async fn migration_resumes_expose_without_rebackup() {
+        // Expose to the current enclave fails on the first call, so the session is
+        // left with a staged-but-unexposed write.
+        let current = TestConnection::with_inner_handler(|inner| match inner {
+            proto::request::Inner::Restore(_) => Ok(restore_response(
+                proto::restore_response::Status::Missing,
+                0,
+                vec![],
+            )),
+            proto::request::Inner::Backup(_) => {
+                Ok(backup_response(proto::backup_response::Status::Ok))
+            }
+            proto::request::Inner::Expose(_) => {
+                Ok(expose_response(proto::expose_response::Status::Error))
+            }
+            other => panic!("unexpected current request: {other:?}"),
+        });
+
+        let session = MigrationSession::migrate(
+            None,
+            async { Ok(current) },
+            || test_pin_hash(2),
+            CURRENT_MRENCLAVE,
+            &MIGRATE_MASTER_KEY,
+            MAX_TRIES,
+        )
+        .await
+        .expect("first call succeeds even though expose failed");
+        assert!(!session.is_complete());
+
+        let expose_called = AtomicBool::new(false);
+        // A second call with the partial session retries the expose only. It must
+        // never re-send a BackupRequest, nor derive the pin hash.
+        let current = TestConnection::with_inner_handler(|inner| match inner {
+            proto::request::Inner::Expose(_) => {
+                expose_called.store(true, Ordering::Relaxed);
+                Ok(expose_response(proto::expose_response::Status::Ok))
+            }
+            proto::request::Inner::Backup(_) => panic!("resume must not re-send BackupRequest"),
+            other => panic!("unexpected current request: {other:?}"),
+        });
+        let session = MigrationSession::migrate(
+            Some(session),
+            async { Ok(current) },
+            || panic!("pin hash must not be derived when resuming"),
+            CURRENT_MRENCLAVE,
+            &MIGRATE_MASTER_KEY,
+            MAX_TRIES,
+        )
+        .await
+        .expect("resume completes the migration");
+        assert!(session.is_complete());
+        assert!(expose_called.into_inner());
+    }
+
+    #[tokio::test]
+    async fn migration_is_noop_when_already_migrated() {
+        // A completed session for the configured current enclave has nothing to do,
+        // so no enclave is contacted and no pin hash is derived.
+        let migration = MigrationSession {
+            backup: BackupSession::Complete,
+            current_mrenclave: CURRENT_MRENCLAVE.to_vec(),
+        };
+        let connected = AtomicBool::new(false);
+        let connect_current = async {
+            connected.store(true, Ordering::Relaxed);
+            Ok(TestConnection::failing())
+        };
+        let session = MigrationSession::migrate(
+            Some(migration.clone()),
+            connect_current,
+            || panic!("pin hash must not be derived on a no-op"),
+            CURRENT_MRENCLAVE,
+            &MIGRATE_MASTER_KEY,
+            MAX_TRIES,
+        )
+        .await
+        .expect("migrate succeeds");
+        assert_eq!(session, migration);
+        assert!(!connected.into_inner(), "no enclave should be contacted");
+    }
+
+    #[tokio::test]
+    async fn migration_runs_when_current_enclave_changed() {
+        // A completed session for a different current enclave does not apply, so the
+        // migration runs against the newly configured current enclave and re-stamps.
+        let migration = MigrationSession {
+            backup: BackupSession::Complete,
+            current_mrenclave: OTHER_MRENCLAVE.to_vec(),
+        };
+        let stored_data = test_pin_hash(2)
+            .encode_master_key(&MIGRATE_MASTER_KEY)
+            .to_vec();
+        let current = TestConnection::with_inner_handler(move |inner| match inner {
+            proto::request::Inner::Restore(_) => Ok(restore_response(
+                proto::restore_response::Status::Ok,
+                5,
+                stored_data.clone(),
+            )),
+            other => panic!("unexpected current request: {other:?}"),
+        });
+        let session = MigrationSession::migrate(
+            Some(migration),
+            async { Ok(current) },
+            || test_pin_hash(2),
+            CURRENT_MRENCLAVE,
+            &MIGRATE_MASTER_KEY,
+            MAX_TRIES,
+        )
+        .await
+        .expect("migration runs");
+        assert!(session.is_complete());
+        assert_eq!(session.current_mrenclave, CURRENT_MRENCLAVE);
     }
 }

@@ -10,12 +10,15 @@ use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net::infra::ws::attested::AttestedConnection;
 use libsignal_net::svr::SvrConnection;
 use libsignal_net::svr2::Error;
-pub use libsignal_net::svr2::{BackupSession as Svr2BackupSession, RestoreResult};
+pub use libsignal_net::svr2::{
+    BackupSession as Svr2BackupSession, MigrationSession as Svr2MigrationSession, RestoreResult,
+};
 
 use crate::net::ConnectionManager;
 use crate::*;
 
 bridge_as_handle!(Svr2BackupSession);
+bridge_as_handle!(Svr2MigrationSession);
 
 /// High-level SVR2 API.
 ///

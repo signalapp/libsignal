@@ -266,6 +266,7 @@ impl SignalNodeError for libsignal_net::svr2::Error {
             }
             Self::DataMissing => (Some("SvrDataMissing"), None),
             Self::DecryptionError => (Some("SvrInvalidData"), None),
+            Self::DataMismatch => (Some("SvrDataMismatch"), None),
         };
 
         let message = self.to_string();

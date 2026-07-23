@@ -9,6 +9,7 @@ import type {
   IoError,
   RateLimitedError,
   SvrAttestationError,
+  SvrDataMismatchError,
   SvrDataMissingError,
   SvrInvalidDataError,
   SvrRestoreFailedError,
@@ -28,6 +29,54 @@ export class Svr2BackupSession {
   readonly _nativeHandle: Native.Svr2BackupSession;
   constructor(handle: Native.Svr2BackupSession) {
     this._nativeHandle = handle;
+  }
+}
+
+/**
+ * In-progress SVR2 enclave migration.
+ *
+ * Returned by {@link Svr2#migrate} and driven to completion by repeated calls to
+ * it. The session can be serialized between calls so a long-running client job can
+ * resume the migration across restarts.
+ *
+ * See {@link Svr2#migrate} for the drive-to-completion loop.
+ */
+export class Svr2MigrationSession {
+  readonly _nativeHandle: Native.Svr2MigrationSession;
+  constructor(handle: Native.Svr2MigrationSession) {
+    this._nativeHandle = handle;
+  }
+
+  /**
+   * Serializes the session so it can be persisted and later restored with
+   * {@link #deserialize}.
+   */
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Native.Svr2MigrationSession_Serialize(this);
+  }
+
+  /**
+   * Restores a session previously produced by {@link #serialize}.
+   *
+   * @throws {SvrInvalidDataError} if the bytes are corrupt or incompatible.
+   */
+  static deserialize(bytes: Uint8Array<ArrayBuffer>): Svr2MigrationSession {
+    return new Svr2MigrationSession(
+      Native.Svr2MigrationSession_Deserialize(bytes)
+    );
+  }
+
+  /**
+   * Whether the migration is finished. Once true, the most recent
+   * migration is driven to completion.
+   *
+   * Keep the session and keep passing it to {@link Svr2#migrate} anyway: a
+   * completed session is what lets `migrate` recognize there is nothing to do and
+   * return with no network round trips, and it re-migrates automatically if the
+   * current enclave has changed since.
+   */
+  isComplete(): boolean {
+    return Native.Svr2MigrationSession_IsComplete(this);
   }
 }
 
@@ -62,7 +111,7 @@ export type Svr2MasterKeyRestoreResponse = {
  * ## Storage flow
  *
  * Backup is a two-phase protocol. The first phase (`BackupRequest`) writes
- * the data to the enclave; the second phase (`ExposeRequest`) makes it
+ * the data to the enclave, the second phase (`ExposeRequest`) makes it
  * restorable. The SVR2 spec forbids retrying a `BackupRequest` with the same
  * data, so the two phases are exposed as separate calls:
  *
@@ -74,7 +123,15 @@ export type Svr2MasterKeyRestoreResponse = {
  * ## Restore flow
  *
  * `await svr2.restore({ normalizedPin })` returns the master key and remaining
- * tries.
+ * tries. It reads the current enclave first and falls back to the previous one
+ * during an enclave rotation.
+ *
+ * ## Enclave migration
+ *
+ * SVR2 enclaves rotate periodically. {@link #migrate} writes a user's key to
+ * the current enclave (leaving the previous one readable), and {@link #delete}
+ * clears every configured enclave. Migration is full-service-only. See
+ * {@link #migrate} for the drive-to-completion loop.
  *
  * ## Usage
  *
@@ -209,6 +266,9 @@ export class Svr2 {
    * {@link #finishBackup}. Hashes the pin inside libsignal, restores the stored
    * blob, and decrypts it back to the original 32-byte master key.
    *
+   * If no data is found in the current enclave, it falls back to the previous
+   * enclave if available.
+   *
    * @param pin The user's pin, wrapped as `{ normalizedPin }` to make explicit
    * that the bytes must already be normalized and UTF-8 encoded. See the `Pin`
    * helper in `AccountKeys` for the normalization steps.
@@ -279,8 +339,9 @@ export class Svr2 {
   }
 
   /**
-   * Removes any data stored for this username/password pair from the current
-   * SVR2 enclave. No-op if nothing is stored.
+   * Removes any data stored for this username/password pair from every configured
+   * SVR2 enclave (the current one and, during an enclave rotation, the previous
+   * one). No-op if nothing is stored.
    *
    * @throws {RateLimitedError} if the server is rate limiting this client.
    * @throws {IoError} on network errors.
@@ -294,5 +355,83 @@ export class Svr2 {
       this.auth.password
     );
     await this.asyncContext.makeCancellable(options?.abortSignal, promise);
+  }
+
+  /**
+   * Migrates this user's master key forward to the current SVR2 enclave, going
+   * as far as it can in a single call.
+   *
+   * SVR2 enclaves rotate periodically. After a rotation a user's key may still
+   * live only in the previous enclave. Migration writes the caller-provided
+   * `masterKey` to the current enclave (unless it already holds it, so the
+   * remaining-tries counter is preserved). It never touches the previous enclave,
+   * which stays readable for clients that don't yet know the current one. This is
+   * full-service-only (the `{ normalizedPin }` path); the pin hash salt is derived
+   * per enclave, so the deprecated raw API cannot migrate.
+   *
+   * One method drives the whole migration: pass the session persisted from the
+   * previous call (or omit it on the first), and it does the right thing without
+   * you choosing a phase.
+   *
+   * - Already complete for the configured enclaves: returns it unchanged with no
+   *   network round trips (and no crypto), so it is safe and cheap to call on
+   *   every launch.
+   * - Otherwise it makes progress and returns a session. In the happy path
+   *   everything will be done in one call. If the final `ExposeRequest` did not
+   *   succeed, the returned session is not yet complete. In this case call
+   *   `migrate` again passing the returned session to retry the expose.
+   *
+   * ```typescript
+   * // priorSession is the deserialized session from the last run, or undefined.
+   * let session = await svr2.migrate(
+   *   { normalizedPin }, masterKey, maxTries, priorSession);
+   * persist(session.serialize());
+   * while (!session.isComplete()) {
+   *   session = await svr2.migrate({ normalizedPin }, masterKey, maxTries, session);
+   *   persist(session.serialize());
+   * }
+   * ```
+   *
+   * @param pin The user's pin, wrapped as `{ normalizedPin }` to make explicit
+   * that the bytes must already be normalized and UTF-8 encoded. See the `Pin`
+   * helper in `AccountKeys` for the normalization steps.
+   * @param pin.normalizedPin The normalized, UTF-8 encoded pin bytes.
+   * @param masterKey The 32-byte master key to write forward. The caller already
+   * holds it (from a prior {@link #restore} or its account keys).
+   * @param maxTries Number of failed restore attempts the current enclave will
+   * tolerate before wiping the migrated data. In `[1, 255]`.
+   * @param priorSession The session persisted from a previous call. When it is
+   * already complete for the currently configured enclaves the migration is
+   * skipped with no network round trips. Omit on the first call.
+   * @param options Optional configuration.
+   * @param options.abortSignal An AbortSignal that will cancel the request.
+   * @throws {RateLimitedError} if the server is rate limiting this client.
+   * @throws {IoError} on network errors.
+   * @throws {SvrAttestationError} if enclave attestation fails.
+   * @throws {SvrDataMismatchError} if the data is already present in the
+   * current enclave but does not match the `masterKey`.
+   */
+  async migrate(
+    pin: { normalizedPin: Uint8Array<ArrayBuffer> },
+    masterKey: Uint8Array<ArrayBuffer>,
+    maxTries: number,
+    priorSession?: Svr2MigrationSession,
+    options?: { abortSignal?: AbortSignal }
+  ): Promise<Svr2MigrationSession> {
+    const promise = Native.Svr2_Migrate(
+      this.asyncContext,
+      priorSession ?? null,
+      pin.normalizedPin,
+      masterKey,
+      maxTries,
+      this.connectionManager,
+      this.auth.username,
+      this.auth.password
+    );
+    const handle = await this.asyncContext.makeCancellable(
+      options?.abortSignal,
+      promise
+    );
+    return new Svr2MigrationSession(handle);
   }
 }

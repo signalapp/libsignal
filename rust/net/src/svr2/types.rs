@@ -115,6 +115,14 @@ impl<const M: usize, const N: usize> TryFrom<&[u8]> for StorableData<M, N> {
     }
 }
 
+// Limited to only the upper bound, but it is a convenient impl to have
+// for svr2 master key.
+impl<const M: usize, const N: usize> From<[u8; N]> for StorableData<M, N> {
+    fn from(value: [u8; N]) -> Self {
+        Self::new_unchecked(value.into())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use test_case::test_matrix;

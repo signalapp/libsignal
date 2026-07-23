@@ -2286,6 +2286,15 @@ type NativeFunctions = {
     attestation_msg: Uint8Array<ArrayBuffer>,
     current_timestamp: Timestamp
   ) => SgxClientState;
+  Svr2MigrationSession_Deserialize: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => Svr2MigrationSession;
+  Svr2MigrationSession_IsComplete: (
+    session: Wrapper<Svr2MigrationSession>
+  ) => boolean;
+  Svr2MigrationSession_Serialize: (
+    session: Wrapper<Svr2MigrationSession>
+  ) => Uint8Array<ArrayBuffer>;
   Svr2_Delete: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -2299,6 +2308,16 @@ type NativeFunctions = {
     username: string,
     password: string
   ) => CancellablePromise<void>;
+  Svr2_Migrate: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    prior_session: Wrapper<Svr2MigrationSession> | null,
+    normalized_pin: Uint8Array<ArrayBuffer>,
+    master_key: Uint8Array<ArrayBuffer>,
+    max_tries: number,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<Svr2MigrationSession>;
   Svr2_Restore: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     pin: Uint8Array<ArrayBuffer>,
@@ -3568,8 +3587,12 @@ const {
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
   Svr2Client_New,
+  Svr2MigrationSession_Deserialize,
+  Svr2MigrationSession_IsComplete,
+  Svr2MigrationSession_Serialize,
   Svr2_Delete,
   Svr2_FinishBackup,
+  Svr2_Migrate,
   Svr2_Restore,
   Svr2_RestoreMasterKey,
   Svr2_StartBackup,
@@ -4299,8 +4322,12 @@ export {
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
   Svr2Client_New,
+  Svr2MigrationSession_Deserialize,
+  Svr2MigrationSession_IsComplete,
+  Svr2MigrationSession_Serialize,
   Svr2_Delete,
   Svr2_FinishBackup,
+  Svr2_Migrate,
   Svr2_Restore,
   Svr2_RestoreMasterKey,
   Svr2_StartBackup,
@@ -4857,6 +4884,9 @@ export interface SignedPreKeyRecord {
   readonly __type: unique symbol;
 }
 export interface Svr2BackupSession {
+  readonly __type: unique symbol;
+}
+export interface Svr2MigrationSession {
   readonly __type: unique symbol;
 }
 export interface TestStream {
