@@ -148,8 +148,9 @@ build_desktop_for_arch () {
     fi
 
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing ${RUST_RELEASE:+--release} ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
-    copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni "$lib_dir" "signal_jni_${suffix}"
-    copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
+    local build_dir="${CARGO_TARGET_DIR:-target}/${1}/${RUST_RELEASE:-debug}"
+    copy_built_library "$build_dir" signal_jni "$lib_dir" "signal_jni_${suffix}"
+    copy_built_library "$build_dir" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
     check_for_debug_level_logs_if_needed "$lib_dir"
     check_for_attest_testutil "$lib_dir"
 }
