@@ -36,7 +36,7 @@ describe('AuthDevicesService', () => {
             await out;
             break;
           case 'deviceNotFound':
-            expect(out)
+            await expect(out)
               .to.eventually.be.rejectedWith(LibSignalErrorBase)
               .and.deep.include({
                 code: ErrorCode.DeviceIdNotFound,

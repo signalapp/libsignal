@@ -118,6 +118,13 @@ const config = defineConfig(
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/method-signature-style': 'error',
+      '@typescript-eslint/no-floating-promises': [
+        'error',
+        {
+          // Needed to catch chai-as-promised expectations too.
+          checkThenables: true,
+        },
+      ],
 
       'jsdoc/check-access': 'error',
       'jsdoc/check-alignment': 'error',

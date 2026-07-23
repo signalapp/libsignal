@@ -31,7 +31,7 @@ describe('AuthUsernamesService', () => {
           usernameHashes: usernames,
         });
         if (resp === 'usernameNotAvailable') {
-          expect(out)
+          await expect(out)
             .to.eventually.be.rejectedWith(LibSignalErrorBase)
             .and.deep.include({
               code: ErrorCode.UsernameNotAvailable,
@@ -57,7 +57,7 @@ describe('AuthUsernamesService', () => {
           keepLinkHandle,
         });
         if (resp === 'usernameNotSet') {
-          expect(out)
+          await expect(out)
             .to.eventually.be.rejectedWith(LibSignalErrorBase)
             .and.deep.include({
               code: ErrorCode.UsernameNotSet,
