@@ -242,7 +242,6 @@ zeroize = "1.8.2"
 
 boring = { git = 'https://github.com/signalapp/boring', tag = "signal-v5.0.2" }
 boring-sys = { git = 'https://github.com/signalapp/boring', tag = "signal-v5.0.2" }
-curve25519-dalek = { git = 'https://github.com/signalapp/curve25519-dalek', tag = 'signal-curve25519-4.1.3' }
 
 [profile.dev.package.argon2]
 opt-level = 2 # libsignal-account-keys unit tests are too slow with an unoptimized argon2
