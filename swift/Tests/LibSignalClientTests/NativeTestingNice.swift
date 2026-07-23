@@ -557,6 +557,19 @@ internal enum GetMessageBackupInfoOut {
     case missingResponse
 }
 
+internal struct LookUpUsernameLinkArgs {
+    var uuid: UUID
+    var entropy: Data
+
+}
+
+internal enum LookUpUsernameLinkOut {
+    case success(String)
+    case notFound
+    case linkDataTooShort
+    case missingResponse
+}
+
 internal enum MyRemoteDeriveEnum {
     case unit
     case tuple(Int32, Int32)
@@ -775,6 +788,51 @@ internal enum DerivedReturnConverterGetMessageBackupInfoOut: NiceReturnConverter
             return GetMessageBackupInfoOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for GetMessageBackupInfoOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterLookUpUsernameLinkArgs: NiceReturnConverter {
+    typealias NiceReturn = LookUpUsernameLinkArgs
+    typealias FfiReturn = SignalLookUpUsernameLinkArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalLookUpUsernameLinkArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let uuid = Result { try UuidNiceConverter.convertReturn(consuming: ffiValue.uuid) }
+        let entropy = Result {
+            try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: ffiValue.entropy)
+        }
+
+        return LookUpUsernameLinkArgs(uuid: try uuid.get(), entropy: try entropy.get())
+    }
+}
+
+internal enum DerivedReturnConverterLookUpUsernameLinkOut: NiceReturnConverter {
+    typealias NiceReturn = LookUpUsernameLinkOut
+    typealias FfiReturn = SignalLookUpUsernameLinkOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalLookUpUsernameLinkOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalLookUpUsernameLinkOutFfiResultSuccess:
+            let _0 = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return LookUpUsernameLinkOut.success(try _0.get())
+        case SignalLookUpUsernameLinkOutFfiResultNotFound:
+            return LookUpUsernameLinkOut.notFound
+        case SignalLookUpUsernameLinkOutFfiResultLinkDataTooShort:
+            return LookUpUsernameLinkOut.linkDataTooShort
+        case SignalLookUpUsernameLinkOutFfiResultMissingResponse:
+            return LookUpUsernameLinkOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for LookUpUsernameLinkOut: \(ffiTag)")
         }
     }
 }
@@ -1894,6 +1952,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetMessageBackupInfoOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_LookUpUsernameLinkTests() throws -> [GrpcTestCase<
+        LookUpUsernameLinkArgs, LookUpUsernameLinkOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterLookUpUsernameLinkArgs, DerivedReturnConverterLookUpUsernameLinkOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_look_up_username_link_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterLookUpUsernameLinkArgs, DerivedReturnConverterLookUpUsernameLinkOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_MyRemoteDeriveEnum_identity(

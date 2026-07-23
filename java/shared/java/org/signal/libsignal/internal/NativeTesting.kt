@@ -218,6 +218,8 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_KeyTransStoredAccountData(): ByteArray
   @JvmStatic
+  public external fun TESTING_LookUpUsernameLinkTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_MySimpleTestEnum_BridgeVec_identity(x: Array<*>): Array<*>
   @JvmStatic
   public external fun TESTING_MySimpleTestEnum_BridgeVec_to_string(x: Array<*>): String

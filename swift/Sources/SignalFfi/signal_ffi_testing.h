@@ -716,6 +716,31 @@ typedef struct {
 static_assert_64bit(sizeof(SignalGetMessageBackupInfoOutFfiResult) == 32);
 static_assert_64bit(alignof(SignalGetMessageBackupInfoOutFfiResult) == 8);
 typedef struct {
+  SignalUuid uuid;
+  SignalType_FixedArray32_uint8_t entropy;
+} SignalLookUpUsernameLinkArgsFfiResult;
+static_assert_64bit(offsetof(SignalLookUpUsernameLinkArgsFfiResult, uuid) == 0);
+static_assert_64bit(offsetof(SignalLookUpUsernameLinkArgsFfiResult, entropy) == 16);
+static_assert_64bit(sizeof(SignalLookUpUsernameLinkArgsFfiResult) == 48);
+static_assert_64bit(alignof(SignalLookUpUsernameLinkArgsFfiResult) == 1);
+typedef enum {
+  SignalLookUpUsernameLinkOutFfiResultSuccess,
+  SignalLookUpUsernameLinkOutFfiResultNotFound,
+  SignalLookUpUsernameLinkOutFfiResultLinkDataTooShort,
+  SignalLookUpUsernameLinkOutFfiResultMissingResponse,
+} SignalLookUpUsernameLinkOutFfiResult_Tag;
+typedef struct {
+  const int8_t* _0;
+} SignalLookUpUsernameLinkOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalLookUpUsernameLinkOutFfiResult_Tag tag;
+  union {
+    SignalLookUpUsernameLinkOutFfiResultSignalSuccess_Body success;
+  };
+} SignalLookUpUsernameLinkOutFfiResult;
+static_assert_64bit(sizeof(SignalLookUpUsernameLinkOutFfiResult) == 16);
+static_assert_64bit(alignof(SignalLookUpUsernameLinkOutFfiResult) == 8);
+typedef struct {
   uint8_t id;
 } SignalRemoveDeviceArgsFfiResult;
 static_assert_64bit(offsetof(SignalRemoveDeviceArgsFfiResult, id) == 0);
@@ -1428,6 +1453,9 @@ SignalFfiError* signal_testing_key_trans_fatal_verification_failure(void);
 SignalFfiError* signal_testing_key_trans_non_fatal_verification_failure(void);
 SignalFfiError* signal_testing_key_trans_stored_account_data(
   SignalOwnedBuffer* out
+);
+SignalFfiError* signal_testing_look_up_username_link_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_my_remote_derive_enum_identity(
   SignalMyRemoteDeriveEnumFfiResult* out,

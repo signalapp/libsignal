@@ -604,6 +604,22 @@ mod remote_derives {
         CredentialRejected,
         MissingResponse,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::LookUpUsernameLinkArgs)]
+    pub(super) struct LookUpUsernameLinkArgs {
+        uuid: Uuid,
+        entropy: [u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::LookUpUsernameLinkOut)]
+    pub(super) enum LookUpUsernameLinkOut {
+        Success(String),
+        NotFound,
+        LinkDataTooShort,
+        MissingResponse,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -714,4 +730,10 @@ fn TESTING_DeleteBackupMediaTests() -> GrpcTestCases<
 fn TESTING_forceEmitVecOfBridgeDeleteBackupMediaOut()
 -> BridgeVec<remote_derives::DeleteBackupMediaOut> {
     unreachable!()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_LookUpUsernameLinkTests()
+-> GrpcTestCases<remote_derives::LookUpUsernameLinkArgs, remote_derives::LookUpUsernameLinkOut> {
+    libsignal_net_chat::grpc::usernames::test_cases::look_up_username_link_test_cases().into()
 }

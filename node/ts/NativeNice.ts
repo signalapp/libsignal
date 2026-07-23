@@ -31,6 +31,8 @@ import type {
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
   ReturnFfiLinkedDeviceInternal,
+  ReturnFfiLookUpUsernameLinkArgs,
+  ReturnFfiLookUpUsernameLinkOut,
   ReturnFfiMyRemoteDeriveEnum,
   ReturnFfiMyRemoteDeriveStruct,
   ReturnFfiMySimpleTestEnum,
@@ -156,6 +158,19 @@ export type LinkedDeviceInternal = {
   registrationId: number;
   createdAtCiphertext: Uint8Array<ArrayBuffer>;
 };
+
+export type LookUpUsernameLinkArgs = {
+  uuid: uuid.Uuid;
+  entropy: Uint8Array<ArrayBuffer>;
+};
+
+export type LookUpUsernameLinkOut =
+  | {
+      success: string;
+    }
+  | 'notFound'
+  | 'linkDataTooShort'
+  | 'missingResponse';
 
 export type MyRemoteDeriveEnum =
   | 'unit'
@@ -436,6 +451,36 @@ export function returnConverterLinkedDeviceInternal(
     registrationId: identity(ffiInput.registration_id),
     createdAtCiphertext: identity(ffiInput.created_at_ciphertext),
   };
+}
+
+export function returnConverterLookUpUsernameLinkArgs(
+  ffiInput: Native.ReturnFfiLookUpUsernameLinkArgs
+): LookUpUsernameLinkArgs {
+  return {
+    uuid: uuid.stringify(ffiInput.uuid),
+    entropy: identity(ffiInput.entropy),
+  };
+}
+
+export function returnConverterLookUpUsernameLinkOut(
+  ffiInput: Native.ReturnFfiLookUpUsernameLinkOut
+): LookUpUsernameLinkOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput._0),
+      };
+    case 1:
+      return 'notFound';
+    case 2:
+      return 'linkDataTooShort';
+    case 3:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for LookUpUsernameLinkOut');
+  }
 }
 
 export function returnConverterMyRemoteDeriveEnum(
@@ -1193,6 +1238,15 @@ export function TESTING_GetMessageBackupInfoTests(): Array<
     identity,
     returnConverterGetMessageBackupInfoOut
   )(Native.TESTING_GetMessageBackupInfoTests());
+}
+
+export function TESTING_LookUpUsernameLinkTests(): Array<
+  GrpcTestCase<LookUpUsernameLinkArgs, LookUpUsernameLinkOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterLookUpUsernameLinkArgs,
+    returnConverterLookUpUsernameLinkOut
+  )(Native.TESTING_LookUpUsernameLinkTests());
 }
 
 export function TESTING_MyRemoteDeriveEnum_identity({

@@ -274,6 +274,26 @@ export type ReturnFfiLinkedDeviceInternal = {
   created_at_ciphertext: Uint8Array<ArrayBuffer>;
 };
 
+export type ReturnFfiLookUpUsernameLinkArgs = {
+  uuid: Uint8Array<ArrayBuffer>;
+  entropy: Uint8Array<ArrayBuffer>;
+};
+
+export type ReturnFfiLookUpUsernameLinkOut =
+  | {
+      __type: 0;
+      _0: string;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
 export type ReturnFfiMyRemoteDeriveEnum =
   | {
       __type: 0;
@@ -2573,6 +2593,12 @@ type NativeFunctions = {
   TESTING_KeyTransFatalVerificationFailure: () => void;
   TESTING_KeyTransNonFatalVerificationFailure: () => void;
   TESTING_KeyTransStoredAccountData: () => Uint8Array<ArrayBuffer>;
+  TESTING_LookUpUsernameLinkTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiLookUpUsernameLinkArgs,
+      ReturnFfiLookUpUsernameLinkOut
+    >
+  >;
   TESTING_MyRemoteDeriveEnum_identity: (
     x: ArgFfiMyRemoteDeriveEnum
   ) => ReturnFfiMyRemoteDeriveEnum;
@@ -3671,6 +3697,7 @@ const {
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
   TESTING_KeyTransStoredAccountData,
+  TESTING_LookUpUsernameLinkTests,
   TESTING_MyRemoteDeriveEnum_identity,
   TESTING_MyRemoteDeriveStruct_identity,
   TESTING_MySimpleTestEnum_BridgeVec_identity,
@@ -4406,6 +4433,7 @@ export {
   TESTING_KeyTransFatalVerificationFailure,
   TESTING_KeyTransNonFatalVerificationFailure,
   TESTING_KeyTransStoredAccountData,
+  TESTING_LookUpUsernameLinkTests,
   TESTING_MyRemoteDeriveEnum_identity,
   TESTING_MyRemoteDeriveStruct_identity,
   TESTING_MySimpleTestEnum_BridgeVec_identity,

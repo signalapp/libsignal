@@ -270,8 +270,108 @@ impl std::fmt::Display for Redact<LookupUsernameLinkRequest> {
 }
 
 pub mod test_cases {
+    use data_encoding_macro::base64url_nopad;
+
     use super::*;
     use crate::grpc::GrpcTestCase;
+
+    pub(super) const EXPECTED_USERNAME: &str = "moxie.01";
+    pub(super) const ENCRYPTED_USERNAME: &[u8] = &base64url_nopad!(
+        "kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w"
+    );
+    pub(super) const ENCRYPTED_USERNAME_ENTROPY: [u8;
+        usernames::constants::USERNAME_LINK_ENTROPY_SIZE] =
+        const_str::hex!("4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1");
+
+    pub struct LookUpUsernameLinkArgs {
+        pub uuid: uuid::Uuid,
+        pub entropy: [u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE],
+    }
+
+    pub enum LookUpUsernameLinkOut {
+        Success(String),
+        NotFound,
+        LinkDataTooShort,
+        MissingResponse,
+    }
+
+    pub fn look_up_username_link_test_cases() -> Vec<
+        GrpcTestCase<
+            LookUpUsernameLinkArgs,
+            LookupUsernameLinkRequest,
+            LookupUsernameLinkResponse,
+            LookUpUsernameLinkOut,
+        >,
+    > {
+        let uuid = uuid::uuid!("f63364ab-5d53-4300-93d8-3f38ff26af98");
+        let method = "/org.signal.chat.account.AccountsAnonymous/LookupUsernameLink";
+        vec![
+            GrpcTestCase {
+                name: "success".to_string(),
+                method: method.to_string(),
+                request: LookUpUsernameLinkArgs {
+                    uuid,
+                    entropy: ENCRYPTED_USERNAME_ENTROPY,
+                },
+                request_grpc: LookupUsernameLinkRequest {
+                    username_link_handle: uuid.as_bytes().to_vec(),
+                },
+                response_grpc: LookupUsernameLinkResponse {
+                    response: Some(lookup_username_link_response::Response::UsernameCiphertext(
+                        ENCRYPTED_USERNAME.to_vec(),
+                    )),
+                },
+                response: LookUpUsernameLinkOut::Success(EXPECTED_USERNAME.to_owned()),
+            },
+            GrpcTestCase {
+                name: "not found".to_string(),
+                method: method.to_string(),
+                request: LookUpUsernameLinkArgs {
+                    uuid,
+                    entropy: ENCRYPTED_USERNAME_ENTROPY,
+                },
+                request_grpc: LookupUsernameLinkRequest {
+                    username_link_handle: uuid.as_bytes().to_vec(),
+                },
+                response_grpc: LookupUsernameLinkResponse {
+                    response: Some(lookup_username_link_response::Response::NotFound(
+                        Default::default(),
+                    )),
+                },
+                response: LookUpUsernameLinkOut::NotFound,
+            },
+            GrpcTestCase {
+                name: "data too short".to_string(),
+                method: method.to_string(),
+                request: LookUpUsernameLinkArgs {
+                    uuid,
+                    entropy: ENCRYPTED_USERNAME_ENTROPY,
+                },
+                request_grpc: LookupUsernameLinkRequest {
+                    username_link_handle: uuid.as_bytes().to_vec(),
+                },
+                response_grpc: LookupUsernameLinkResponse {
+                    response: Some(lookup_username_link_response::Response::UsernameCiphertext(
+                        b"!garbage!".to_vec(),
+                    )),
+                },
+                response: LookUpUsernameLinkOut::LinkDataTooShort,
+            },
+            GrpcTestCase {
+                name: "missing response".to_string(),
+                method: method.to_string(),
+                request: LookUpUsernameLinkArgs {
+                    uuid,
+                    entropy: ENCRYPTED_USERNAME_ENTROPY,
+                },
+                request_grpc: LookupUsernameLinkRequest {
+                    username_link_handle: uuid.as_bytes().to_vec(),
+                },
+                response_grpc: LookupUsernameLinkResponse { response: None },
+                response: LookUpUsernameLinkOut::MissingResponse,
+            },
+        ]
+    }
     pub struct ReserveUsernameHashArgs {
         pub usernames: Vec<UsernameHash>,
     }
@@ -448,7 +548,6 @@ pub mod test_cases {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
-    use data_encoding_macro::base64url_nopad;
     use futures_util::FutureExt as _;
     use libsignal_net::chat::fake::BodyWithTrailers;
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
@@ -520,44 +619,32 @@ mod test {
             .expect("sync")
     }
 
-    const EXPECTED_USERNAME: &str = "moxie.01";
-    const ENCRYPTED_USERNAME: &[u8] = &base64url_nopad!(
-        "kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w"
-    );
-    const ENCRYPTED_USERNAME_ENTROPY: [u8; usernames::constants::USERNAME_LINK_ENTROPY_SIZE] =
-        const_str::hex!("4302c613c092a51c5394becffeb6f697300a605348e93f03c3db95e0b03d28f1");
-
-    #[test_case(ok(LookupUsernameLinkResponse {
-        response: Some(lookup_username_link_response::Response::UsernameCiphertext(ENCRYPTED_USERNAME.to_vec()))
-    }) => matches Ok(Some(username)) if username == EXPECTED_USERNAME)]
-    #[test_case(ok(LookupUsernameLinkResponse {
-        response: Some(lookup_username_link_response::Response::UsernameCiphertext(b"!garbage!".to_vec()))
-    }) => matches Err(RequestError::Other(usernames::UsernameLinkError::UsernameLinkDataTooShort)))]
-    #[test_case(ok(LookupUsernameLinkResponse {
-        response: Some(lookup_username_link_response::Response::NotFound(Default::default()))
-    }) => matches Ok(None))]
-    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
-    fn test_link_lookup(
-        response: http::Response<BodyWithTrailers>,
-    ) -> Result<Option<String>, RequestError<usernames::UsernameLinkError>> {
-        let validator = GrpcOverrideRequestValidator {
-            message: services::AccountsAnonymous::LookupUsernameLink.into(),
-            validator: RequestValidator {
-                expected: req(
-                    "/org.signal.chat.account.AccountsAnonymous/LookupUsernameLink",
-                    LookupUsernameLinkRequest {
-                        username_link_handle: uuid::Uuid::nil().as_bytes().to_vec(),
-                    },
-                ),
-                response,
+    #[test]
+    fn test_link_lookup() {
+        use test_cases::*;
+        run_tests(
+            look_up_username_link_test_cases(),
+            |chat: Unauth<_>, LookUpUsernameLinkArgs { uuid, entropy }| async move {
+                chat.look_up_username_link(uuid, &entropy).await
             },
-        };
-
-        Unauth(&validator)
-            .look_up_username_link(uuid::Uuid::nil(), &ENCRYPTED_USERNAME_ENTROPY)
-            .now_or_never()
-            .expect("sync")
-            .map(|u| u.map(|u| u.to_string()))
+            |resp, result| match resp {
+                LookUpUsernameLinkOut::Success(username) => {
+                    assert_matches!(result, Ok(Some(x)) if x.to_string() == username)
+                }
+                LookUpUsernameLinkOut::NotFound => {
+                    assert_matches!(result, Ok(None))
+                }
+                LookUpUsernameLinkOut::LinkDataTooShort => assert_matches!(
+                    result,
+                    Err(RequestError::Other(
+                        usernames::UsernameLinkError::UsernameLinkDataTooShort
+                    ))
+                ),
+                LookUpUsernameLinkOut::MissingResponse => {
+                    assert_matches!(result, Err(RequestError::Unexpected { .. }))
+                }
+            },
+        );
     }
 
     #[test]

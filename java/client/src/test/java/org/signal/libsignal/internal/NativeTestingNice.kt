@@ -182,6 +182,65 @@ public sealed class GetMessageBackupInfoOut {
   }
 }
 
+public data class LookUpUsernameLinkArgs(
+  val uuid: java.util.UUID,
+  val entropy: ByteArray,
+) {
+  public companion object {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(
+      uuid: Any?,
+      entropy: Any?,
+    ): LookUpUsernameLinkArgs =
+      LookUpUsernameLinkArgs(
+        uuid =
+          identity(uuid as java.util.UUID),
+        entropy =
+          identity(entropy as ByteArray),
+      )
+  }
+}
+
+public sealed class LookUpUsernameLinkOut {
+  public data class Success(
+    val _0: String,
+  ) : LookUpUsernameLinkOut() {
+    public companion object {
+      @JvmStatic
+      @JvmName("fromNative")
+      @CalledFromNative
+      internal fun fromNative(_0: Any?): Success =
+        Success(
+          _0 =
+            identity(_0 as String),
+        )
+    }
+  }
+
+  public data object NotFound : LookUpUsernameLinkOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): NotFound = NotFound
+  }
+
+  public data object LinkDataTooShort : LookUpUsernameLinkOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): LinkDataTooShort = LinkDataTooShort
+  }
+
+  public data object MissingResponse : LookUpUsernameLinkOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): MissingResponse = MissingResponse
+  }
+}
+
 public sealed class MySimpleTestEnum {
   public data object A : MySimpleTestEnum() {
     @JvmStatic
@@ -761,6 +820,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetMessageBackupInfoOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetMessageBackupInfoOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_LookUpUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.LookUpUsernameLinkArgs, org.signal.libsignal.internal.LookUpUsernameLinkOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_LookUpUsernameLinkTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.LookUpUsernameLinkArgs, org.signal.libsignal.internal.LookUpUsernameLinkOut>({
+        downcastFromObject<org.signal.libsignal.internal.LookUpUsernameLinkArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.LookUpUsernameLinkOut>(it) })(ffiOut)
   }
 
   public fun TESTING_MySimpleTestEnum_BridgeVec_identity(

@@ -2738,6 +2738,7 @@ dependencies = [
  "strum",
  "tokio",
  "tonic",
+ "usernames",
  "uuid",
 ]
 
