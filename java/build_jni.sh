@@ -19,6 +19,7 @@ SERVER_LIB_DIR=java/server/src/main/resources
 # Fetch dependencies first, so we can use them in computing later options.
 # But allow this to fail in case we're offline.
 cargo fetch || true
+CARGO_TARGET_DIRECTORY=$(cargo_target_directory)
 
 export CARGO_PROFILE_RELEASE_DEBUG=1 # Enable line tables
 RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # Enable ARMv8 cryptography acceleration when available
@@ -148,8 +149,8 @@ build_desktop_for_arch () {
     fi
 
     echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing ${RUST_RELEASE:+--release} ${FEATURES:+--features "${FEATURES[*]}"} --target "$1"
-    copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni "$lib_dir" "signal_jni_${suffix}"
-    copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
+    copy_built_library "${CARGO_TARGET_DIRECTORY}/${1}/${RUST_RELEASE:-debug}" signal_jni "$lib_dir" "signal_jni_${suffix}"
+    copy_built_library "${CARGO_TARGET_DIRECTORY}/${1}/${RUST_RELEASE:-debug}" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
     check_for_debug_level_logs_if_needed "$lib_dir"
     check_for_attest_testutil "$lib_dir"
 }
@@ -171,12 +172,12 @@ while [ "${1:-}" != "" ]; do
             export CARGO_PROFILE_RELEASE_LTO=thin
             host_triple=$(rustc -vV | sed -n 's|host: ||p')
             if [[ "$1" == "server-all" ]]; then
-                build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple" $lib_dir
+                build_desktop_for_arch x86_64-unknown-linux-gnu "$host_triple" "$lib_dir"
                 # Enable ARMv8.2 extensions for a production aarch64 server build
                 RUSTFLAGS="-C target-feature=+v8.2a ${RUSTFLAGS:-}" \
-                    build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple" $lib_dir
+                    build_desktop_for_arch aarch64-unknown-linux-gnu "$host_triple" "$lib_dir"
             else
-                build_desktop_for_arch "${CARGO_BUILD_TARGET:-$host_triple}" "$host_triple" $lib_dir
+                build_desktop_for_arch "${CARGO_BUILD_TARGET:-$host_triple}" "$host_triple" "$lib_dir"
             fi
             exit
             ;;
