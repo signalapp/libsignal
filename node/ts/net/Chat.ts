@@ -617,7 +617,7 @@ function makeNativeChatListener(
       throw new Error('Event not supported on unauthenticated connection');
     },
     receivedServerTimestamp(): void {
-      throw new Error('Event not supported on unauthenticated connection');
+      // Ignore this for the unauthenticated connection.
     },
     receivedAlerts(alerts: string[]): void {
       if (alerts.length != 0) {

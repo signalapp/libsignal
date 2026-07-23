@@ -270,14 +270,7 @@ internal class UnauthConnectionEventsListenerBridge {
             return 0
         }
         let receivedServerTimestamp: SignalFfiChatListenerReceivedServerTimestamp = { _, _ in
-            // Not used in the unauth chat listener
-            LoggerBridge.shared?.logger.log(
-                level: .error,
-                file: #fileID,
-                line: #line,
-                message: "unauth socket received a server timestamp"
-            )
-            // We don't need to log *another* error.
+            // Ignore this for the unauth chat listener
             return 0
         }
         let connectionInterrupted: SignalFfiChatListenerConnectionInterrupted = { rawCtx, maybeError in
