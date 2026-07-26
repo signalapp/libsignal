@@ -41,6 +41,7 @@ pub type HttpsTlsRoute<T> = SimpleRoute<HttpRouteFragment, T>;
 #[derive(Debug)]
 pub struct HttpsProvider<F, P> {
     pub(crate) direct_host_header: Arc<str>,
+    pub(crate) direct_path_prefix: Arc<str>,
     pub(crate) direct_http_version: HttpVersion,
     pub(crate) domain_front: F,
     pub(crate) inner: P,
@@ -83,12 +84,14 @@ pub struct DomainFrontConfig {
 impl<F, P> HttpsProvider<F, P> {
     pub fn new(
         direct_host: Arc<str>,
+        direct_path_prefix: Arc<str>,
         direct_version: HttpVersion,
         domain_front: F,
         inner: P,
     ) -> Self {
         Self {
             direct_host_header: direct_host,
+            direct_path_prefix,
             direct_http_version: direct_version,
             domain_front,
             inner,
@@ -180,6 +183,7 @@ where
     ) -> impl Iterator<Item = Self::Route> + use<'s, C, F, P> {
         let Self {
             direct_host_header,
+            direct_path_prefix,
             direct_http_version,
             domain_front,
             inner,
@@ -193,7 +197,7 @@ where
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
                         host_header: Arc::clone(direct_host_header),
-                        path_prefix: "".into(),
+                        path_prefix: Arc::clone(direct_path_prefix),
                         http_version: Some(*direct_http_version),
                         front_name: None,
                     },
@@ -239,6 +243,7 @@ mod test {
         const DIRECT_TCP_PORT: NonZeroU16 = nonzero!(1234u16);
         let provider = HttpsProvider {
             direct_host_header: "direct-host".into(),
+            direct_path_prefix: "/direct-prefix".into(),
             direct_http_version: HttpVersion::Http2,
             domain_front: DomainFrontRouteProvider {
                 fronts: vec![
@@ -282,7 +287,7 @@ mod test {
                 HttpsTlsRoute {
                     fragment: HttpRouteFragment {
                         host_header: "direct-host".into(),
-                        path_prefix: "".into(),
+                        path_prefix: "/direct-prefix".into(),
                         http_version: Some(HttpVersion::Http2),
                         front_name: None,
                     },

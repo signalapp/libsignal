@@ -62,6 +62,7 @@ pub fn only_direct_routes(
             ConnectionConfig {
                 service: _,
                 hostname,
+                path_prefix: _,
                 port,
                 cert: _,
                 min_tls_version: _,
@@ -109,6 +110,7 @@ pub fn allow_domain_fronting(
             ConnectionConfig {
                 service: _,
                 hostname: _,
+                path_prefix: _,
                 port: _,
                 cert: _,
                 min_tls_version: _,

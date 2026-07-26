@@ -735,7 +735,8 @@ type NativeFunctions = {
     environment: number,
     user_agent: string,
     remote_config: Wrapper<BridgedStringMap>,
-    build_variant: number
+    build_variant: number,
+    chat_host: string | null
   ) => ConnectionManager;
   ConnectionManager_on_network_change: (
     connection_manager: Wrapper<ConnectionManager>

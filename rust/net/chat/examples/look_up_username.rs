@@ -205,6 +205,7 @@ async fn make_grpc_connection(env: Env<'_>) -> anyhow::Result<Http2Client<tonic:
         env.chat_domain_config.connect.service,
         HttpsProvider::new(
             host.clone(),
+            Arc::<str>::from(""),
             HttpVersion::Http2,
             EmptyProvider::default(),
             TlsRouteProvider::new(

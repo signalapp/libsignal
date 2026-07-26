@@ -2002,7 +2002,7 @@ SignalFfiError *signal_connection_manager_clear_proxy(SignalConstPointerConnecti
 
 SignalFfiError *signal_connection_manager_destroy(SignalMutPointerConnectionManager p);
 
-SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, SignalCStringPtr user_agent, SignalMutPointerBridgedStringMap remote_config, uint8_t build_variant);
+SignalFfiError *signal_connection_manager_new(SignalMutPointerConnectionManager *out, uint8_t environment, SignalCStringPtr user_agent, SignalMutPointerBridgedStringMap remote_config, uint8_t build_variant, SignalCStringPtr chat_host);
 
 SignalFfiError *signal_connection_manager_on_network_change(SignalConstPointerConnectionManager connection_manager);
 

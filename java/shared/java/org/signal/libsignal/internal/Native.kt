@@ -400,7 +400,7 @@ internal object Native {
   @JvmStatic
   public external fun ConnectionManager_clear_proxy(connectionManager: ObjectHandle): Unit
   @JvmStatic
-  public external fun ConnectionManager_new(environment: Int, userAgent: String, remoteConfig: ObjectHandle, buildVariant: Int): ObjectHandle
+  public external fun ConnectionManager_new(environment: Int, userAgent: String, remoteConfig: ObjectHandle, buildVariant: Int, chatHost: String?): ObjectHandle
   @JvmStatic
   public external fun ConnectionManager_on_network_change(connectionManager: ObjectHandle): Unit
   @JvmStatic

@@ -51,6 +51,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("chat"),
         hostname: "chat.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -71,6 +72,7 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2: DomainConfig = DomainConfig {
         // config we're using.
         service: DOMAIN_CONFIG_CHAT.connect.service,
         hostname: "grpc.chat.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -93,6 +95,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("chat"),
         hostname: "chat.staging.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -111,6 +114,7 @@ const DOMAIN_CONFIG_EXPERIMENTAL_CHAT_H2_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: DOMAIN_CONFIG_CHAT_STAGING.connect.service,
         hostname: "grpc.chat.staging.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -125,6 +129,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("cdsi"),
         hostname: "cdsi.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -143,6 +148,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("cdsi"),
         hostname: "cdsi.staging.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -161,6 +167,7 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("svr2"),
         hostname: "svr2.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -195,6 +202,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("svr2"),
         hostname: "svr2.staging.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -225,6 +233,7 @@ const DOMAIN_CONFIG_SVRB_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("svrb"),
         hostname: "svrb.staging.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -255,6 +264,7 @@ const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         service: ServiceName("svrb"),
         hostname: "svrb.signal.org",
+        path_prefix: "",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         min_tls_version: Some(SslVersion::TLS1_3),
@@ -449,6 +459,8 @@ pub struct ConnectionConfig {
     pub service: ServiceName,
     /// The domain name of the resource.
     pub hostname: &'static str,
+    /// A path prefix to prepend to requests sent over direct connections.
+    pub path_prefix: &'static str,
     /// The port for the resource.
     pub port: NonZeroU16,
     /// Which certificates to use when connecting to the resource.
@@ -536,7 +548,7 @@ impl ConnectionConfig {
                     certs: self.cert.clone(),
                 },
                 http_host: hostname,
-                path_prefix: None,
+                path_prefix: (!self.path_prefix.is_empty()).then_some(self.path_prefix),
                 connection_confirmation_header: None,
             }
         };
@@ -573,6 +585,7 @@ impl ConnectionConfig {
         let Self {
             service: _,
             hostname,
+            path_prefix,
             port,
             cert,
             min_tls_version,
@@ -622,6 +635,7 @@ impl ConnectionConfig {
 
         HttpsProvider::new(
             Arc::clone(&hostname),
+            Arc::from(*path_prefix),
             http_version.expect("must have an HTTP version to connect to an HTTP resource"),
             DomainFrontRouteProvider::new(
                 HttpVersion::Http1_1,
@@ -1042,6 +1056,7 @@ mod test {
         const CONNECT_CONFIG: ConnectionConfig = ConnectionConfig {
             service: ServiceName("service"),
             hostname: "host",
+            path_prefix: "",
             port: PORT,
             cert: RootCertificates::Native,
             min_tls_version: Some(SslVersion::TLS1_2),

@@ -105,6 +105,8 @@ export type NetConstructorOptions = Readonly<
       localTestServer?: false;
       env: Environment;
       userAgent: string;
+      /** A custom chat hostname or HTTP(S) URL with a path prefix. */
+      chatHost?: string;
       remoteConfig?: Map<string, string>;
       buildVariant?: BuildVariant;
     }
@@ -178,6 +180,7 @@ export class Net {
       const {
         env,
         userAgent,
+        chatHost = null,
         remoteConfig = new Map<string, string>(),
         buildVariant = BuildVariant.Production,
       } = options;
@@ -186,7 +189,8 @@ export class Net {
           env,
           userAgent,
           new BridgedStringMap(remoteConfig),
-          buildVariant
+          buildVariant,
+          chatHost
         )
       );
     }

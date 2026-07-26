@@ -30,6 +30,7 @@ fn localhost_test_domain_config_with_port_and_cert(
         connect: ConnectionConfig {
             service,
             hostname: "localhost",
+            path_prefix: "",
             port,
             cert: RootCertificates::FromDer(std::borrow::Cow::Owned(root_certificate_der.to_vec())),
             http_version: Some(http_version),

@@ -758,6 +758,7 @@ mod test {
             },
             inner: HttpsProvider {
                 direct_host_header: "http-host".into(),
+                direct_path_prefix: "".into(),
                 direct_http_version: HttpVersion::Http1_1,
                 domain_front: DomainFrontRouteProvider {
                     fronts: vec![DomainFrontConfig {

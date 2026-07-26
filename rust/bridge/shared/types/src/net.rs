@@ -15,6 +15,7 @@ use libsignal_net::connect_state::{
 };
 use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind};
 use libsignal_net::env::{Env, StaticIpOrder, UserAgent};
+use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::{
     ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, RouteProvider,
@@ -131,16 +132,41 @@ impl ConnectionManager {
     pub fn new(
         environment: Environment,
         user_agent: &str,
+        chat_host: Option<String>,
         remote_config: HashMap<String, Arc<str>>,
         build_variant: BuildVariant,
     ) -> Self {
         log::info!("Initializing connection manager for {}...", &environment);
-        Self::new_from_static_environment(
-            environment.env(),
-            user_agent,
-            remote_config,
-            build_variant,
-        )
+        let mut env = environment.env();
+        if let Some(chat_host) = chat_host {
+            let without_scheme = chat_host
+                .strip_prefix("https://")
+                .or_else(|| chat_host.strip_prefix("http://"))
+                .unwrap_or(&chat_host);
+            let (hostname, path_prefix) = without_scheme
+                .split_once('/')
+                .map_or((without_scheme, ""), |(hostname, path)| {
+                    (hostname, path.trim_end_matches('/'))
+                });
+            let hostname: &'static str = Box::leak(hostname.to_owned().into_boxed_str());
+            let path_prefix: &'static str = if path_prefix.is_empty() {
+                ""
+            } else {
+                Box::leak(format!("/{path_prefix}").into_boxed_str())
+            };
+
+            for config in [
+                &mut env.chat_domain_config,
+                &mut env.experimental_chat_h2_domain_config,
+            ] {
+                config.connect.hostname = hostname;
+                config.connect.path_prefix = path_prefix;
+                config.connect.cert = RootCertificates::Native;
+                config.ip_v4 = &[];
+                config.ip_v6 = &[];
+            }
+        }
+        Self::new_from_static_environment(env, user_agent, remote_config, build_variant)
     }
 
     pub fn new_from_static_environment(
@@ -351,9 +377,42 @@ mod test {
         let _ = ConnectionManager::new(
             env,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
+    }
+
+    #[test_case("chat.example.com", "chat.example.com", ""; "hostname")]
+    #[test_case(
+        "https://chat.example.com/v1-3-80/",
+        "chat.example.com",
+        "/v1-3-80"
+        ; "url with path prefix"
+    )]
+    fn custom_chat_host_overrides_chat_routes(
+        chat_host: &str,
+        expected_hostname: &str,
+        expected_path_prefix: &str,
+    ) {
+        let cm = ConnectionManager::new(
+            Environment::Prod,
+            "test-user-agent",
+            Some(chat_host.to_owned()),
+            Default::default(),
+            BuildVariant::Production,
+        );
+
+        for config in [
+            &cm.env.chat_domain_config,
+            &cm.env.experimental_chat_h2_domain_config,
+        ] {
+            assert_eq!(config.connect.hostname, expected_hostname);
+            assert_eq!(config.connect.path_prefix, expected_path_prefix);
+            assert!(matches!(config.connect.cert, RootCertificates::Native));
+            assert!(config.ip_v4.is_empty());
+            assert!(config.ip_v6.is_empty());
+        }
     }
 
     #[test_case(
@@ -376,6 +435,7 @@ mod test {
         let cm = ConnectionManager::new(
             env,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
@@ -400,6 +460,7 @@ mod test {
         let cm = ConnectionManager::new(
             Environment::Prod,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
@@ -426,6 +487,7 @@ mod test {
         let cm = ConnectionManager::new(
             Environment::Prod,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
@@ -443,6 +505,7 @@ mod test {
         let cm = ConnectionManager::new(
             Environment::Prod,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
@@ -462,6 +525,7 @@ mod test {
         let cm = ConnectionManager::new(
             Environment::Prod,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
@@ -506,6 +570,7 @@ mod test {
         let cm = ConnectionManager::new(
             Environment::Staging,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );
@@ -522,6 +587,7 @@ mod test {
         let cm = ConnectionManager::new(
             Environment::Staging,
             "test-user-agent",
+            None,
             Default::default(),
             BuildVariant::Production,
         );

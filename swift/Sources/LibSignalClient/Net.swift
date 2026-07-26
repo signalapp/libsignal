@@ -41,7 +41,6 @@ public class Net {
     public static let signalTlsProxyScheme = "org.signal.tls"
 
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
-    ///
     /// - Warning: This initializer is deprecated. Use ``init(env:userAgent:buildVariant:remoteConfig:)`` instead.
     @available(*, deprecated, message: "Use init(env:userAgent:buildVariant:remoteConfig:) instead")
     public convenience init(
@@ -53,16 +52,20 @@ public class Net {
             env: env,
             userAgent: userAgent,
             buildVariant: .production,
-            remoteConfig: remoteConfig
+            remoteConfig: remoteConfig,
+            chatHost: nil
         )
     }
 
     /// Creates a new `Net` instance that enables interacting with services in the given Signal environment.
+    ///
+    /// `chatHost` may be a hostname or an HTTP(S) URL with a path prefix.
     public init(
         env: Environment,
         userAgent: String,
         buildVariant: BuildVariant,
-        remoteConfig: [String: String] = [:]
+        remoteConfig: [String: String] = [:],
+        chatHost: String? = nil
     ) {
         self.environment = env
         self.asyncContext = TokioAsyncContext()
@@ -70,7 +73,8 @@ public class Net {
             env: env,
             userAgent: userAgent,
             remoteConfig: remoteConfig,
-            buildVariant: buildVariant
+            buildVariant: buildVariant,
+            chatHost: chatHost
         )
     }
 
@@ -466,12 +470,22 @@ internal class ConnectionManager: NativeHandleOwner<SignalMutPointerConnectionMa
         env: Net.Environment,
         userAgent: String,
         remoteConfig: [String: String],
-        buildVariant: Net.BuildVariant
+        buildVariant: Net.BuildVariant,
+        chatHost: String?
     ) {
         let handle = remoteConfig.withBridgedStringMap { remoteConfig in
             failOnError {
-                try invokeFnReturningValueByPointer(.init()) {
-                    signal_connection_manager_new($0, env.rawValue, userAgent, remoteConfig, buildVariant.rawValue)
+                try chatHost.withCString { chatHost in
+                    try invokeFnReturningValueByPointer(.init()) {
+                        signal_connection_manager_new(
+                            $0,
+                            env.rawValue,
+                            userAgent,
+                            remoteConfig,
+                            buildVariant.rawValue,
+                            chatHost
+                        )
+                    }
                 }
             }
         }

@@ -99,10 +99,12 @@ fn ConnectionManager_new(
     user_agent: String,
     remote_config: &mut BridgedStringMap,
     build_variant: AsType<BuildVariant, u8>,
+    chat_host: Option<String>,
 ) -> ConnectionManager {
     ConnectionManager::new(
         environment.into_inner(),
         user_agent.as_str(),
+        chat_host,
         remote_config.take(),
         build_variant.into_inner(),
     )

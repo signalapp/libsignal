@@ -74,7 +74,7 @@ public class Network {
    */
   @Deprecated
   public Network(Environment env, String userAgent) {
-    this(env, userAgent, Collections.emptyMap(), BuildVariant.PRODUCTION);
+    this(env, userAgent, Collections.emptyMap(), BuildVariant.PRODUCTION, null);
   }
 
   /**
@@ -83,7 +83,7 @@ public class Network {
    */
   @Deprecated
   public Network(Environment env, String userAgent, Map<String, String> remoteConfig) {
-    this(env, userAgent, remoteConfig, BuildVariant.PRODUCTION);
+    this(env, userAgent, remoteConfig, BuildVariant.PRODUCTION, null);
   }
 
   public Network(
@@ -91,8 +91,23 @@ public class Network {
       String userAgent,
       Map<String, String> remoteConfig,
       BuildVariant buildVariant) {
+    this(env, userAgent, remoteConfig, buildVariant, null);
+  }
+
+  /**
+   * Creates a network instance with an optional custom chat host.
+   *
+   * <p>{@code chatHost} may be a hostname or an HTTP(S) URL with a path prefix.
+   */
+  public Network(
+      Environment env,
+      String userAgent,
+      Map<String, String> remoteConfig,
+      BuildVariant buildVariant,
+      String chatHost) {
     this.tokioAsyncContext = new TokioAsyncContext();
-    this.connectionManager = new ConnectionManager(env, userAgent, remoteConfig, buildVariant);
+    this.connectionManager =
+        new ConnectionManager(env, userAgent, remoteConfig, buildVariant, chatHost);
   }
 
   /**
@@ -396,12 +411,14 @@ public class Network {
         Environment env,
         String userAgent,
         Map<String, String> remoteConfig,
-        BuildVariant buildVariant) {
+        BuildVariant buildVariant,
+        String chatHost) {
       super(
           new BridgedStringMap(remoteConfig)
               .guardedMap(
                   map ->
-                      Native.ConnectionManager_new(env.value, userAgent, map, buildVariant.value)));
+                      Native.ConnectionManager_new(
+                          env.value, userAgent, map, buildVariant.value, chatHost)));
       this.environment = env;
     }
 
