@@ -7,6 +7,7 @@ use libsignal_core::{Aci, E164, Pni, ServiceId};
 use ref_cast::RefCast as _;
 
 /// Implement Debug for use in DebugStruct etc. using existing Display impl.
+#[macro_export]
 macro_rules! impl_debug_from_display {
     ($target:ident < $($args:tt),* >) => {
         impl< $($args)* > std::fmt::Debug for $target< $($args)* >
