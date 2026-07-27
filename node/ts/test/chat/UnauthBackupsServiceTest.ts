@@ -39,9 +39,6 @@ describe('UnauthBackupsService', () => {
   const TEST_SIGNING_KEY = fromBase64(
     'KMhdmPEusAwoT3C2LzIbmGX6z+3HMbhgbrXmUwRfGF0='
   );
-  const TEST_SIGNING_KEY_PUB = fromBase64(
-    'BWp7eOx6q6IlijMPozln1bY34JoLFZhGu3PLDnn7hO9t'
-  );
   const EXPECTED_PRESENTATION = fromBase64(
     'AMkAAAAAAAAAAgAAAAAAAAAApJdpAAAAAIoiVNK2DtZIRFCtQxRiSokkSiQEKrUm86QgMg+qyZZjLuJipcWuggZt6au2i4MOhslTP4qafDZUYWZnKdX7zV4MKW1+FqHVi9kns3+gGaHRCrUEqKcTBzZj/C79ZRJObwIAAAAAAAAA7vpvGr5uokinX1GRCgDr5au1ajuE2naAsAUXPXXpxTyKZo+S3m3OdyDUusIM3sIyUFwM1OeMtmHLgDcuGAqKdYAAAAAAAAAAcqkJSxGNgTB4ERB7Qcg8tp+IZnEhGxCzuvY3KqrjgwA1LniEMcZCO9kjcSL2Q5JS5yZYrv7Kkn0p3hY4vIrKBlgb0zycYLKRrUj+ndkHKJtWV/2xC42jehDUc1P2ufIEJfu4ScD+sUt9fgAV7uDsKI/ktXnhUPT7/ZxtCCp88gEU4nTfVFvK9jOhY6HRLRf/'
   );
@@ -179,27 +176,34 @@ describe('UnauthBackupsService', () => {
     },
   };
 
-  it('setPublicKey', async () => {
-    await testSimpleGrpcRequest(
-      'org.signal.chat.backup.SetPublicKeyRequest',
-      { publicKey: toBase64(TEST_SIGNING_KEY_PUB), ...BACKUP_REQUEST_TEMPLATE },
-      'org.signal.chat.backup.SetPublicKeyResponse',
-      { success: {} },
-      (chat) =>
-        chat.setBackupPublicKey({
+  describe('refresh', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_BackupSetPublicKeyTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, _args, expected) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const actual = chat.setBackupPublicKey({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
-        })
-    );
-    await testSimpleBackupRequestUnauthorized(
-      'org.signal.chat.backup.SetPublicKeyRequest',
-      { publicKey: toBase64(TEST_SIGNING_KEY_PUB), ...BACKUP_REQUEST_TEMPLATE },
-      'org.signal.chat.backup.SetPublicKeyResponse',
-      (chat) =>
-        chat.setBackupPublicKey({
-          auth: TEST_AUTH,
-          rng: { __deterministicRngSeedForTesting: 0 },
-        })
+        });
+        switch (expected) {
+          case 'success':
+            (await actual) satisfies void;
+            break;
+          case 'credentialRejected':
+            await expect(actual)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({ code: ErrorCode.RequestUnauthorized });
+            break;
+          case 'missingResponse':
+            await expect(actual)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({ code: ErrorCode.IoError });
+            break;
+          default:
+            expected satisfies never;
+        }
+      }
     );
   });
 
@@ -341,55 +345,65 @@ describe('UnauthBackupsService', () => {
     );
   });
 
-  it('refresh', async () => {
-    await testSimpleGrpcRequest(
-      'org.signal.chat.backup.RefreshRequest',
-      BACKUP_REQUEST_TEMPLATE,
-      'org.signal.chat.backup.RefreshResponse',
-      {
-        success: {},
-      },
-      (chat) =>
-        chat.refreshBackup({
+  describe('refresh', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_BackupRefreshTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, _args, expected) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const actual = chat.refreshBackup({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
-        })
-    );
-    await testSimpleBackupRequestUnauthorized(
-      'org.signal.chat.backup.RefreshRequest',
-      BACKUP_REQUEST_TEMPLATE,
-      'org.signal.chat.backup.RefreshResponse',
-      (chat) =>
-        chat.refreshBackup({
-          auth: TEST_AUTH,
-          rng: { __deterministicRngSeedForTesting: 0 },
-        })
+        });
+        switch (expected) {
+          case 'success':
+            (await actual) satisfies void;
+            break;
+          case 'credentialRejected':
+            await expect(actual)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({ code: ErrorCode.RequestUnauthorized });
+            break;
+          case 'missingResponse':
+            await expect(actual)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({ code: ErrorCode.IoError });
+            break;
+          default:
+            expected satisfies never;
+        }
+      }
     );
   });
 
-  it('deleteAll', async () => {
-    await testSimpleGrpcRequest(
-      'org.signal.chat.backup.DeleteAllRequest',
-      BACKUP_REQUEST_TEMPLATE,
-      'org.signal.chat.backup.DeleteAllResponse',
-      {
-        success: {},
-      },
-      (chat) =>
-        chat.backupDeleteAll({
+  describe('deleteAll', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_BackupDeleteAllTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, _args, expected) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const actual = chat.backupDeleteAll({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
-        })
-    );
-    await testSimpleBackupRequestUnauthorized(
-      'org.signal.chat.backup.DeleteAllRequest',
-      BACKUP_REQUEST_TEMPLATE,
-      'org.signal.chat.backup.DeleteAllResponse',
-      (chat) =>
-        chat.backupDeleteAll({
-          auth: TEST_AUTH,
-          rng: { __deterministicRngSeedForTesting: 0 },
-        })
+        });
+        switch (expected) {
+          case 'success':
+            (await actual) satisfies void;
+            break;
+          case 'credentialRejected':
+            await expect(actual)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({ code: ErrorCode.RequestUnauthorized });
+            break;
+          case 'missingResponse':
+            await expect(actual)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({ code: ErrorCode.IoError });
+            break;
+          default:
+            expected satisfies never;
+        }
+      }
     );
   });
 

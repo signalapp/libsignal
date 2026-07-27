@@ -47,6 +47,7 @@ import type {
   ReturnFfiSetDeviceNameOut,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
+  ReturnFfiSimpleBackupTestOut,
   ReturnFfiTestStreamChunk,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
@@ -251,6 +252,11 @@ export type SetUsernameLinkOut =
       success: uuid.Uuid;
     }
   | 'usernameNotSet';
+
+export type SimpleBackupTestOut =
+  | 'success'
+  | 'credentialRejected'
+  | 'missingResponse';
 
 export type TestStreamChunk = {
   chunk: Array<string>;
@@ -675,6 +681,23 @@ export function returnConverterSetUsernameLinkOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for SetUsernameLinkOut');
+  }
+}
+
+export function returnConverterSimpleBackupTestOut(
+  ffiInput: Native.ReturnFfiSimpleBackupTestOut
+): SimpleBackupTestOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+    case 1:
+      return 'credentialRejected';
+    case 2:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SimpleBackupTestOut');
   }
 }
 
@@ -1155,6 +1178,33 @@ export function SvrKey_DeriveStorageServiceKey({
   svrKey: Uint8Array<ArrayBuffer>;
 }): Uint8Array<ArrayBuffer> {
   return identity(Native.SvrKey_DeriveStorageServiceKey(identity(svr_key)));
+}
+
+export function TESTING_BackupDeleteAllTests(): Array<
+  GrpcTestCase<void, SimpleBackupTestOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterSimpleBackupTestOut
+  )(Native.TESTING_BackupDeleteAllTests());
+}
+
+export function TESTING_BackupRefreshTests(): Array<
+  GrpcTestCase<void, SimpleBackupTestOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterSimpleBackupTestOut
+  )(Native.TESTING_BackupRefreshTests());
+}
+
+export function TESTING_BackupSetPublicKeyTests(): Array<
+  GrpcTestCase<void, SimpleBackupTestOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterSimpleBackupTestOut
+  )(Native.TESTING_BackupSetPublicKeyTests());
 }
 
 export function TESTING_ClearPushTokenTests(): Array<GrpcTestCase<void, void>> {

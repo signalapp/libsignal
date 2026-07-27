@@ -24,6 +24,7 @@ import org.signal.libsignal.internal.GetMediaBackupInfoOut
 import org.signal.libsignal.internal.GetMessageBackupInfoOut
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
+import org.signal.libsignal.internal.SimpleBackupTestOut
 import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.protocol.ecc.ECPrivateKey
 import org.signal.libsignal.zkgroup.GenericServerPublicParams
@@ -291,97 +292,91 @@ class UnauthBackupsServiceTest {
   }
 
   @Test
-  fun testSetPublicKey() {
-    testSimpleBackupRequestSuccess(
-      "org.signal.chat.backup.SetPublicKeyRequest",
-      buildBackupRequestObject {
-        put("publicKey", Base64.encode(TEST_SIGNING_KEY_PUB))
-      },
-      "org.signal.chat.backup.SetPublicKeyResponse",
-      buildJsonObject {
-        putJsonObject("success") {}
-      },
-    ) {
-      @Suppress("DEPRECATION")
-      setPublicKey(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
+  fun testSetPublicKey() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_BackupSetPublicKeyTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.setPublicKey(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            SimpleBackupTestOut.Success ->
+              assertIs<RequestResult.Success<Unit>>(actual)
+            SimpleBackupTestOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            SimpleBackupTestOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
       )
     }
-
-    testSimpleBackupRequestUnauthorized(
-      "org.signal.chat.backup.SetPublicKeyRequest",
-      buildBackupRequestObject {
-        put("publicKey", Base64.encode(TEST_SIGNING_KEY_PUB))
-      },
-      "org.signal.chat.backup.SetPublicKeyResponse",
-    ) {
-      @Suppress("DEPRECATION")
-      setPublicKey(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
-      )
-    }
-  }
 
   @Test
-  fun testRefresh() {
-    testSimpleBackupRequestSuccess(
-      "org.signal.chat.backup.RefreshRequest",
-      buildBackupRequestObject(),
-      "org.signal.chat.backup.RefreshResponse",
-      buildJsonObject {
-        putJsonObject("success") {}
-      },
-    ) {
-      @Suppress("DEPRECATION")
-      refresh(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
+  fun testRefresh() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_BackupRefreshTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.refresh(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            SimpleBackupTestOut.Success ->
+              assertIs<RequestResult.Success<Unit>>(actual)
+            SimpleBackupTestOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            SimpleBackupTestOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
       )
     }
-
-    testSimpleBackupRequestUnauthorized(
-      "org.signal.chat.backup.RefreshRequest",
-      buildBackupRequestObject(),
-      "org.signal.chat.backup.RefreshResponse",
-    ) {
-      @Suppress("DEPRECATION")
-      refresh(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
-      )
-    }
-  }
 
   @Test
-  fun testDeleteAll() {
-    testSimpleBackupRequestSuccess(
-      "org.signal.chat.backup.DeleteAllRequest",
-      buildBackupRequestObject(),
-      "org.signal.chat.backup.DeleteAllResponse",
-      buildJsonObject {
-        putJsonObject("success") {}
-      },
-    ) {
-      @Suppress("DEPRECATION")
-      deleteAll(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
+  fun testDeleteAll() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_BackupDeleteAllTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.deleteAll(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            SimpleBackupTestOut.Success ->
+              assertIs<RequestResult.Success<Unit>>(actual)
+            SimpleBackupTestOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            SimpleBackupTestOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
       )
     }
-    testSimpleBackupRequestUnauthorized(
-      "org.signal.chat.backup.DeleteAllRequest",
-      buildBackupRequestObject(),
-      "org.signal.chat.backup.DeleteAllResponse",
-    ) {
-      @Suppress("DEPRECATION")
-      deleteAll(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
-      )
-    }
-  }
 
   @Test
   fun testGetCdnCredentials() {

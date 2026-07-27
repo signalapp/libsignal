@@ -405,6 +405,17 @@ export type ReturnFfiSetUsernameLinkOut =
       __type: 1;
     };
 
+export type ReturnFfiSimpleBackupTestOut =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
 export type ReturnFfiTestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -2382,6 +2393,15 @@ type NativeFunctions = {
   SvrKey_DeriveStorageServiceKey: (
     svr_key: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
+  TESTING_BackupDeleteAllTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiSimpleBackupTestOut>
+  >;
+  TESTING_BackupRefreshTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiSimpleBackupTestOut>
+  >;
+  TESTING_BackupSetPublicKeyTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiSimpleBackupTestOut>
+  >;
   TESTING_BridgedStringMap_dump_to_json: (
     map: Wrapper<BridgedStringMap>
   ) => string;
@@ -3627,6 +3647,9 @@ const {
   SvrKey_DeriveRegistrationLock,
   SvrKey_DeriveRegistrationRecoveryPassword,
   SvrKey_DeriveStorageServiceKey,
+  TESTING_BackupDeleteAllTests,
+  TESTING_BackupRefreshTests,
+  TESTING_BackupSetPublicKeyTests,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_BulkPullFromStream_Cancel,
   TESTING_BulkPullFromStream_New,
@@ -4363,6 +4386,9 @@ export {
   SvrKey_DeriveRegistrationLock,
   SvrKey_DeriveRegistrationRecoveryPassword,
   SvrKey_DeriveStorageServiceKey,
+  TESTING_BackupDeleteAllTests,
+  TESTING_BackupRefreshTests,
+  TESTING_BackupSetPublicKeyTests,
   TESTING_BridgedStringMap_dump_to_json,
   TESTING_BulkPullFromStream_Cancel,
   TESTING_BulkPullFromStream_New,

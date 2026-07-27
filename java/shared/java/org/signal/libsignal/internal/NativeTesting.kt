@@ -76,6 +76,12 @@ public object NativeTesting {
   @JvmStatic
   public external fun TESTING_AcquireSemaphoreAndGet(asyncRuntime: ObjectHandle, semaphore: ObjectHandle, valueHolder: ObjectHandle): CompletableFuture<Int>
   @JvmStatic
+  public external fun TESTING_BackupDeleteAllTests(): Array<Object>
+  @JvmStatic
+  public external fun TESTING_BackupRefreshTests(): Array<Object>
+  @JvmStatic
+  public external fun TESTING_BackupSetPublicKeyTests(): Array<Object>
+  @JvmStatic
   public external fun TESTING_BridgedStringMap_dump_to_json(map: ObjectHandle): String
   @JvmStatic
   public external fun TESTING_BulkPullFromStream_Cancel(stream: ObjectHandle): Unit

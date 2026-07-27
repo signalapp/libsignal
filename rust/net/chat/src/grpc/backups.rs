@@ -1329,6 +1329,141 @@ pub mod test_cases {
         };
         status_for_server_side_error(tonic::Code::Aborted, "STREAM_CLOSED", backup_info)
     }
+
+    pub enum SimpleBackupTestOut {
+        Success,
+        CredentialRejected,
+        MissingResponse,
+    }
+
+    pub fn set_public_key_test_cases()
+    -> Vec<GrpcTestCase<(), SetPublicKeyRequest, SetPublicKeyResponse, SimpleBackupTestOut>> {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/SetPublicKey";
+        let request_grpc = SetPublicKeyRequest {
+            signed_presentation: Some(test_signed_presentation()),
+            public_key: BackupAuth::TEST_SIGNING_KEY_PUB.to_vec(),
+        };
+        vec![
+            GrpcTestCase {
+                name: "success".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: SetPublicKeyResponse {
+                    response: Some(set_public_key_response::Response::Success(
+                        Default::default(),
+                    )),
+                },
+                response: SimpleBackupTestOut::Success,
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: SetPublicKeyResponse {
+                    response: Some(set_public_key_response::Response::FailedAuthentication(
+                        FailedZkAuthentication {
+                            description: "bad!".to_owned(),
+                        },
+                    )),
+                },
+                response: SimpleBackupTestOut::CredentialRejected,
+            },
+            GrpcTestCase {
+                name: "missing response".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc,
+                response_grpc: SetPublicKeyResponse { response: None },
+                response: SimpleBackupTestOut::MissingResponse,
+            },
+        ]
+    }
+
+    pub fn refresh_test_cases()
+    -> Vec<GrpcTestCase<(), RefreshRequest, RefreshResponse, SimpleBackupTestOut>> {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/Refresh";
+        let request_grpc = RefreshRequest {
+            signed_presentation: Some(test_signed_presentation()),
+        };
+        vec![
+            GrpcTestCase {
+                name: "success".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: RefreshResponse {
+                    response: Some(refresh_response::Response::Success(Default::default())),
+                },
+                response: SimpleBackupTestOut::Success,
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: RefreshResponse {
+                    response: Some(refresh_response::Response::FailedAuthentication(
+                        FailedZkAuthentication {
+                            description: "bad!".to_owned(),
+                        },
+                    )),
+                },
+                response: SimpleBackupTestOut::CredentialRejected,
+            },
+            GrpcTestCase {
+                name: "missing response".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc,
+                response_grpc: RefreshResponse { response: None },
+                response: SimpleBackupTestOut::MissingResponse,
+            },
+        ]
+    }
+
+    pub fn delete_all_test_cases()
+    -> Vec<GrpcTestCase<(), DeleteAllRequest, DeleteAllResponse, SimpleBackupTestOut>> {
+        let method = "/org.signal.chat.backup.BackupsAnonymous/DeleteAll";
+        let request_grpc = DeleteAllRequest {
+            signed_presentation: Some(test_signed_presentation()),
+        };
+        vec![
+            GrpcTestCase {
+                name: "success".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: DeleteAllResponse {
+                    response: Some(delete_all_response::Response::Success(Default::default())),
+                },
+                response: SimpleBackupTestOut::Success,
+            },
+            GrpcTestCase {
+                name: "credential rejected".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc: request_grpc.clone(),
+                response_grpc: DeleteAllResponse {
+                    response: Some(delete_all_response::Response::FailedAuthentication(
+                        FailedZkAuthentication {
+                            description: "bad!".to_owned(),
+                        },
+                    )),
+                },
+                response: SimpleBackupTestOut::CredentialRejected,
+            },
+            GrpcTestCase {
+                name: "missing response".to_owned(),
+                method: method.to_owned(),
+                request: (),
+                request_grpc,
+                response_grpc: DeleteAllResponse { response: None },
+                response: SimpleBackupTestOut::MissingResponse,
+            },
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -1505,44 +1640,32 @@ mod test {
             .expect("sync")
     }
 
-    #[test_case(ok(SetPublicKeyResponse {
-        response: Some(set_public_key_response::Response::Success(Default::default()))
-    }) => matches Ok(()))]
-    #[test_case(ok(SetPublicKeyResponse {
-        response: Some(set_public_key_response::Response::FailedAuthentication(FailedZkAuthentication {
-            description: "bad!".to_owned()
-        }))
-    }) => matches Err(RequestError::Other(BackupAuthCredentialRejected)))]
-    #[test_case(ok(SetPublicKeyResponse {
-        response: None,
-    }) => matches Err(RequestError::Unexpected { .. }))]
-    fn test_set_public_key(
-        response: http::Response<BodyWithTrailers>,
-    ) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/SetPublicKey",
-                SetPublicKeyRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
-                    }),
-                    public_key: BackupAuth::TEST_SIGNING_KEY_PUB.to_vec(),
-                },
-            ),
-            response,
-        };
-
-        Unauth(&validator)
-            .set_backup_public_key(
-                &BackupAuth::generate_for_testing(
-                    zkgroup::backups::BackupCredentialType::Media,
+    #[test]
+    fn test_set_public_key() {
+        use super::test_cases::*;
+        run_tests(
+            set_public_key_test_cases(),
+            |chat: Unauth<_>, ()| async move {
+                chat.set_backup_public_key(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
                     &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |expected, actual| match expected {
+                SimpleBackupTestOut::Success => assert_matches!(actual, Ok(())),
+                SimpleBackupTestOut::CredentialRejected => assert_matches!(
+                    actual,
+                    Err(RequestError::Other(BackupAuthCredentialRejected))
                 ),
-                &mut fixed_seed_test_rng(),
-            )
-            .now_or_never()
-            .expect("sync")
+                SimpleBackupTestOut::MissingResponse => {
+                    assert_matches!(actual, Err(RequestError::Unexpected { .. }))
+                }
+            },
+        );
     }
 
     #[test_case(ok(GetCdnCredentialsResponse {
@@ -1638,82 +1761,60 @@ mod test {
             .map(|libsignal_net::auth::Auth { username, password }| (username, password))
     }
 
-    #[test_case(ok(RefreshResponse {
-        response: Some(refresh_response::Response::Success(Default::default()))
-    }) => matches Ok(()))]
-    #[test_case(ok(RefreshResponse {
-        response: Some(refresh_response::Response::FailedAuthentication(FailedZkAuthentication {
-            description: "bad!".to_owned()
-        }))
-    }) => matches Err(RequestError::Other(BackupAuthCredentialRejected)))]
-    #[test_case(ok(RefreshResponse {
-        response: None,
-    }) => matches Err(RequestError::Unexpected { .. }))]
-    fn test_refresh(
-        response: http::Response<BodyWithTrailers>,
-    ) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/Refresh",
-                RefreshRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
-                    }),
-                },
-            ),
-            response,
-        };
-
-        Unauth(&validator)
-            .refresh_backup(
-                &BackupAuth::generate_for_testing(
-                    zkgroup::backups::BackupCredentialType::Media,
+    #[test]
+    fn test_refresh() {
+        use super::test_cases::*;
+        run_tests(
+            refresh_test_cases(),
+            |chat: Unauth<_>, ()| async move {
+                chat.refresh_backup(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
                     &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |expected, actual| match expected {
+                SimpleBackupTestOut::Success => assert_matches!(actual, Ok(())),
+                SimpleBackupTestOut::CredentialRejected => assert_matches!(
+                    actual,
+                    Err(RequestError::Other(BackupAuthCredentialRejected))
                 ),
-                &mut fixed_seed_test_rng(),
-            )
-            .now_or_never()
-            .expect("sync")
+                SimpleBackupTestOut::MissingResponse => {
+                    assert_matches!(actual, Err(RequestError::Unexpected { .. }))
+                }
+            },
+        );
     }
 
-    #[test_case(ok(DeleteAllResponse {
-        response: Some(delete_all_response::Response::Success(Default::default()))
-    }) => matches Ok(()))]
-    #[test_case(ok(DeleteAllResponse {
-        response: Some(delete_all_response::Response::FailedAuthentication(FailedZkAuthentication {
-            description: "bad!".to_owned()
-        }))
-    }) => matches Err(RequestError::Other(BackupAuthCredentialRejected)))]
-    #[test_case(ok(DeleteAllResponse {
-        response: None,
-    }) => matches Err(RequestError::Unexpected { .. }))]
-    fn test_delete_all(
-        response: http::Response<BodyWithTrailers>,
-    ) -> Result<(), RequestError<BackupAuthCredentialRejected>> {
-        let validator = RequestValidator {
-            expected: req(
-                "/org.signal.chat.backup.BackupsAnonymous/DeleteAll",
-                RefreshRequest {
-                    signed_presentation: Some(SignedPresentation {
-                        presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
-                        presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
-                    }),
-                },
-            ),
-            response,
-        };
-
-        Unauth(&validator)
-            .backup_delete_all(
-                &BackupAuth::generate_for_testing(
-                    zkgroup::backups::BackupCredentialType::Media,
+    #[test]
+    fn test_delete_all() {
+        use super::test_cases::*;
+        run_tests(
+            delete_all_test_cases(),
+            |chat: Unauth<_>, ()| async move {
+                chat.backup_delete_all(
+                    &BackupAuth::generate_for_testing(
+                        zkgroup::backups::BackupCredentialType::Media,
+                        &mut fixed_seed_test_rng(),
+                    ),
                     &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |expected, actual| match expected {
+                SimpleBackupTestOut::Success => assert_matches!(actual, Ok(())),
+                SimpleBackupTestOut::CredentialRejected => assert_matches!(
+                    actual,
+                    Err(RequestError::Other(BackupAuthCredentialRejected))
                 ),
-                &mut fixed_seed_test_rng(),
-            )
-            .now_or_never()
-            .expect("sync")
+                SimpleBackupTestOut::MissingResponse => {
+                    assert_matches!(actual, Err(RequestError::Unexpected { .. }))
+                }
+            },
+        );
     }
 
     #[test]

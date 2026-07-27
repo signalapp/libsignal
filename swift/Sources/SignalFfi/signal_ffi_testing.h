@@ -809,6 +809,13 @@ typedef struct {
 } SignalSetUsernameLinkOutFfiResult;
 static_assert_64bit(sizeof(SignalSetUsernameLinkOutFfiResult) == 20);
 static_assert_64bit(alignof(SignalSetUsernameLinkOutFfiResult) == 4);
+typedef enum {
+  SignalSimpleBackupTestOutFfiResultSuccess,
+  SignalSimpleBackupTestOutFfiResultCredentialRejected,
+  SignalSimpleBackupTestOutFfiResultMissingResponse,
+} SignalSimpleBackupTestOutFfiResult;
+static_assert_64bit(sizeof(SignalSimpleBackupTestOutFfiResult) == 4);
+static_assert_64bit(alignof(SignalSimpleBackupTestOutFfiResult) == 4);
 typedef struct {
   int32_t _0;
   int32_t _1;
@@ -1045,6 +1052,15 @@ SignalFfiError* signal_test_stream_destroy(
 );
 SignalFfiError* signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(
   SignalMutPointerNonSuspendingBackgroundThreadRuntime p
+);
+SignalFfiError* signal_testing_backup_delete_all_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_backup_refresh_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_backup_set_public_key_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_bridged_string_map_dump_to_json(
   SignalCStringPtr* out,

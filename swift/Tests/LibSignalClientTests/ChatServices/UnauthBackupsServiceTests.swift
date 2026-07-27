@@ -221,21 +221,29 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testSetPublicKey() async throws {
-        try await testSimpleGrpcRequest(
-            requestName: "org.signal.chat.backup.SetPublicKeyRequest",
-            expectedRequest: backupRequest(["publicKey": TEST_SIGNING_KEY_PUB.base64EncodedString()]),
-            responseName: "org.signal.chat.backup.SetPublicKeyResponse",
-            response: ["success": [:]],
-        ) {
-            try await $0.setBackupPublicKey(auth: TEST_AUTH, rngForTesting: 0)
-        }
-        await testSimpleBackupRequestUnauthorized(
-            requestName: "org.signal.chat.backup.SetPublicKeyRequest",
-            expectedRequest: backupRequest(["publicKey": TEST_SIGNING_KEY_PUB.base64EncodedString()]),
-            responseName: "org.signal.chat.backup.SetPublicKeyResponse",
-        ) {
-            try await $0.setBackupPublicKey(auth: TEST_AUTH, rngForTesting: 0)
-        }
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_BackupSetPublicKeyTests(),
+            invoke: { api, _ in
+                try await api.setBackupPublicKey(auth: TEST_AUTH, rngForTesting: 0)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success:
+                    () = try actual.get()
+                case .credentialRejected:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.requestUnauthorized(_) {}
+                case .missingResponse:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
     }
 
     func testGetCdnCredentials() async throws {
@@ -332,41 +340,55 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testRefresh() async throws {
-        try await testSimpleGrpcRequest(
-            requestName: "org.signal.chat.backup.RefreshRequest",
-            expectedRequest: backupRequest(),
-            responseName: "org.signal.chat.backup.RefreshResponse",
-            response: ["success": [:]],
-        ) {
-            try await $0.refreshBackup(auth: TEST_AUTH, rngForTesting: 0)
-        }
-
-        await testSimpleBackupRequestUnauthorized(
-            requestName: "org.signal.chat.backup.RefreshRequest",
-            expectedRequest: backupRequest(),
-            responseName: "org.signal.chat.backup.RefreshResponse",
-        ) {
-            try await $0.refreshBackup(auth: TEST_AUTH, rngForTesting: 0)
-        }
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_BackupRefreshTests(),
+            invoke: { api, _ in
+                try await api.refreshBackup(auth: TEST_AUTH, rngForTesting: 0)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success:
+                    () = try actual.get()
+                case .credentialRejected:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.requestUnauthorized(_) {}
+                case .missingResponse:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
     }
 
     func testDeleteAll() async throws {
-        try await testSimpleGrpcRequest(
-            requestName: "org.signal.chat.backup.DeleteAllRequest",
-            expectedRequest: backupRequest(),
-            responseName: "org.signal.chat.backup.DeleteAllResponse",
-            response: ["success": [:]],
-        ) {
-            try await $0.backupDeleteAll(auth: TEST_AUTH, rngForTesting: 0)
-        }
-
-        await testSimpleBackupRequestUnauthorized(
-            requestName: "org.signal.chat.backup.DeleteAllRequest",
-            expectedRequest: backupRequest(),
-            responseName: "org.signal.chat.backup.DeleteAllResponse",
-        ) {
-            try await $0.backupDeleteAll(auth: TEST_AUTH, rngForTesting: 0)
-        }
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_BackupDeleteAllTests(),
+            invoke: { api, _ in
+                try await api.backupDeleteAll(auth: TEST_AUTH, rngForTesting: 0)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success:
+                    () = try actual.get()
+                case .credentialRejected:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.requestUnauthorized(_) {}
+                case .missingResponse:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
     }
 
     func testCopyMedia() async throws {

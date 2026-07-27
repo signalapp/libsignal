@@ -702,6 +702,29 @@ public sealed class SetUsernameLinkOut {
   }
 }
 
+public sealed class SimpleBackupTestOut {
+  public data object Success : SimpleBackupTestOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): Success = Success
+  }
+
+  public data object CredentialRejected : SimpleBackupTestOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): CredentialRejected = CredentialRejected
+  }
+
+  public data object MissingResponse : SimpleBackupTestOut() {
+    @JvmStatic
+    @JvmName("fromNative")
+    @CalledFromNative
+    internal fun fromNative(): MissingResponse = MissingResponse
+  }
+}
+
 public data class TestStreamChunk(
   val chunk: List<String>,
   val termination: Any?,
@@ -724,6 +747,36 @@ public data class TestStreamChunk(
 }
 
 public object NativeTestingNice {
+  public fun TESTING_BackupDeleteAllTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.SimpleBackupTestOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_BackupDeleteAllTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.SimpleBackupTestOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SimpleBackupTestOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_BackupRefreshTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.SimpleBackupTestOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_BackupRefreshTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.SimpleBackupTestOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SimpleBackupTestOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_BackupSetPublicKeyTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.SimpleBackupTestOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_BackupSetPublicKeyTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.SimpleBackupTestOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SimpleBackupTestOut>(it) })(ffiOut)
+  }
+
   public fun TESTING_ClearPushTokenTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {
     val ffiOut =
       NativeTesting.TESTING_ClearPushTokenTests()

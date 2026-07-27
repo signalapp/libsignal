@@ -620,6 +620,14 @@ mod remote_derives {
         LinkDataTooShort,
         MissingResponse,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::SimpleBackupTestOut)]
+    pub(super) enum SimpleBackupTestOut {
+        Success,
+        CredentialRejected,
+        MissingResponse,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -736,4 +744,17 @@ fn TESTING_forceEmitVecOfBridgeDeleteBackupMediaOut()
 fn TESTING_LookUpUsernameLinkTests()
 -> GrpcTestCases<remote_derives::LookUpUsernameLinkArgs, remote_derives::LookUpUsernameLinkOut> {
     libsignal_net_chat::grpc::usernames::test_cases::look_up_username_link_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_BackupSetPublicKeyTests() -> GrpcTestCases<(), remote_derives::SimpleBackupTestOut> {
+    libsignal_net_chat::grpc::backups::test_cases::set_public_key_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_BackupRefreshTests() -> GrpcTestCases<(), remote_derives::SimpleBackupTestOut> {
+    libsignal_net_chat::grpc::backups::test_cases::refresh_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_BackupDeleteAllTests() -> GrpcTestCases<(), remote_derives::SimpleBackupTestOut> {
+    libsignal_net_chat::grpc::backups::test_cases::delete_all_test_cases().into()
 }

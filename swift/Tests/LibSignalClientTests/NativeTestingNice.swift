@@ -659,6 +659,12 @@ internal enum SetUsernameLinkOut {
     case usernameNotSet
 }
 
+internal enum SimpleBackupTestOut {
+    case success
+    case credentialRejected
+    case missingResponse
+}
+
 internal struct TestStreamChunk {
     var chunk: [String]
     var termination: BulkPolledStreamTermination?
@@ -1162,6 +1168,27 @@ internal enum DerivedReturnConverterSetUsernameLinkOut: NiceReturnConverter {
             return SetUsernameLinkOut.usernameNotSet
         default:
             throw SignalError.internalError("Unexpected enum tag for SetUsernameLinkOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterSimpleBackupTestOut: NiceReturnConverter {
+    typealias NiceReturn = SimpleBackupTestOut
+    typealias FfiReturn = SignalSimpleBackupTestOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSimpleBackupTestOutFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalSimpleBackupTestOutFfiResultSuccess:
+            return SimpleBackupTestOut.success
+        case SignalSimpleBackupTestOutFfiResultCredentialRejected:
+            return SimpleBackupTestOut.credentialRejected
+        case SignalSimpleBackupTestOutFfiResultMissingResponse:
+            return SimpleBackupTestOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for SimpleBackupTestOut: \(ffiTag)")
         }
     }
 }
@@ -1816,6 +1843,45 @@ internal enum DerivedArgConverterMyTestStruct: NiceArgConverter {
 }
 
 internal enum NativeTestingNice {
+    internal static func TESTING_BackupDeleteAllTests() throws -> [GrpcTestCase<Void, SimpleBackupTestOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_backup_delete_all_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_BackupRefreshTests() throws -> [GrpcTestCase<Void, SimpleBackupTestOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_backup_refresh_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_BackupSetPublicKeyTests() throws -> [GrpcTestCase<Void, SimpleBackupTestOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_backup_set_public_key_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
     internal static func TESTING_ClearPushTokenTests() throws -> [GrpcTestCase<Void, Void>] {
         var rawOutput = GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.emptyFfiReturn()
         try checkError(
