@@ -101,6 +101,7 @@ public class GrpcTestCase<Req, Resp> {
       invoke: suspend (Service, Req) -> T,
       check: (Resp, T) -> Unit,
     ) {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       for (test in tests) {
         coroutineScope {
           val tokioAsyncContext = TokioAsyncContext()

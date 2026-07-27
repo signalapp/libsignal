@@ -181,7 +181,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_BackupSetPublicKeyTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, _args, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
         const actual = chat.setBackupPublicKey({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -252,7 +251,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_GetMessageBackupInfoTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, _args, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
         const actual = chat.getMessageBackupInfo({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -284,7 +282,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_GetMediaBackupInfoTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, _args, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
         const actual = chat.getMediaBackupInfo({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -350,7 +347,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_BackupRefreshTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, _args, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
         const actual = chat.refreshBackup({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -381,7 +377,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_BackupDeleteAllTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, _args, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
         const actual = chat.backupDeleteAll({
           auth: TEST_AUTH,
           rng: { __deterministicRngSeedForTesting: 0 },
@@ -412,8 +407,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_CopyBackupMediaTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, items, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
-
         const stream = chat.copyBackupMedia({
           auth: TEST_AUTH,
           items: items.map((next) => ({
@@ -462,8 +455,6 @@ describe('UnauthBackupsService', () => {
       NativeNice.TESTING_DeleteBackupMediaTests(),
       connectUnauth<UnauthBackupsService>,
       async (chat, items, expected) => {
-        Native.TESTING_EnableDeterministicRngForTesting();
-
         const stream = chat.deleteBackupMedia({
           auth: TEST_AUTH,
           items,

@@ -110,6 +110,7 @@ export function defineTestGrpcCases<
   tests.forEach((test) => {
     // "void" is needed since eslint doesn't realize that it() doesn't return a promise
     void it(test.name, async () => {
+      Native.TESTING_EnableDeterministicRngForTesting();
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
       const [chat, fakeRemote] = connect(tokio);
       const responseFuture = check(chat, test.request, test.response);

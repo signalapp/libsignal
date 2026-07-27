@@ -221,7 +221,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testSetPublicKey() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_BackupSetPublicKeyTests(),
             invoke: { api, _ in
@@ -267,7 +266,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testGetMessageBackupInfo() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_GetMessageBackupInfoTests(),
             invoke: { api, _ in
@@ -293,7 +291,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testGetMediaBackupInfo() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_GetMediaBackupInfoTests(),
             invoke: { api, _ in
@@ -340,7 +337,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testRefresh() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_BackupRefreshTests(),
             invoke: { api, _ in
@@ -366,7 +362,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testDeleteAll() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_BackupDeleteAllTests(),
             invoke: { api, _ in
@@ -392,7 +387,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testCopyMedia() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_CopyBackupMediaTests(),
             invoke: { (api, args: [BridgeCopyBackupMediaItem]) in
@@ -438,7 +432,6 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
     }
 
     func testDeleteMedia() async throws {
-        signal_testing_enable_deterministic_rng_for_testing()
         try await testGrpcCases(
             try NativeTestingNice.TESTING_DeleteBackupMediaTests(),
             invoke: { (api, args: [BridgeDeleteBackupMediaItem]) in

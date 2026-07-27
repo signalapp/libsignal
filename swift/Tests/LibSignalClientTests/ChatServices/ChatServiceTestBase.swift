@@ -136,6 +136,8 @@ extension ChatServiceTestBase {
         check: (Out, Result<T, any Error>) throws -> Void,
     ) async throws
     where Args: Sendable {
+        signal_testing_enable_deterministic_rng_for_testing()
+
         for test in tests {
             let api = self.api
             let requestInfo = test.request

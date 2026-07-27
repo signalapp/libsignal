@@ -294,7 +294,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testSetPublicKey() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runTests(
         NativeTestingNice.TESTING_BackupSetPublicKeyTests(),
         { tokio, listener ->
@@ -323,7 +322,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testRefresh() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runTests(
         NativeTestingNice.TESTING_BackupRefreshTests(),
         { tokio, listener ->
@@ -352,7 +350,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testDeleteAll() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runTests(
         NativeTestingNice.TESTING_BackupDeleteAllTests(),
         { tokio, listener ->
@@ -424,7 +421,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testGetMessageBackupInfo() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runTests(
         NativeTestingNice.TESTING_GetMessageBackupInfoTests(),
         { tokio, listener ->
@@ -456,7 +452,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testGetMediaBackupInfo() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runTests(
         NativeTestingNice.TESTING_GetMediaBackupInfoTests(),
         { tokio, listener ->
@@ -523,7 +518,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testCopyMedia() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runSuspendingTests(
         NativeTestingNice.TESTING_CopyBackupMediaTests(),
         { asyncRuntime, listener ->
@@ -585,7 +579,6 @@ class UnauthBackupsServiceTest {
   @Test
   fun testDeleteMedia() =
     runTest {
-      NativeTesting.TESTING_EnableDeterministicRngForTesting()
       GrpcTestCase.runSuspendingTests(
         NativeTestingNice.TESTING_DeleteBackupMediaTests(),
         { asyncRuntime, listener ->
