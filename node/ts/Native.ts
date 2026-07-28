@@ -2312,6 +2312,12 @@ type NativeFunctions = {
   SignedPreKeyRecord_Serialize: (
     obj: Wrapper<SignedPreKeyRecord>
   ) => Uint8Array<ArrayBuffer>;
+  Svr2BackupSession_Deserialize: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => Svr2BackupSession;
+  Svr2BackupSession_Serialize: (
+    session: Wrapper<Svr2BackupSession>
+  ) => Uint8Array<ArrayBuffer>;
   Svr2Client_New: (
     mrenclave: Uint8Array<ArrayBuffer>,
     attestation_msg: Uint8Array<ArrayBuffer>,
@@ -3632,6 +3638,8 @@ const {
   SignedPreKeyRecord_GetTimestamp,
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
+  Svr2BackupSession_Deserialize,
+  Svr2BackupSession_Serialize,
   Svr2Client_New,
   Svr2MigrationSession_Deserialize,
   Svr2MigrationSession_IsComplete,
@@ -4371,6 +4379,8 @@ export {
   SignedPreKeyRecord_GetTimestamp,
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
+  Svr2BackupSession_Deserialize,
+  Svr2BackupSession_Serialize,
   Svr2Client_New,
   Svr2MigrationSession_Deserialize,
   Svr2MigrationSession_IsComplete,

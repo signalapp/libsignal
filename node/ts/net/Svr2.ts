@@ -24,11 +24,31 @@ type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
  * `BackupRequest`. Must be passed to {@link Svr2#finishBackup} to complete
  * the operation. If {@link Svr2#finishBackup} fails, the same session may be
  * retried; the `BackupRequest` itself is never re-sent.
+ *
+ * The session can be serialized between {@link Svr2#startBackup} and
+ * {@link Svr2#finishBackup} so a client can resume the backup across restarts.
  */
 export class Svr2BackupSession {
   readonly _nativeHandle: Native.Svr2BackupSession;
   constructor(handle: Native.Svr2BackupSession) {
     this._nativeHandle = handle;
+  }
+
+  /**
+   * Serializes the session so it can be persisted and later restored with
+   * {@link #deserialize}.
+   */
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Native.Svr2BackupSession_Serialize(this);
+  }
+
+  /**
+   * Restores a session previously produced by {@link #serialize}.
+   *
+   * @throws {SvrInvalidDataError} if the bytes are corrupt or incompatible.
+   */
+  static deserialize(bytes: Uint8Array<ArrayBuffer>): Svr2BackupSession {
+    return new Svr2BackupSession(Native.Svr2BackupSession_Deserialize(bytes));
   }
 }
 

@@ -320,6 +320,17 @@ async fn Svr2_Migrate(
 }
 
 #[bridge_fn(ffi = false, jni = false)]
+fn Svr2BackupSession_Serialize(session: &Svr2BackupSession) -> Vec<u8> {
+    session.serialize()
+}
+
+#[bridge_fn(ffi = false, jni = false)]
+fn Svr2BackupSession_Deserialize(bytes: &[u8]) -> Result<Svr2BackupSession, Svr2Error> {
+    // A corrupt or incompatible serialized session is treated as invalid data.
+    Svr2BackupSession::deserialize(bytes).map_err(|_| Svr2Error::DecryptionError)
+}
+
+#[bridge_fn(ffi = false, jni = false)]
 fn Svr2MigrationSession_Serialize(session: &Svr2MigrationSession) -> Vec<u8> {
     session.serialize()
 }

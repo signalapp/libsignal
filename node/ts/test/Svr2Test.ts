@@ -146,4 +146,15 @@ describe('Svr2 bridging', () => {
       assert.equal(err.code, SignalClient.ErrorCode.SvrInvalidData);
     }
   });
+
+  it('deserializing a corrupt backup session throws SvrInvalidData', () => {
+    try {
+      SignalClient.Net.Svr2BackupSession.deserialize(Buffer.of(0xff, 0xff));
+      assert.fail('unexpected success');
+    } catch (e) {
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
+      assert.equal(err.code, SignalClient.ErrorCode.SvrInvalidData);
+    }
+  });
 });
