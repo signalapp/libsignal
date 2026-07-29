@@ -3375,7 +3375,6 @@ dependencies = [
  "rand 0.9.4",
  "rand_core 0.9.5",
  "sha2 0.11.0",
- "signal-crypto",
  "strum",
  "subtle",
  "test-case",

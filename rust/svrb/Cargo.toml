@@ -13,8 +13,6 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-signal-crypto = { workspace = true }
-
 aes-gcm-siv = { workspace = true }
 curve25519-dalek = { workspace = true }
 displaydoc = { workspace = true }
