@@ -1,0 +1,11 @@
+{% macro jni_functions(functions) %}
+  {% for (name, body) in functions|items -%}
+    @JvmStatic{% if body.is_throwing %} @Throws(Exception::class){% endif %}
+    public external fun {{name}}({% for (arg, ty) in body.args -%}
+      {{ arg|to_lower_camel_case }}: {{ ty }}
+      {%- if not loop.last -%},{%- endif -%}
+    {%- endfor %}): {{ body.result }}
+  {% endfor %}
+{% endmacro %}
+
+

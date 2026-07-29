@@ -9,8 +9,11 @@ use std::io;
 use super::*;
 use crate::io::SyncInputStream;
 
-pub type JavaInputStream<'a> = JObject<'a>;
-pub type JavaSyncInputStream<'a> = JObject<'a>;
+crate::jni_custom_spellings! {
+    #[kt = "InputStream"]
+    pub struct JavaInputStream<'a>(pub JObject<'a>);
+}
+pub type JavaSyncInputStream<'a> = JavaInputStream<'a>;
 
 /// Implementation of [`InputStream`](crate::io::InputStream) for an argument to a bridge function.
 pub struct JniBridgeInputStream<'a> {
@@ -28,7 +31,10 @@ enum BridgeOrIoError {
 }
 
 impl<'a> JniBridgeInputStream<'a> {
-    pub fn new(env: &mut jni::Env<'a>, stream: &JObject<'a>) -> Result<Self, BridgeLayerError> {
+    pub fn new(
+        env: &mut jni::Env<'a>,
+        JavaInputStream(stream): &JavaInputStream<'a>,
+    ) -> Result<Self, BridgeLayerError> {
         check_jobject_type(env, stream, ClassName("java.io.InputStream"))?;
         let stream = env
             .new_local_ref(stream)

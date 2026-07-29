@@ -34,7 +34,10 @@ fn attach_and_log_on_error(
     }
 }
 
-pub type JavaConnectChatBridge<'a> = JObject<'a>;
+crate::jni_custom_spellings! {
+    #[kt = "ConnectChatBridge"]
+    pub struct JavaConnectChatBridge<'a>(pub JObject<'a>);
+}
 
 const CONNECTION_MANAGER_CLASS: ClassName =
     ClassName("org.signal.libsignal.net.Network$ConnectionManager");

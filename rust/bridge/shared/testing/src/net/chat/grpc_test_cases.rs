@@ -337,7 +337,7 @@ impl<'a, Req: jni::ResultTypeInfo<'a>, Resp: jni::ResultTypeInfo<'a>> jni::Resul
                         method => java.lang.String,
                         request => java.lang.Object,
                         request_grpc => [byte],
-                        response_grpc => long,
+                        response_grpc.0 => long,
                         response => java.lang.Object,
                     ) -> void),
                 )

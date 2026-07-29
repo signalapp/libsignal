@@ -81,8 +81,7 @@ $ cargo test
 
 The basic tools above should get you set up for most libsignal Rust development.
 
-Eventually, you may find that you need some additional Rust tools like `cbindgen` to modify the bridges to the
-client libraries or `taplo` for code formatting.
+Eventually, you may find that you need some additional Rust tools like `taplo` for code formatting.
 
 You should always install any Rust tools you need that may affect the build from cargo rather than from your system
 package manager (e.g. `apt` or `brew`). Package managers sometimes contain outdated versions of these tools that can break
@@ -91,7 +90,6 @@ the build with incompatibility issues (especially cbindgen).
 To install the main Rust extra dependencies matching the versions we use, you can run the following commands:
 
 ```shell
-$ cargo +stable install --version "$(cat .cbindgen-version)" --locked cbindgen
 $ cargo +stable install --version "$(cat acknowledgments/cargo-about-version)" --locked cargo-about
 $ cargo +stable install --version "$(cat .taplo-cli-version)" --locked taplo-cli
 $ cargo +stable install cargo-fuzz

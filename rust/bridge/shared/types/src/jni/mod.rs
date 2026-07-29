@@ -12,6 +12,7 @@ use std::ptr::NonNull;
 
 use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
+use derive_where::derive_where;
 use device_transfer::Error as DeviceTransferError;
 use http::uri::InvalidUri;
 pub use jni::objects::{
@@ -70,27 +71,149 @@ pub use io::*;
 mod storage;
 pub use storage::*;
 
-/// The type of boxed Rust values, as surfaced in JavaScript.
-pub type ObjectHandle = jlong;
+#[derive(Clone, Copy, Debug, Default)]
+#[repr(transparent)]
+// TODO: get rid of this in favor of operating on java native holders, directly.
+pub struct ObjectHandle(pub jlong);
+kt_spelling! {
+    ObjectHandle => "ObjectHandle",
+}
+impl ConvertibleFromJValue<'_> for ObjectHandle {
+    const SIGNATURE: jni::signature::FieldSignature<'static> = jni::jni_sig!(jlong);
+    fn try_convert(_env: &mut jni::Env<'_>, value: JValueOwned<'_>) -> jni::errors::Result<Self> {
+        let addr = value.try_into()?;
+        Ok(ObjectHandle(addr))
+    }
+}
+impl<'a> From<ObjectHandle> for JValueOwned<'a> {
+    fn from(value: ObjectHandle) -> Self {
+        value.0.into()
+    }
+}
 
-// Aliases with a certain spelling that gen_java_decl.py will pick out when generating Native.java.
-pub type JavaArrayOfByteArray<'a> = JObjectArray<'a>;
-pub type JavaByteBufferArray<'a> = JObjectArray<'a>;
+// This should be replaced with signal_bind_java_type! at some point.
+#[macro_export]
+macro_rules! jni_custom_spellings {
+    ($(
+        #[kt = $kt_spelling:expr]
+        pub struct $ident:ident<$lifetime:lifetime>(pub $inner:ty);
+    )*) => {$(
+        #[derive(Debug, Default, ref_cast::RefCast)]
+        #[repr(transparent)]
+        pub struct $ident<$lifetime>(pub $inner);
+        impl<'a> $crate::jni::ConvertibleFromJValue<'a> for $ident<'a> {
+            const SIGNATURE: ::jni::signature::FieldSignature<'static> = ::jni::jni_sig!(JObject);
+            fn try_convert(
+                env: &mut ::jni::Env<'a>,
+                value: ::jni::JValueOwned<'a>,
+            ) -> ::jni::errors::Result<Self> {
+                env.cast_local::<$inner>(value.into_object()?).map($ident)
+            }
+        }
+        unsafe impl $crate::jni::HasKtSpelling for $ident<'_> {
+            #[cfg(feature = "metadata")]
+            fn register_kt_spelling(_ctx: &mut $crate::metadata::jni::KtMetadataContext) -> String {
+                $kt_spelling.to_string()
+            }
+        }
+        impl<'a> From<$ident<'a>> for ::jni::JValueOwned<'a> {
+            fn from(value: $ident<'a>) -> Self {
+                value.0.into()
+            }
+        }
+        impl<$lifetime> AsRef<$inner> for $ident<$lifetime> {
+            #[inline(always)]
+            fn as_ref(&self) -> &$inner {
+                &self.0
+            }
+        }
+        impl<$lifetime> $crate::jni::IsNullableReference for $ident<$lifetime>
+            where $inner: $crate::jni::IsNullableReference
+        {}
+    )*};
+}
+
+jni_custom_spellings! {
+    #[kt = "Array<ByteArray>"]
+    pub struct JavaArrayOfByteArray<'a>(pub JObjectArray<'a>);
+    #[kt = "Array<ByteBuffer>"]
+    pub struct JavaByteBufferArray<'a>(pub JObjectArray<'a>);
+    #[kt = "UUID"]
+    pub struct JavaUUID<'a>(pub JObject<'a>);
+    #[kt = "CiphertextMessage"]
+    pub struct JavaCiphertextMessage<'a>(pub JObject<'a>);
+    #[kt = "Array<*>"]
+    pub struct JavaArrayStar<'a>(pub JObjectArray<'a>);
+    #[kt = "SignedPublicPreKey<*>"]
+    pub struct JavaSignedPublicPreKey<'a>(pub JObject<'a>);
+    #[kt = "SimpleOwner"]
+    pub struct JavaSimpleOwner<'a>(pub JObject<'a>);
+}
+
 pub type JavaObject<'a> = JObject<'a>;
-pub type JavaUUID<'a> = JObject<'a>;
-pub type JavaCiphertextMessage<'a> = JObject<'a>;
-pub type JavaSignedPublicPreKey<'a> = JObject<'a>;
-pub type JavaSimpleOwner<'a> = JObject<'a>;
 pub type JavaMap<'a> = JMap<'a>;
-pub type JavaArrayStar<'a> = JObjectArray<'a>;
 
 /// Return type marker for `bridge_fn`s that return Result, which gen_java_decl.py will pick out
 /// when generating Native.java.
 pub type Throwing<T> = T;
 
+pub trait IsNullableReference {}
+impl<T: jni::refs::Reference> IsNullableReference for T {}
+impl<A, B> IsNullableReference for JavaPair<'_, A, B> {}
+
 /// Type marker for arguments that are nullable, which gen_java_decl.py will pick out when
 /// generating Native.kt.
-pub type Nullable<T> = T;
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Nullable<T>(pub T);
+unsafe impl<T: HasKtSpelling + IsNullableReference> HasKtSpelling for Nullable<T> {
+    #[cfg(feature = "metadata")]
+    fn register_kt_spelling(ctx: &mut KtMetadataContext) -> String {
+        let t = T::register_kt_spelling(ctx);
+        format!("{t}?")
+    }
+}
+impl<'a, T: ConvertibleFromJValue<'a> + IsNullableReference> ConvertibleFromJValue<'a>
+    for Nullable<T>
+{
+    const SIGNATURE: jni::signature::FieldSignature<'static> = T::SIGNATURE;
+
+    fn try_convert(env: &mut jni::Env<'a>, value: JValueOwned<'a>) -> jni::errors::Result<Self> {
+        T::try_convert(env, value).map(Nullable)
+    }
+}
+impl<'a, T: IsNullableReference + Into<JValueOwned<'a>>> From<Nullable<T>> for JValueOwned<'a> {
+    fn from(value: Nullable<T>) -> Self {
+        value.0.into()
+    }
+}
+
+// Nullable<ObjectHandle> was special cased.
+unsafe impl HasKtSpelling for Nullable<ObjectHandle> {
+    #[cfg(feature = "metadata")]
+    fn register_kt_spelling(_ctx: &mut KtMetadataContext) -> String {
+        "ObjectHandle".to_string()
+    }
+}
+impl<'a> ConvertibleFromJValue<'a> for Nullable<ObjectHandle> {
+    const SIGNATURE: jni::signature::FieldSignature<'static> = jni::jni_sig!(jlong);
+
+    fn try_convert(env: &mut jni::Env<'a>, value: JValueOwned<'a>) -> jni::errors::Result<Self> {
+        ObjectHandle::try_convert(env, value).map(Nullable)
+    }
+}
+impl From<Nullable<ObjectHandle>> for JValueOwned<'_> {
+    fn from(value: Nullable<ObjectHandle>) -> Self {
+        value.0.into()
+    }
+}
+
+impl<'a> TryFrom<JValueOwned<'a>> for Nullable<jni::objects::JObject<'a>> {
+    type Error = jni::errors::Error;
+    fn try_from(value: JValueOwned<'a>) -> Result<Self, Self::Error> {
+        jni::objects::JObject::try_from(value).map(Nullable)
+    }
+}
 
 /// A Java wrapper for a `CompletableFuture` type.
 #[derive(Default)]
@@ -115,8 +238,20 @@ impl<'a, T> From<JavaCompletableFuture<'a, T>> for JObject<'a> {
     }
 }
 
+unsafe impl<'a, T: HasKtSpelling> HasKtSpelling for JavaCompletableFuture<'a, T> {
+    #[cfg(feature = "metadata")]
+    fn register_kt_spelling(ctx: &mut KtMetadataContext) -> String {
+        let t = T::register_kt_spelling(ctx);
+        if t == "Unit" {
+            "CompletableFuture<Void?>".to_string()
+        } else {
+            format!("CompletableFuture<{t}>")
+        }
+    }
+}
+
 /// A Java wrapper for a `Pair` type.
-#[derive(Default)]
+#[derive_where(Default)]
 #[repr(transparent)] // Ensures that the representation is the same as JObject.
 pub struct JavaPair<'a, A, B> {
     pair_object: JObject<'a>,
@@ -1391,7 +1526,7 @@ pub fn jobject_from_native_handle<'a>(
     class_name: ClassName<'static>,
     boxed_handle: ObjectHandle,
 ) -> Result<JObject<'a>, BridgeLayerError> {
-    new_instance(env, class_name, jni_args!((boxed_handle => long) -> void))
+    new_instance(env, class_name, jni_args!((boxed_handle.0 => long) -> void))
 }
 
 /// Constructs a Java SignalProtocolAddress from a ProtocolAddress value.
@@ -1616,28 +1751,23 @@ impl libsignal_net_chat::api::messages::UnsealedMessageContents for CiphertextMe
 macro_rules! jni_bridge_handle_destroy {
     ( $typ:ty as $jni_name:ident ) => {
         ::paste::paste! {
-            #[unsafe(export_name = concat!(
-                env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"),
-                stringify!($jni_name),
-                "_1Destroy"
-            ))]
-            #[allow(non_snake_case)]
-            pub unsafe extern "C" fn [<__bridge_handle_jni_ $jni_name _destroy>](
-                _env: ::jni::EnvUnowned,
-                _class: ::jni::objects::JClass,
-                handle: $crate::jni::ObjectHandle,
-            ) {
-                if handle != 0 {
-                    let handle = unsafe {
-                        ::std::sync::Arc::from_raw(
-                            <$typ as $crate::jni::BridgeHandle>::native_handle_cast(handle)
-                                .expect("valid")
-                                .as_ptr(),
-                        )
-                    };
-                    drop(handle);
+            const _: () = {
+                use $crate::jni::ObjectHandle;
+                #[libsignal_bridge_macros::bridge_fn(node = false, ffi = false)]
+                fn [<$jni_name _Destroy>](handle: ObjectHandle) {
+                    let handle = handle.0;
+                    if handle != 0 {
+                        let handle = unsafe {
+                            ::std::sync::Arc::from_raw(
+                                <$typ as $crate::jni::BridgeHandle>::native_handle_cast(handle)
+                                    .expect("valid")
+                                    .as_ptr(),
+                            )
+                        };
+                        std::mem::drop(handle);
+                    }
                 }
-            }
+            };
         }
     };
 }

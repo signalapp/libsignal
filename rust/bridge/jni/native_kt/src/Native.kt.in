@@ -1,9 +1,18 @@
 //
-// Copyright (C) 2020 Signal Messenger, LLC.
+// Copyright (C) 2026 Signal Messenger, LLC.
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
 // WARNING: this file was automatically generated
+
+{% import "NativeCommon.in" as common %}
+
+@file:Suppress(
+    "ktlint:standard:function-naming",
+    "ktlint:standard:property-naming",
+    "ktlint:standard:filename",
+    "ktlint:standard:max-line-length",
+)
 
 package org.signal.libsignal.internal
 
@@ -140,5 +149,18 @@ internal object Native {
   @JvmStatic
   public external fun keepAlive(obj: Object?)
 
-  // INSERT DECLS HERE
+
+  {{ common.jni_functions(ctx.jni_functions) }}
+
+  // Keep these definitions in sync with the native Rust code that manually implements them
+  @JvmStatic
+  public external fun initializeLibrary(): Unit
+  @JvmStatic
+  public external fun AsyncLoadClass(tokioContext: Object, className: String): Object
+  @JvmStatic
+  public external fun Logger_Initialize(maxLevel: Int, loggerClass: Class<*>): Unit
+  @JvmStatic
+  public external fun Logger_SetMaxLevel(maxLevel: Int): Unit
+  @JvmStatic
+  public external fun SealedSender_MultiRecipientParseSentMessage(data: ByteArray): Object
 }

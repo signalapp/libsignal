@@ -266,8 +266,18 @@ pub mod jni {
         pub return_type: KtReturnConverter,
     }
 
+    #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+    pub struct JniFunction {
+        pub is_throwing: bool,
+        /// `(argument name, kotlin type)`
+        pub args: Vec<(String, String)>,
+        /// Kotlin result type
+        pub result: String,
+    }
+
     #[derive(Debug, Clone, Serialize, Default)]
     pub struct KtMetadataContext {
+        pub jni_functions: BTreeMap<String, JniFunction>,
         pub nice_functions: BTreeMap<String, NiceFunction>,
 
         pub derived_types: BTreeMap<String, StructOrEnum<NiceType>>,

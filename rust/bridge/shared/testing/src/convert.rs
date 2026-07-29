@@ -20,13 +20,13 @@ pub struct NonSuspendingBackgroundThreadRuntime;
 bridge_as_handle!(
     NonSuspendingBackgroundThreadRuntime,
     ffi = testing_NonSuspendingBackgroundThreadRuntime,
-    jni = TESTING_1NonSuspendingBackgroundThreadRuntime
+    jni = TESTING_NonSuspendingBackgroundThreadRuntime
 );
 bridge_handle_fns!(
     NonSuspendingBackgroundThreadRuntime,
     clone = false,
     ffi = testing_NonSuspendingBackgroundThreadRuntime,
-    jni = TESTING_1NonSuspendingBackgroundThreadRuntime
+    jni = TESTING_NonSuspendingBackgroundThreadRuntime
 );
 
 impl AsyncRuntimeBase for NonSuspendingBackgroundThreadRuntime {}

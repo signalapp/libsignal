@@ -26,6 +26,7 @@ pub(crate) fn bridge_fn(
     // Scroll down to the end of the function to see the quote template.
     // This is the best way to understand what we're trying to produce.
 
+    let krate = crates::libsignal_bridge_types();
     let wrapper_name = format_ident!("__bridge_fn_jni_{}", name);
     let orig_name = &sig.ident;
 
@@ -34,6 +35,16 @@ pub(crate) fn bridge_fn(
     let input_args = input_names_and_types
         .iter()
         .map(|(name, ty)| quote!(#name: jni_arg_type!(#ty)));
+
+    let mut jni_function_args = input_names_and_types
+        .iter()
+        .map(|(name, arg)| {
+            quote!((
+                stringify!(#name).to_string(),
+                <jni_arg_type!(#arg) as #krate::jni::HasKtSpelling>::register_kt_spelling(ctx),
+            ))
+        })
+        .collect_vec();
 
     // "Support" async operations by requiring them to complete synchronously.
     let async_runtime_if_needed = match bridging_kind {
@@ -45,14 +56,20 @@ pub(crate) fn bridge_fn(
                     format_args!("non-async function '{}' cannot use #[bridge_io]", sig.ident),
                 ));
             }
+            jni_function_args.insert(0, quote!((
+                "async_runtime".to_string(),
+                <jni_arg_type!(&#runtime) as #krate::jni::HasKtSpelling>::register_kt_spelling(ctx),
+            )));
             quote!(async_runtime: jni_arg_type!(&#runtime),) // Note the trailing comma!
         }
     };
 
     let output = result_type(&sig.output);
+    let mut is_throwing = ResultInfo::from(&sig.output).failable;
     let result_ty = match bridging_kind {
         BridgingKind::Regular => quote!(jni_result_type!(#output)),
         BridgingKind::Io { .. } => {
+            is_throwing = false;
             quote!(jni::JavaCompletableFuture<'local, jni_result_type!(#output)>)
         }
     };
@@ -63,7 +80,7 @@ pub(crate) fn bridge_fn(
         }
         BridgingKind::Io { runtime } => bridge_io_body(orig_name, &input_names_and_types, runtime),
     };
-    let metadata = nice_metadata(
+    let nice_metadata = nice_metadata(
         &orig_name.to_string(),
         sig.asyncness.is_some(),
         &input_names_and_types,
@@ -76,7 +93,10 @@ pub(crate) fn bridge_fn(
             register_result_converter: format_ident!("register_kt_result_converter"),
         },
     );
+    let jni_metadata_name = format_ident!("_BRIDGE_JNI_FN_METADATA_{name}");
+    let kt_name = name.replace("_1", "_");
     Ok(quote! {
+        #nice_metadata
         #[cfg(feature = "jni")]
         #[unsafe(export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_JNI"), #name))]
         #[allow(non_snake_case)]
@@ -90,7 +110,30 @@ pub(crate) fn bridge_fn(
             let _trace = libsignal_debug::trace_block!(concat!("bridge::", #name));
             #body
         }
-        #metadata
+        #[cfg(all(feature = "jni", feature = "metadata"))]
+        #[#krate::metadata::linkme::distributed_slice(#krate::metadata::jni::JNI_ITEMS)]
+        #[linkme(crate = #krate::metadata::linkme)]
+        static #jni_metadata_name: #krate::metadata::FnWithModule<#krate::metadata::jni::KtMetadataContext> =
+            #krate::metadata::FnWithModule {
+                module_path: module_path!(),
+                apply: |ctx| {
+                    // We need to provide a lifetime named 'local to support jni_arg_type! et al
+                    fn inner<'local>(ctx: &mut #krate::metadata::jni::KtMetadataContext) {
+                        let args = vec![#(#jni_function_args),*];
+                        let result = <#result_ty as #krate::jni::HasKtSpelling>::register_kt_spelling(ctx);
+                        #krate::metadata::insert_checked(
+                            &mut ctx.jni_functions,
+                            #kt_name.to_string(),
+                            #krate::metadata::jni::JniFunction {
+                                is_throwing: #is_throwing,
+                                args,
+                                result,
+                            },
+                        );
+                    }
+                    inner(ctx);
+                },
+            };
     })
 }
 
@@ -218,6 +261,7 @@ pub(crate) fn bridge_trait(
         )
     })?;
 
+    let krate = crates::libsignal_bridge_types();
     let trait_name = &trait_to_bridge.ident;
     let object_alias_name = format_ident!("Java{}", java_class_name);
     let wrapper_name = format_ident!("Jni{}", trait_to_bridge.ident);
@@ -231,7 +275,10 @@ pub(crate) fn bridge_trait(
 
     Ok(quote! {
         #[cfg(feature = "jni")]
-        pub type #object_alias_name<'a> = jni::JObject<'a>;
+        #krate::jni_custom_spellings! {
+            #[kt = #java_class_name]
+            pub struct #object_alias_name<'a>(pub ::jni::objects::JObject<'a>);
+        }
 
         #[cfg(feature = "jni")]
         pub struct #wrapper_name(jni::GlobalAndVM);
@@ -240,7 +287,7 @@ pub(crate) fn bridge_trait(
         impl #wrapper_name {
             pub fn new<'a>(
                 env: &mut ::jni::Env<'a>,
-                object: &#object_alias_name<'a>,
+                #object_alias_name(object): &#object_alias_name<'a>,
             ) -> Result<Self, jni::BridgeLayerError> {
                 Ok(Self(jni::GlobalAndVM::new(env, object, jni::ClassName(#java_class_path))?))
             }

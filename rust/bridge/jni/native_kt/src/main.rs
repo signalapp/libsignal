@@ -7,7 +7,7 @@ extern crate libsignal_bridge;
 extern crate libsignal_bridge_testing;
 extern crate libsignal_jni_impl;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::Context;
@@ -39,6 +39,38 @@ impl std::ops::Drop for RemoveOnDrop {
     }
 }
 
+fn write_kt(dst: &Path, code: &str, verify: bool) -> anyhow::Result<()> {
+    let base_dir = dst.parent().expect("dst is not root");
+    let tmp = RemoveOnDrop {
+        path: std::path::absolute(base_dir.join("NiceTmp.kt"))?,
+    };
+    std::fs::write(&tmp.path, code.as_bytes())?;
+    let status = Command::new("./gradlew")
+        .current_dir("./java")
+        .arg(format!(
+            "-PspotlessIdeHook={}",
+            tmp.path.to_str().context("path should be utf-8")?
+        ))
+        .args([
+            "--dependency-verification",
+            "strict",
+            "-PskipAndroid",
+            "spotlessApply",
+        ])
+        .status()?;
+    anyhow::ensure!(status.success(), "kotlin formatting failed");
+    let code = std::fs::read_to_string(&tmp.path)?;
+    if verify {
+        anyhow::ensure!(
+            std::fs::read_to_string(dst)? == code,
+            "{dst:?} is not up-to-date"
+        );
+    } else {
+        std::fs::write(dst, code.as_bytes())?;
+    }
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
     let mut env = minijinja::Environment::new();
@@ -48,6 +80,9 @@ fn main() -> anyhow::Result<()> {
         preserve_underscores(ToLowerCamelCase::to_lower_camel_case),
     );
     env.add_template("NativeNice.kt.in", include_str!("NativeNice.kt.in"))?;
+    env.add_template("NativeCommon.in", include_str!("NativeCommon.in"))?;
+    env.add_template("Native.kt.in", include_str!("Native.kt.in"))?;
+    env.add_template("NativeTesting.kt.in", include_str!("NativeTesting.kt.in"))?;
     let mut non_testing_ctx = KtMetadataContext::default();
     let mut testing_ctx = KtMetadataContext::default();
     for item in JNI_ITEMS.iter() {
@@ -81,45 +116,35 @@ fn main() -> anyhow::Result<()> {
         );
         return Ok(());
     }
+    write_kt(
+        &PathBuf::from("./java/shared/java/org/signal/libsignal/internal/Native.kt"),
+        &env.get_template("Native.kt.in")?.render(context! {
+            ctx => non_testing_ctx,
+        })?,
+        args.verify,
+    )?;
+    write_kt(
+        &PathBuf::from("./java/shared/java/org/signal/libsignal/internal/NativeTesting.kt"),
+        &env.get_template("NativeTesting.kt.in")?.render(context! {
+            ctx => testing_ctx,
+        })?,
+        args.verify,
+    )?;
     for testing in [false, true] {
         let code = env.get_template("NativeNice.kt.in")?.render(context! {
             non_testing_ctx => non_testing_ctx,
             testing_ctx => testing_ctx,
             testing => testing,
         })?;
-        let dst = PathBuf::from(if testing {
-            "./java/client/src/test/java/org/signal/libsignal/internal/NativeTestingNice.kt"
-        } else {
-            "./java/client/src/main/java/org/signal/libsignal/internal/NativeNice.kt"
-        });
-        let base_dir = dst.parent().expect("dst is not root");
-        let tmp = RemoveOnDrop {
-            path: std::path::absolute(base_dir.join("NiceTmp.kt"))?,
-        };
-        std::fs::write(&tmp.path, code.as_bytes())?;
-        let status = Command::new("./gradlew")
-            .current_dir("./java")
-            .arg(format!(
-                "-PspotlessIdeHook={}",
-                tmp.path.to_str().context("path should be utf-8")?
-            ))
-            .args([
-                "--dependency-verification",
-                "strict",
-                "-PskipAndroid",
-                "spotlessApply",
-            ])
-            .status()?;
-        anyhow::ensure!(status.success(), "kotlin formatting failed");
-        let code = std::fs::read_to_string(&tmp.path)?;
-        if args.verify {
-            anyhow::ensure!(
-                std::fs::read_to_string(&dst)? == code,
-                "{dst:?} is not up-to-date"
-            );
-        } else {
-            std::fs::write(&dst, code.as_bytes())?;
-        }
+        write_kt(
+            &PathBuf::from(if testing {
+                "./java/client/src/test/java/org/signal/libsignal/internal/NativeTestingNice.kt"
+            } else {
+                "./java/client/src/main/java/org/signal/libsignal/internal/NativeNice.kt"
+            }),
+            &code,
+            args.verify,
+        )?;
     }
     Ok(())
 }

@@ -14,6 +14,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import kotlin.Pair;
 import org.signal.libsignal.internal.CalledFromNative;
+import org.signal.libsignal.internal.FilterExceptions;
 import org.signal.libsignal.internal.Native;
 
 /**
@@ -111,8 +112,12 @@ public class SealedSenderMultiRecipientMessage {
    */
   public static SealedSenderMultiRecipientMessage parse(byte[] input)
       throws InvalidMessageException, InvalidVersionException {
-    return (SealedSenderMultiRecipientMessage)
-        Native.SealedSender_MultiRecipientParseSentMessage(input);
+    return FilterExceptions.filterExceptions(
+        InvalidMessageException.class,
+        InvalidVersionException.class,
+        () ->
+            (SealedSenderMultiRecipientMessage)
+                Native.SealedSender_MultiRecipientParseSentMessage(input));
   }
 
   @CalledFromNative

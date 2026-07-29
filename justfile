@@ -8,7 +8,7 @@ _default:
     exit 1
 
 generate-jni:
-    rust/bridge/jni/bin/gen_java_decl.py
+    cargo run -p libsignal-jni-native_kt
 
 generate-ffi:
     swift/build_ffi.sh --generate-ffi

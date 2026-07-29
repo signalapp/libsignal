@@ -169,6 +169,7 @@ fn set_max_level_from_java_level(max_level: jint) {
     log::set_max_level(log::Level::from(level).to_level_filter());
 }
 
+// Keep in sync with the definition in Native.kt.in
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initialize(
     mut env: jni::EnvUnowned<'_>,
@@ -200,6 +201,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1Initi
     .resolve::<jni::errors::ThrowRuntimeExAndDefault>();
 }
 
+// Keep in sync with the definition in Native.kt.in
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_Logger_1SetMaxLevel(
     _env: jni::EnvUnowned<'_>,

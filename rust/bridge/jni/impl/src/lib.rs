@@ -22,6 +22,8 @@ pub mod logging;
 ///
 /// Initialization function used to set up internal data structures. This should
 /// be called once when the library is first loaded.
+///
+/// Keep in sync with the definition in Native.kt.in
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLibrary<'local>(
     mut env: jni::EnvUnowned<'local>,
@@ -42,6 +44,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_initializeLib
     })
 }
 
+// Keep in sync with the definition in Native.kt.in
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClass<'local>(
     mut env: jni::EnvUnowned<'local>,
@@ -69,6 +72,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
             "unsafeNativeHandleWithoutGuard",
             jni_args!(() -> long),
         )?;
+        let handle = ObjectHandle(handle);
         let tokio_context = <&TokioAsyncContext>::borrow(env, &handle)?;
         let class_name = class_name
             .try_to_string(env)
@@ -80,6 +84,7 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_AsyncLoadClas
     .into()
 }
 
+// Keep in sync with Native.kt.in
 #[cfg(not(target_os = "android"))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_1MultiRecipientParseSentMessage<
