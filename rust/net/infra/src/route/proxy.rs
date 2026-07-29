@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use either::Either;
 use http::uri::PathAndQuery;
+use http::{HeaderMap, HeaderValue};
 use itertools::Itertools as _;
 use libsignal_core::LogSafeDisplay;
 use nonzero_ext::nonzero;
@@ -173,10 +174,13 @@ pub enum ConnectionProxyConfig {
     Tcp(TcpProxy),
     Socks(SocksProxy),
     Http(HttpProxy),
-    /// Reflector tunnel providers to try. The caller is expected to take this
-    /// slice from the surrounding environment/domain config so prod and staging
-    /// can't be mispaired.
-    Reflector(&'static [ReflectorProviderConfig]),
+    Reflector {
+        /// Reflector tunnel providers to try. The caller is expected to take
+        /// this slice from the surrounding environment/domain config so prod
+        /// and staging can't be mispaired.
+        providers: &'static [ReflectorProviderConfig],
+        user_agent: HeaderValue,
+    },
 }
 
 #[derive(Debug)]
@@ -309,7 +313,7 @@ impl ConnectionProxyConfig {
             Self::Tls(_) => true,
             #[cfg(feature = "dev-util")]
             Self::Tcp(_) => true,
-            Self::Socks(_) | Self::Http(_) | Self::Reflector(_) => false,
+            Self::Socks(_) | Self::Http(_) | Self::Reflector { .. } => false,
         }
     }
 }
@@ -417,11 +421,18 @@ impl ConnectionProxyConfig {
             Self::Tcp(tcp_proxy) => vec![ConcreteProxyConfig::Tcp(tcp_proxy)],
             Self::Socks(socks_proxy) => vec![ConcreteProxyConfig::Socks(socks_proxy)],
             Self::Http(http_proxy) => vec![ConcreteProxyConfig::Http(http_proxy)],
-            Self::Reflector(providers) => {
+            Self::Reflector {
+                providers,
+                user_agent,
+            } => {
                 let sni_index = context.random_usize();
                 providers
                     .iter()
-                    .map(|provider| ConcreteProxyConfig::Reflector(provider.pick_sni(sni_index)))
+                    .map(|provider| {
+                        ConcreteProxyConfig::Reflector(
+                            provider.pick_sni(sni_index, user_agent.clone()),
+                        )
+                    })
                     .collect()
             }
         }
@@ -435,10 +446,15 @@ struct ConcreteReflectorRouteProvider {
     sni: &'static str,
     certs: RootCertificates,
     endpoint: PathAndQuery,
+    user_agent: HeaderValue,
 }
 
 impl ReflectorProviderConfig {
-    fn pick_sni(&self, sni_index: usize) -> ConcreteReflectorRouteProvider {
+    fn pick_sni(
+        &self,
+        sni_index: usize,
+        user_agent: HeaderValue,
+    ) -> ConcreteReflectorRouteProvider {
         assert!(
             !self.sni_list.is_empty(),
             "ReflectorProviderConfig::sni_list must not be empty"
@@ -449,6 +465,7 @@ impl ReflectorProviderConfig {
             sni: self.sni_list[sni_index % self.sni_list.len()],
             certs: self.certs.clone(),
             endpoint: self.endpoint.clone(),
+            user_agent,
         }
     }
 }
@@ -585,12 +602,16 @@ impl ConcreteProxyConfig<'_> {
                 sni,
                 certs,
                 endpoint,
+                user_agent,
             }) => ConnectionProxyRoute::Reflector(Box::new(ReflectorProxyRoute {
                 outer: WebSocketRoute {
                     fragment: WebSocketRouteFragment {
                         ws_config: Default::default(),
                         endpoint: endpoint.clone(),
-                        headers: Default::default(),
+                        headers: HeaderMap::from_iter([(
+                            http::header::USER_AGENT,
+                            user_agent.clone(),
+                        )]),
                     },
                     inner: HttpsTlsRoute {
                         fragment: HttpRouteFragment {

@@ -21,7 +21,9 @@ use libsignal_net::infra::route::{
     RouteProviderExt as _, UnresolvedWebsocketServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
-use libsignal_net::infra::{AsHttpHeader as _, EnableDomainFronting, OverrideNagleAlgorithm};
+use libsignal_net::infra::{
+    AsHttpHeader as _, AsStaticHttpHeader as _, EnableDomainFronting, OverrideNagleAlgorithm,
+};
 use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
@@ -205,7 +207,10 @@ impl ConnectionManager {
                 // of reflector providers, but that's only used in tests.
                 "reflector providers are configured at compile time, so they should never be empty"
             );
-            ConnectionProxyConfig::Reflector(providers)
+            ConnectionProxyConfig::Reflector {
+                providers,
+                user_agent: self.user_agent.header_value(),
+            }
         });
         log::info!("set_censorship_circumvention_enabled({enable})");
         self.transport_connector
@@ -385,9 +390,14 @@ mod test {
         let proxy_mode = guard.proxy().expect("valid proxy config");
         assert_matches!(
             proxy_mode,
-            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector(providers))
+            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector {
+                providers,
+                user_agent,
+            })
                 if providers.iter().all(|p| p.endpoint.as_str() == expected_endpoint)
                     && providers[0].http_host == expected_http_host
+                    && user_agent.to_str().expect("valid header")
+                        .starts_with("test-user-agent libsignal/")
         );
     }
 
@@ -495,7 +505,7 @@ mod test {
                 .expect("not poisoned")
                 .proxy()
                 .expect("valid proxy config"),
-            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector(_))
+            DirectOrProxyMode::DirectThenProxy(ConnectionProxyConfig::Reflector { .. })
         );
     }
 
