@@ -5,13 +5,6 @@
 
 #![warn(clippy::unwrap_used)]
 
-#[cfg(feature = "json")]
-pub mod json;
-
-// The generated pbjson `Serialize`/`Deserialize` impls emit `write!(f, "{}", &x)`,
-// which trips the useless_borrows_in_formatting lint. Only gated on `json` because that's
-// the feature that pulls in the offending generated code.
-#[cfg_attr(feature = "json", expect(clippy::useless_borrows_in_formatting))]
 pub mod proto {
     // Mirror the protobuf package structure so relative references work correctly.
     // We'll export org::signal::chat for a more flat interface elsewhere.
@@ -20,38 +13,24 @@ pub mod proto {
             pub mod chat {
                 pub mod common {
                     tonic::include_proto!("org.signal.chat.common");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.common.serde");
                 }
                 pub mod errors {
                     tonic::include_proto!("org.signal.chat.errors");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.errors.serde");
                 }
                 pub mod account {
                     tonic::include_proto!("org.signal.chat.account");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.account.serde");
                 }
                 pub mod attachments {
                     tonic::include_proto!("org.signal.chat.attachments");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.attachments.serde");
                 }
                 pub mod backup {
                     tonic::include_proto!("org.signal.chat.backup");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.backup.serde");
                 }
                 pub mod device {
                     tonic::include_proto!("org.signal.chat.device");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.device.serde");
                 }
                 pub mod messages {
                     tonic::include_proto!("org.signal.chat.messages");
-                    #[cfg(feature = "json")]
-                    tonic::include_proto!("org.signal.chat.messages.serde");
                 }
 
                 // Not actually a proto, we just make sure to generate our helper file in the same place.
@@ -66,8 +45,6 @@ pub mod proto {
 
     pub mod textsecure {
         tonic::include_proto!("textsecure");
-        #[cfg(feature = "json")]
-        tonic::include_proto!("textsecure.serde");
     }
 
     // These protos come directly from Google and their doc comments aren't necessarily valid Markdown.
@@ -83,11 +60,6 @@ pub mod proto {
         }
     }
 }
-
-#[cfg(not(feature = "json"))]
-pub type Duration = prost_types::Duration;
-#[cfg(feature = "json")]
-pub type Duration = pbjson_types::Duration;
 
 impl From<libsignal_core::ServiceId> for proto::chat::common::ServiceIdentifier {
     fn from(value: libsignal_core::ServiceId) -> Self {

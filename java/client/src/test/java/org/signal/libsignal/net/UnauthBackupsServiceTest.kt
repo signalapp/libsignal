@@ -9,14 +9,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonObjectBuilder
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
-import org.junit.Assert
 import org.junit.Test
-import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.CopyBackupMediaOut
 import org.signal.libsignal.internal.DeleteBackupMediaOut
 import org.signal.libsignal.internal.GetCdnCredentialsOut
@@ -206,51 +199,6 @@ class UnauthBackupsServiceUploadTest {
 }
 
 class UnauthBackupsServiceTest {
-  fun buildBackupRequestObject(builderAction: JsonObjectBuilder.() -> Unit = {}): JsonObject =
-    buildJsonObject {
-      putJsonObject("signedPresentation") {
-        put("presentation", Base64.encode(EXPECTED_PRESENTATION))
-        put("presentationSignature", Base64.encode(EXPECTED_SIGNATURE))
-      }
-      builderAction()
-    }
-
-  // TODO: Move this to a more reusable location.
-  fun <T, E : BadRequestError> testSimpleGrpcRequest(
-    requestName: String,
-    expectedRequest: JsonObject,
-    responseName: String,
-    response: JsonObject,
-    sendRequest: UnauthenticatedChatConnection.() -> CompletableFuture<RequestResult<T, E>>,
-  ): RequestResult<T, E> {
-    NativeTesting.TESTING_EnableDeterministicRngForTesting()
-    val tokioAsyncContext = TokioAsyncContext()
-    val (chat, fakeRemote) =
-      UnauthenticatedChatConnection.fakeConnect(
-        tokioAsyncContext,
-        NoOpListener(),
-        Network.Environment.STAGING,
-      )
-
-    val responseFuture = chat.sendRequest()
-
-    // Get the incoming request from the fake remote
-    val (request, requestId) = fakeRemote.getNextIncomingGrpcRequest().get()
-    Assert.assertEquals(
-      request.getSingleGrpcMessage(requestName),
-      expectedRequest,
-    )
-
-    // Send successful response
-    fakeRemote.sendGrpcResponse(
-      requestId,
-      responseName,
-      response,
-    )
-
-    return responseFuture.get()
-  }
-
   @Test
   fun testSetPublicKey() =
     runTest {

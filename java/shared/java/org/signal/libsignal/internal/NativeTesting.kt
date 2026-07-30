@@ -232,22 +232,10 @@ public object NativeTesting {
   public external fun TESTING_FakeChatConnection_TakeUnauthenticatedChat(chat: ObjectHandle): ObjectHandle
 
   @JvmStatic
-  public external fun TESTING_FakeChatRemoteEnd_BinprotoToJson(
-    name: String,
-    input: ByteArray,
-  ): String
-
-  @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len: Int): ByteArray
 
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: ObjectHandle): Unit
-
-  @JvmStatic
-  public external fun TESTING_FakeChatRemoteEnd_JsonToBinproto(
-    name: String,
-    input: String,
-  ): ByteArray
 
   @JvmStatic
   public external fun TESTING_FakeChatRemoteEnd_NextGrpcMessage(

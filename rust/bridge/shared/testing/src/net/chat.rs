@@ -409,16 +409,6 @@ fn TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len: u32) -> Vec<u8> {
     result
 }
 
-#[bridge_fn]
-fn TESTING_FakeChatRemoteEnd_BinprotoToJson(name: String, input: &[u8]) -> String {
-    libsignal_net_grpc::json::expect_binproto_to_json_by_name(&name, input)
-}
-
-#[bridge_fn]
-fn TESTING_FakeChatRemoteEnd_JsonToBinproto(name: String, input: String) -> Vec<u8> {
-    libsignal_net_grpc::json::expect_json_to_binproto_by_name(&name, &input)
-}
-
 make_error_testing_enum! {
     enum TestingChatConnectError for ConnectError {
         WebSocket => WebSocketConnectionFailed,

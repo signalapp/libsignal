@@ -1436,13 +1436,13 @@ mod test {
     fn test_retry_later(reason: &str) {
         let info = vec![
             google::rpc::RetryInfo {
-                retry_delay: Some(libsignal_net_grpc::Duration {
+                retry_delay: Some(prost_types::Duration {
                     seconds: 10,
                     nanos: 2,
                 }),
             },
             google::rpc::RetryInfo {
-                retry_delay: Some(libsignal_net_grpc::Duration {
+                retry_delay: Some(prost_types::Duration {
                     seconds: 20,
                     nanos: 5,
                 }),

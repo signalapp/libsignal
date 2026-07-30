@@ -1347,22 +1347,12 @@ SignalFfiError* signal_testing_fake_chat_connection_take_unauthenticated_chat(
   SignalMutPointerUnauthenticatedChatConnection* out,
   SignalConstPointerFakeChatConnection chat
 );
-SignalFfiError* signal_testing_fake_chat_remote_end_binproto_to_json(
-  SignalCStringPtr* out,
-  const int8_t* name,
-  SignalBorrowedBuffer input
-);
 SignalFfiError* signal_testing_fake_chat_remote_end_grpc_frame_for_message_length(
   SignalOwnedBuffer* out,
   uint32_t len
 );
 SignalFfiError* signal_testing_fake_chat_remote_end_inject_connection_interrupted(
   SignalConstPointerFakeChatRemoteEnd chat
-);
-SignalFfiError* signal_testing_fake_chat_remote_end_json_to_binproto(
-  SignalOwnedBuffer* out,
-  const int8_t* name,
-  const int8_t* input
 );
 SignalFfiError* signal_testing_fake_chat_remote_end_next_grpc_message(
   SignalPairOfu32u32* out,

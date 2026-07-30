@@ -2533,20 +2533,12 @@ type NativeFunctions = {
   TESTING_FakeChatConnection_TakeUnauthenticatedChat: (
     chat: Wrapper<FakeChatConnection>
   ) => UnauthenticatedChatConnection;
-  TESTING_FakeChatRemoteEnd_BinprotoToJson: (
-    name: string,
-    input: Uint8Array<ArrayBuffer>
-  ) => string;
   TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength: (
     len: number
   ) => Uint8Array<ArrayBuffer>;
   TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted: (
     chat: Wrapper<FakeChatRemoteEnd>
   ) => void;
-  TESTING_FakeChatRemoteEnd_JsonToBinproto: (
-    name: string,
-    input: string
-  ) => Uint8Array<ArrayBuffer>;
   TESTING_FakeChatRemoteEnd_NextGrpcMessage: (
     input: Uint8Array<ArrayBuffer>,
     offset: number
@@ -3727,10 +3719,8 @@ const {
   TESTING_FakeChatConnection_TakeProvisioningChat,
   TESTING_FakeChatConnection_TakeRemote,
   TESTING_FakeChatConnection_TakeUnauthenticatedChat,
-  TESTING_FakeChatRemoteEnd_BinprotoToJson,
   TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength,
   TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted,
-  TESTING_FakeChatRemoteEnd_JsonToBinproto,
   TESTING_FakeChatRemoteEnd_NextGrpcMessage,
   TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest,
   TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest,
@@ -4470,10 +4460,8 @@ export {
   TESTING_FakeChatConnection_TakeProvisioningChat,
   TESTING_FakeChatConnection_TakeRemote,
   TESTING_FakeChatConnection_TakeUnauthenticatedChat,
-  TESTING_FakeChatRemoteEnd_BinprotoToJson,
   TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength,
   TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted,
-  TESTING_FakeChatRemoteEnd_JsonToBinproto,
   TESTING_FakeChatRemoteEnd_NextGrpcMessage,
   TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest,
   TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest,

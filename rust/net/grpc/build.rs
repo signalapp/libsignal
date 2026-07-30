@@ -41,33 +41,14 @@ fn main() {
     service_method_file.push("service_methods.rs");
     std::fs::write(service_method_file, service_method_contents).expect("can write to OUT_DIR");
 
-    #[cfg(feature = "json")]
-    {
-        let mut json_build = pbjson_build::Builder::new();
-        for fd in &fds.file {
-            json_build.register_file_descriptor(fd.clone());
-        }
-        json_build
-            .build(&[".org.signal.chat", ".textsecure.Envelope"])
-            .expect("can compile with pbjson");
-    }
-
-    let mut tonic_build = tonic_prost_build::configure()
+    tonic_prost_build::configure()
         .build_server(false)
         .build_transport(false)
         // We could box the Envelope, but by far the most common GetMessagesResponse is an Envelope.
         .type_attribute(
             ".org.signal.chat.messages.GetMessagesResponse.response",
             "#[expect(clippy::large_enum_variant)]",
-        );
-    if cfg!(feature = "json") {
-        tonic_build = tonic_build
-            .compile_well_known_types(true)
-            .extern_path(".google.protobuf", "::pbjson_types")
-            // These are only used for generic errors, not requests and responses.
-            .extern_path(".google.protobuf.Any", "::prost_types::Any");
-    }
-    tonic_build
+        )
         .compile_fds_with_config(fds, config)
         .expect("can generate code");
 }

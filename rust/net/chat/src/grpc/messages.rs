@@ -44,7 +44,7 @@ impl From<UserBasedAuthorization> for send_sealed_sender_message_request::Author
                 Self::GroupSendToken(zkgroup::serialize(&token))
             }
             UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => {
-                Self::UnrestrictedAccess(Default::default())
+                Self::UnrestrictedAccess(())
             }
         }
     }
@@ -834,7 +834,7 @@ mod test {
     }
 
     #[test_case(ok(SendMessageResponse {
-        response: Some(send_message_response::Response::Success(Default::default()))
+        response: Some(send_message_response::Response::Success(()))
     }) => matches Ok(()))]
     #[test_case(ok(SendMessageResponse {
         response: None
@@ -980,7 +980,7 @@ mod test {
                     },
                 ),
                 response: ok(SendMessageResponse {
-                    response: Some(send_message_response::Response::Success(Default::default())),
+                    response: Some(send_message_response::Response::Success(())),
                 }),
             },
         };
@@ -1021,9 +1021,7 @@ mod test {
                         destination: Some(Aci::from(ACI_UUID).into()),
                         ephemeral: false,
                         urgent: true,
-                        authorization: Some(SealedSenderAuthorization::UnrestrictedAccess(
-                            Default::default(),
-                        )),
+                        authorization: Some(SealedSenderAuthorization::UnrestrictedAccess(())),
                         messages: Some(IndividualRecipientMessageBundle {
                             timestamp: 1700000000000,
                             messages: HashMap::from_iter([
@@ -1048,7 +1046,7 @@ mod test {
                     },
                 ),
                 response: ok(SendMessageResponse {
-                    response: Some(send_message_response::Response::Success(Default::default())),
+                    response: Some(send_message_response::Response::Success(())),
                 }),
             },
         };
@@ -1112,7 +1110,7 @@ mod test {
                     },
                 ),
                 response: ok(SendMessageResponse {
-                    response: Some(send_message_response::Response::Success(Default::default())),
+                    response: Some(send_message_response::Response::Success(())),
                 }),
             },
         };
@@ -1248,7 +1246,7 @@ mod test {
     }
 
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
-        response: Some(send_message_authenticated_sender_response::Response::Success(Default::default()))
+        response: Some(send_message_authenticated_sender_response::Response::Success(()))
     }) => matches Ok(()))]
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
         response: None
@@ -1377,7 +1375,7 @@ mod test {
     }
 
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
-        response: Some(send_message_authenticated_sender_response::Response::Success(Default::default()))
+        response: Some(send_message_authenticated_sender_response::Response::Success(()))
     }) => matches Ok(()))]
     #[test_case(ok(SendMessageAuthenticatedSenderResponse {
         response: None

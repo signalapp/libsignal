@@ -462,9 +462,7 @@ pub mod test_cases {
                     id: 3,
                 },
                 response_grpc: SetDeviceNameResponse {
-                    response: Some(set_device_name_response::Response::Success(
-                        Default::default(),
-                    )),
+                    response: Some(set_device_name_response::Response::Success(())),
                 },
                 response: SetDeviceNameOut::Success,
             },

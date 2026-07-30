@@ -1352,9 +1352,7 @@ pub mod test_cases {
                 request: (),
                 request_grpc: request_grpc.clone(),
                 response_grpc: SetPublicKeyResponse {
-                    response: Some(set_public_key_response::Response::Success(
-                        Default::default(),
-                    )),
+                    response: Some(set_public_key_response::Response::Success(())),
                 },
                 response: SimpleBackupTestOut::Success,
             },
@@ -1396,7 +1394,7 @@ pub mod test_cases {
                 request: (),
                 request_grpc: request_grpc.clone(),
                 response_grpc: RefreshResponse {
-                    response: Some(refresh_response::Response::Success(Default::default())),
+                    response: Some(refresh_response::Response::Success(())),
                 },
                 response: SimpleBackupTestOut::Success,
             },
@@ -1438,7 +1436,7 @@ pub mod test_cases {
                 request: (),
                 request_grpc: request_grpc.clone(),
                 response_grpc: DeleteAllResponse {
-                    response: Some(delete_all_response::Response::Success(Default::default())),
+                    response: Some(delete_all_response::Response::Success(())),
                 },
                 response: SimpleBackupTestOut::Success,
             },

@@ -112,24 +112,6 @@ extension AuthenticatedChatConnection: ChatServiceTestSetup {
 }
 
 extension ChatServiceTestBase {
-    func testSimpleGrpcRequest<Result>(
-        requestName: String,
-        expectedRequest: NSDictionary,
-        responseName: String,
-        response: NSDictionary,
-        sendRequest: @Sendable (Selector.Api) async throws -> Result,
-    ) async throws -> Result {
-        signal_testing_enable_deterministic_rng_for_testing()
-
-        let api = self.api
-        async let result = sendRequest(api)
-
-        let (request, id) = try await fakeRemote.getNextIncomingGrpcRequest()
-        XCTAssertEqual(request.getSingleGrpcMessage(requestName), expectedRequest)
-        try await fakeRemote.sendGrpcResponse(requestId: id, name: responseName, json: response)
-
-        return try await result
-    }
     func testGrpcCases<Args: Sendable, Out, T>(
         _ tests: [GrpcTestCase<Args, Out>],
         invoke: @Sendable (Selector.Api, Args) async throws -> T,

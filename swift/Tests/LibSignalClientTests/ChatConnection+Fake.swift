@@ -314,29 +314,6 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         }
     }
 
-    static func encodeSingleGrpcMessage(_ name: String, json: NSDictionary) -> Data {
-        let message = String(data: try! JSONSerialization.data(withJSONObject: json), encoding: .utf8)
-        var result = failOnError {
-            try invokeFnReturningData {
-                signal_testing_fake_chat_remote_end_json_to_binproto($0, name, message)
-            }
-        }
-        let header = failOnError {
-            try invokeFnReturningData {
-                signal_testing_fake_chat_remote_end_grpc_frame_for_message_length($0, UInt32(result.count))
-            }
-        }
-        result.insert(contentsOf: header, at: 0)
-        return result
-    }
-
-    func sendGrpcResponse(requestId: UInt64, name: String, json: NSDictionary) async throws {
-        try await sendGrpcResponse(
-            requestId: requestId,
-            ChatResponse(status: 200, body: Self.encodeSingleGrpcMessage(name, json: json))
-        )
-    }
-
     func injectServerResponse(base64: String) {
         self.injectServerResponse(Data(base64Encoded: base64)!)
     }

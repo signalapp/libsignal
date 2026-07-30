@@ -71,30 +71,6 @@ export function connectAuth<
   });
 }
 
-export async function testSimpleGrpcRequest<
-  T,
-  S extends Subset<UnauthenticatedChatConnection, S>
->(
-  requestName: string,
-  expectedRequest: Record<string, unknown>,
-  responseName: string,
-  response: Record<string, unknown>,
-  sendRequest: (
-    service: PickSubset<UnauthenticatedChatConnection, S>
-  ) => Promise<T>
-): Promise<T> {
-  Native.TESTING_EnableDeterministicRngForTesting();
-  const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-  const [chat, fakeRemote] = connectUnauth<S>(tokio);
-  const responseFuture = sendRequest(chat);
-
-  const request = await fakeRemote.assertReceiveIncomingGrpcRequest();
-  expect(request.getSingleGrpcMessage(requestName)).to.deep.eq(expectedRequest);
-  await fakeRemote.sendGrpcReplyTo(request, responseName, response);
-
-  return await responseFuture;
-}
-
 export function defineTestGrpcCases<
   Conn,
   Api extends Subset<Conn, Api>,
