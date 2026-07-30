@@ -540,6 +540,12 @@ internal enum DeleteBackupMediaOut {
     case credentialRejectedWithoutAppropriateServerInfo
 }
 
+internal enum GetCdnCredentialsOut {
+    case success(BackupCdnCredentials)
+    case credentialRejected
+    case missingResponse
+}
+
 internal struct GetDevicesOut {
     var devices: [LinkedDeviceInternal]
 
@@ -553,6 +559,12 @@ internal enum GetMediaBackupInfoOut {
 
 internal enum GetMessageBackupInfoOut {
     case success(BridgeMessageBackupInfo)
+    case credentialRejected
+    case missingResponse
+}
+
+internal enum GetSvrBCredentialsOut {
+    case success(username: String, password: String)
     case credentialRejected
     case missingResponse
 }
@@ -727,6 +739,32 @@ internal enum DerivedReturnConverterDeleteBackupMediaOut: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterGetCdnCredentialsOut: NiceReturnConverter {
+    typealias NiceReturn = GetCdnCredentialsOut
+    typealias FfiReturn = SignalGetCdnCredentialsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetCdnCredentialsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetCdnCredentialsOutFfiResultSuccess:
+            let _0 = Result {
+                try BackupCdnCredentialsConverter.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetCdnCredentialsOut.success(try _0.get())
+        case SignalGetCdnCredentialsOutFfiResultCredentialRejected:
+            return GetCdnCredentialsOut.credentialRejected
+        case SignalGetCdnCredentialsOutFfiResultMissingResponse:
+            return GetCdnCredentialsOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetCdnCredentialsOut: \(ffiTag)")
+        }
+    }
+}
+
 internal enum DerivedReturnConverterGetDevicesOut: NiceReturnConverter {
     typealias NiceReturn = GetDevicesOut
     typealias FfiReturn = SignalGetDevicesOutFfiResult
@@ -794,6 +832,37 @@ internal enum DerivedReturnConverterGetMessageBackupInfoOut: NiceReturnConverter
             return GetMessageBackupInfoOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for GetMessageBackupInfoOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetSvrBCredentialsOut: NiceReturnConverter {
+    typealias NiceReturn = GetSvrBCredentialsOut
+    typealias FfiReturn = SignalGetSvrBCredentialsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetSvrBCredentialsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetSvrBCredentialsOutFfiResultSuccess:
+            let username = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.success.username
+                )
+            }
+            let password = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.success.password
+                )
+            }
+            return GetSvrBCredentialsOut.success(username: try username.get(), password: try password.get())
+        case SignalGetSvrBCredentialsOutFfiResultCredentialRejected:
+            return GetSvrBCredentialsOut.credentialRejected
+        case SignalGetSvrBCredentialsOutFfiResultMissingResponse:
+            return GetSvrBCredentialsOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetSvrBCredentialsOut: \(ffiTag)")
         }
     }
 }
@@ -1980,6 +2049,31 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_GetBackupCdnCredentialsTests() throws -> [GrpcTestCase<Int32, GetCdnCredentialsOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<IdentityConverter<Int32>, DerivedReturnConverterGetCdnCredentialsOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_backup_cdn_credentials_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<IdentityConverter<Int32>, DerivedReturnConverterGetCdnCredentialsOut>
+            .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_GetBackupSvrBCredentialsTests() throws -> [GrpcTestCase<Void, GetSvrBCredentialsOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetSvrBCredentialsOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_backup_svr_b_credentials_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetSvrBCredentialsOut>.convertReturn(
+            consuming: rawOutput
+        )
 
     }
     internal static func TESTING_GetDevicesTests() throws -> [GrpcTestCase<Void, GetDevicesOut>] {

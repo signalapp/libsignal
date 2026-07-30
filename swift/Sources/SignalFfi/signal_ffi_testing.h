@@ -677,6 +677,22 @@ static_assert_64bit(alignof(SignalCPromiseOptionalPairOfMutPointerHttpRequestu64
 typedef SignalCPromiseOptionalPairOfMutPointerHttpRequestu64* SignalType_MutPointer_SignalCPromiseOptionalPairOfMutPointerHttpRequestu64;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseOptionalPairOfMutPointerHttpRequestu64) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseOptionalPairOfMutPointerHttpRequestu64) == 8);
+typedef enum {
+  SignalGetCdnCredentialsOutFfiResultSuccess,
+  SignalGetCdnCredentialsOutFfiResultCredentialRejected,
+  SignalGetCdnCredentialsOutFfiResultMissingResponse,
+} SignalGetCdnCredentialsOutFfiResult_Tag;
+typedef struct {
+  SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr _0;
+} SignalGetCdnCredentialsOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetCdnCredentialsOutFfiResult_Tag tag;
+  union {
+    SignalGetCdnCredentialsOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetCdnCredentialsOutFfiResult;
+static_assert_64bit(sizeof(SignalGetCdnCredentialsOutFfiResult) == 40);
+static_assert_64bit(alignof(SignalGetCdnCredentialsOutFfiResult) == 8);
 typedef struct {
   SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult devices;
 } SignalGetDevicesOutFfiResult;
@@ -715,6 +731,23 @@ typedef struct {
 } SignalGetMessageBackupInfoOutFfiResult;
 static_assert_64bit(sizeof(SignalGetMessageBackupInfoOutFfiResult) == 32);
 static_assert_64bit(alignof(SignalGetMessageBackupInfoOutFfiResult) == 8);
+typedef enum {
+  SignalGetSvrBCredentialsOutFfiResultSuccess,
+  SignalGetSvrBCredentialsOutFfiResultCredentialRejected,
+  SignalGetSvrBCredentialsOutFfiResultMissingResponse,
+} SignalGetSvrBCredentialsOutFfiResult_Tag;
+typedef struct {
+  const int8_t* username;
+  const int8_t* password;
+} SignalGetSvrBCredentialsOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetSvrBCredentialsOutFfiResult_Tag tag;
+  union {
+    SignalGetSvrBCredentialsOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetSvrBCredentialsOutFfiResult;
+static_assert_64bit(sizeof(SignalGetSvrBCredentialsOutFfiResult) == 24);
+static_assert_64bit(alignof(SignalGetSvrBCredentialsOutFfiResult) == 8);
 typedef struct {
   SignalUuid uuid;
   SignalType_FixedArray32_uint8_t entropy;
@@ -1440,6 +1473,12 @@ SignalFfiError* signal_testing_future_success(
   SignalCPromisei32* promise,
   SignalConstPointerNonSuspendingBackgroundThreadRuntime async_runtime,
   uint8_t input
+);
+SignalFfiError* signal_testing_get_backup_cdn_credentials_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_backup_svr_b_credentials_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_devices_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out

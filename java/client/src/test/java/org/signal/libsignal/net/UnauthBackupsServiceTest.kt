@@ -15,13 +15,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import org.junit.Assert
-import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.CopyBackupMediaOut
 import org.signal.libsignal.internal.DeleteBackupMediaOut
+import org.signal.libsignal.internal.GetCdnCredentialsOut
 import org.signal.libsignal.internal.GetMediaBackupInfoOut
 import org.signal.libsignal.internal.GetMessageBackupInfoOut
+import org.signal.libsignal.internal.GetSvrBCredentialsOut
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.SimpleBackupTestOut
@@ -250,47 +251,6 @@ class UnauthBackupsServiceTest {
     return responseFuture.get()
   }
 
-  fun <T, E : BadRequestError> testSimpleBackupRequestSuccess(
-    requestName: String,
-    expectedRequest: JsonObject,
-    responseName: String,
-    response: JsonObject,
-    sendRequest: UnauthBackupsService.() -> CompletableFuture<RequestResult<T, E>>,
-  ): T {
-    val result =
-      testSimpleGrpcRequest(requestName, expectedRequest, responseName, response) {
-        UnauthBackupsService(this).sendRequest()
-      }
-    val successResult = assertIs<RequestResult.Success<T>>(result)
-    assertNotNull(successResult.result)
-    return successResult.result
-  }
-
-  fun <T, E : BadRequestError> testSimpleBackupRequestUnauthorized(
-    requestName: String,
-    expectedRequest: JsonObject,
-    responseName: String,
-    sendRequest: UnauthBackupsService.() -> CompletableFuture<RequestResult<T, E>>,
-  ) {
-    val result =
-      testSimpleGrpcRequest(
-        requestName,
-        expectedRequest,
-        responseName,
-        buildJsonObject {
-          // There's no rule that says all the failed authentication responses HAVE to have the same oneof field name.
-          // But in practice they do.
-          putJsonObject("failedAuthentication") {
-            put("description", "bad auth")
-          }
-        },
-      ) {
-        UnauthBackupsService(this).sendRequest()
-      }
-    val nonSuccess = assertIs<RequestResult.NonSuccess<E>>(result)
-    assertIs<RequestUnauthorizedException>(nonSuccess.error)
-  }
-
   @Test
   fun testSetPublicKey() =
     runTest {
@@ -376,47 +336,33 @@ class UnauthBackupsServiceTest {
     }
 
   @Test
-  fun testGetCdnCredentials() {
-    val credentials =
-      testSimpleBackupRequestSuccess(
-        "org.signal.chat.backup.GetCdnCredentialsRequest",
-        buildBackupRequestObject {
-          put("cdn", 40)
+  fun testGetCdnCredentials() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetBackupCdnCredentialsTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
         },
-        "org.signal.chat.backup.GetCdnCredentialsResponse",
-        buildJsonObject {
-          putJsonObject("cdnCredentials") {
-            putJsonObject("headers") {
-              put("b", "bbb")
-              put("a", "aaa")
-            }
+        ::UnauthBackupsService,
+        invoke = { chat, cdn ->
+          chat.getCdnCredentials(
+            TEST_AUTH,
+            cdn,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetCdnCredentialsOut.Success ->
+              assertEquals(expected._0, assertIs<RequestResult.Success<BackupCdnCredentials>>(actual).result)
+            GetCdnCredentialsOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            GetCdnCredentialsOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
           }
         },
-      ) {
-        @Suppress("DEPRECATION")
-        getCdnCredentials(
-          TEST_AUTH,
-          40,
-          DeterministicRandomSeedUseOnlyForTesting(0),
-        )
-      }
-    Assert.assertEquals(credentials, BackupCdnCredentials(mapOf("a" to "aaa", "b" to "bbb")))
-
-    testSimpleBackupRequestUnauthorized(
-      "org.signal.chat.backup.GetCdnCredentialsRequest",
-      buildBackupRequestObject {
-        put("cdn", 40)
-      },
-      "org.signal.chat.backup.GetCdnCredentialsResponse",
-    ) {
-      @Suppress("DEPRECATION")
-      getCdnCredentials(
-        TEST_AUTH,
-        40,
-        DeterministicRandomSeedUseOnlyForTesting(0),
       )
     }
-  }
 
   @Test
   fun testGetMessageBackupInfo() =
@@ -481,39 +427,35 @@ class UnauthBackupsServiceTest {
     }
 
   @Test
-  fun testGetSvrBCredentials() {
-    val credentials =
-      testSimpleBackupRequestSuccess(
-        "org.signal.chat.backup.GetSvrBCredentialsRequest",
-        buildBackupRequestObject(),
-        "org.signal.chat.backup.GetSvrBCredentialsResponse",
-        buildJsonObject {
-          putJsonObject("svrbCredentials") {
-            put("username", "user")
-            put("password", "pass")
+  fun testGetSvrBCredentials() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetBackupSvrBCredentialsTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.getSvrBCredentials(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetSvrBCredentialsOut.Success ->
+              assertEquals(
+                Pair(expected.username, expected.password),
+                assertIs<RequestResult.Success<Pair<String, String>>>(actual).result,
+              )
+            GetSvrBCredentialsOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            GetSvrBCredentialsOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
           }
         },
-      ) {
-        @Suppress("DEPRECATION")
-        getSvrBCredentials(
-          TEST_AUTH,
-          DeterministicRandomSeedUseOnlyForTesting(0),
-        )
-      }
-    Assert.assertEquals(credentials, "user" to "pass")
-
-    testSimpleBackupRequestUnauthorized(
-      "org.signal.chat.backup.GetSvrBCredentialsRequest",
-      buildBackupRequestObject(),
-      "org.signal.chat.backup.GetSvrBCredentialsResponse",
-    ) {
-      @Suppress("DEPRECATION")
-      getSvrBCredentials(
-        TEST_AUTH,
-        DeterministicRandomSeedUseOnlyForTesting(0),
       )
     }
-  }
 
   @Test
   fun testCopyMedia() =

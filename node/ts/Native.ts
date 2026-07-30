@@ -238,6 +238,18 @@ export type ReturnFfiDeleteBackupMediaOut =
       __type: 3;
     };
 
+export type ReturnFfiGetCdnCredentialsOut =
+  | {
+      __type: 0;
+      _0: [[string, string]];
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
 export type ReturnFfiGetDevicesOut = {
   devices: Array<ReturnFfiLinkedDeviceInternal>;
 };
@@ -258,6 +270,19 @@ export type ReturnFfiGetMessageBackupInfoOut =
   | {
       __type: 0;
       _0: ReturnFfiBridgeMessageBackupInfo;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiGetSvrBCredentialsOut =
+  | {
+      __type: 0;
+      username: string;
+      password: string;
     }
   | {
       __type: 1;
@@ -2602,6 +2627,12 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_GetBackupCdnCredentialsTests: () => Array<
+    GrpcTestCaseFfi<number, ReturnFfiGetCdnCredentialsOut>
+  >;
+  TESTING_GetBackupSvrBCredentialsTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetSvrBCredentialsOut>
+  >;
   TESTING_GetDevicesTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetDevicesOut>
   >;
@@ -3719,6 +3750,8 @@ const {
   TESTING_FutureProducesOtherPointerType,
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
+  TESTING_GetBackupCdnCredentialsTests,
+  TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetDevicesTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
@@ -4460,6 +4493,8 @@ export {
   TESTING_FutureProducesOtherPointerType,
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
+  TESTING_GetBackupCdnCredentialsTests,
+  TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetDevicesTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,

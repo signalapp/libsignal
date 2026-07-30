@@ -628,6 +628,23 @@ mod remote_derives {
         CredentialRejected,
         MissingResponse,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::GetCdnCredentialsOut)]
+    #[bridge(arg = false)]
+    pub enum GetCdnCredentialsOut {
+        Success(libsignal_net_chat::api::backups::CdnCredentials),
+        CredentialRejected,
+        MissingResponse,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::GetSvrBCredentialsOut)]
+    pub enum GetSvrBCredentialsOut {
+        Success { username: String, password: String },
+        CredentialRejected,
+        MissingResponse,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -757,4 +774,16 @@ fn TESTING_BackupRefreshTests() -> GrpcTestCases<(), remote_derives::SimpleBacku
 #[bridge_fn(nice = true)]
 fn TESTING_BackupDeleteAllTests() -> GrpcTestCases<(), remote_derives::SimpleBackupTestOut> {
     libsignal_net_chat::grpc::backups::test_cases::delete_all_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetBackupCdnCredentialsTests() -> GrpcTestCases<i32, remote_derives::GetCdnCredentialsOut>
+{
+    libsignal_net_chat::grpc::backups::test_cases::get_cdn_credentials_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetBackupSvrBCredentialsTests()
+-> GrpcTestCases<(), remote_derives::GetSvrBCredentialsOut> {
+    libsignal_net_chat::grpc::backups::test_cases::get_svrb_credentials_test_cases().into()
 }

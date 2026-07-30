@@ -27,9 +27,11 @@ import type {
   ReturnFfiCopyBackupMediaOut,
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
+  ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
+  ReturnFfiGetSvrBCredentialsOut,
   ReturnFfiLinkedDeviceInternal,
   ReturnFfiLookUpUsernameLinkArgs,
   ReturnFfiLookUpUsernameLinkOut,
@@ -134,6 +136,13 @@ export type DeleteBackupMediaOut =
   | 'credentialRejected'
   | 'credentialRejectedWithoutAppropriateServerInfo';
 
+export type GetCdnCredentialsOut =
+  | {
+      success: CdnCredentials;
+    }
+  | 'credentialRejected'
+  | 'missingResponse';
+
 export type GetDevicesOut = {
   devices: Array<LinkedDeviceInternal>;
 };
@@ -148,6 +157,16 @@ export type GetMediaBackupInfoOut =
 export type GetMessageBackupInfoOut =
   | {
       success: BridgeMessageBackupInfo;
+    }
+  | 'credentialRejected'
+  | 'missingResponse';
+
+export type GetSvrBCredentialsOut =
+  | {
+      success: {
+        username: string;
+        password: string;
+      };
     }
   | 'credentialRejected'
   | 'missingResponse';
@@ -398,6 +417,25 @@ export function returnConverterDeleteBackupMediaOut(
   }
 }
 
+export function returnConverterGetCdnCredentialsOut(
+  ffiInput: Native.ReturnFfiGetCdnCredentialsOut
+): GetCdnCredentialsOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: cdnCredentialReturnConverter(ffiInput._0),
+      };
+    case 1:
+      return 'credentialRejected';
+    case 2:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetCdnCredentialsOut');
+  }
+}
+
 export function returnConverterGetDevicesOut(
   ffiInput: Native.ReturnFfiGetDevicesOut
 ): GetDevicesOut {
@@ -444,6 +482,28 @@ export function returnConverterGetMessageBackupInfoOut(
       throw new Error(
         'Unknown FFI return enum type for GetMessageBackupInfoOut'
       );
+  }
+}
+
+export function returnConverterGetSvrBCredentialsOut(
+  ffiInput: Native.ReturnFfiGetSvrBCredentialsOut
+): GetSvrBCredentialsOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: {
+          username: identity(ffiInput.username),
+          password: identity(ffiInput.password),
+        },
+      };
+    case 1:
+      return 'credentialRejected';
+    case 2:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetSvrBCredentialsOut');
   }
 }
 
@@ -1261,6 +1321,24 @@ export function TESTING_DeleteUsernameLinkTests(): Array<
     identity,
     identity
   )(Native.TESTING_DeleteUsernameLinkTests());
+}
+
+export function TESTING_GetBackupCdnCredentialsTests(): Array<
+  GrpcTestCase<number, GetCdnCredentialsOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetCdnCredentialsOut
+  )(Native.TESTING_GetBackupCdnCredentialsTests());
+}
+
+export function TESTING_GetBackupSvrBCredentialsTests(): Array<
+  GrpcTestCase<void, GetSvrBCredentialsOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetSvrBCredentialsOut
+  )(Native.TESTING_GetBackupSvrBCredentialsTests());
 }
 
 export function TESTING_GetDevicesTests(): Array<

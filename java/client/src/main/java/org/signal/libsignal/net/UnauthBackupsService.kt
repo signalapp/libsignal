@@ -38,8 +38,9 @@ public data class BackupCdnCredentials(
   val headers: Map<String, String>,
 ) {
   public companion object {
+    // Public for testing, not intended for general use.
     @Suppress("UNCHECKED_CAST")
-    internal fun fromFfiHeaders(headers: Array<Object>): BackupCdnCredentials =
+    public fun fromFfiHeaders(headers: Array<Object>): BackupCdnCredentials =
       BackupCdnCredentials((headers as Array<Pair<String, String>>).toMap())
   }
 }

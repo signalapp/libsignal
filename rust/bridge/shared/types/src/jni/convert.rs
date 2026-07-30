@@ -2108,7 +2108,9 @@ impl NiceResultConverter for libsignal_net_chat::api::backups::CdnCredentials {
     fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
         KtReturnConverter {
             nice_type: "org.signal.libsignal.net.BackupCdnCredentials".to_owned(),
-            ffi_type: "Array<Pair<String, String>>".to_owned(),
+            // Ideally this would be "Array<Pair<String, String>>", but we don't currently preserve
+            // that much type information.
+            ffi_type: "Array<Object>".to_owned(),
             converter_function: "org.signal.libsignal.net.BackupCdnCredentials.fromFfiHeaders"
                 .to_owned(),
         }
