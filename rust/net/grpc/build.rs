@@ -24,6 +24,7 @@ fn main() {
         "proto/org/signal/chat/payments.proto",
         "proto/org/signal/chat/product_configuration.proto",
         "proto/org/signal/chat/profile.proto",
+        "proto/org/signal/chat/remote_configuration.proto",
         "proto/org/signal/chat/subscriptions.proto",
         "proto/TextSecure.proto",
     ];

@@ -103,7 +103,7 @@ message GetAccountIdentityRequest {
 }
 
 message GetAccountIdentityResponse {
-  // A set of account identifiers for the authenticated account.
+  // The identifiers for the authenticated account.
   common.AccountIdentifiers account_identifiers = 1;
 }
 
@@ -114,7 +114,7 @@ message GetEntitlementsResponse {
   message BadgeEntitlement {
     // The id of the badge the account is entitled. Metadata to display for
     // badges may be obtained by cross-referencing badge ids with
-    // ProductConfiguration.GetConfiguration.
+    // RemoteConfiguration.GetBadges.
     string badge_id = 1;
     // When the badge expires, in number of seconds since epoch
     uint64 expiration_epoch_seconds = 2;
@@ -189,8 +189,7 @@ message ConfirmUsernameHashRequest {
 
 message ConfirmUsernameHashResponse {
   message ConfirmedUsernameHash {
-    // The newly-confirmed username hash.
-    bytes username_hash = 1;
+    reserved 1; // username_hash
 
     // The server-generated username link handle for the newly-confirmed username.
     bytes username_link_handle = 2;
