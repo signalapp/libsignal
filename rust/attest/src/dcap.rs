@@ -645,6 +645,7 @@ mod test {
     use prost::Message;
 
     use super::*;
+    use crate::constants::SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
     use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
     use crate::dcap::fakes::FakeAttestation;
     use crate::proto::cds2::ClientHandshakeStart;
@@ -980,6 +981,30 @@ mod test {
             })
             .collect();
         builder.sign().attest().unwrap();
+    }
+
+    #[test]
+    fn tcb_level_too_low_tcb_info() {
+        let mut builder = FakeAttestation::builder();
+
+        builder.uendorsements.tcb_info.tcb_evaluation_data_number =
+            SGX_TCB_EVALUATION_DATA_NUMBER_MIN - 1;
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because tcb_evaluation_data_number is too low");
+    }
+
+    #[test]
+    fn tcb_level_too_low_enclave_identity() {
+        let mut builder = FakeAttestation::builder();
+
+        builder.uendorsements.qe_id_info.tcb_evaluation_data_number =
+            SGX_TCB_EVALUATION_DATA_NUMBER_MIN - 1;
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because tcb_evaluation_data_number is too low");
     }
 
     #[test]

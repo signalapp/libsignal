@@ -137,6 +137,7 @@ impl FakeAttestation {
         let tomorrow = Utc::now() + chrono::Days::new(1);
         uendorsements.tcb_info.next_update = tomorrow;
         uendorsements.qe_id_info.next_update = tomorrow;
+        uendorsements.qe_id_info.tcb_evaluation_data_number = SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
         uendorsements.tcb_info.tcb_evaluation_data_number = SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
         FakeAttestationBuilder {
             signing_info,

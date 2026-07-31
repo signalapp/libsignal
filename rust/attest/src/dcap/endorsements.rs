@@ -653,7 +653,7 @@ pub(crate) struct EnclaveIdentity {
     version: u16,
     _issue_date: chrono::DateTime<Utc>,
     pub next_update: chrono::DateTime<Utc>,
-    _tcb_evaluation_data_number: u16,
+    pub tcb_evaluation_data_number: u16,
     #[serde(deserialize_with = "deserialize_u32_hex")]
     pub miscselect: UInt32LE,
     #[serde(deserialize_with = "deserialize_u32_hex")]
@@ -694,11 +694,16 @@ impl EnclaveIdentity {
 
 impl Expireable for EnclaveIdentity {
     fn valid_at(&self, timestamp: SystemTime) -> bool {
+        let tcb_ok = SGX_TCB_EVALUATION_DATA_NUMBER_MIN <= self.tcb_evaluation_data_number;
+        #[cfg(any(test, feature = "test-util"))]
+        let tcb_ok = tcb_ok
+            || self.tcb_evaluation_data_number
+                == SGX_TCB_EVALUATION_NUMBER_USED_ONLY_IN_TESTS_THAT_WILL_NEVER_VALIDATE_SINCE_IT_IS_VERY_EXPIRED;
         // don't care about issue_date
         // 1. There's no notion of "valid before" like in X509
         // 2. These dates might be *very* recent, and we don't
         //    want to fail requests because of clock skew
-        timestamp <= self.next_update.into()
+        tcb_ok && timestamp <= self.next_update.into()
     }
 }
 
