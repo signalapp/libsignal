@@ -52,6 +52,43 @@ export default class ServerZkAuthOperations {
     );
   }
 
+  /**
+   * Issues an `AuthCredential` for an account without a PNI.
+   *
+   * @param authCredentialSalt should be generated per-account at registration time
+   */
+  issueAuthCredentialZkcWithoutPni(
+    aci: Aci,
+    authCredentialSalt: Uint8Array<ArrayBuffer>,
+    redemptionTime: number
+  ): AuthCredentialWithPniResponse {
+    const random = randomBytes(RANDOM_LENGTH);
+
+    return this.issueAuthCredentialZkcWithoutPniWithRandom(
+      random,
+      aci,
+      authCredentialSalt,
+      redemptionTime
+    );
+  }
+
+  issueAuthCredentialZkcWithoutPniWithRandom(
+    random: Uint8Array<ArrayBuffer>,
+    aci: Aci,
+    authCredentialSalt: Uint8Array<ArrayBuffer>,
+    redemptionTime: number
+  ): AuthCredentialWithPniResponse {
+    return new AuthCredentialWithPniResponse(
+      Native.ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic(
+        this.serverSecretParams,
+        random,
+        aci.getServiceIdFixedWidthBinary(),
+        authCredentialSalt,
+        redemptionTime
+      )
+    );
+  }
+
   verifyAuthCredentialPresentation(
     groupPublicParams: GroupPublicParams,
     authCredentialPresentation: AuthCredentialPresentation,

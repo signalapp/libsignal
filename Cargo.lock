@@ -6662,6 +6662,7 @@ dependencies = [
  "rand 0.9.4",
  "rayon",
  "serde",
+ "sha1 0.11.0",
  "sha2 0.11.0",
  "static_assertions",
  "subtle",

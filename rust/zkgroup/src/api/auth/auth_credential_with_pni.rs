@@ -96,6 +96,20 @@ impl AuthCredentialWithPniResponse {
                 .map(AuthCredentialWithPni::Zkc),
         }
     }
+
+    pub fn receive_without_pni(
+        self,
+        public_params: &ServerPublicParams,
+        aci: Aci,
+        pni_salt: &[u8],
+        redemption_time: crate::Timestamp,
+    ) -> Result<AuthCredentialWithPni, ZkGroupVerificationFailure> {
+        match self {
+            Self::Zkc(credential) => credential
+                .receive_without_pni(aci, pni_salt, redemption_time, public_params)
+                .map(AuthCredentialWithPni::Zkc),
+        }
+    }
 }
 
 impl Serialize for AuthCredentialWithPni {

@@ -54,6 +54,40 @@ public class ClientZkAuthOperations {
     }
   }
 
+  /**
+   * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse, even
+   * though there's no expected PNI.
+   *
+   * @param authCredentialSalt should have been provided by the server at registration/link time
+   * @param redemptionTime This is provided by the server as an integer, and should be passed
+   *     through directly.
+   */
+  public AuthCredentialWithPni receiveAuthCredentialWithoutPni(
+      Aci aci,
+      byte[] authCredentialSalt,
+      long redemptionTime,
+      AuthCredentialWithPniResponse authCredentialResponse)
+      throws VerificationFailedException {
+    byte[] newContents =
+        filterExceptions(
+            VerificationFailedException.class,
+            () ->
+                serverPublicParams.guardedMapChecked(
+                    (publicParams) ->
+                        Native.ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni(
+                            publicParams,
+                            aci.toServiceIdFixedWidthBinary(),
+                            authCredentialSalt,
+                            redemptionTime,
+                            authCredentialResponse.getInternalContentsForJNI())));
+
+    try {
+      return new AuthCredentialWithPni(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public AuthCredentialPresentation createAuthCredentialPresentation(
       GroupSecretParams groupSecretParams, AuthCredentialWithPni authCredential) {
     return createAuthCredentialPresentation(new SecureRandom(), groupSecretParams, authCredential);

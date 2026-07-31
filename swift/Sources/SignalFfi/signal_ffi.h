@@ -5511,6 +5511,14 @@ SignalFfiError* signal_server_public_params_receive_auth_credential_with_pni_as_
   uint64_t redemption_time,
   SignalBorrowedBuffer auth_credential_with_pni_response_bytes
 );
+SignalFfiError* signal_server_public_params_receive_auth_credential_zkc_without_pni(
+  SignalOwnedBuffer* out,
+  SignalConstPointerServerPublicParams params,
+  const SignalType_FixedArray17_uint8_t* aci,
+  SignalBorrowedBuffer salt,
+  uint64_t redemption_time,
+  SignalBorrowedBuffer auth_credential_with_pni_response_bytes
+);
 SignalFfiError* signal_server_public_params_receive_expiring_profile_key_credential(
   SignalType_FixedArray153_uint8_t* out,
   SignalConstPointerServerPublicParams server_public_params,
@@ -5554,6 +5562,14 @@ SignalFfiError* signal_server_secret_params_issue_auth_credential_with_pni_zkc_d
   const SignalType_FixedArray32_uint8_t* randomness,
   const SignalType_FixedArray17_uint8_t* aci,
   const SignalType_FixedArray17_uint8_t* pni,
+  uint64_t redemption_time
+);
+SignalFfiError* signal_server_secret_params_issue_auth_credential_zkc_without_pni_deterministic(
+  SignalOwnedBuffer* out,
+  SignalConstPointerServerSecretParams server_secret_params,
+  const SignalType_FixedArray32_uint8_t* randomness,
+  const SignalType_FixedArray17_uint8_t* aci,
+  SignalBorrowedBuffer salt,
   uint64_t redemption_time
 );
 SignalFfiError* signal_server_secret_params_issue_expiring_profile_key_credential_deterministic(

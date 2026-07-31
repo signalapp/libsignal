@@ -44,6 +44,30 @@ export default class ClientZkAuthOperations {
     );
   }
 
+  /**
+   * Produces the AuthCredentialWithPni from a server-generated AuthCredentialWithPniResponse,
+   * even though there's no expected PNI.
+   *
+   * @param authCredentialSalt - should have been provided by the server at registration/link time.
+   * @param redemptionTime - This is provided by the server as an integer, and should be passed through directly.
+   */
+  receiveAuthCredentialWithoutPni(
+    aci: Aci,
+    authCredentialSalt: Uint8Array<ArrayBuffer>,
+    redemptionTime: number,
+    authCredentialResponse: AuthCredentialWithPniResponse
+  ): AuthCredentialWithPni {
+    return new AuthCredentialWithPni(
+      Native.ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni(
+        this.serverPublicParams,
+        aci.getServiceIdFixedWidthBinary(),
+        authCredentialSalt,
+        redemptionTime,
+        authCredentialResponse.getContents()
+      )
+    );
+  }
+
   createAuthCredentialWithPniPresentation(
     groupSecretParams: GroupSecretParams,
     authCredential: AuthCredentialWithPni

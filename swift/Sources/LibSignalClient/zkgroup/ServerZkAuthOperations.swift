@@ -52,6 +52,48 @@ public class ServerZkAuthOperations {
         }
     }
 
+    /// Issues an `AuthCredential` for an account without a PNI.
+    ///
+    /// `authCredentialSalt` should be generated per-account at registration time.
+    public func issueAuthCredentialZkcWithoutPni(
+        aci: Aci,
+        salt authCredentialSalt: Data,
+        redemptionTime: UInt64
+    ) throws -> AuthCredentialWithPniResponse {
+        return try self.issueAuthCredentialZkcWithoutPni(
+            randomness: Randomness.generate(),
+            aci: aci,
+            salt: authCredentialSalt,
+            redemptionTime: redemptionTime
+        )
+    }
+
+    public func issueAuthCredentialZkcWithoutPni(
+        randomness: Randomness,
+        aci: Aci,
+        salt authCredentialSalt: Data,
+        redemptionTime: UInt64
+    ) throws -> AuthCredentialWithPniResponse {
+        return try self.serverSecretParams.withNativeHandle { serverSecretParams in
+            try randomness.withUnsafePointerToBytes { randomness in
+                try aci.withPointerToFixedWidthBinary { aci in
+                    try authCredentialSalt.withUnsafeBorrowedBuffer { authCredentialSalt in
+                        try invokeFnReturningVariableLengthSerialized {
+                            signal_server_secret_params_issue_auth_credential_zkc_without_pni_deterministic(
+                                $0,
+                                serverSecretParams.const(),
+                                randomness,
+                                aci,
+                                authCredentialSalt,
+                                redemptionTime
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public func verifyAuthCredentialPresentation(
         groupPublicParams: GroupPublicParams,
         authCredentialPresentation: AuthCredentialPresentation,

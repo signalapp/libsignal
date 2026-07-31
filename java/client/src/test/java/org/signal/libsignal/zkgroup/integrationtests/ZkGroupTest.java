@@ -7,6 +7,7 @@ package org.signal.libsignal.zkgroup.integrationtests;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
@@ -357,6 +358,70 @@ public final class ZkGroupTest extends SecureRandomTest {
     } catch (InvalidInputException e) {
       // expected
     }
+  }
+
+  @Test
+  public void testAuthZkcWithoutPniIntegration()
+      throws VerificationFailedException, InvalidInputException {
+
+    // Both ACI and salt will be assigned to an account at registration.
+    Aci aci = new Aci(TEST_UUID);
+    byte[] salt = Hex.fromStringCondensedAssert("0102030405");
+    Instant redemptionTime = Instant.now().truncatedTo(ChronoUnit.DAYS);
+
+    // Generate keys (client's are per-group, server's are not)
+    // ---
+
+    // SERVER
+    ServerSecretParams serverSecretParams =
+        ServerSecretParams.generate(createSecureRandom(TEST_ARRAY_32));
+    ServerPublicParams serverPublicParams = serverSecretParams.getPublicParams();
+
+    ServerZkAuthOperations serverZkAuth = new ServerZkAuthOperations(serverSecretParams);
+
+    // CLIENT
+    GroupMasterKey masterKey = new GroupMasterKey(TEST_ARRAY_32_1);
+    GroupSecretParams groupSecretParams = GroupSecretParams.deriveFromMasterKey(masterKey);
+    GroupPublicParams groupPublicParams = groupSecretParams.getPublicParams();
+
+    // SERVER
+    // Issue credential
+    AuthCredentialWithPniResponse authCredentialResponse =
+        serverZkAuth.issueAuthCredentialZkcWithoutPni(
+            createSecureRandom(TEST_ARRAY_32_2), aci, salt, redemptionTime);
+
+    // CLIENT
+    // Receive credential
+    ClientZkAuthOperations clientZkAuthCipher = new ClientZkAuthOperations(serverPublicParams);
+    ClientZkGroupCipher clientZkGroupCipher = new ClientZkGroupCipher(groupSecretParams);
+    AuthCredentialWithPni authCredential =
+        clientZkAuthCipher.receiveAuthCredentialWithoutPni(
+            aci, salt, redemptionTime.getEpochSecond(), authCredentialResponse);
+
+    // Create and decrypt user entry
+    UuidCiphertext aciCiphertext = clientZkGroupCipher.encrypt(aci);
+    ServiceId aciPlaintext = clientZkGroupCipher.decrypt(aciCiphertext);
+    assertEquals(aci, aciPlaintext);
+
+    // CLIENT - Create presentation
+    AuthCredentialPresentation presentation =
+        clientZkAuthCipher.createAuthCredentialPresentation(
+            createSecureRandom(TEST_ARRAY_32_5), groupSecretParams, authCredential);
+    assertEquals(
+        presentation.serialize()[0],
+        3); // Check V4 (versions start from 1 but are encoded starting from 0)
+    assertEquals(presentation.getVersion(), AuthCredentialPresentation.Version.V4);
+
+    // SERVER - Verify presentation, using times at the edge of the acceptable window
+    assertArrayEquals(aciCiphertext.serialize(), presentation.getUuidCiphertext().serialize());
+    assertFalse(
+        Arrays.equals(aciCiphertext.serialize(), presentation.getPniCiphertext().serialize()));
+    assertEquals(presentation.getRedemptionTime(), redemptionTime);
+
+    serverZkAuth.verifyAuthCredentialPresentation(
+        groupPublicParams, presentation, redemptionTime.minus(1, ChronoUnit.DAYS));
+    serverZkAuth.verifyAuthCredentialPresentation(
+        groupPublicParams, presentation, redemptionTime.plus(2, ChronoUnit.DAYS));
   }
 
   @Test

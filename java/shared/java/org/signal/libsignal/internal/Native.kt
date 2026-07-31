@@ -2649,6 +2649,16 @@ internal object Native {
 
   @JvmStatic
   @Throws(Exception::class)
+  public external fun ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni(
+    params: ObjectHandle,
+    aci: ByteArray,
+    salt: ByteArray,
+    redemptionTime: Long,
+    authCredentialWithPniResponseBytes: ByteArray,
+  ): ByteArray
+
+  @JvmStatic
+  @Throws(Exception::class)
   public external fun ServerPublicParams_ReceiveExpiringProfileKeyCredential(
     serverPublicParams: ObjectHandle,
     requestContext: ByteArray,
@@ -2694,6 +2704,15 @@ internal object Native {
     randomness: ByteArray,
     aci: ByteArray,
     pni: ByteArray,
+    redemptionTime: Long,
+  ): ByteArray
+
+  @JvmStatic
+  public external fun ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic(
+    serverSecretParams: ObjectHandle,
+    randomness: ByteArray,
+    aci: ByteArray,
+    salt: ByteArray,
     redemptionTime: Long,
   ): ByteArray
 

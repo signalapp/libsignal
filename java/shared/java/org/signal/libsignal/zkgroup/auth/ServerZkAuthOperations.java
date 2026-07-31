@@ -54,6 +54,40 @@ public class ServerZkAuthOperations {
     }
   }
 
+  /**
+   * Issues an `AuthCredential` for an account without a PNI.
+   *
+   * @param authCredentialSalt should be generated per-account at registration time
+   */
+  public AuthCredentialWithPniResponse issueAuthCredentialZkcWithoutPni(
+      Aci aci, byte[] authCredentialSalt, Instant redemptionTime) {
+    return issueAuthCredentialZkcWithoutPni(
+        new SecureRandom(), aci, authCredentialSalt, redemptionTime);
+  }
+
+  public AuthCredentialWithPniResponse issueAuthCredentialZkcWithoutPni(
+      SecureRandom secureRandom, Aci aci, byte[] authCredentialSalt, Instant redemptionTime) {
+    byte[] random = new byte[RANDOM_LENGTH];
+
+    secureRandom.nextBytes(random);
+
+    byte[] newContents =
+        serverSecretParams.guardedMap(
+            (serverSecretParams) ->
+                Native.ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic(
+                    serverSecretParams,
+                    random,
+                    aci.toServiceIdFixedWidthBinary(),
+                    authCredentialSalt,
+                    redemptionTime.getEpochSecond()));
+
+    try {
+      return new AuthCredentialWithPniResponse(newContents);
+    } catch (InvalidInputException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   public void verifyAuthCredentialPresentation(
       GroupPublicParams groupPublicParams, AuthCredentialPresentation authCredentialPresentation)
       throws VerificationFailedException {

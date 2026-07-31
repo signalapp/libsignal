@@ -35,6 +35,7 @@ partial-default = { workspace = true, features = ["derive"] }
 rand = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+sha1 = { workspace = true }
 sha2 = { workspace = true }
 static_assertions = { workspace = true }
 subtle = { workspace = true }

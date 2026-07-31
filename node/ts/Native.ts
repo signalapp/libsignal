@@ -2134,6 +2134,13 @@ type NativeFunctions = {
     redemption_time: Timestamp,
     auth_credential_with_pni_response_bytes: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
+  ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni: (
+    params: Wrapper<ServerPublicParams>,
+    aci: Uint8Array<ArrayBuffer>,
+    salt: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp,
+    auth_credential_with_pni_response_bytes: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   ServerPublicParams_ReceiveExpiringProfileKeyCredential: (
     server_public_params: Wrapper<ServerPublicParams>,
     request_context: Serialized<ProfileKeyCredentialRequestContext>,
@@ -2167,6 +2174,13 @@ type NativeFunctions = {
     randomness: Uint8Array<ArrayBuffer>,
     aci: Uint8Array<ArrayBuffer>,
     pni: Uint8Array<ArrayBuffer>,
+    redemption_time: Timestamp
+  ) => Uint8Array<ArrayBuffer>;
+  ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic: (
+    server_secret_params: Wrapper<ServerSecretParams>,
+    randomness: Uint8Array<ArrayBuffer>,
+    aci: Uint8Array<ArrayBuffer>,
+    salt: Uint8Array<ArrayBuffer>,
     redemption_time: Timestamp
   ) => Uint8Array<ArrayBuffer>;
   ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic: (
@@ -3610,6 +3624,7 @@ const {
   ServerPublicParams_Deserialize,
   ServerPublicParams_GetEndorsementPublicKey,
   ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId,
+  ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni,
   ServerPublicParams_ReceiveExpiringProfileKeyCredential,
   ServerPublicParams_ReceiveReceiptCredential,
   ServerPublicParams_Serialize,
@@ -3618,6 +3633,7 @@ const {
   ServerSecretParams_GenerateDeterministic,
   ServerSecretParams_GetPublicParams,
   ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic,
+  ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic,
   ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic,
   ServerSecretParams_IssueReceiptCredentialDeterministic,
   ServerSecretParams_Serialize,
@@ -4351,6 +4367,7 @@ export {
   ServerPublicParams_Deserialize,
   ServerPublicParams_GetEndorsementPublicKey,
   ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId,
+  ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni,
   ServerPublicParams_ReceiveExpiringProfileKeyCredential,
   ServerPublicParams_ReceiveReceiptCredential,
   ServerPublicParams_Serialize,
@@ -4359,6 +4376,7 @@ export {
   ServerSecretParams_GenerateDeterministic,
   ServerSecretParams_GetPublicParams,
   ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic,
+  ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic,
   ServerSecretParams_IssueExpiringProfileKeyCredentialDeterministic,
   ServerSecretParams_IssueReceiptCredentialDeterministic,
   ServerSecretParams_Serialize,

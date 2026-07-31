@@ -42,6 +42,37 @@ public class ClientZkAuthOperations {
         }
     }
 
+    /// Produces the `AuthCredentialWithPni` from a server-generated `AuthCredentialWithPniResponse`,
+    /// even though there's no expected PNI.
+    ///
+    /// `authCredentialSalt` should have been provided by the server at registration/link time.
+    /// The `redemptionTime` is provided by the server as an integer, and should be passed through directly.
+    public func receiveAuthCredentialWithoutPni(
+        aci: Aci,
+        salt authCredentialSalt: Data,
+        redemptionTime: UInt64,
+        authCredentialResponse: AuthCredentialWithPniResponse
+    ) throws -> AuthCredentialWithPni {
+        return try self.serverPublicParams.withNativeHandle { serverPublicParams in
+            try aci.withPointerToFixedWidthBinary { aci in
+                try authCredentialSalt.withUnsafeBorrowedBuffer { authCredentialSalt in
+                    try authCredentialResponse.withUnsafeBorrowedBuffer { authCredentialResponse in
+                        try invokeFnReturningVariableLengthSerialized {
+                            signal_server_public_params_receive_auth_credential_zkc_without_pni(
+                                $0,
+                                serverPublicParams.const(),
+                                aci,
+                                authCredentialSalt,
+                                redemptionTime,
+                                authCredentialResponse
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public func createAuthCredentialPresentation(
         groupSecretParams: GroupSecretParams,
         authCredential: AuthCredentialWithPni

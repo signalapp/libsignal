@@ -205,6 +205,24 @@ fn ServerPublicParams_ReceiveAuthCredentialWithPniAsServiceId(
 }
 
 #[bridge_fn]
+fn ServerPublicParams_ReceiveAuthCredentialZkcWithoutPni(
+    params: &ServerPublicParams,
+    aci: Aci,
+    salt: &[u8],
+    redemption_time: Timestamp,
+    auth_credential_with_pni_response_bytes: &[u8],
+) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
+    let response = AuthCredentialWithPniResponse::new(auth_credential_with_pni_response_bytes)
+        .expect("previously validated");
+    Ok(zkgroup::serialize(&response.receive_without_pni(
+        params,
+        aci,
+        salt,
+        redemption_time,
+    )?))
+}
+
+#[bridge_fn]
 fn ServerPublicParams_CreateAuthCredentialWithPniPresentationDeterministic(
     server_public_params: &ServerPublicParams,
     randomness: &[u8; RANDOMNESS_LEN],
@@ -316,6 +334,25 @@ fn ServerSecretParams_IssueAuthCredentialWithPniZkcDeterministic(
         server_secret_params,
         *randomness,
     ))
+}
+
+#[bridge_fn]
+fn ServerSecretParams_IssueAuthCredentialZkcWithoutPniDeterministic(
+    server_secret_params: &ServerSecretParams,
+    randomness: &[u8; RANDOMNESS_LEN],
+    aci: Aci,
+    salt: &[u8],
+    redemption_time: Timestamp,
+) -> Vec<u8> {
+    zkgroup::serialize(
+        &AuthCredentialWithPniZkcResponse::issue_credential_without_pni(
+            aci,
+            salt,
+            redemption_time,
+            server_secret_params,
+            *randomness,
+        ),
+    )
 }
 
 #[bridge_fn]
