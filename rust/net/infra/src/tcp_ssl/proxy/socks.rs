@@ -4,6 +4,7 @@
 //
 
 use std::borrow::Cow;
+use std::fmt::{Debug, Display, Formatter};
 use std::future::Future;
 use std::net::IpAddr;
 use std::num::NonZeroU16;
@@ -11,6 +12,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use auto_enums::enum_derive;
+use libsignal_core::LogSafeDisplay;
+use strum::IntoDiscriminant as _;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_socks::TargetAddr;
 use tokio_socks::tcp::{Socks4Stream, Socks5Stream};
@@ -37,7 +40,7 @@ pub struct SocksConnector {
     pub dns_resolver: DnsResolver,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, strum::EnumDiscriminants)]
+#[derive(Clone, PartialEq, Eq, Hash, strum::EnumDiscriminants)]
 #[strum_discriminants(name(ProtocolKind))]
 pub enum Protocol {
     Socks4 {
@@ -47,6 +50,20 @@ pub enum Protocol {
         username_password: Option<(String, String)>,
     },
 }
+
+impl Display for Protocol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.discriminant())
+    }
+}
+
+impl Debug for Protocol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl LogSafeDisplay for Protocol {}
 
 #[derive(Debug, derive_more::From)]
 #[enum_derive(tokio1::AsyncRead, tokio1::AsyncWrite)]
@@ -77,14 +94,14 @@ impl Connector<SocksRoute<IpAddr>, ()> for super::StatelessProxied {
             log::info!("[{log_tag}] establishing connection to host over SOCKS proxy");
             log::debug!("[{log_tag}] establishing connection to {target_addr:?} over SOCKS proxy");
 
-            log::info!("[{log_tag}] connecting to {protocol:?} proxy over TCP");
+            log::info!("[{log_tag}] connecting to {protocol} proxy over TCP");
             let TcpRoute {
                 address: proxy_host,
                 port: proxy_port,
                 ..
             } = &proxy;
             log::debug!(
-                "[{log_tag}] connecting to {protocol:?} proxy at {proxy_host}:{proxy_port} over TCP"
+                "[{log_tag}] connecting to {protocol} proxy at {proxy_host}:{proxy_port} over TCP"
             );
 
             let target = match &target_addr {
@@ -463,5 +480,14 @@ mod test {
 
         // The client should see the rejection as well.
         assert_matches!(client_result, Err(TransportConnectError::ProxyProtocol));
+    }
+
+    #[test_matrix([
+        Protocol::Socks5 { username_password: Some(("test".to_owned(), "test".to_owned())) },
+        Protocol::Socks4 { user_id: Some("test".to_owned()) }
+    ])]
+    fn protocol_display_and_debug_are_log_safe(protocol: Protocol) {
+        assert!(!format!("{protocol:?}").contains("test"));
+        assert!(!format!("{protocol}").contains("test"));
     }
 }
