@@ -4,6 +4,8 @@
 //
 
 use attest::svr2::lookup_groupid;
+use futures_util::stream::FuturesOrdered;
+use futures_util::{FutureExt as _, StreamExt as _};
 use libsignal_account_keys::PinHash;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::svr2::Svr2ConnectImpl;
@@ -137,30 +139,41 @@ async fn Svr2_StartMasterKeyBackup(
     // reading previous directly. Any failure here is returned so the caller
     // retries the whole backup; the previous write keeps no resumable state.
     if let Some(previous) = env.svr2.previous.as_ref() {
-        let pin_hash = derive_svr2_pin_hash(
-            previous.params.mr_enclave.as_ref(),
-            &auth.username,
-            normalized_pin,
-        );
-        let data = pin_hash
-            .encode_master_key(master_key)
-            .as_slice()
-            .try_into()?;
-        let mut conn = Svr2ConnectImpl {
-            connection_manager,
-            endpoint: previous,
-            auth: &auth,
+        let write_previous = async {
+            let pin_hash = derive_svr2_pin_hash(
+                previous.params.mr_enclave.as_ref(),
+                &auth.username,
+                normalized_pin,
+            );
+            let data = pin_hash
+                .encode_master_key(master_key)
+                .as_slice()
+                .try_into()?;
+            let mut conn = Svr2ConnectImpl {
+                connection_manager,
+                endpoint: previous,
+                auth: &auth,
+            }
+            .connect()
+            .await?;
+            do_backup(
+                &mut conn,
+                &pin_hash.access_key,
+                &data,
+                max_tries.try_into()?,
+            )
+            .await?;
+            do_expose(&mut conn, &data).await
+        };
+        match write_previous.await {
+            Ok(()) => {}
+            // Enclave was decommissioned but is still configured will 404.
+            // Safe to skip.
+            Err(e) if e.is_enclave_not_found() => {
+                log::info!("SVR2 previous enclave is gone. Skipping the write to it");
+            }
+            Err(e) => return Err(e),
         }
-        .connect()
-        .await?;
-        do_backup(
-            &mut conn,
-            &pin_hash.access_key,
-            &data,
-            max_tries.try_into()?,
-        )
-        .await?;
-        do_expose(&mut conn, &data).await?;
     }
 
     // The current enclave uses a two-phase BackupSession: this sends the
@@ -239,6 +252,9 @@ async fn Svr2_RestoreMasterKey(
         match restore_and_decode(client, &pin_hash).await {
             // Data isn't in this enclave - fall through to the next one.
             Err(Svr2Error::DataMissing) => continue,
+            // Enclave was decommissioned but is still configured will 404.
+            // Safe to move on.
+            Err(e) if e.is_enclave_not_found() => continue,
             // Any other error is returned as-is.
             // Successful responses also match the shape of the return type.
             result @ Ok(_) | result @ Err(_) => return result,
@@ -256,10 +272,17 @@ async fn Svr2_Delete(
     let auth = Auth { username, password };
     let env = connection_manager.env();
 
+    #[derive(PartialEq, Eq)]
+    enum Tag {
+        Current,
+        Previous,
+    }
+    let endpoints = std::iter::once((&env.svr2.current, Tag::Current))
+        .chain(env.svr2.previous.as_ref().map(|prev| (prev, Tag::Previous)));
     // Delete from every configured enclave concurrently, and attempt them all even
     // if one fails, so a failed delete against one enclave never leaves data behind
     // in another.
-    let deletes = env.svr2.current_and_previous().map(|endpoint| {
+    let deletes = FuturesOrdered::from_iter(endpoints.map(|(endpoint, tag)| {
         let auth = &auth;
         async move {
             let client = Svr2ConnectImpl {
@@ -270,12 +293,27 @@ async fn Svr2_Delete(
             let mut conn = client.connect().await?;
             do_delete(&mut conn).await
         }
-    });
-    // Run all delete's concurrently and report the first failure, if any.
-    for result in futures_util::future::join_all(deletes).await {
-        result?;
-    }
-    Ok(())
+        .map(move |result| match result {
+            // A decommissioned enclave that's still configured will 404. There
+            // is nothing to delete, so treat it as a successful delete, but
+            // only for the `previous` enclave.
+            Err(e) if e.is_enclave_not_found() && tag == Tag::Previous => Ok(()),
+            result => result,
+        })
+    }));
+
+    // Run all deletes concurrently, attempting every enclave even if one fails.
+    // If more than one fails, report the most important error instead of
+    // whichever enclave happens to come first.
+    deletes
+        .fold(Ok(()), |acc, next| async move {
+            match (acc, next) {
+                (Err(acc), Err(next)) => Err(Svr2Error::prioritize_error(acc, next)),
+                (e @ Err(_), Ok(())) | (Ok(()), e @ Err(_)) => e,
+                (Ok(()), Ok(())) => Ok(()),
+            }
+        })
+        .await
 }
 
 #[bridge_io(TokioAsyncContext, ffi = false, jni = false)]

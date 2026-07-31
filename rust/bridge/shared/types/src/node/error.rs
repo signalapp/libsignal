@@ -248,7 +248,6 @@ impl SignalNodeError for libsignal_net::svr2::Error {
             Self::Service(_)
             | Self::AllConnectionAttemptsFailed
             | Self::Connect(_)
-            | Self::EnclaveNotFound
             | Self::Protocol(_) => (Some(IO_ERROR), None),
             Self::RateLimited(inner) => return inner.into_throwable(cx, operation_name),
             Self::AttestationError(_) => (Some("SvrAttestationError"), None),

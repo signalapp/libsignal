@@ -43,8 +43,6 @@ pub enum Error {
     RestoreFailed { tries_left: u32 },
     /// Restore request failed: data not found on server
     DataMissing,
-    /// Enclave not found
-    EnclaveNotFound,
     /// No connection attempts succeeded before timeout
     AllConnectionAttemptsFailed,
     /// Failed to decrypt the restored data
@@ -78,7 +76,6 @@ impl LogSafeDisplay for Error {
             Error::Protocol(_)
             | Error::RestoreFailed { .. }
             | Error::DataMissing
-            | Error::EnclaveNotFound
             | Error::AllConnectionAttemptsFailed
             | Error::DecryptionError
             | Error::DataMismatch => self,
@@ -105,6 +102,42 @@ impl Error {
             E::WebSocket(ws) => Self::Service(ws),
             E::Protocol(p) => Self::Protocol(p.to_string()),
             E::Attestation(a) => Self::AttestationError(a),
+        }
+    }
+
+    /// Check the error for pattern that means enclave has been decommissioned.
+    ///
+    /// Since mrenclave value is part of the URL, a decommissioned enclave will
+    /// look like a 404 status code on connect.
+    pub fn is_enclave_not_found(&self) -> bool {
+        matches!(self,
+            Error::Service(WebSocketError::Http(response))
+            if response.status() == http::StatusCode::NOT_FOUND)
+    }
+
+    /// Picks the more important of two errors when one operation runs against
+    /// several enclaves at once (currently only `delete`, which hits the current
+    /// and previous enclaves concurrently). Ordered so that important problems
+    /// are not hidden behind a generic "try again" error from another enclave.
+    pub fn prioritize_error(first: Self, second: Self) -> Self {
+        match (first, second) {
+            // Very important problems.
+            (e @ Self::AttestationError(_), _) | (_, e @ Self::AttestationError(_)) => e,
+            (e @ Self::Protocol(_), _) | (_, e @ Self::Protocol(_)) => e,
+            // Avoid aggressive retries.
+            (e @ Self::RateLimited(_), _) | (_, e @ Self::RateLimited(_)) => e,
+            // Generic "try again" errors, most specific first.
+            (e @ Self::Service(_), _) | (_, e @ Self::Service(_)) => e,
+            (e @ Self::Connect(_), _) | (_, e @ Self::Connect(_)) => e,
+            (e @ Self::AllConnectionAttemptsFailed, _)
+            | (_, e @ Self::AllConnectionAttemptsFailed) => e,
+            // The remaining variants can't come out of a delete, which is the
+            // only operation that reconciles errors across enclaves. They're
+            // ordered only to keep the match exhaustive.
+            (e @ Self::RestoreFailed { .. }, _) | (_, e @ Self::RestoreFailed { .. }) => e,
+            (e @ Self::DecryptionError, _) | (_, e @ Self::DecryptionError) => e,
+            (e @ Self::DataMismatch, _) | (_, e @ Self::DataMismatch) => e,
+            (e @ Self::DataMissing, _) => e,
         }
     }
 }
@@ -399,6 +432,20 @@ mod tests {
 
     fn test_data() -> Svr2Data {
         DATA.to_vec().try_into().expect("valid data")
+    }
+
+    fn http_error(status: u16) -> Error {
+        let mut response: http::Response<Option<Vec<u8>>> = http::Response::new(None);
+        *response.status_mut() = http::StatusCode::from_u16(status).expect("valid status");
+        Error::Service(WebSocketError::Http(Box::new(response)))
+    }
+
+    #[test_case(http_error(404) => true)]
+    #[test_case(http_error(500) => false)]
+    #[test_case(Error::DataMissing => false)]
+    #[test_case(Error::Protocol("".to_string()) => false)]
+    fn is_enclave_not_found(error: Error) -> bool {
+        error.is_enclave_not_found()
     }
 
     #[test]
