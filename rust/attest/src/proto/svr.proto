@@ -61,5 +61,15 @@ message RaftGroupConfig {
 message AttestationData {
   bytes public_key = 1;
   RaftGroupConfig group_config = 2;
+  MinimumLimits minimum_limits = 3;
 }
 
+message MinimumLimits {
+  // Minimums have the following rules:
+  //
+  // - Once a minimum is added to the set, its key cannot be removed
+  // - A minimum's value can only increase over time
+  //
+  // Minimum values are big-endian.
+  map<string, bytes> lim = 1;
+}

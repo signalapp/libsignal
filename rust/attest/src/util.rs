@@ -38,6 +38,11 @@ impl<K, V, const N: usize> SmallMap<K, V, N> {
     pub(crate) fn get<Q: PartialEq<K> + ?Sized>(&self, key: &Q) -> Option<&V> {
         self.0.iter().find_map(|(k, v)| (key == k).then_some(v))
     }
+
+    #[allow(unused)] // Used for compile-time assertions.
+    pub(super) const fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 /// Removes a trailing null byte, if one exists

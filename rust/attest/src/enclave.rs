@@ -10,6 +10,7 @@ use libsignal_core::{LogSafeDisplay, assert_log_safe_display};
 use prost::Message;
 
 use crate::client_connection::ClientConnection;
+use crate::constants::SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
 use crate::svr2::RaftConfig;
 use crate::{SnowError, client_connection, dcap, proto, snow_resolver};
 
@@ -180,7 +181,11 @@ impl Handshake {
 pub(crate) struct UnvalidatedHandshake(Handshake);
 
 impl UnvalidatedHandshake {
-    pub(crate) fn validate(self, expected_raft_config: &RaftConfig) -> Result<Handshake> {
+    pub(crate) fn validate(
+        self,
+        expected_raft_config: &RaftConfig,
+        skip_tcb_minimum_enforcement: bool,
+    ) -> Result<Handshake> {
         let actual_config =
             &self
                 .0
@@ -197,6 +202,30 @@ impl UnvalidatedHandshake {
                 ),
             });
         }
+        if !skip_tcb_minimum_enforcement {
+            let mins =
+                &self
+                    .0
+                    .claims
+                    .minimum_limits
+                    .as_ref()
+                    .ok_or(Error::AttestationDataError {
+                        reason: "Claims must contain minimum limits".to_string(),
+                    })?;
+            let tcb_min = u64::from_be_bytes(mins.lim.get("sgx_tcb_evaluation_data_number").ok_or(Error::AttestationDataError{
+                reason: "Claims minimum_limits must contain sgx_tcb_evaluation_data_number key".to_string(),
+            })?.as_slice().try_into().map_err(|_| Error::AttestationDataError{
+                reason: "Claims minimum_limits key sgx_tcb_evaluation_data_number must have 64bit value".to_string(),
+            })?);
+            if tcb_min < SGX_TCB_EVALUATION_DATA_NUMBER_MIN as u64 {
+                return Err(Error::AttestationDataError {
+                    reason: format!(
+                        "Claims minimum_limits[sgx_tcb_evaluation_data_number] is {}, should be >= {}",
+                        tcb_min, SGX_TCB_EVALUATION_DATA_NUMBER_MIN
+                    ),
+                });
+            }
+        }
         Ok(self.0)
     }
 
@@ -208,6 +237,7 @@ impl UnvalidatedHandshake {
 pub struct Claims {
     pub public_key: Vec<u8>,
     pub(crate) raft_group_config: Option<proto::svr::RaftGroupConfig>,
+    pub(crate) minimum_limits: Option<proto::svr::MinimumLimits>,
     #[expect(dead_code, reason = "this field is never read")]
     pub(crate) custom: HashMap<String, Vec<u8>>,
 }
@@ -225,9 +255,15 @@ impl Claims {
             .map(|bytes| proto::svr::RaftGroupConfig::decode(bytes.as_slice()))
             .transpose()?;
 
+        let minimum_limits = claims
+            .remove("minimum_limits")
+            .map(|bytes| proto::svr::MinimumLimits::decode(bytes.as_slice()))
+            .transpose()?;
+
         Ok(Self {
             public_key,
             raft_group_config,
+            minimum_limits,
             custom: claims,
         })
     }
@@ -242,6 +278,7 @@ impl Claims {
         Ok(Self {
             public_key: data.public_key,
             raft_group_config,
+            minimum_limits: data.minimum_limits,
             custom: HashMap::default(),
         })
     }

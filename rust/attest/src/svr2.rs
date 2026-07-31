@@ -5,7 +5,7 @@
 
 use prost::Message;
 
-use crate::constants::EXPECTED_RAFT_CONFIG_SVR2;
+use crate::constants::{EXPECTED_RAFT_CONFIG_SVR2, skip_tcb_minimums_enforcement_svr};
 use crate::enclave::{Error, Handshake, HandshakeType, Result};
 use crate::proto::svr;
 use crate::util::get_sw_advisories;
@@ -123,7 +123,10 @@ fn new_handshake_with_constants(
         current_time,
         handshake_type,
     )?
-    .validate(expected_raft_config)?;
+    .validate(
+        expected_raft_config,
+        skip_tcb_minimums_enforcement_svr(mrenclave),
+    )?;
 
     Ok(handshake)
 }
