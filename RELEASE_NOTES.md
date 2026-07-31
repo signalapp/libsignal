@@ -1,3 +1,2 @@
-v0.99.2
+v0.99.3
 
-- node: Expose Svr2BackupSession serialize()/deserialize()
