@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::num::NonZeroU64;
+
 use itertools::Itertools as _;
 use libsignal_core::ServiceIdKind;
 use serde_with::serde_as;
 use zkgroup::GroupMasterKeyBytes;
 
 use crate::backup::serialize::{self, UnorderedList};
-use crate::backup::time::{Duration, ReportUnusualTimestamp, TimestampError};
+use crate::backup::time::{Duration, ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::backup::{TryIntoWith, likely_empty};
 use crate::proto::backup as proto;
 
@@ -84,6 +86,8 @@ pub enum GroupError {
     MemberPendingProfileKeyWasInvitedBySelf,
     /// MemberPendingProfileKey's labels were set
     MemberPendingProfileKeyHasLabel,
+    /// group has a blockedAtTimestamp but is not blocked
+    BlockedAtWithoutBlocked,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
 }
@@ -310,6 +314,8 @@ pub struct GroupData {
     pub story_send_mode: proto::group::StorySendMode,
     pub snapshot: GroupSnapshot,
     pub blocked: bool,
+    // `None` when unblocked, or when the block time is unknown.
+    pub blocked_at: Option<Timestamp>,
     #[serde_as(as = "Option<serialize::EnumAsString>")]
     pub avatar_color: Option<proto::AvatarColor>,
     _limit_construction_to_module: (),
@@ -325,6 +331,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupData, C> for proto::Group {
             storySendMode,
             snapshot,
             blocked,
+            blockedAtTimestamp,
             avatarColor,
             special_fields: _,
         } = self;
@@ -332,6 +339,15 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupData, C> for proto::Group {
         let master_key = masterKey
             .try_into()
             .map_err(|_| GroupError::InvalidMasterKey)?;
+
+        // A zero value means the block time is unknown (or the group is not blocked).
+        let blocked_at = NonZeroU64::new(blockedAtTimestamp);
+        if blocked_at.is_some() && !blocked {
+            return Err(GroupError::BlockedAtWithoutBlocked);
+        }
+        let blocked_at = blocked_at
+            .map(|u| Timestamp::from_millis(u.get(), "Group.blockedAtTimestamp", context))
+            .transpose()?;
 
         let story_send_mode = match storySendMode.enum_value_or_default() {
             s @ (proto::group::StorySendMode::DEFAULT
@@ -354,6 +370,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupData, C> for proto::Group {
             story_send_mode,
             snapshot,
             blocked,
+            blocked_at,
             avatar_color,
             _limit_construction_to_module: (),
         })
@@ -464,6 +481,7 @@ mod test {
                     _limit_construction_to_module: (),
                 },
                 blocked: false,
+                blocked_at: None,
                 avatar_color: None,
                 _limit_construction_to_module: (),
             }

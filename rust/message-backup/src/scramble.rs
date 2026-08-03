@@ -476,6 +476,7 @@ impl Visit<Scrambler> for proto::Contact {
             username,
             e164,
             blocked: _,
+            blockedAtTimestamp: _,
             visibility: _,
             profileKey,
             profileSharing: _,
@@ -574,6 +575,7 @@ impl Visit<Scrambler> for proto::Group {
             storySendMode: _,
             snapshot,
             blocked: _,
+            blockedAtTimestamp: _,
             avatarColor: _,
             special_fields: _,
         } = self;
