@@ -8,17 +8,18 @@ use std::convert::Infallible;
 use std::future::Future;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::str::FromStr;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use atomic_take::AtomicTake;
 use bytes::Bytes;
-use futures_util::FutureExt as _;
 use futures_util::future::BoxFuture;
+use futures_util::stream::BoxStream;
+use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
-use libsignal_bridge_macros::bridge_callbacks;
+use libsignal_account_keys::{MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN};
+use libsignal_bridge_macros::{BridgedAsValue, bridge_callbacks};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -28,20 +29,27 @@ use libsignal_net::chat::{
 };
 use libsignal_net::connect_state::ConnectionResources;
 use libsignal_net::env::constants::{CHAT_PROVISIONING_PATH, CHAT_WEBSOCKET_PATH};
-use libsignal_net::env::{ConnectionConfig, Env};
 use libsignal_net::infra::route::{
     DirectOrProxyMode, DirectOrProxyModeDiscriminants, DirectOrProxyProvider, RouteProvider,
     RouteProviderExt, TcpRoute, TlsRoute, UnresolvedHttpsServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
-use libsignal_net_chat::api::{Auth as AuthConn, Unauth};
+use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
+use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
+use libsignal_net_chat::grpc::backups::{
+    CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
+    MediaBackupInfo, MessageBackupInfo,
+};
+use libsignal_net_chat::stream_util::{
+    BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
+};
 use libsignal_protocol::{IdentityKey, PreKeyBundle, Timestamp};
 use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
-use crate::net::remote_config::{RemoteConfig, RemoteConfigKey};
-use crate::support::{AsyncMutex, LimitedLifetimeRef};
+use crate::net::remote_config::RemoteConfigKey;
+use crate::support::{AsyncMutex, BridgeVec, BridgedError, LimitedLifetimeRef};
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -162,6 +170,20 @@ impl UnauthenticatedChatConnection {
                 .expect("requires an H2 connection"),
         )
     }
+
+    pub fn blocking_require_grpc(
+        &self,
+    ) -> Unauth<impl libsignal_net_chat::grpc::GrpcServiceProvider + Clone + 'static> {
+        let guard = self.as_ref().blocking_read();
+        let MaybeChatConnection::Running(inner) = &*guard else {
+            panic!("listener was not set")
+        };
+        Unauth(
+            inner
+                .shared_h2_connection()
+                .expect("requires an H2 connection"),
+        )
+    }
 }
 
 impl AuthenticatedChatConnection {
@@ -235,7 +257,6 @@ impl AuthenticatedChatConnection {
             connection_manager,
             enable_domain_fronting,
             enforce_minimum_tls,
-            None,
         )?
         .map_routes(|r| r.inner);
         let connection_resources = ConnectionResources {
@@ -417,7 +438,9 @@ pub(crate) async fn connect_registration_chat(
     let mut on_disconnect = Some(drop_on_disconnect);
     let listener = move |event| match event {
         ListenerEvent::Finished(_) => drop(on_disconnect.take()),
-        ListenerEvent::ReceivedAlerts(_) | ListenerEvent::ReceivedMessage(_, _) => (),
+        ListenerEvent::ServerTimestamp(_)
+        | ListenerEvent::ReceivedAlerts(_)
+        | ListenerEvent::ReceivedMessage(_, _) => (),
     };
 
     Ok(Unauth(ChatConnection::finish_connect(
@@ -525,7 +548,6 @@ async fn establish_chat_connection(
         connection_manager,
         enable_domain_fronting,
         enforce_minimum_tls,
-        headers.as_ref(),
     )?;
     let proxy_mode = DirectOrProxyModeDiscriminants::from(&route_provider.mode);
 
@@ -595,7 +617,6 @@ fn make_route_provider(
     connection_manager: &ConnectionManager,
     enable_domain_fronting: EnableDomainFronting,
     enforce_minimum_tls: EnforceMinimumTls,
-    chat_headers: Option<&chat::ChatHeaders>,
 ) -> Result<
     DirectOrProxyProvider<
         impl RouteProvider<
@@ -616,8 +637,7 @@ fn make_route_provider(
         .try_into()
         .map_err(|InvalidProxyConfig| ConnectError::InvalidConnectionConfiguration)?;
 
-    let chat_connect =
-        choose_chat_connection_config(env, chat_headers, &connection_manager.remote_config);
+    let chat_connect = &env.chat_domain_config.connect;
 
     let inner = chat_connect.route_provider_with_options(
         enable_domain_fronting,
@@ -628,36 +648,6 @@ fn make_route_provider(
         inner,
         mode: proxy_mode,
     })
-}
-
-fn choose_chat_connection_config<'a>(
-    env: &'a Env<'_>,
-    chat_headers: Option<&chat::ChatHeaders>,
-    remote_config: &Mutex<RemoteConfig>,
-) -> &'a ConnectionConfig {
-    // At this time, in order to try the experimental H2 configuration:
-    let default_config = &env.chat_domain_config.connect;
-
-    if !should_use_h2(chat_headers, remote_config) {
-        return default_config;
-    }
-
-    &env.experimental_chat_h2_domain_config.connect
-}
-
-fn should_use_h2(
-    chat_headers: Option<&chat::ChatHeaders>,
-    remote_config: &Mutex<RemoteConfig>,
-) -> bool {
-    // We must be opted in to H2 for this connection type.
-    let required_flag = match chat_headers {
-        Some(chat::ChatHeaders::Unauth(_)) => RemoteConfigKey::UseH2ForUnauthChat,
-        // Preconnect calls `make_route_provider(..., None)`, so `None` should follow auth behavior.
-        None | Some(chat::ChatHeaders::Auth(_)) => RemoteConfigKey::UseH2ForAuthChat,
-    };
-
-    let guard = remote_config.lock().expect("not poisoned");
-    guard.is_enabled(required_flag)
 }
 
 pub struct HttpRequest {
@@ -730,7 +720,8 @@ pub trait ChatListener: Send {
     );
     fn received_queue_empty(&mut self);
     fn received_alerts(&mut self, alerts: Box<[String]>);
-    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
+    fn received_server_timestamp(&mut self, timestamp: Timestamp);
+    fn connection_interrupted(&mut self, disconnect_cause: Option<BridgedError<SendError>>);
 }
 
 impl dyn ChatListener {
@@ -752,8 +743,14 @@ impl dyn ChatListener {
             chat::server_requests::ServerEvent::Alerts(alerts) => {
                 self.received_alerts(alerts.into_boxed_slice())
             }
+            chat::server_requests::ServerEvent::ServerTimestamp(timestamp) => {
+                self.received_server_timestamp(timestamp)
+            }
             chat::server_requests::ServerEvent::Stopped(error) => {
-                self.connection_interrupted(error)
+                self.connection_interrupted(match error {
+                    DisconnectCause::LocalDisconnect => None,
+                    DisconnectCause::Error(send_error) => Some(send_error.into()),
+                })
             }
         }
     }
@@ -803,7 +800,7 @@ impl std::panic::RefUnwindSafe for ServerMessageAck {}
 pub trait ProvisioningListener: Send {
     fn received_address(&mut self, address: String, send_ack: ServerMessageAck);
     fn received_envelope(&mut self, envelope: bytes::Bytes, send_ack: ServerMessageAck);
-    fn connection_interrupted(&mut self, disconnect_cause: DisconnectCause);
+    fn connection_interrupted(&mut self, disconnect_cause: Option<BridgedError<SendError>>);
 }
 
 impl dyn ProvisioningListener {
@@ -811,15 +808,20 @@ impl dyn ProvisioningListener {
     /// trait.
     fn received_server_request(&mut self, request: chat::server_requests::ProvisioningEvent) {
         match request {
+            chat::server_requests::ProvisioningEvent::ServerTimestamp(_) => {
+                // For now, we don't expose this to the apps.
+            }
             chat::server_requests::ProvisioningEvent::ReceivedAddress { address, send_ack } => {
                 self.received_address(address, ServerMessageAck::new(send_ack))
             }
             chat::server_requests::ProvisioningEvent::ReceivedEnvelope { envelope, send_ack } => {
                 self.received_envelope(envelope, ServerMessageAck::new(send_ack))
             }
-            chat::server_requests::ProvisioningEvent::Stopped(error) => {
-                self.connection_interrupted(error)
-            }
+            chat::server_requests::ProvisioningEvent::Stopped(error) => self
+                .connection_interrupted(match error {
+                    DisconnectCause::LocalDisconnect => None,
+                    DisconnectCause::Error(send_error) => Some(send_error.into()),
+                }),
         }
     }
 
@@ -862,8 +864,268 @@ pub enum UserBasedSendAuthorizationKind {
     UnrestrictedUnauthenticatedAccess,
 }
 
+#[derive(BridgedAsValue)]
+pub struct BridgeCopyBackupMediaItem {
+    pub source_attachment_cdn: i32,
+    pub source_key: String,
+    pub object_length: i64,
+    pub media_id: [u8; MEDIA_ID_LEN],
+    pub encryption_key: [u8; MEDIA_ENCRYPTION_KEY_LEN],
+}
+
+// TODO: This can go away when we implement u32 and u64 Nice bridging to Kotlin.
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeMessageBackupInfo {
+    pub backup_dir: String,
+    pub cdn: i32,
+    pub backup_name: String,
+}
+
+impl From<MessageBackupInfo> for BridgeMessageBackupInfo {
+    fn from(value: MessageBackupInfo) -> Self {
+        Self {
+            backup_dir: value.backup_dir,
+            cdn: value.cdn.try_into().expect("CDN numbers are small"),
+            backup_name: value.backup_name,
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeMediaBackupInfo {
+    pub backup_dir: String,
+    pub media_dir: String,
+    pub used_space: i64,
+}
+
+impl From<MediaBackupInfo> for BridgeMediaBackupInfo {
+    fn from(value: MediaBackupInfo) -> Self {
+        Self {
+            backup_dir: value.backup_dir,
+            media_dir: value.media_dir,
+            used_space: value
+                .used_space
+                .try_into()
+                .expect("space measurements fit in i64"),
+        }
+    }
+}
+
+impl From<CopyBackupMediaItem> for BridgeCopyBackupMediaItem {
+    fn from(value: CopyBackupMediaItem) -> Self {
+        Self {
+            source_attachment_cdn: value
+                .source_attachment_cdn
+                .try_into()
+                .expect("CDN numbers are small"),
+            source_key: value.source_key,
+            object_length: value
+                .object_length
+                .try_into()
+                .expect("object lengths fit in i64"),
+            media_id: value.media_id,
+            encryption_key: value.encryption_key,
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+pub struct BridgeCopyBackupMediaOutcome {
+    pub media_id: [u8; MEDIA_ID_LEN],
+    pub result: BridgeCopyBackupMediaResult,
+}
+
+impl From<CopyBackupMediaOutcome> for BridgeCopyBackupMediaOutcome {
+    fn from(value: CopyBackupMediaOutcome) -> Self {
+        Self {
+            media_id: value.media_id,
+            result: match value.cdn_or_failure {
+                Ok(cdn) => BridgeCopyBackupMediaResult::Success {
+                    cdn: cdn.try_into().expect("CDN numbers are small"),
+                },
+                Err(CopyBackupMediaFailure::OutOfSpace) => BridgeCopyBackupMediaResult::OutOfSpace,
+                Err(CopyBackupMediaFailure::SourceNotFound) => {
+                    BridgeCopyBackupMediaResult::SourceNotFound
+                }
+                Err(CopyBackupMediaFailure::WrongSourceLength) => {
+                    BridgeCopyBackupMediaResult::WrongSourceLength
+                }
+            },
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+pub enum BridgeCopyBackupMediaResult {
+    Success { cdn: i32 },
+    SourceNotFound,
+    WrongSourceLength,
+    OutOfSpace,
+}
+
+#[derive(Debug)]
+pub struct StreamCancelled;
+
+pub struct BridgeBulkPolledStream<T, E> {
+    #[expect(clippy::type_complexity)]
+    state: AsyncMutex<Option<BulkPolledStream<BoxStream<'static, Result<T, E>>>>>,
+    cancelled: tokio::sync::watch::Sender<bool>,
+}
+
+impl<T, E> BridgeBulkPolledStream<T, E> {
+    /// Wraps `stream` for bulk-polling (and cancellation).
+    ///
+    /// The chunk size should be chosen based on the following criteria:
+    /// - How much does bridging cost, relative to consumer-side throughput? (lower limit)
+    /// - How much client memory will this allocate for a full chunk? (upper limit)
+    ///
+    /// It is not especially affected by
+    /// - High producer-side throughput (nearly any chunk size will induce backpressure)
+    /// - Low producer-side throughput (nearly any chunk size will not be reached anyway)
+    /// - Producer-side latency (the first element may be delayed but hopefully the rest will arrive
+    ///   soon after)
+    ///
+    /// The debounce time should be chosen based on the following criteria:
+    /// - How much does bridging cost, relative to consumer-side throughput? (lower limit)
+    /// - How long can the consumer tolerate a lack of updates, relative to producer-side
+    ///   throughput? (upper limit)
+    /// - How much *uneven* latency is there on the connection? (lower and upper limit)
+    ///
+    /// If you don't have any extra information, [`BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE`] and
+    /// [`BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME`] were chosen to be non-terrible values for an
+    /// average stream.
+    pub fn new(
+        stream: impl Stream<Item = Result<T, E>> + Send + 'static,
+        max_chunk_size: usize,
+        debounce_time: Duration,
+    ) -> Self {
+        Self {
+            state: AsyncMutex::from(Some(BulkPolledStream::new(
+                stream.boxed(),
+                max_chunk_size,
+                debounce_time,
+            ))),
+            cancelled: Default::default(),
+        }
+    }
+
+    pub async fn next_chunk(&self) -> Result<BulkPolledStreamChunk<T, E>, StreamCancelled> {
+        let mut cancelled = self.cancelled.subscribe();
+        let lock_and_poll_stream = async {
+            Ok(self
+                .state
+                .lock()
+                .await
+                .as_mut()
+                .ok_or(StreamCancelled)?
+                .next_chunk_unpin()
+                .await)
+        };
+
+        // The "biased" isn't necessary for correctness, but it's simpler to reason about.
+        tokio::select! { biased;
+            _ = cancelled.wait_for(|flag| *flag) => Err(StreamCancelled),
+            result = lock_and_poll_stream => result,
+        }
+    }
+
+    pub fn cancel(&self) {
+        // First signal any tasks to exit.
+        _ = self.cancelled.send_replace(true);
+        // Wait for exits, then destroy the state.
+        _ = self.state.blocking_lock().take();
+    }
+}
+
+/// A "reasonable" default value to use for bulk-polled streaming network APIs.
+///
+/// Chosen only for being neither too small (thus wasting time in the bridge layer processing many
+/// small chunks) nor too large (thus allocating a bunch of memory at once).
+pub const BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE: usize = 64;
+
+/// A "reasonable" default value to use for bulk-polled streaming network APIs.
+///
+/// Chosen only for being neither too short (thus wasting time in the bridge layer processing many
+/// small chunks) nor too long (thus delaying reporting progress in a user-visible way).
+pub const BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME: Duration = Duration::from_millis(100);
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct CopyBackupMediaNextChunk {
+    pub chunk: BridgeVec<BridgeCopyBackupMediaOutcome>,
+    pub termination:
+        Option<BulkPolledStreamTerminationReason<RequestError<BackupAuthCredentialRejected>>>,
+}
+
+#[derive(derive_more::From, derive_more::Deref)]
+pub struct CopyBackupMediaStream(
+    BridgeBulkPolledStream<CopyBackupMediaOutcome, RequestError<BackupAuthCredentialRejected>>,
+);
+
+bridge_as_handle!(
+    CopyBackupMediaStream,
+    swift_type = "CopyBackupMediaStream",
+    jni_class = "org.signal.libsignal.net.internal.CopyBackupMediaStream",
+);
+
+#[derive(BridgedAsValue)]
+pub struct BridgeDeleteBackupMediaItem {
+    pub media_id: [u8; MEDIA_ID_LEN],
+    pub cdn: i32,
+}
+
+impl From<DeleteBackupMediaItem> for BridgeDeleteBackupMediaItem {
+    fn from(value: DeleteBackupMediaItem) -> Self {
+        Self {
+            media_id: value.media_id,
+            cdn: value.cdn.try_into().expect("CDN numbers are small"),
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct DeleteBackupMediaNextChunk {
+    pub chunk: BridgeVec<BridgeDeleteBackupMediaItem>,
+    pub termination:
+        Option<BulkPolledStreamTerminationReason<RequestError<BackupAuthCredentialRejected>>>,
+}
+
+#[derive(derive_more::From, derive_more::Deref)]
+pub struct DeleteBackupMediaStream(
+    BridgeBulkPolledStream<BridgeDeleteBackupMediaItem, RequestError<BackupAuthCredentialRejected>>,
+);
+
+bridge_as_handle!(
+    DeleteBackupMediaStream,
+    swift_type = "DeleteBackupMediaStream",
+    jni_class = "org.signal.libsignal.net.internal.DeleteBackupMediaStream",
+);
+
+pub mod remote_derives {
+    use libsignal_core::DeviceId;
+
+    use super::*;
+
+    #[derive(BridgedAsValue)]
+    #[bridge(remote = libsignal_net_chat::grpc::devices::LinkedDevice)]
+    #[allow(unused)]
+    pub struct LinkedDeviceInternal {
+        pub id: DeviceId,
+        pub encrypted_name: Vec<u8>,
+        pub last_seen: Timestamp,
+        pub registration_id: u16,
+        pub created_at_ciphertext: Vec<u8>,
+    }
+}
+
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
+    use assert_matches::assert_matches;
     use test_case::test_case;
 
     use super::*;
@@ -887,5 +1149,72 @@ mod test {
     #[test_case("a" => None)]
     fn test_parse_username(input: &str) -> Option<(libsignal_core::Aci, libsignal_core::DeviceId)> {
         AuthenticatedChatConnection::parse_username(input)
+    }
+
+    #[tokio::test]
+    async fn bulk_polled_stream_cancel_with_next_chunk_in_flight() {
+        let stream = Arc::new(
+            BridgeBulkPolledStream::<String, std::convert::Infallible>::new(
+                futures_util::stream::pending(),
+                5,
+                Duration::ZERO,
+            ),
+        );
+
+        let next_chunk_task = tokio::task::spawn({
+            let stream = stream.clone();
+            async move { stream.next_chunk().await }
+        });
+        // Make sure the task acquires the lock.
+        tokio::task::yield_now().await;
+
+        // Cancel from an "app" thread, the way a bridge_fn would be called.
+        let (cancel_done_tx, cancel_done_rx) = tokio::sync::oneshot::channel();
+        std::thread::spawn(move || {
+            stream.cancel();
+            _ = cancel_done_tx.send(());
+        });
+
+        () = tokio::time::timeout(Duration::from_secs(1), cancel_done_rx)
+            .await
+            .expect("cancel() should return promptly even with a next_chunk in flight")
+            .expect("should have been explicitly signalled");
+
+        let result = tokio::time::timeout(Duration::from_secs(1), next_chunk_task)
+            .await
+            .expect("in-flight next_chunk should resolve once cancelled")
+            .expect("should not have panicked");
+        assert_matches!(result, Err(StreamCancelled));
+    }
+
+    #[tokio::test]
+    async fn bulk_polled_stream_cancel_in_advance() {
+        let stream = Arc::new(
+            BridgeBulkPolledStream::<String, std::convert::Infallible>::new(
+                futures_util::stream::pending(),
+                5,
+                Duration::ZERO,
+            ),
+        );
+
+        // Cancel from an "app" thread, the way a bridge_fn would be called.
+        let (cancel_done_tx, cancel_done_rx) = tokio::sync::oneshot::channel();
+        std::thread::spawn({
+            let stream = stream.clone();
+            move || {
+                stream.cancel();
+                _ = cancel_done_tx.send(());
+            }
+        });
+
+        () = tokio::time::timeout(Duration::from_secs(1), cancel_done_rx)
+            .await
+            .expect("cancel() should return promptly")
+            .expect("should have been explicitly signalled");
+
+        let result = tokio::time::timeout(Duration::from_secs(1), stream.next_chunk())
+            .await
+            .expect("in-flight next_chunk should resolve once cancelled");
+        assert_matches!(result, Err(StreamCancelled));
     }
 }

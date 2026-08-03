@@ -25,6 +25,7 @@ use chrono::Utc;
 
 use crate::cert_chain::CertChain;
 use crate::cert_chain::testutil::TestCert;
+use crate::constants::SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
 use crate::dcap::ecdsa::EcdsaSigned;
 use crate::dcap::endorsements::SgxEndorsements;
 use crate::dcap::evidence::Evidence;
@@ -136,6 +137,7 @@ impl FakeAttestation {
         let tomorrow = Utc::now() + chrono::Days::new(1);
         uendorsements.tcb_info.next_update = tomorrow;
         uendorsements.qe_id_info.next_update = tomorrow;
+        uendorsements.tcb_info.tcb_evaluation_data_number = SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
         FakeAttestationBuilder {
             signing_info,
             uevidence,

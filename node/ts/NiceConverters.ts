@@ -4,8 +4,16 @@
 //
 
 import { ServiceId } from './Address.js';
-import { type CdnCredentials } from './net/chat/CdnCredentials.js';
+import type { CdnCredentials } from './net/chat/CdnCredentials.js';
 import * as Native from './Native.js';
+import { newNativeHandle, wrapStream } from './internal.js';
+import type { TokioAsyncContext } from './net.js';
+
+export type DeviceId = number;
+/**
+ * The number of milliseconds since the epoch.
+ */
+export type Timestamp = number;
 
 export function identity<T>(t: T): T {
   return t;
@@ -22,6 +30,32 @@ export function cdnCredentialReturnConverter(
 ): CdnCredentials {
   return {
     headers: new Map(headers),
+  };
+}
+
+export function copyBackupMediaStreamConverter(
+  streamHandle: Native.CopyBackupMediaStream
+): (
+  asyncContext: TokioAsyncContext
+) => ReadableStream<Native.ReturnFfiBridgeCopyBackupMediaOutcome> {
+  return (asyncContext) => {
+    return wrapStream(asyncContext, newNativeHandle(streamHandle), {
+      pull: Native.CopyBackupMediaStream_next,
+      cancel: Native.CopyBackupMediaStream_cancel,
+    });
+  };
+}
+
+export function deleteBackupMediaStreamConverter(
+  streamHandle: Native.DeleteBackupMediaStream
+): (
+  asyncContext: TokioAsyncContext
+) => ReadableStream<Native.ReturnFfiBridgeDeleteBackupMediaItem> {
+  return (asyncContext) => {
+    return wrapStream(asyncContext, newNativeHandle(streamHandle), {
+      pull: Native.DeleteBackupMediaStream_next,
+      cancel: Native.DeleteBackupMediaStream_cancel,
+    });
   };
 }
 

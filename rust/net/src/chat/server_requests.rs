@@ -23,6 +23,7 @@ pub enum ServerEvent {
         server_delivery_timestamp: Timestamp,
         send_ack: ResponseEnvelopeSender,
     },
+    ServerTimestamp(Timestamp),
     Alerts(Vec<String>),
     Stopped(DisconnectCause),
 }
@@ -48,6 +49,9 @@ impl std::fmt::Debug for ServerEvent {
                 .field("envelope", &format_args!("{} bytes", envelope.len()))
                 .field("server_delivery_timestamp", server_delivery_timestamp)
                 .finish(),
+            Self::ServerTimestamp(timestamp) => {
+                f.debug_tuple("ServerTimestamp").field(&timestamp).finish()
+            }
             Self::Alerts(alerts) => f.debug_tuple("Alerts").field(&alerts.len()).finish(),
             Self::Stopped(error) => f
                 .debug_struct("ConnectionInterrupted")
@@ -75,6 +79,7 @@ impl TryFrom<ws::ListenerEvent> for ServerEvent {
     fn try_from(value: ws::ListenerEvent) -> Result<Self, Self::Error> {
         match value {
             ws::ListenerEvent::ReceivedAlerts(alerts) => Ok(Self::Alerts(alerts)),
+            ws::ListenerEvent::ServerTimestamp(timestamp) => Ok(Self::ServerTimestamp(timestamp)),
 
             ws::ListenerEvent::ReceivedMessage(proto, responder) => {
                 convert_received_message(proto, |timestamp| {
@@ -171,6 +176,7 @@ fn convert_received_message(
 }
 
 pub enum ProvisioningEvent {
+    ServerTimestamp(libsignal_protocol::Timestamp),
     ReceivedAddress {
         address: String,
         send_ack: ResponseEnvelopeSender,
@@ -185,6 +191,9 @@ pub enum ProvisioningEvent {
 impl std::fmt::Debug for ProvisioningEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::ServerTimestamp(timestamp) => {
+                f.debug_tuple("ServerTimestamp").field(&timestamp).finish()
+            }
             Self::ReceivedAddress {
                 address: _,
                 send_ack: _,
@@ -216,6 +225,9 @@ impl TryFrom<ws::ListenerEvent> for ProvisioningEvent {
             ws::ListenerEvent::ReceivedAlerts(_alerts) => Err(ServerEventError::UnrecognizedPath(
                 crate::env::ALERT_HEADER_NAME.to_owned(),
             )),
+            ws::ListenerEvent::ServerTimestamp(timestamp) => {
+                Ok(ProvisioningEvent::ServerTimestamp(timestamp))
+            }
 
             ws::ListenerEvent::ReceivedMessage(proto, responder) => {
                 let RequestProto {

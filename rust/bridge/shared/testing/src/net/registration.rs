@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use futures_util::FutureExt;
 use futures_util::future::BoxFuture;
-use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationService,
@@ -78,7 +77,8 @@ impl ConnectUnauthChat for ConnectFakeChat {
         let mut on_disconnect = Some(on_disconnect);
         let listener = move |event| match event {
             libsignal_net::chat::ws::ListenerEvent::Finished(_) => drop(on_disconnect.take()),
-            libsignal_net::chat::ws::ListenerEvent::ReceivedAlerts(_)
+            libsignal_net::chat::ws::ListenerEvent::ServerTimestamp(_)
+            | libsignal_net::chat::ws::ListenerEvent::ReceivedAlerts(_)
             | libsignal_net::chat::ws::ListenerEvent::ReceivedMessage(_, _) => (),
         };
 
@@ -403,10 +403,10 @@ fn TESTING_RegistrationService_RegisterAccountErrorConvert(
             TestingRegisterAccountError::RegistrationLockFor50Seconds => {
                 RegisterAccountError::RegistrationLock(RegistrationLock {
                     time_remaining: Duration::from_secs(50),
-                    svr2_credentials: Auth {
+                    svr2_credentials: Some(Auth {
                         username: "user".to_owned(),
                         password: "pass".to_owned(),
-                    },
+                    }),
                 })
             }
         }))

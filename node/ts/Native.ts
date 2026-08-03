@@ -139,7 +139,7 @@ export type GrpcTestCase<Req, Resp> = {
   method: string;
   request: Req;
   requestGrpc: Uint8Array<ArrayBuffer>;
-  responseGrpc: Uint8Array<ArrayBuffer>;
+  responseGrpc: GrpcTestCaseBridgedResponse;
   response: Resp;
 };
 export type GrpcTestCaseFfi<Req, Resp> = GrpcTestCase<Req, Resp>;
@@ -152,6 +152,127 @@ export const enum LogLevel {
   Debug,
   Trace,
 }
+
+export type ReturnFfiBridgeCopyBackupMediaItem = {
+  source_attachment_cdn: number;
+  source_key: string;
+  object_length: bigint;
+  media_id: Uint8Array<ArrayBuffer>;
+  encryption_key: Uint8Array<ArrayBuffer>;
+};
+
+export type ReturnFfiBridgeCopyBackupMediaOutcome = {
+  media_id: Uint8Array<ArrayBuffer>;
+  result: ReturnFfiBridgeCopyBackupMediaResult;
+};
+
+export type ReturnFfiBridgeCopyBackupMediaResult =
+  | {
+      __type: 0;
+      cdn: number;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiBridgeDeleteBackupMediaItem = {
+  media_id: Uint8Array<ArrayBuffer>;
+  cdn: number;
+};
+
+export type ReturnFfiBridgeMediaBackupInfo = {
+  backup_dir: string;
+  media_dir: string;
+  used_space: bigint;
+};
+
+export type ReturnFfiBridgeMessageBackupInfo = {
+  backup_dir: string;
+  cdn: number;
+  backup_name: string;
+};
+
+export type ReturnFfiCopyBackupMediaNextChunk = {
+  chunk: Array<ReturnFfiBridgeCopyBackupMediaOutcome>;
+  termination: ('finished' | Error) | null;
+};
+
+export type ReturnFfiCopyBackupMediaOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeCopyBackupMediaOutcome;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiDeleteBackupMediaNextChunk = {
+  chunk: Array<ReturnFfiBridgeDeleteBackupMediaItem>;
+  termination: ('finished' | Error) | null;
+};
+
+export type ReturnFfiDeleteBackupMediaOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeDeleteBackupMediaItem;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiGetDevicesOut = {
+  devices: Array<ReturnFfiLinkedDeviceInternal>;
+};
+
+export type ReturnFfiGetMediaBackupInfoOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeMediaBackupInfo;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiGetMessageBackupInfoOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeMessageBackupInfo;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiLinkedDeviceInternal = {
+  id: number;
+  encrypted_name: Uint8Array<ArrayBuffer>;
+  last_seen: Timestamp;
+  registration_id: number;
+  created_at_ciphertext: Uint8Array<ArrayBuffer>;
+};
 
 export type ReturnFfiMyRemoteDeriveEnum =
   | {
@@ -216,6 +337,14 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiRemoveDeviceArgs = {
+  id: number;
+};
+
+export type ReturnFfiRemoveDeviceOut = {
+  __type: 0;
+};
+
 export type ReturnFfiReserveUsernameHashArgs = {
   usernames: Array<Uint8Array<ArrayBuffer>>;
 };
@@ -241,6 +370,38 @@ export type ReturnFfiSetDeviceNameOut =
   | {
       __type: 1;
     };
+
+export type ReturnFfiSetUsernameLinkArgs = {
+  username_ciphertext: Uint8Array<ArrayBuffer>;
+  keep_link_handle: boolean;
+};
+
+export type ReturnFfiSetUsernameLinkOut =
+  | {
+      __type: 0;
+      _0: Uint8Array<ArrayBuffer>;
+    }
+  | {
+      __type: 1;
+    };
+
+export type ReturnFfiTestStreamChunk = {
+  chunk: Array<string>;
+  termination: ('finished' | Error) | null;
+};
+
+export type ArgFfiBridgeCopyBackupMediaItem = {
+  source_attachment_cdn: number;
+  source_key: string;
+  object_length: bigint;
+  media_id: Uint8Array<ArrayBuffer>;
+  encryption_key: Uint8Array<ArrayBuffer>;
+};
+
+export type ArgFfiBridgeDeleteBackupMediaItem = {
+  media_id: Uint8Array<ArrayBuffer>;
+  cdn: number;
+};
 
 export type ArgFfiMyRemoteDeriveEnum =
   | {
@@ -305,11 +466,8 @@ export type ArgFfiMyTestStruct = {
   my_string_field: string;
 };
 
-/* eslint-disable comma-dangle */
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
-  'useH2ForUnauthChat',
-  'useH2ForAuthChat',
   'grpc.AccountsAnonymousLookupUsernameHash',
   'grpc.AccountsAnonymousLookupUsernameLink.2',
   'grpc.AccountsAnonymousCheckAccountExistence.2',
@@ -373,6 +531,14 @@ type NativeFunctions = {
   AuthCredentialWithPni_CheckValidContents: (
     bytes: Uint8Array<ArrayBuffer>
   ) => void;
+  AuthenticatedChatConnection_clear_push_token: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_clear_registration_lock: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_connect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -381,10 +547,22 @@ type NativeFunctions = {
     receive_stories: boolean,
     languages: Array<string>
   ) => CancellablePromise<AuthenticatedChatConnection>;
+  AuthenticatedChatConnection_delete_username_hash: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_delete_username_link: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_disconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_get_devices: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<Array<ReturnFfiLinkedDeviceInternal>>;
   AuthenticatedChatConnection_get_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -400,6 +578,11 @@ type NativeFunctions = {
   AuthenticatedChatConnection_preconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_remove_device: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    device_id: number
   ) => CancellablePromise<void>;
   AuthenticatedChatConnection_reserve_username_hash: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -445,6 +628,27 @@ type NativeFunctions = {
     device_id: number,
     encrypted_name: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_discoverable_by_phone_number: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    discoverable: boolean
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_registration_lock: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_registration_recovery_password: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_username_link: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    username_ciphertext: Uint8Array<ArrayBuffer>,
+    keep_link_handle: boolean
+  ) => CancellablePromise<Uuid>;
   AvatarUploadCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
   ) => void;
@@ -768,6 +972,13 @@ type NativeFunctions = {
     username: string | null,
     password: string | null
   ) => ConnectionProxyConfig;
+  CopyBackupMediaStream_cancel: (
+    stream: Wrapper<CopyBackupMediaStream>
+  ) => void;
+  CopyBackupMediaStream_next: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    stream: Wrapper<CopyBackupMediaStream>
+  ) => CancellablePromise<ReturnFfiCopyBackupMediaNextChunk>;
   CreateCallLinkCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
   ) => void;
@@ -842,6 +1053,13 @@ type NativeFunctions = {
   DecryptionErrorMessage_Serialize: (
     obj: Wrapper<DecryptionErrorMessage>
   ) => Uint8Array<ArrayBuffer>;
+  DeleteBackupMediaStream_cancel: (
+    stream: Wrapper<DeleteBackupMediaStream>
+  ) => void;
+  DeleteBackupMediaStream_next: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    stream: Wrapper<DeleteBackupMediaStream>
+  ) => CancellablePromise<ReturnFfiDeleteBackupMediaNextChunk>;
   DonationPermitDerivedKeyPair_CheckValidContents: (
     buffer: Uint8Array<ArrayBuffer>
   ) => void;
@@ -2069,6 +2287,15 @@ type NativeFunctions = {
     attestation_msg: Uint8Array<ArrayBuffer>,
     current_timestamp: Timestamp
   ) => SgxClientState;
+  Svr2MigrationSession_Deserialize: (
+    bytes: Uint8Array<ArrayBuffer>
+  ) => Svr2MigrationSession;
+  Svr2MigrationSession_IsComplete: (
+    session: Wrapper<Svr2MigrationSession>
+  ) => boolean;
+  Svr2MigrationSession_Serialize: (
+    session: Wrapper<Svr2MigrationSession>
+  ) => Uint8Array<ArrayBuffer>;
   Svr2_Delete: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -2082,9 +2309,26 @@ type NativeFunctions = {
     username: string,
     password: string
   ) => CancellablePromise<void>;
+  Svr2_Migrate: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    prior_session: Wrapper<Svr2MigrationSession> | null,
+    normalized_pin: Uint8Array<ArrayBuffer>,
+    master_key: Uint8Array<ArrayBuffer>,
+    max_tries: number,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<Svr2MigrationSession>;
   Svr2_Restore: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     pin: Uint8Array<ArrayBuffer>,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<[Uint8Array<ArrayBuffer>, number]>;
+  Svr2_RestoreMasterKey: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    normalized_pin: Uint8Array<ArrayBuffer>,
     connection_manager: Wrapper<ConnectionManager>,
     username: string,
     password: string
@@ -2098,9 +2342,39 @@ type NativeFunctions = {
     username: string,
     password: string
   ) => CancellablePromise<Svr2BackupSession>;
+  Svr2_StartMasterKeyBackup: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    normalized_pin: Uint8Array<ArrayBuffer>,
+    master_key: Uint8Array<ArrayBuffer>,
+    max_tries: number,
+    connection_manager: Wrapper<ConnectionManager>,
+    username: string,
+    password: string
+  ) => CancellablePromise<Svr2BackupSession>;
+  SvrKey_DeriveLoggingKey: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SvrKey_DeriveRegistrationLock: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SvrKey_DeriveRegistrationRecoveryPassword: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
+  SvrKey_DeriveStorageServiceKey: (
+    svr_key: Uint8Array<ArrayBuffer>
+  ) => Uint8Array<ArrayBuffer>;
   TESTING_BridgedStringMap_dump_to_json: (
     map: Wrapper<BridgedStringMap>
   ) => string;
+  TESTING_BulkPullFromStream_Cancel: (stream: Wrapper<TestStream>) => void;
+  TESTING_BulkPullFromStream_New: (
+    contents: Array<string>,
+    end_with_error: boolean
+  ) => TestStream;
+  TESTING_BulkPullFromStream_NextChunk: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    stream: Wrapper<TestStream>
+  ) => CancellablePromise<ReturnFfiTestStreamChunk>;
   TESTING_CdsiLookupErrorConvert: (error_description: string) => void;
   TESTING_CdsiLookupResponseConvert: (
     asyncRuntime: Wrapper<TokioAsyncContext>
@@ -2120,6 +2394,8 @@ type NativeFunctions = {
   TESTING_ChatRequestGetPath: (request: Wrapper<HttpRequest>) => string;
   TESTING_ChatResponseConvert: (body_present: boolean) => ChatResponse;
   TESTING_ChatSendErrorConvert: (error_description: string) => void;
+  TESTING_ClearPushTokenTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_ClearRegistrationLockTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_ConnectionManager_isUsingProxy: (
     manager: Wrapper<ConnectionManager>
   ) => number;
@@ -2133,11 +2409,25 @@ type NativeFunctions = {
     http_version: number
   ) => ConnectionManager;
   TESTING_ConvertOptionalUuid: (present: boolean) => Uuid | null;
+  TESTING_CopyBackupMediaTests: () => Array<
+    GrpcTestCaseFfi<
+      Array<ReturnFfiBridgeCopyBackupMediaItem>,
+      Array<ReturnFfiCopyBackupMediaOut>
+    >
+  >;
   TESTING_CreateOTP: (
     username: string,
     secret: Uint8Array<ArrayBuffer>
   ) => string;
   TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
+  TESTING_DeleteBackupMediaTests: () => Array<
+    GrpcTestCaseFfi<
+      Array<ReturnFfiBridgeDeleteBackupMediaItem>,
+      Array<ReturnFfiDeleteBackupMediaOut>
+    >
+  >;
+  TESTING_DeleteUsernameHashTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_DeleteUsernameLinkTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_EnableDeterministicRngForTesting: () => void;
   TESTING_ErrorOnBorrowAsync: (_input: null) => Promise<void>;
   TESTING_ErrorOnBorrowIo: (
@@ -2212,6 +2502,12 @@ type NativeFunctions = {
     chat: Wrapper<FakeChatRemoteEnd>,
     response: Wrapper<FakeChatResponse>
   ) => CancellablePromise<void>;
+  TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<FakeChatRemoteEnd>,
+    id: bigint,
+    response: Wrapper<GrpcTestCaseBridgedResponse>
+  ) => CancellablePromise<void>;
   TESTING_FakeChatRemoteEnd_SendServerResponse: (
     chat: Wrapper<FakeChatRemoteEnd>,
     response: Wrapper<FakeChatResponse>
@@ -2261,6 +2557,15 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<NonSuspendingBackgroundThreadRuntime>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_GetDevicesTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetDevicesOut>
+  >;
+  TESTING_GetMediaBackupInfoTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetMediaBackupInfoOut>
+  >;
+  TESTING_GetMessageBackupInfoTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetMessageBackupInfoOut>
+  >;
   TESTING_InputStreamReadIntoZeroLengthSlice: (
     caps_alphabet_input: InputStream
   ) => Promise<Uint8Array<ArrayBuffer>>;
@@ -2372,13 +2677,18 @@ type NativeFunctions = {
     error_description: string
   ) => void;
   TESTING_RegistrationSessionInfoConvert: () => RegistrationSession;
+  TESTING_RemoveDeviceTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiRemoveDeviceArgs, ReturnFfiRemoveDeviceOut>
+  >;
   TESTING_ReserveUsernameHashTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiReserveUsernameHashArgs,
       ReturnFfiReserveUsernameHashOut
     >
   >;
+  TESTING_ReturnIoError: () => Error;
   TESTING_ReturnPair: () => [number, string];
+  TESTING_ReturnSomeIoError: (present: boolean) => Error | null;
   TESTING_ReturnStringArray: () => Array<string>;
   TESTING_RoundTripI32: (input: number) => number;
   TESTING_RoundTripU16: (input: number) => number;
@@ -2389,10 +2699,24 @@ type NativeFunctions = {
   TESTING_SetDeviceNameTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetDeviceNameArgs, ReturnFfiSetDeviceNameOut>
   >;
+  TESTING_SetDiscoverableByPhoneNumberTests: () => Array<
+    GrpcTestCaseFfi<boolean, void>
+  >;
+  TESTING_SetRegistrationLockTests: () => Array<
+    GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, void>
+  >;
+  TESTING_SetRegistrationRecoveryPasswordTests: () => Array<
+    GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, void>
+  >;
+  TESTING_SetUsernameLinkTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetUsernameLinkArgs, ReturnFfiSetUsernameLinkOut>
+  >;
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  TESTING_Svr2MasterKeyRestoreError: () => void;
+  TESTING_TestStreamChunk_return: () => ReturnFfiTestStreamChunk;
   TESTING_TestingHandleType_getValue: (
     handle: Wrapper<TestingHandleType>
   ) => number;
@@ -2451,6 +2775,12 @@ type NativeFunctions = {
     x: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   TESTING_conversion_Data_to_string: (x: Uint8Array<ArrayBuffer>) => string;
+  TESTING_conversion_DeviceId_identity: (x: number) => number;
+  TESTING_conversion_DeviceId_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number
+  ) => CancellablePromise<number>;
+  TESTING_conversion_DeviceId_to_string: (x: number) => string;
   TESTING_conversion_ServiceId_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
@@ -2461,6 +2791,12 @@ type NativeFunctions = {
   TESTING_conversion_ServiceId_to_string: (
     x: Uint8Array<ArrayBuffer>
   ) => string;
+  TESTING_conversion_Uuid_identity: (x: Uuid) => Uuid;
+  TESTING_conversion_Uuid_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Uuid
+  ) => CancellablePromise<Uuid>;
+  TESTING_conversion_Uuid_to_string: (x: Uuid) => string;
   TESTING_conversion_bool_identity: (x: boolean) => boolean;
   TESTING_conversion_bool_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -2507,6 +2843,14 @@ type NativeFunctions = {
     chat: Wrapper<UnauthenticatedChatConnection>,
     account: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<boolean>;
+  UnauthenticatedChatConnection_backup_copy_media: (
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    items: Array<ArgFfiBridgeCopyBackupMediaItem>,
+    rng: RandomNumberGenerator
+  ) => CopyBackupMediaStream;
   UnauthenticatedChatConnection_backup_delete_all: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2515,6 +2859,14 @@ type NativeFunctions = {
     signing_key: Wrapper<PrivateKey>,
     rng: RandomNumberGenerator
   ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_backup_delete_media: (
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    items: Array<ArgFfiBridgeDeleteBackupMediaItem>,
+    rng: RandomNumberGenerator
+  ) => DeleteBackupMediaStream;
   UnauthenticatedChatConnection_backup_get_cdn_credentials: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2524,6 +2876,14 @@ type NativeFunctions = {
     cdn: number,
     rng: RandomNumberGenerator
   ) => CancellablePromise<[[string, string]]>;
+  UnauthenticatedChatConnection_backup_get_media_backup_info: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<ReturnFfiBridgeMediaBackupInfo>;
   UnauthenticatedChatConnection_backup_get_media_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2533,6 +2893,14 @@ type NativeFunctions = {
     upload_size: bigint,
     rng: RandomNumberGenerator
   ) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_backup_get_message_backup_info: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<ReturnFfiBridgeMessageBackupInfo>;
   UnauthenticatedChatConnection_backup_get_svrb_credentials: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -2752,18 +3120,28 @@ const {
   AuthCredentialPresentation_GetUuidCiphertext,
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
+  AuthenticatedChatConnection_clear_push_token,
+  AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_delete_username_hash,
+  AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AuthenticatedChatConnection_set_discoverable_by_phone_number,
+  AuthenticatedChatConnection_set_registration_lock,
+  AuthenticatedChatConnection_set_registration_recovery_password,
+  AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -2849,6 +3227,8 @@ const {
   ConnectionManager_set_proxy,
   ConnectionManager_set_remote_config,
   ConnectionProxyConfig_new,
+  CopyBackupMediaStream_cancel,
+  CopyBackupMediaStream_next,
   CreateCallLinkCredentialPresentation_CheckValidContents,
   CreateCallLinkCredentialPresentation_Verify,
   CreateCallLinkCredentialRequestContext_CheckValidContents,
@@ -2867,6 +3247,8 @@ const {
   DecryptionErrorMessage_GetRatchetKey,
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
+  DeleteBackupMediaStream_cancel,
+  DeleteBackupMediaStream_next,
   DonationPermitDerivedKeyPair_CheckValidContents,
   DonationPermitDerivedKeyPair_ForExpiration,
   DonationPermitRequestContext_CheckValidContents,
@@ -3206,11 +3588,24 @@ const {
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
   Svr2Client_New,
+  Svr2MigrationSession_Deserialize,
+  Svr2MigrationSession_IsComplete,
+  Svr2MigrationSession_Serialize,
   Svr2_Delete,
   Svr2_FinishBackup,
+  Svr2_Migrate,
   Svr2_Restore,
+  Svr2_RestoreMasterKey,
   Svr2_StartBackup,
+  Svr2_StartMasterKeyBackup,
+  SvrKey_DeriveLoggingKey,
+  SvrKey_DeriveRegistrationLock,
+  SvrKey_DeriveRegistrationRecoveryPassword,
+  SvrKey_DeriveStorageServiceKey,
   TESTING_BridgedStringMap_dump_to_json,
+  TESTING_BulkPullFromStream_Cancel,
+  TESTING_BulkPullFromStream_New,
+  TESTING_BulkPullFromStream_NextChunk,
   TESTING_CdsiLookupErrorConvert,
   TESTING_CdsiLookupResponseConvert,
   TESTING_ChatConnectErrorConvert,
@@ -3221,11 +3616,17 @@ const {
   TESTING_ChatRequestGetPath,
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
+  TESTING_ClearPushTokenTests,
+  TESTING_ClearRegistrationLockTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
+  TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteBackupMediaTests,
+  TESTING_DeleteUsernameHashTests,
+  TESTING_DeleteUsernameLinkTests,
   TESTING_EnableDeterministicRngForTesting,
   TESTING_ErrorOnBorrowAsync,
   TESTING_ErrorOnBorrowIo,
@@ -3249,6 +3650,7 @@ const {
   TESTING_FakeChatRemoteEnd_SendRawServerRequest,
   TESTING_FakeChatRemoteEnd_SendRawServerResponse,
   TESTING_FakeChatRemoteEnd_SendServerGrpcResponse,
+  TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse,
   TESTING_FakeChatRemoteEnd_SendServerResponse,
   TESTING_FakeChatResponse_Create,
   TESTING_FakeChatServer_Create,
@@ -3261,6 +3663,9 @@ const {
   TESTING_FutureProducesOtherPointerType,
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
+  TESTING_GetDevicesTests,
+  TESTING_GetMediaBackupInfoTests,
+  TESTING_GetMessageBackupInfoTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -3309,8 +3714,11 @@ const {
   TESTING_RegistrationService_SubmitVerificationErrorConvert,
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
+  TESTING_RemoveDeviceTests,
   TESTING_ReserveUsernameHashTests,
+  TESTING_ReturnIoError,
   TESTING_ReturnPair,
+  TESTING_ReturnSomeIoError,
   TESTING_ReturnStringArray,
   TESTING_RoundTripI32,
   TESTING_RoundTripU16,
@@ -3319,7 +3727,13 @@ const {
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
   TESTING_SetDeviceNameTests,
+  TESTING_SetDiscoverableByPhoneNumberTests,
+  TESTING_SetRegistrationLockTests,
+  TESTING_SetRegistrationRecoveryPasswordTests,
+  TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_Svr2MasterKeyRestoreError,
+  TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
   TESTING_TestingIntBox_New,
@@ -3341,9 +3755,15 @@ const {
   TESTING_conversion_Data_identity,
   TESTING_conversion_Data_identity_async,
   TESTING_conversion_Data_to_string,
+  TESTING_conversion_DeviceId_identity,
+  TESTING_conversion_DeviceId_identity_async,
+  TESTING_conversion_DeviceId_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
+  TESTING_conversion_Uuid_identity,
+  TESTING_conversion_Uuid_identity_async,
+  TESTING_conversion_Uuid_to_string,
   TESTING_conversion_bool_identity,
   TESTING_conversion_bool_identity_async,
   TESTING_conversion_bool_to_string,
@@ -3365,9 +3785,13 @@ const {
   TokioAsyncContext_cancel,
   TokioAsyncContext_new,
   UnauthenticatedChatConnection_account_exists,
+  UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
+  UnauthenticatedChatConnection_backup_delete_media,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
+  UnauthenticatedChatConnection_backup_get_media_backup_info,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
+  UnauthenticatedChatConnection_backup_get_message_backup_info,
   UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
   UnauthenticatedChatConnection_backup_refresh,
@@ -3431,18 +3855,28 @@ export {
   AuthCredentialPresentation_GetUuidCiphertext,
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
+  AuthenticatedChatConnection_clear_push_token,
+  AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_delete_username_hash,
+  AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
   AuthenticatedChatConnection_set_device_name,
+  AuthenticatedChatConnection_set_discoverable_by_phone_number,
+  AuthenticatedChatConnection_set_registration_lock,
+  AuthenticatedChatConnection_set_registration_recovery_password,
+  AuthenticatedChatConnection_set_username_link,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -3528,6 +3962,8 @@ export {
   ConnectionManager_set_proxy,
   ConnectionManager_set_remote_config,
   ConnectionProxyConfig_new,
+  CopyBackupMediaStream_cancel,
+  CopyBackupMediaStream_next,
   CreateCallLinkCredentialPresentation_CheckValidContents,
   CreateCallLinkCredentialPresentation_Verify,
   CreateCallLinkCredentialRequestContext_CheckValidContents,
@@ -3546,6 +3982,8 @@ export {
   DecryptionErrorMessage_GetRatchetKey,
   DecryptionErrorMessage_GetTimestamp,
   DecryptionErrorMessage_Serialize,
+  DeleteBackupMediaStream_cancel,
+  DeleteBackupMediaStream_next,
   DonationPermitDerivedKeyPair_CheckValidContents,
   DonationPermitDerivedKeyPair_ForExpiration,
   DonationPermitRequestContext_CheckValidContents,
@@ -3885,11 +4323,24 @@ export {
   SignedPreKeyRecord_New,
   SignedPreKeyRecord_Serialize,
   Svr2Client_New,
+  Svr2MigrationSession_Deserialize,
+  Svr2MigrationSession_IsComplete,
+  Svr2MigrationSession_Serialize,
   Svr2_Delete,
   Svr2_FinishBackup,
+  Svr2_Migrate,
   Svr2_Restore,
+  Svr2_RestoreMasterKey,
   Svr2_StartBackup,
+  Svr2_StartMasterKeyBackup,
+  SvrKey_DeriveLoggingKey,
+  SvrKey_DeriveRegistrationLock,
+  SvrKey_DeriveRegistrationRecoveryPassword,
+  SvrKey_DeriveStorageServiceKey,
   TESTING_BridgedStringMap_dump_to_json,
+  TESTING_BulkPullFromStream_Cancel,
+  TESTING_BulkPullFromStream_New,
+  TESTING_BulkPullFromStream_NextChunk,
   TESTING_CdsiLookupErrorConvert,
   TESTING_CdsiLookupResponseConvert,
   TESTING_ChatConnectErrorConvert,
@@ -3900,11 +4351,17 @@ export {
   TESTING_ChatRequestGetPath,
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
+  TESTING_ClearPushTokenTests,
+  TESTING_ClearRegistrationLockTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
+  TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteBackupMediaTests,
+  TESTING_DeleteUsernameHashTests,
+  TESTING_DeleteUsernameLinkTests,
   TESTING_EnableDeterministicRngForTesting,
   TESTING_ErrorOnBorrowAsync,
   TESTING_ErrorOnBorrowIo,
@@ -3928,6 +4385,7 @@ export {
   TESTING_FakeChatRemoteEnd_SendRawServerRequest,
   TESTING_FakeChatRemoteEnd_SendRawServerResponse,
   TESTING_FakeChatRemoteEnd_SendServerGrpcResponse,
+  TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse,
   TESTING_FakeChatRemoteEnd_SendServerResponse,
   TESTING_FakeChatResponse_Create,
   TESTING_FakeChatServer_Create,
@@ -3940,6 +4398,9 @@ export {
   TESTING_FutureProducesOtherPointerType,
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
+  TESTING_GetDevicesTests,
+  TESTING_GetMediaBackupInfoTests,
+  TESTING_GetMessageBackupInfoTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -3988,8 +4449,11 @@ export {
   TESTING_RegistrationService_SubmitVerificationErrorConvert,
   TESTING_RegistrationService_UpdateSessionErrorConvert,
   TESTING_RegistrationSessionInfoConvert,
+  TESTING_RemoveDeviceTests,
   TESTING_ReserveUsernameHashTests,
+  TESTING_ReturnIoError,
   TESTING_ReturnPair,
+  TESTING_ReturnSomeIoError,
   TESTING_ReturnStringArray,
   TESTING_RoundTripI32,
   TESTING_RoundTripU16,
@@ -3998,7 +4462,13 @@ export {
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
   TESTING_SetDeviceNameTests,
+  TESTING_SetDiscoverableByPhoneNumberTests,
+  TESTING_SetRegistrationLockTests,
+  TESTING_SetRegistrationRecoveryPasswordTests,
+  TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_Svr2MasterKeyRestoreError,
+  TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
   TESTING_TestingIntBox_Get,
   TESTING_TestingIntBox_New,
@@ -4020,9 +4490,15 @@ export {
   TESTING_conversion_Data_identity,
   TESTING_conversion_Data_identity_async,
   TESTING_conversion_Data_to_string,
+  TESTING_conversion_DeviceId_identity,
+  TESTING_conversion_DeviceId_identity_async,
+  TESTING_conversion_DeviceId_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
+  TESTING_conversion_Uuid_identity,
+  TESTING_conversion_Uuid_identity_async,
+  TESTING_conversion_Uuid_to_string,
   TESTING_conversion_bool_identity,
   TESTING_conversion_bool_identity_async,
   TESTING_conversion_bool_to_string,
@@ -4044,9 +4520,13 @@ export {
   TokioAsyncContext_cancel,
   TokioAsyncContext_new,
   UnauthenticatedChatConnection_account_exists,
+  UnauthenticatedChatConnection_backup_copy_media,
   UnauthenticatedChatConnection_backup_delete_all,
+  UnauthenticatedChatConnection_backup_delete_media,
   UnauthenticatedChatConnection_backup_get_cdn_credentials,
+  UnauthenticatedChatConnection_backup_get_media_backup_info,
   UnauthenticatedChatConnection_backup_get_media_upload_form,
+  UnauthenticatedChatConnection_backup_get_message_backup_info,
   UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
   UnauthenticatedChatConnection_backup_refresh,
@@ -4102,6 +4582,7 @@ export /*trait*/ type ChatListener = {
   ) => void;
   receivedQueueEmpty: () => void;
   receivedAlerts: (alerts: Array<string>) => void;
+  receivedServerTimestamp: (timestamp: Timestamp) => void;
   connectionInterrupted: (disconnectCause: Error | null) => void;
 };
 
@@ -4211,7 +4692,13 @@ export interface ConnectionManager {
 export interface ConnectionProxyConfig {
   readonly __type: unique symbol;
 }
+export interface CopyBackupMediaStream {
+  readonly __type: unique symbol;
+}
 export interface DecryptionErrorMessage {
+  readonly __type: unique symbol;
+}
+export interface DeleteBackupMediaStream {
   readonly __type: unique symbol;
 }
 export interface ExpiringProfileKeyCredential {
@@ -4242,6 +4729,9 @@ export interface GroupPublicParams {
   readonly __type: unique symbol;
 }
 export interface GroupSecretParams {
+  readonly __type: unique symbol;
+}
+export interface GrpcTestCaseBridgedResponse {
   readonly __type: unique symbol;
 }
 export interface HsmEnclaveClient {
@@ -4395,6 +4885,12 @@ export interface SignedPreKeyRecord {
   readonly __type: unique symbol;
 }
 export interface Svr2BackupSession {
+  readonly __type: unique symbol;
+}
+export interface Svr2MigrationSession {
+  readonly __type: unique symbol;
+}
+export interface TestStream {
   readonly __type: unique symbol;
 }
 export interface TestingFutureCancellationCounter {

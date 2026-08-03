@@ -14,110 +14,14 @@ import SignalFfi
 /// calls to `invokeAsyncFunction` can tell you if you got the result type wrong.
 ///
 /// Note that implementing this is **unchecked;** make sure you match up the types correctly!
-internal protocol PromiseStruct {
+internal protocol SignalCPromise {
     associatedtype Result
 
     // We can't declare the 'complete' callback without an associated type,
     // and that associated type won't get inferred for an imported struct (not sure why).
     // So we'd have to write out the callback type for every conformer.
-    var context: UnsafeRawPointer! { get }
-    var cancellation_id: SignalCancellationId { get }
-}
-
-extension SignalCPromisebool: PromiseStruct {
-    typealias Result = Bool
-}
-
-extension SignalCPromisei32: PromiseStruct {
-    typealias Result = Int32
-}
-
-extension SignalCPromiseRawPointer: PromiseStruct {
-    typealias Result = UnsafeRawPointer
-}
-
-extension SignalCPromiseMutPointerCdsiLookup: PromiseStruct {
-    typealias Result = SignalMutPointerCdsiLookup
-}
-
-extension SignalCPromiseFfiCdsiLookupResponse: PromiseStruct {
-    typealias Result = SignalFfiCdsiLookupResponse
-}
-
-extension SignalCPromiseFfiChatResponse: PromiseStruct {
-    typealias Result = SignalFfiChatResponse
-}
-
-extension SignalCPromiseMutPointerAuthenticatedChatConnection: PromiseStruct {
-    typealias Result = SignalMutPointerAuthenticatedChatConnection
-}
-
-extension SignalCPromiseMutPointerUnauthenticatedChatConnection: PromiseStruct {
-    typealias Result = SignalMutPointerUnauthenticatedChatConnection
-}
-
-extension SignalCPromiseMutPointerProvisioningChatConnection: PromiseStruct {
-    typealias Result = SignalMutPointerProvisioningChatConnection
-}
-
-extension SignalCPromiseMutPointerRegistrationService: PromiseStruct {
-    typealias Result = SignalMutPointerRegistrationService
-}
-
-extension SignalCPromiseFfiCheckSvr2CredentialsResponse: PromiseStruct {
-    typealias Result = SignalFfiCheckSvr2CredentialsResponse
-}
-
-extension SignalCPromiseMutPointerRegisterAccountResponse: PromiseStruct {
-    typealias Result = SignalMutPointerRegisterAccountResponse
-}
-
-extension SignalCPromiseOptionalUuid: PromiseStruct {
-    typealias Result = SignalOptionalUuid
-}
-
-extension SignalCPromiseFfiUploadForm: PromiseStruct {
-    typealias Result = SignalFfiUploadForm
-}
-
-extension SignalCPromiseMutPointerBackupStoreResponse: PromiseStruct {
-    typealias Result = SignalMutPointerBackupStoreResponse
-}
-
-extension SignalCPromiseMutPointerBackupRestoreResponse: PromiseStruct {
-    typealias Result = SignalMutPointerBackupRestoreResponse
-}
-
-extension SignalCPromiseOwnedBufferOfc_uchar: PromiseStruct {
-    typealias Result = SignalOwnedBuffer
-}
-
-extension SignalCPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes: PromiseStruct {
-    typealias Result = SignalOwnedBufferOfServiceIdFixedWidthBinaryBytes
-}
-
-extension SignalCPromiseOptionalPairOfCStringPtru832: PromiseStruct {
-    typealias Result = SignalOptionalPairOfCStringPtru832
-}
-
-extension SignalCPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar: PromiseStruct {
-    typealias Result = SignalPairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar
-}
-
-extension SignalCPromiseFfiPreKeysResponse: PromiseStruct {
-    typealias Result = SignalFfiPreKeysResponse
-}
-
-extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: PromiseStruct {
-    typealias Result = SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr
-}
-
-extension SignalCPromisePairOfCStringPtrCStringPtr: PromiseStruct {
-    typealias Result = SignalPairOfCStringPtrCStringPtr
-}
-
-extension SignalCPromiseu832: PromiseStruct {
-    typealias Result = FixedByteArrayHelper32.Ffi
+    var generic_context: UnsafeRawPointer? { get }
+    var generic_cancellation_id: SignalCancellationId { get }
 }
 
 /// A type-erased version of ``Completer``.
@@ -144,7 +48,7 @@ private class CompleterBase {
 /// It is a class so that it can be passed in a C-style context pointer.
 ///
 /// [CheckedContinuation]: https://developer.apple.com/documentation/swift/checkedcontinuation
-private class Completer<Promise: PromiseStruct>: CompleterBase {
+private class Completer<Promise: SignalCPromise>: CompleterBase {
     init(continuation: CheckedContinuation<Promise.Result, Error>) {
         super.init { error, valuePtr in
             do {
@@ -205,7 +109,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
     }
 
     func cleanUpUncompletedPromiseStruct(_ promiseStruct: Promise) {
-        Unmanaged<CompleterBase>.fromOpaque(promiseStruct.context!).release()
+        Unmanaged<CompleterBase>.fromOpaque(promiseStruct.generic_context!).release()
     }
 }
 
@@ -221,7 +125,7 @@ private class Completer<Promise: PromiseStruct>: CompleterBase {
 ///
 /// Prefer ``TokioAsyncContext/invokeAsyncFunction(_:)`` if using a TokioAsyncContext;
 /// that method supports cancellation.
-internal func invokeAsyncFunction<Promise: PromiseStruct>(
+internal func invokeAsyncFunction<Promise: SignalCPromise>(
     _ body: (UnsafeMutablePointer<Promise>) -> SignalFfiErrorRef?,
     saveCancellationId: (SignalCancellationId) -> Void = { _ in }
 ) async throws -> Promise.Result {
@@ -235,6 +139,124 @@ internal func invokeAsyncFunction<Promise: PromiseStruct>(
             completer.completeUnsafe(error, nil)
             return
         }
-        saveCancellationId(promiseStruct.cancellation_id)
+        saveCancellationId(promiseStruct.generic_cancellation_id)
+    }
+}
+
+/// Like ``AsyncStream``, but based on a pull model rather than a push model.
+///
+/// (Not designed for general use, however, hence the non-public `init`.)
+///
+/// Like `AsyncStream`, `ColdAsyncStream` has reference semantics despite being a struct: copying
+/// the struct shares the underlying stream, and using `for await` or calling `makeAsyncIterator`
+/// more than once (on any copy) has unspecified behavior.
+public struct ColdAsyncStream<Item> {
+    private let erasedPull: () async throws -> ([Item], BulkPolledStreamTermination?)
+    private let erasedCancel: () throws -> Void
+
+    internal init<Raw: SignalMutPointer, Stream: NativeHandleOwner<Raw>, RawResult>(
+        asyncContext: TokioAsyncContext,
+        stream: Stream,
+        pull: @escaping (TokioAsyncContext, Stream) async throws -> RawResult,
+        convert: @escaping (RawResult) throws -> ([Item], BulkPolledStreamTermination?),
+        cancel: @escaping (Raw.ConstPointer) -> SignalFfiErrorRef?,
+    ) {
+        self.erasedPull = {
+            // These operations could be combined, but in practice `pull` often works out to being
+            // a single Nice function, leaving `convert` for post-processing.
+            let result = try await pull(asyncContext, stream)
+            return try convert(result)
+        }
+        self.erasedCancel = {
+            try stream.withNativeHandle { stream in
+                try checkError(cancel(stream.const()))
+            }
+        }
+    }
+
+    /// Cancels the stream (as opposed to a specific `next()` call),
+    /// which will more eagerly free any resources associated with an underlying request.
+    ///
+    /// Note that if the stream is actively being iterated, there may still be some pending items
+    /// before iteration is terminated with an error. The precise error depends on the API in question.
+    public func cancel() {
+        do {
+            try self.erasedCancel()
+        } catch {
+            LoggerBridge.shared?.logger.log(
+                level: .error,
+                file: #fileID,
+                line: #line,
+                message: "error while cancelling stream of \(Item.self): \(error)"
+            )
+        }
+    }
+}
+
+extension ColdAsyncStream: AsyncSequence {
+    public func makeAsyncIterator() -> AsyncIterator {
+        return AsyncIterator(self)
+    }
+
+    // swiftlint:disable explicit_init_for_public_struct
+    public struct AsyncIterator: AsyncIteratorProtocol {
+        private enum State {
+            case active(ColdAsyncStream)
+            case finished(Error?)
+        }
+
+        private var state: State
+        private var currentChunk: ArraySlice<Item> = []
+
+        fileprivate init(_ stream: ColdAsyncStream) {
+            self.state = .active(stream)
+        }
+
+        private mutating func advance(
+            onBufferEmpty: (ColdAsyncStream) async throws -> ([Item], BulkPolledStreamTermination?)
+        ) async throws -> Item? {
+            if let next = currentChunk.popFirst() {
+                return next
+            }
+
+            switch state {
+            case .finished(let error):
+                if let error { throw error }
+                return nil
+            case .active(let stream):
+                do {
+                    let (chunk, termination) = try await onBufferEmpty(stream)
+                    currentChunk = chunk[...]
+                    if let termination {
+                        state = .finished(termination.asError)
+                    }
+                } catch {
+                    state = .finished(error)
+                }
+
+                // Recursing handles both empty and non-empty chunks.
+                return try await advance { _ in
+                    preconditionFailure("stream has neither terminated nor provided more items")
+                }
+            }
+        }
+
+        public mutating func next() async throws -> Item? {
+            return try await advance {
+                try await $0.erasedPull()
+            }
+        }
+    }
+}
+
+internal enum BulkPolledStreamTermination {
+    case finished
+    case error(Error)
+
+    var asError: Error? {
+        switch self {
+        case .finished: nil
+        case .error(let error): error
+        }
     }
 }

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2020-2021 Signal Messenger, LLC.
+# Copyright (C) 2026 Signal Messenger, LLC.
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
@@ -20,29 +20,18 @@ crate-type = ["staticlib"]
 [features]
 # Testing the Swift side of this requires compiling with SIGNAL_MEDIA_SUPPORTED enabled for both Swift and C:
 #     swift test -Xswiftc -DSIGNAL_MEDIA_SUPPORTED -Xcc -DSIGNAL_MEDIA_SUPPORTED
-signal-media = ["libsignal-bridge/signal-media"]
+signal-media = ["libsignal-ffi-impl/signal-media"]
 
 # Here for bridge_fn uniformity
 ffi = []
 default = ["ffi"]
-metadata = ["libsignal-bridge/metadata", "libsignal-bridge-testing/metadata"]
+metadata = ["libsignal-ffi-impl/metadata"]
+
+libsignal-bridge-testing = ["libsignal-ffi-impl/libsignal-bridge-testing"]
 
 [dependencies]
-libsignal-bridge = { workspace = true, features = ["ffi"] }
-libsignal-bridge-macros = { workspace = true }
-libsignal-bridge-testing = { workspace = true, features = ["ffi"], optional = true }
-libsignal-core = { workspace = true }
-libsignal-net = { workspace = true }
-libsignal-net-chat = { workspace = true }
-libsignal-protocol = { workspace = true }
-signal-media = { workspace = true }
-
-hex = { workspace = true }
-log = { workspace = true }
-log-panics = { workspace = true, features = ["with-backtrace"] }
-paste = { workspace = true }
-uuid = { workspace = true }
-zerocopy = { workspace = true }
+libsignal-ffi-impl = { path = "./impl", features = ["ffi"] }
+log = { workspace = true } # Needed for feature selection
 
 [target.aarch64-apple-ios.dependencies]
 cpufeatures = "0.2.6" # Make sure iOS gets optimized crypto.

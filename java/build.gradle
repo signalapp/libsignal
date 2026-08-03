@@ -12,7 +12,7 @@ plugins {
     id "org.jetbrains.dokka-javadoc" version "2.1.0" apply false
 
     // Declared here so the Android subprojects can apply it without a version.
-    id 'com.android.library' version "9.1.1" apply false
+    id 'com.android.library' version "9.2.1" apply false
 }
 
 repositories {
@@ -22,7 +22,7 @@ repositories {
 }
 
 allprojects {
-    version = "0.96.4"
+    version = "0.99.1"
     group   = "org.signal"
 
     tasks.withType(JavaCompile) {
@@ -34,7 +34,7 @@ allprojects {
         options.addStringOption('Xdoclint:none', '-quiet')
     }
     tasks.withType(KotlinCompile).configureEach {
-        compilerOptions.jvmTarget = JvmTarget.JVM_17
+        compilerOptions.jvmTarget = JvmTarget.JVM_21
     }
     tasks.withType(AbstractArchiveTask) {
         preserveFileTimestamps = false
@@ -43,6 +43,12 @@ allprojects {
 
     apply plugin: "org.jetbrains.dokka"
     apply plugin: "org.jetbrains.dokka-javadoc"
+
+    dokka {
+        dokkaPublications.html {
+            failOnWarning.set(System.getProperty("org.gradle.warning.mode") == "fail")
+        }
+    }
 }
 
 task makeJniLibrariesDesktop(type:Exec) {

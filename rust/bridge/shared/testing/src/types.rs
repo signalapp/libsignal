@@ -231,9 +231,12 @@ impl node::SimpleArgTypeInfo for PanicOnBorrow {
 pub struct PanicOnLoad;
 
 #[cfg(feature = "ffi")]
-impl<'storage> ffi::ArgTypeInfo<'storage> for PanicOnLoad {
+impl ffi::ArgTypeInfoBase for PanicOnLoad {
     type ArgType = *const std::ffi::c_void;
+}
 
+#[cfg(feature = "ffi")]
+impl<'storage> ffi::ArgTypeInfo<'storage> for PanicOnLoad {
     type StoredType = ();
 
     fn borrow(_foreign: Self::ArgType) -> ffi::SignalFfiResult<Self::StoredType> {
@@ -673,11 +676,6 @@ mod remote_derive_test {
     }
 }
 
-#[cfg(feature = "ffi")]
-use remote_derive_test::{
-    MyRemoteDeriveEnumFfiArg, MyRemoteDeriveEnumFfiResult, MyRemoteDeriveStructFfiArg,
-    MyRemoteDeriveStructFfiResult,
-};
 #[bridge_fn(nice = true, jni = false)]
 pub fn TESTING_MyRemoteDeriveEnum_identity(x: MyRemoteDeriveEnum) -> MyRemoteDeriveEnum {
     x
@@ -686,4 +684,14 @@ pub fn TESTING_MyRemoteDeriveEnum_identity(x: MyRemoteDeriveEnum) -> MyRemoteDer
 #[bridge_fn(nice = true, jni = false)]
 pub fn TESTING_MyRemoteDeriveStruct_identity(x: MyRemoteDeriveStruct) -> MyRemoteDeriveStruct {
     x
+}
+
+#[bridge_fn(nice = true)]
+pub fn TESTING_ReturnIoError() -> BridgedError<std::io::Error> {
+    BridgedError(std::io::Error::other("testing"))
+}
+
+#[bridge_fn(nice = true)]
+pub fn TESTING_ReturnSomeIoError(present: bool) -> Option<BridgedError<std::io::Error>> {
+    present.then(|| BridgedError(std::io::Error::other("testing")))
 }

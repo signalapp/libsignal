@@ -5,7 +5,7 @@
 use std::ops::Deref;
 use std::time::SystemTime;
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit as _, Mac as _};
 use libsignal_net_infra::AsStaticHttpHeader;
 use libsignal_net_infra::utils::basic_authorization;
 use sha2::Sha256;
@@ -36,7 +36,7 @@ impl Auth {
             .expect("not be used with times in the past")
             .as_secs();
 
-        let mac_input = format!("{}:{}", &username, ts);
+        let mac_input = format!("{}:{}", username, ts);
         let mut mac =
             Hmac::<Sha256>::new_from_slice(secret).expect("HMAC can take key of any size");
         mac.update(mac_input.as_bytes());

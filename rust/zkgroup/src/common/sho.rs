@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use curve25519_dalek_signal::scalar::Scalar;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
 use poksho::ShoApi;
 use poksho::shoapi::ShoApiExt as _;
 
@@ -46,9 +46,7 @@ impl Sho {
     }
 
     pub fn get_point_single_elligator(&mut self) -> RistrettoPoint {
-        RistrettoPoint::from_uniform_bytes_single_elligator(
-            &self.internal_sho.squeeze_and_ratchet_as_array(),
-        )
+        RistrettoPoint::map_to_curve(self.internal_sho.squeeze_and_ratchet_as_array())
     }
 
     pub fn get_scalar(&mut self) -> Scalar {

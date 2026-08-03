@@ -6,7 +6,8 @@
 use std::pin::Pin;
 use std::task::Poll;
 
-use cbc::cipher::{Block, BlockCipher, BlockDecryptMut};
+use aes::cipher::{BlockCipherDecrypt, BlockModeDecrypt};
+use cbc::cipher::Block;
 use derive_where::derive_where;
 use futures::{Stream, StreamExt as _, ready};
 
@@ -15,14 +16,12 @@ use futures::{Stream, StreamExt as _, ready};
 /// Wraps a [`futures::Stream`] that produces blocks and decrypts them using the
 /// provided cipher.
 #[derive_where(Debug; cbc::Decryptor<C>, S)]
-pub(crate) struct CbcStreamDecryptor<C: BlockCipher + BlockDecryptMut, S> {
+pub(crate) struct CbcStreamDecryptor<C: BlockCipherDecrypt, S> {
     decryptor: cbc::Decryptor<C>,
     source: S,
 }
 
-impl<S: Stream<Item = Result<Block<C>, E>>, E, C: BlockCipher + BlockDecryptMut>
-    CbcStreamDecryptor<C, S>
-{
+impl<S: Stream<Item = Result<Block<C>, E>>, E, C: BlockCipherDecrypt> CbcStreamDecryptor<C, S> {
     pub(crate) fn new(decryptor: cbc::Decryptor<C>, stream: S) -> Self {
         Self {
             decryptor,
@@ -34,7 +33,7 @@ impl<S: Stream<Item = Result<Block<C>, E>>, E, C: BlockCipher + BlockDecryptMut>
 impl<S, C, E> Stream for CbcStreamDecryptor<C, S>
 where
     S: Stream<Item = Result<Block<C>, E>> + Unpin,
-    C: Unpin + BlockCipher + BlockDecryptMut,
+    C: Unpin + BlockCipherDecrypt,
     Block<C>: Unpin,
 {
     type Item = Result<Block<C>, E>;
@@ -50,7 +49,7 @@ where
             Some(block) => block,
         };
 
-        decryptor.decrypt_block_mut(&mut block);
+        decryptor.decrypt_block(&mut block);
 
         Poll::Ready(Some(Ok(block)))
     }
@@ -61,8 +60,8 @@ mod test {
     use aes::Aes256;
     use assert_matches::assert_matches;
     use cbc::Decryptor;
-    use cbc::cipher::generic_array::GenericArray;
-    use cbc::cipher::{BlockEncryptMut, BlockSizeUser, KeyIvInit, Unsigned};
+    use cbc::cipher::typenum::Unsigned;
+    use cbc::cipher::{BlockModeEncrypt, BlockSizeUser, KeyIvInit};
     use futures::executor::block_on;
     use futures::{FutureExt as _, TryStreamExt};
 
@@ -74,8 +73,7 @@ mod test {
 
     #[test]
     fn stream_empty() {
-        let decryptor =
-            Decryptor::<Aes256>::new(FAKE_AES_KEY.as_ref().into(), FAKE_AES_ID.as_ref().into());
+        let decryptor = Decryptor::<Aes256>::new(&FAKE_AES_KEY.into(), &FAKE_AES_ID.into());
         let mut stream = CbcStreamDecryptor::new(
             decryptor,
             futures::stream::empty::<futures::io::Result<Block<Aes256>>>(),
@@ -91,14 +89,14 @@ mod test {
         let encrypted: [[u8; AES_BLOCK_SIZE]; 2] = {
             let mut buf = INPUT_BLOCKS.map(Into::into);
             cbc::Encryptor::<Aes256>::new(&FAKE_AES_KEY.into(), &FAKE_AES_ID.into())
-                .encrypt_blocks_mut(&mut buf);
+                .encrypt_blocks(&mut buf);
             buf.map(Into::into)
         };
 
         let stream = CbcStreamDecryptor::new(
             decryptor,
             futures::stream::iter(encrypted)
-                .map(GenericArray::from)
+                .map(cbc::cipher::array::Array::from)
                 .map(futures::io::Result::Ok),
         );
 
@@ -118,7 +116,7 @@ mod test {
         let stream = CbcStreamDecryptor::new(
             decryptor,
             futures::stream::iter([
-                Ok(GenericArray::from([0; AES_BLOCK_SIZE])),
+                Ok(cbc::cipher::array::Array::from([0; AES_BLOCK_SIZE])),
                 futures::io::Result::Err(futures::io::ErrorKind::UnexpectedEof.into()),
             ]),
         );

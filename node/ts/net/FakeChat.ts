@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { TokioAsyncContext } from '../net.js';
+import type { TokioAsyncContext } from '../net.js';
 import * as Native from '../Native.js';
 import { newNativeHandle } from '../internal.js';
 import { FakeChatRemoteEnd } from '../Native.js';
@@ -159,22 +159,31 @@ export class FakeChatRemote {
 
   public sendRawGrpcReplyTo(
     request: InternalRequest,
-    response: Uint8Array<ArrayBuffer>
+    response: Uint8Array<ArrayBuffer> | Native.GrpcTestCaseBridgedResponse
   ): Promise<void> {
-    const nativeResponse = newNativeHandle(
-      Native.TESTING_FakeChatResponse_Create(
+    if (response instanceof Uint8Array) {
+      const nativeResponse = newNativeHandle(
+        Native.TESTING_FakeChatResponse_Create(
+          request.requestId,
+          200,
+          '',
+          [],
+          response
+        )
+      );
+      return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
+        this.asyncContext,
+        this,
+        nativeResponse
+      );
+    } else {
+      return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcTestCaseResponse(
+        this.asyncContext,
+        this,
         request.requestId,
-        200,
-        '',
-        [],
-        response
-      )
-    );
-    return Native.TESTING_FakeChatRemoteEnd_SendServerGrpcResponse(
-      this.asyncContext,
-      this,
-      nativeResponse
-    );
+        newNativeHandle(response)
+      );
+    }
   }
 
   static encodeSingleGrpcMessage(

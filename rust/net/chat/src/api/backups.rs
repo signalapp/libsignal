@@ -7,6 +7,7 @@ use std::borrow::Cow;
 
 use async_trait::async_trait;
 use displaydoc::Display;
+use libsignal_core::LogSafeDisplay;
 use rand::Rng;
 
 use super::{AllowRateLimitChallenges, RequestError, UploadForm};
@@ -73,6 +74,8 @@ pub enum GetUploadFormFailure {
 #[derive(Debug, Display)]
 pub struct BackupAuthCredentialRejected;
 
+impl LogSafeDisplay for BackupAuthCredentialRejected {}
+
 #[derive(Debug)]
 pub struct CdnCredentials {
     pub headers: Vec<(String, String)>,
@@ -105,12 +108,12 @@ pub trait UnauthenticatedChatApi<T> {
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>>;
 }
 
-#[cfg(test)]
 pub(crate) mod testutil {
     use data_encoding_macro::base64;
 
     use super::*;
 
+    #[cfg_attr(not(test), expect(dead_code))]
     impl BackupAuth<'static> {
         pub(crate) fn generate_for_testing(
             credential_type: zkgroup::backups::BackupCredentialType,
@@ -154,16 +157,18 @@ pub(crate) mod testutil {
         /// The expected presentation from calling [`Self::generate_for_testing`] for a `Media`
         /// credential and then using it for a backups API.
         ///
-        /// Both calls should use (independent) instances of [`super::testutil::fixed_seed_test_rng`].
-        pub(crate) const EXPECTED_PRESENTATION: &[u8] = &base64!(
+        /// Both calls should use (independent) instances of [`crate::api::testutil::fixed_seed_test_rng`].
+        #[expect(rustdoc::broken_intra_doc_links)] // fixed_seed_test_rng is cfg(test)
+        pub(crate) const EXPECTED_TEST_PRESENTATION: &[u8] = &base64!(
             "AMkAAAAAAAAAAgAAAAAAAAAApJdpAAAAAIoiVNK2DtZIRFCtQxRiSokkSiQEKrUm86QgMg+qyZZjLuJipcWuggZt6au2i4MOhslTP4qafDZUYWZnKdX7zV4MKW1+FqHVi9kns3+gGaHRCrUEqKcTBzZj/C79ZRJObwIAAAAAAAAA7vpvGr5uokinX1GRCgDr5au1ajuE2naAsAUXPXXpxTyKZo+S3m3OdyDUusIM3sIyUFwM1OeMtmHLgDcuGAqKdYAAAAAAAAAAcqkJSxGNgTB4ERB7Qcg8tp+IZnEhGxCzuvY3KqrjgwA1LniEMcZCO9kjcSL2Q5JS5yZYrv7Kkn0p3hY4vIrKBlgb0zycYLKRrUj+ndkHKJtWV/2xC42jehDUc1P2ufIEJfu4ScD+sUt9fgAV7uDsKI/ktXnhUPT7/ZxtCCp88gEU4nTfVFvK9jOhY6HRLRf/"
         );
 
         /// The expected signature from calling [`Self::generate_for_testing`] for a `Media`
         /// credential and then using it for a backups API.
         ///
-        /// Both calls should use (independent) instances of [`super::testutil::fixed_seed_test_rng`].
-        pub(crate) const EXPECTED_SIGNATURE: &[u8] = &base64!(
+        /// Both calls should use (independent) instances of [`crate::api::testutil::fixed_seed_test_rng`].
+        #[expect(rustdoc::broken_intra_doc_links)] // fixed_seed_test_rng is cfg(test)
+        pub(crate) const EXPECTED_TEST_SIGNATURE: &[u8] = &base64!(
             "TUmhLTMN7LLUOphZiAF8WZekmWzYDWlDiqNm3LirWwcSotw+yUd+MOizCpwVD+Wp9dLHjqU00xUwm+KnxtiKiA=="
         );
 
@@ -224,8 +229,8 @@ mod test {
             .expect("valid");
         assert_eq!(
             presentation.serialized_presentation,
-            BackupAuth::EXPECTED_PRESENTATION
+            BackupAuth::EXPECTED_TEST_PRESENTATION
         );
-        assert_eq!(presentation.signature, BackupAuth::EXPECTED_SIGNATURE);
+        assert_eq!(presentation.signature, BackupAuth::EXPECTED_TEST_SIGNATURE);
     }
 }

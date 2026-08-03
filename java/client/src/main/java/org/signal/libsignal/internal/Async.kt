@@ -5,8 +5,15 @@
 
 package org.signal.libsignal.internal
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.concurrent.CancellationException
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -105,3 +112,44 @@ public fun <T> CompletableFuture<T>.toResultFuture(): CompletableFuture<Result<T
       Result.failure(throwable)
     }
   }
+
+/**
+ * Produces a `Flow` from a bulk-pull stream implementation.
+ *
+ * Not intended to be called outside of libsignal.
+ *
+ * The resulting `Flow` can only be collected once; trying to collect it multiple times will throw
+ * [IllegalStateException]. Runs `cancel` if the flow is cancelled or produces an exception during
+ * collection.
+ */
+public fun <T, S, RawItem> wrapStream(
+  asyncContext: TokioAsyncContext,
+  stream: S,
+  pull: (TokioAsyncContext, S) -> CompletableFuture<Pair<List<RawItem>, Any?>>,
+  convertItem: (RawItem) -> T,
+  cancel: (S) -> Unit,
+): Flow<T> {
+  var consumed = AtomicBoolean(false)
+  return flow {
+    // Based on Kotlin's ReceiveChannel<T>.consumeAsFlow
+    // https://github.com/Kotlin/kotlinx.coroutines/blob/165c6cb5859b5365dec193abc75dee9f49ce1389/kotlinx-coroutines-core/common/src/flow/Channels.kt#L104
+    if (consumed.getAndSet(true)) {
+      throw IllegalStateException("cannot consume libsignal flow multiple times")
+    }
+    while (true) {
+      val (nextChunk, termination) = pull(asyncContext, stream).await()
+      emitAll(nextChunk.asFlow().map(convertItem))
+      if (termination != null) {
+        when (termination) {
+          is Unit -> break
+          is Throwable -> throw termination
+          else -> throw AssertionError("bad stream termination: $termination")
+        }
+      }
+    }
+  }.onCompletion {
+    if (it != null) {
+      cancel(stream)
+    }
+  }
+}

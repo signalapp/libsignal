@@ -147,7 +147,7 @@ struct NativeTestingNiceTests {
     func testBridgeVecData32() throws {
         try ArrayArgConverter<
             FixedByteArrayConverter<FixedByteArrayHelper32>,
-            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfu832_FixedByteArrayConverterFixedByteArrayHelper32
+            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32
         >.testConversion(
             items: (0..<8).map { count in
                 (0..<count).map { _ in Data((0..<32).map { _ in UInt8.random(in: 0...255) }) }
@@ -156,6 +156,16 @@ struct NativeTestingNiceTests {
             nativeToString: { try NativeTestingNice.TESTING_conversion_BridgeVecData32_to_string(x: $0) },
             rawNativeToString: SignalFfi.signal_testing_conversion_bridge_vec_data32_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_BridgeVecData32_identity(x: $0) }
+        )
+    }
+    @Test
+    func testDeviceId() throws {
+        try DeviceIdConverter.testConversion(
+            items: (1...127).map { DeviceId(validating: $0)! },
+            toString: { $0.description },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_DeviceId_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_device_id_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_DeviceId_identity(x: $0) },
         )
     }
     @Test
@@ -275,6 +285,28 @@ struct NativeTestingNiceTests {
             nativeIdentity: { try NativeTestingNice.TESTING_MyTestEnum_identity(x: $0) },
         )
     }
+
+    @Test
+    func testTimestamp() throws {
+        try TimestampConverter.testConversion(
+            items: [Date(timeIntervalSince1970: 0), Date(timeIntervalSince1970: 1782938926.226)],
+            toString: { date in
+                let ms = UInt64(date.timeIntervalSince1970 * 1000.0)
+                let stamp = Date.ISO8601FormatStyle(
+                    dateSeparator: .dash,
+                    dateTimeSeparator: .standard,
+                    timeSeparator: .colon,
+                    timeZoneSeparator: .colon,
+                    includingFractionalSeconds: true,
+                ).format(date)
+                return "\(ms)ms \(stamp)"
+            },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_Timestamp_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_timestamp_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_Timestamp_identity(x: $0) },
+        )
+    }
+
     @Test
     func asyncTest() async throws {
         let ctx = TokioAsyncContext()
@@ -284,6 +316,25 @@ struct NativeTestingNiceTests {
                 count: Int32(c),
             )
             #expect(out.count == c)
+        }
+    }
+
+    @Test
+    func testReturnedError() {
+        switch try! NativeTestingNice.TESTING_ReturnIoError() {
+        case SignalError.ioError("IO error: testing"): break
+        case let other: Issue.record("wrong error: \(other)")
+        }
+
+        switch try! NativeTestingNice.TESTING_ReturnSomeIoError(present: true) {
+        case SignalError.ioError("IO error: testing")?: break
+        case let other?: Issue.record("wrong error: \(other)")
+        case nil: Issue.record("missing error")
+        }
+
+        switch try! NativeTestingNice.TESTING_ReturnSomeIoError(present: false) {
+        case let error?: Issue.record("unexpected error: \(error)")
+        case nil: break
         }
     }
 }

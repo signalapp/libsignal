@@ -13,8 +13,8 @@ use syn_mid::Signature;
 
 use crate::BridgingKind;
 use crate::util::{
-    DeriveInputInfo, Impl, arg_type_info_storage_decl, crates, extract_arg_names_and_types,
-    nice_type_metadata, result_type,
+    BridgeAsValueOptions, DeriveInputInfo, Impl, arg_type_info_storage_decl, crates,
+    extract_arg_names_and_types, nice_type_metadata, result_type,
 };
 
 fn bridge_fn_body(orig_name: &Ident, input_args: &[(&Ident, &Type)]) -> TokenStream2 {
@@ -313,12 +313,19 @@ fn to_lower_camel_case_preserve_underscores(x: &str) -> String {
 pub(crate) fn derive_bridged_as_value(
     input: &DeriveInput,
     target: &syn::Path,
+    options: &BridgeAsValueOptions,
 ) -> syn::Result<TokenStream2> {
     if matches!(input.data, Data::Union(_)) {
         return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
     }
-    let result = derive_bridged_as_value_return(input, target)?;
-    let arg = derive_bridged_as_value_arg(input, target)?;
+    let result = options
+        .result
+        .then(|| derive_bridged_as_value_return(input, target))
+        .transpose()?;
+    let arg = options
+        .arg
+        .then(|| derive_bridged_as_value_arg(input, target))
+        .transpose()?;
     Ok(quote! {
         #result
         #arg

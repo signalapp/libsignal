@@ -5,7 +5,6 @@
 
 use std::io::{Write as _, stdout};
 
-use aes::cipher::crypto_common::rand_core::{OsRng, RngCore};
 use clap::{ArgAction, Parser};
 use clap_stdin::FileOrStdin;
 use libsignal_cli_utils::read_file;
@@ -16,6 +15,8 @@ use libsignal_message_backup::export::{
 use libsignal_message_backup::key::MessageBackupKey;
 use libsignal_svrb::proto::Message as _;
 use libsignal_svrb::proto::backup_metadata::{MetadataPb, metadata_pb};
+use rand::TryRngCore as _;
+use rand::rngs::OsRng;
 
 #[path = "../src/bin/support/mod.rs"]
 mod support;
@@ -68,7 +69,9 @@ fn main() {
 
     let iv = iv.unwrap_or_else(|| {
         let mut iv = [0; 16];
-        OsRng.fill_bytes(&mut iv);
+        OsRng
+            .try_fill_bytes(&mut iv)
+            .expect("OS randomness available");
         iv
     });
 

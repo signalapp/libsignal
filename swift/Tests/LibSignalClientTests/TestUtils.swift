@@ -99,6 +99,21 @@ func assertThrowsErrorAsync<T>(
     }
 }
 
+extension AsyncSequence {
+    func collectUntilError() async -> ([Element], Error?) {
+        var received: [Element] = []
+        var maybeError: Error?
+        do {
+            for try await next in self {
+                received.append(next)
+            }
+        } catch {
+            maybeError = error
+        }
+        return (received, maybeError)
+    }
+}
+
 final class HexTests: XCTestCase {
     func testToHex() throws {
         XCTAssertEqual("", [].hexString)

@@ -467,7 +467,7 @@ impl PendingChatConnection {
         if let Err(error) = self.connection.close(None).await {
             log::warn!(
                 "[{}] pending chat connection disconnect failed with {error}",
-                &self.log_tag
+                self.log_tag
             );
         }
     }

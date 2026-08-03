@@ -19,6 +19,8 @@ pub mod sgx_session;
 pub mod snow_resolver;
 pub mod svr2;
 
+pub use util::get_sw_advisories;
+
 mod cert_chain;
 mod endian;
 mod error;

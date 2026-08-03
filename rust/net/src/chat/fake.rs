@@ -4,6 +4,7 @@
 //
 
 use std::collections::HashMap;
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -12,6 +13,7 @@ use std::time::Duration;
 
 use futures_util::{Sink, Stream};
 use http_body_util::BodyExt;
+use http_body_util::combinators::BoxBody;
 use libsignal_net_infra::TransportInfo;
 use libsignal_net_infra::http_client::{Http2Client, Http2Connector};
 use libsignal_net_infra::route::{Connector, GetCurrentInterface, HttpRouteFragment, HttpVersion};
@@ -26,7 +28,7 @@ use crate::chat::{
     ResponseProto, ws,
 };
 use crate::connect_state::RouteInfo;
-use crate::env::ALERT_HEADER_NAME;
+use crate::env::{ALERT_HEADER_NAME, TIMESTAMP_HEADER_NAME};
 
 /// The remote end of a fake connection to the chat server.
 #[derive(Debug)]
@@ -38,7 +40,7 @@ pub struct FakeChatRemote {
 
 #[derive(Debug)]
 struct GrpcResponseSender(
-    tokio::sync::oneshot::Sender<http::Response<http_body_util::Full<bytes::Bytes>>>,
+    tokio::sync::oneshot::Sender<http::Response<BoxBody<bytes::Bytes, Infallible>>>,
 );
 /// We never use this without consuming it, so unwinding isn't an issue.
 impl std::panic::UnwindSafe for GrpcResponseSender {}
@@ -108,13 +110,23 @@ impl ChatConnection {
             remote_idle_timeout: Duration::from_secs(86400),
             initial_request_id: 0,
         };
-        let headers = http::HeaderMap::from_iter(alerts.into_iter().map(|alert| {
-            (
-                http::HeaderName::from_static(ALERT_HEADER_NAME),
-                http::HeaderValue::from_str(alert)
-                    .expect("valid headers only for a fake connection"),
-            )
-        }));
+        let headers = http::HeaderMap::from_iter(
+            alerts
+                .into_iter()
+                .map(|alert| {
+                    (
+                        http::HeaderName::from_static(ALERT_HEADER_NAME),
+                        http::HeaderValue::from_str(alert)
+                            .expect("valid headers only for a fake connection"),
+                    )
+                })
+                .chain([(
+                    http::HeaderName::from_static(TIMESTAMP_HEADER_NAME),
+                    // We could pass this down like the alerts, but none of the tests need that
+                    // flexibility.
+                    http::HeaderValue::from_static("500"),
+                )]),
+        );
         let chat = Self {
             inner: crate::chat::ws::Chat::new(
                 tokio_runtime,
@@ -160,7 +172,7 @@ impl ChatConnection {
                         let remote_incoming_req_tx = remote_incoming_req_tx.clone();
                         async move {
                             let (response_tx, response_rx) = tokio::sync::oneshot::channel::<
-                                http::Response<http_body_util::Full<bytes::Bytes>>,
+                                http::Response<BoxBody<bytes::Bytes, Infallible>>,
                             >();
                             remote_incoming_req_tx
                                 .send((req, GrpcResponseSender(response_tx)))
@@ -313,7 +325,7 @@ impl FakeGrpcRemote {
     pub fn send_response(
         &mut self,
         which: u64,
-        response: http::Response<bytes::Bytes>,
+        response: http::Response<impl IntoHttpBody>,
     ) -> Result<(), Disconnected> {
         log::debug!("sending response");
         let Some(GrpcResponseSender(response_tx)) = self.response_map.remove(&which) else {
@@ -321,7 +333,7 @@ impl FakeGrpcRemote {
             return Err(Disconnected);
         };
         response_tx
-            .send(response.map(http_body_util::Full::new))
+            .send(response.map(|body| body.into_http_body()))
             .map_err(|_| Disconnected)
     }
 }
@@ -373,5 +385,35 @@ impl<Tx: Stream, Rx: Sink<RxItem>, RxItem> Sink<RxItem> for StreamSink<Tx, Rx, R
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Result<(), Self::Error>> {
         self.project().1.poll_close(cx)
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct BodyWithTrailers {
+    pub data: Vec<u8>,
+    pub trailers: http::HeaderMap,
+}
+
+pub trait IntoHttpBody {
+    fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible>;
+}
+
+impl IntoHttpBody for Vec<u8> {
+    fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+        bytes::Bytes::from(self).into_http_body()
+    }
+}
+
+impl IntoHttpBody for bytes::Bytes {
+    fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+        http_body_util::Full::new(self).boxed()
+    }
+}
+
+impl IntoHttpBody for BodyWithTrailers {
+    fn into_http_body(self) -> BoxBody<bytes::Bytes, Infallible> {
+        http_body_util::Full::new(bytes::Bytes::from(self.data))
+            .with_trailers(std::future::ready(Some(Ok(self.trailers))))
+            .boxed()
     }
 }

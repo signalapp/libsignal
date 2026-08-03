@@ -514,7 +514,7 @@ impl<'a> Ciphertext<'a> {
 
 #[cfg(test)]
 mod tests {
-    use rand::{Rng as _, TryRngCore as _};
+    use rand::TryRngCore as _;
 
     use super::*;
 

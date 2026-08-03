@@ -173,14 +173,14 @@ mod test {
                     (
                         BackupAuthPresentation::AUTH_HEADER_NAME,
                         http::HeaderValue::try_from(
-                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_PRESENTATION),
+                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_TEST_PRESENTATION),
                         )
                         .expect("valid"),
                     ),
                     (
                         BackupAuthPresentation::SIGNATURE_HEADER_NAME,
                         http::HeaderValue::try_from(
-                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_SIGNATURE),
+                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_TEST_SIGNATURE),
                         )
                         .expect("valid"),
                     ),
@@ -231,14 +231,14 @@ mod test {
                     (
                         BackupAuthPresentation::AUTH_HEADER_NAME,
                         http::HeaderValue::try_from(
-                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_PRESENTATION),
+                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_TEST_PRESENTATION),
                         )
                         .expect("valid"),
                     ),
                     (
                         BackupAuthPresentation::SIGNATURE_HEADER_NAME,
                         http::HeaderValue::try_from(
-                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_SIGNATURE),
+                            BASE64_STANDARD.encode(BackupAuth::EXPECTED_TEST_SIGNATURE),
                         )
                         .expect("valid"),
                     ),

@@ -23,7 +23,7 @@ pub use error::*;
 mod session_id;
 pub use session_id::{InvalidSessionId, SessionId};
 
-use crate::api::ChallengeOption;
+use crate::api::{ChallengeOption, RequestError};
 
 pub type UnidentifiedAccessKey = [u8; zkgroup::ACCESS_KEY_LEN];
 
@@ -58,7 +58,10 @@ pub(crate) trait RegistrationChatApi {
         client: &str,
         languages: LanguageList,
     ) -> impl Future<
-        Output = Result<RegistrationResponse, Self::Error<RequestVerificationCodeError>>,
+        Output = Result<
+            RegistrationResponse,
+            WithRecoveredSession<Self::Error<RequestVerificationCodeError>>,
+        >,
     > + Send;
 
     fn submit_push_challenge(
@@ -71,7 +74,12 @@ pub(crate) trait RegistrationChatApi {
         &self,
         session_id: &SessionId,
         code: &str,
-    ) -> impl Future<Output = Result<RegistrationResponse, Self::Error<SubmitVerificationError>>> + Send;
+    ) -> impl Future<
+        Output = Result<
+            RegistrationResponse,
+            WithRecoveredSession<Self::Error<SubmitVerificationError>>,
+        >,
+    > + Send;
 
     fn check_svr2_credentials(
         &self,
@@ -97,6 +105,31 @@ pub(crate) trait RegistrationChatApi {
 pub(crate) struct RegistrationResponse {
     pub(crate) session_id: SessionId,
     pub(crate) session: RegistrationSession,
+}
+
+/// Request outcome with an extra payload of a session state
+///
+/// Some error results can contain the session state.
+pub(crate) struct WithRecoveredSession<T> {
+    pub(crate) result: T,
+    pub(crate) session: Option<RegistrationSession>,
+}
+
+impl<T> WithRecoveredSession<T> {
+    /// Discards any recovered session, yielding the wrapped value.
+    pub(crate) fn into_inner(self) -> T {
+        self.result
+    }
+}
+
+/// A plain error carries no recovered session.
+impl<E, D> From<RequestError<E, D>> for WithRecoveredSession<RequestError<E, D>> {
+    fn from(result: RequestError<E, D>) -> Self {
+        Self {
+            result,
+            session: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, serde::Serialize)]
@@ -198,8 +231,10 @@ impl LogSafeDisplay for VerificationCodeNotDeliverable {}
 pub struct RegistrationLock {
     #[serde_as(as = "DurationMilliSeconds")]
     pub time_remaining: Duration,
-    #[debug("_")]
-    pub svr2_credentials: Auth,
+    /// The server omits these when the stored lock has no SVR2 secret, so this
+    /// is optional. Redacted in `Debug`, but presence still shows.
+    #[debug("{}", svr2_credentials.as_ref().map_or("None", |_| "Some(...)"))]
+    pub svr2_credentials: Option<Auth>,
 }
 
 /// The subset of account attributes that don't need any additional validation.
@@ -454,5 +489,26 @@ impl TryFrom<String> for VerificationTransport {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         FromStr::from_str(&value)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case(None, "RegistrationLock { time_remaining: 1s, svr2_credentials: None }"; "absent")]
+    #[test_case(Some(Auth {
+        username: "secret-username".to_owned(),
+        password: "secret-password".to_owned(),
+    }), "RegistrationLock { time_remaining: 1s, svr2_credentials: Some(...) }"; "present")]
+    fn registration_lock_debug_redacts_credentials(creds: Option<Auth>, expected: &'static str) {
+        let reg_lock = RegistrationLock {
+            time_remaining: Duration::from_secs(1),
+            svr2_credentials: creds,
+        };
+        let actual = format!("{reg_lock:?}");
+        assert_eq!(actual, expected);
     }
 }

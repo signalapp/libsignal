@@ -848,9 +848,12 @@ mod registration {
                                 "RegistrationLock.time_remaining_seconds too large".to_owned(),
                             )
                         })?;
-                    let (svr2_username, svr2_password) = try_scoped(|| {
-                        let Auth { username, password } = svr2_credentials;
-                        Ok((env.new_string(username)?, env.new_string(password)?))
+                    let (svr2_username, svr2_password) = try_scoped(|| match svr2_credentials {
+                        Some(Auth { username, password }) => Ok((
+                            JObject::from(env.new_string(username)?),
+                            JObject::from(env.new_string(password)?),
+                        )),
+                        None => Ok((JObject::null(), JObject::null())),
                     })
                     .check_exceptions(env, "RegisterAccountError::to_throwable")?;
                     return new_instance(
@@ -1837,4 +1840,18 @@ where
     let result = T::Success::JNI_RESULT_SIGNATURE;
     assert!(!result.is_empty(), "missing JNI_SIGNATURE");
     result
+}
+
+impl JniError for libsignal_net_chat::grpc::usernames::UsernameNotSet {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName("org.signal.libsignal.net.UsernameNotSetException"),
+        )
+    }
 }

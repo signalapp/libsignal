@@ -12,8 +12,11 @@ workspace = true
 libsignal-bridge = { workspace = true, features = ["ffi", "metadata"] }
 libsignal-bridge-testing = { workspace = true, features = ["ffi", "metadata"] }
 libsignal-bridge-types = { workspace = true, features = ["ffi", "metadata"] }
+libsignal-ffi-impl = { path = "../impl", features = ["ffi", "metadata"] }
 
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 heck = { workspace = true }
+itertools = { workspace = true }
 minijinja = { workspace = true, features = ["preserve_order"] }
+serde_json = { workspace = true }

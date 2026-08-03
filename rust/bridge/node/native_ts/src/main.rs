@@ -24,6 +24,9 @@ struct Cli {
     /// Don't actually overwrite Native.ts, just make sure it's up-to-date.
     #[clap(long)]
     verify: bool,
+    /// Just dump all metadata to JSON on stdout; do nothing else.
+    #[clap(long)]
+    dump_json: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -50,6 +53,10 @@ fn main() -> anyhow::Result<()> {
         // We don't check item.module_path because, unlike other client languages, we emit both
         // testing and non-testing native into the same typescript file.
         (item.apply)(&mut ctx);
+    }
+    if args.dump_json {
+        println!("{}", serde_json::to_string_pretty(&ctx)?);
+        return Ok(());
     }
     for name in ["Native.ts", "NativeNice.ts"] {
         let tmpl = env.get_template(&format!("{name}.in"))?;

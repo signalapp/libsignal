@@ -155,10 +155,7 @@ impl ConnectionManager {
                 Box::leak(format!("/{path_prefix}").into_boxed_str())
             };
 
-            for config in [
-                &mut env.chat_domain_config,
-                &mut env.experimental_chat_h2_domain_config,
-            ] {
+            for config in [&mut env.chat_domain_config] {
                 config.connect.hostname = hostname;
                 config.connect.path_prefix = path_prefix;
                 config.connect.cert = RootCertificates::Native;
@@ -403,10 +400,7 @@ mod test {
             BuildVariant::Production,
         );
 
-        for config in [
-            &cm.env.chat_domain_config,
-            &cm.env.experimental_chat_h2_domain_config,
-        ] {
+        for config in [&cm.env.chat_domain_config] {
             assert_eq!(config.connect.hostname, expected_hostname);
             assert_eq!(config.connect.path_prefix, expected_path_prefix);
             assert!(matches!(config.connect.cert, RootCertificates::Native));

@@ -202,7 +202,7 @@ mod tests {
     use std::path::Path;
 
     use assert_matches::assert_matches;
-    use protobuf::{CodedInputStream, Message as _, MessageField};
+    use protobuf::{CodedInputStream, MessageField};
 
     use super::*;
     use crate::proto::backup as proto;

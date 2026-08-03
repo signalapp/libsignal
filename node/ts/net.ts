@@ -25,6 +25,7 @@ import { SvrB } from './net/SvrB.js';
 import { BridgedStringMap, newNativeHandle } from './internal.js';
 export * from './net/CDSI.js';
 export * from './net/Chat.js';
+export * from './net/chat/AuthAccountsService.js';
 export * from './net/chat/AuthDevicesService.js';
 export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthUsernamesService.js';

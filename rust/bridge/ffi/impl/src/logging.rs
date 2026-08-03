@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use libsignal_bridge::{ffi, ffi_result_type};
-use libsignal_bridge_macros::bridge_callbacks;
+use libsignal_bridge::ffi;
+use libsignal_bridge_macros::{IsCType, bridge_callbacks, c_export};
 
 #[repr(C)]
+#[derive(IsCType)]
 pub enum LogLevel {
     Error = 1,
     Warn,
@@ -91,6 +92,7 @@ impl log::Log for FfiLoggerStruct {
 }
 
 #[unsafe(no_mangle)]
+#[c_export]
 pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLoggerStruct) -> bool {
     match log::set_logger(Box::leak(Box::new(logger))) {
         Ok(_) => {
@@ -102,9 +104,7 @@ pub unsafe extern "C" fn signal_init_logger(max_level: LogLevel, logger: FfiLogg
             // These strings are explicitly looked for by build_ffi.sh.
             log::debug!("THIS BUILD HAS DEBUG-LEVEL LOGS ENABLED");
             log::trace!("THIS BUILD HAS TRACE-LEVEL LOGS ENABLED");
-            log_panics::Config::new()
-                .backtrace_mode(log_panics::BacktraceMode::Unresolved)
-                .install_panic_hook();
+            libsignal_bridge::logging::set_panic_hook();
             true
         }
         Err(_) => {

@@ -6,13 +6,13 @@
 import {
   RequestOptions,
   AuthenticatedChatConnection,
-  type UploadForm,
+  UploadForm,
 } from '../Chat.js';
 import * as Native from '../../Native.js';
 import { LibSignalErrorBase } from '../../Errors.js';
 import { ServiceId } from '../../Address.js';
-import { type SingleOutboundUnsealedMessage } from './SingleOutboundMessage.js';
-import { type CiphertextMessage } from '../../CiphertextMessage.js';
+import type { SingleOutboundUnsealedMessage } from './SingleOutboundMessage.js';
+import type { CiphertextMessage } from '../../CiphertextMessage.js';
 
 // For documentation
 import type {

@@ -7,10 +7,10 @@
 
 use std::sync::LazyLock;
 
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::RistrettoPoint;
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
-use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use subtle::{Choice, ConstantTimeEq, CtOption};
 use zkcredential::attributes::Attribute;
 
 use crate::common::errors::*;
@@ -77,38 +77,60 @@ impl ProfileKeyEncryptionDomain {
         let M4 = key_pair
             .decrypt_to_second_point(ciphertext)
             .map_err(|_| ZkGroupVerificationFailure)?;
-        let (mask, candidates) = M4.decode_253_bits();
+        let candidates = M4.map_to_curve_inverse();
 
         let target_M3 = key_pair.a1.invert() * ciphertext.as_points()[0];
         let seed_sho = profile_key_struct::ProfileKeyStruct::seed_M3();
 
-        let mut retval: profile_key_struct::ProfileKeyStruct = PartialDefault::partial_default();
+        let mut retval = CtOption::new(
+            profile_key_struct::ProfileKeyStruct::partial_default(),
+            Choice::from(0u8),
+        );
+        // The number of valid solutions found. Note we would see if n_found > 1 because the closures in
+        // CtOption::and_then and CtOption::or_else always run.
         let mut n_found = 0;
         #[allow(clippy::needless_range_loop)]
+        // Only iterate the first 8 solutions, i.e., the positive ones.
         for i in 0..8 {
-            let is_valid_fe = Choice::from((mask >> i) & 1);
-            let profile_key_bytes: ProfileKeyBytes = candidates[i];
-            for j in 0..8 {
-                let mut pk = profile_key_bytes;
-                if ((j >> 2) & 1) == 1 {
-                    pk[0] |= 0x01;
-                }
-                if ((j >> 1) & 1) == 1 {
-                    pk[31] |= 0x80;
-                }
-                if (j & 1) == 1 {
-                    pk[31] |= 0x40;
-                }
-                let M3 =
-                    profile_key_struct::ProfileKeyStruct::calc_M3(seed_sho.clone(), pk, uid_bytes);
-                let candidate_retval = profile_key_struct::ProfileKeyStruct { bytes: pk, M3, M4 };
-                let found = M3.ct_eq(&target_M3) & is_valid_fe;
-                retval.conditional_assign(&candidate_retval, found);
-                n_found += found.unwrap_u8();
-            }
+            retval = retval.or_else(|| {
+                candidates[i].and_then(|profile_key_bytes| {
+                    let mut candidate_retval = CtOption::new(
+                        profile_key_struct::ProfileKeyStruct::partial_default(),
+                        Choice::from(0u8),
+                    );
+                    for j in 0..8 {
+                        candidate_retval = candidate_retval.or_else(|| {
+                            let mut pk = profile_key_bytes;
+                            if ((j >> 2) & 1) == 1 {
+                                pk[0] |= 0x01;
+                            }
+                            if ((j >> 1) & 1) == 1 {
+                                pk[31] |= 0x80;
+                            }
+                            if (j & 1) == 1 {
+                                pk[31] |= 0x40;
+                            }
+                            let M3 = profile_key_struct::ProfileKeyStruct::calc_M3(
+                                seed_sho.clone(),
+                                pk,
+                                uid_bytes,
+                            );
+                            let found = M3.ct_eq(&target_M3);
+                            n_found += found.unwrap_u8();
+                            CtOption::new(
+                                profile_key_struct::ProfileKeyStruct { bytes: pk, M3, M4 },
+                                found,
+                            )
+                        });
+                    }
+                    candidate_retval
+                })
+            });
         }
         if n_found == 1 {
-            Ok(retval)
+            // We can unwrap because n_found > 0 implies that candidate_retval is Some, which means
+            // retval is Some
+            Ok(retval.unwrap())
         } else {
             Err(ZkGroupVerificationFailure)
         }

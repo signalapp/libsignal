@@ -8,7 +8,7 @@ import * as Native from './Native.js';
 import { newNativeHandle } from './internal.js';
 import {
   convertNativeRegistrationSessionState,
-  type RegistrationSessionState,
+  RegistrationSessionState,
 } from './net/RegistrationSession.js';
 
 export enum ErrorCode {
@@ -55,6 +55,7 @@ export enum ErrorCode {
   SvrRestoreFailed,
   SvrAttestationError,
   SvrInvalidData,
+  SvrDataMismatch,
 
   ChatServiceInactive,
   AppExpired,
@@ -93,6 +94,7 @@ export enum ErrorCode {
   RegistrationVerificationSendFailed,
 
   UsernameNotAvailable,
+  UsernameNotSet,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -387,6 +389,10 @@ export type SvrInvalidDataError = LibSignalErrorCommon & {
   code: ErrorCode.SvrInvalidData;
 };
 
+export type SvrDataMismatchError = LibSignalErrorCommon & {
+  code: ErrorCode.SvrDataMismatch;
+};
+
 export type BackupValidationError = LibSignalErrorCommon & {
   code: ErrorCode.BackupValidation;
   readonly unknownFields: ReadonlyArray<string>;
@@ -462,8 +468,9 @@ export type RegistrationVerificationCodeNotDeliverableError =
 export type RegistrationLockError = LibSignalErrorCommon & {
   code: ErrorCode.RegistrationLock;
   readonly timeRemainingSeconds: number;
-  readonly svr2Username: string;
-  readonly svr2Password: string;
+  // null when the existing lock has no associated SVR2 secret.
+  readonly svr2Username: string | null;
+  readonly svr2Password: string | null;
 };
 
 export type RegistrationDeviceTransferPossibleNotSkippedError =
@@ -499,7 +506,9 @@ export type StandardNetworkError =
   | ChatServiceInactive
   | IoError
   | RateLimitedError;
-
+export type UsernameNotSet = LibSignalErrorCommon & {
+  code: ErrorCode.UsernameNotSet;
+};
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -534,6 +543,7 @@ export type LibSignalError =
   | SvrRequestFailedError
   | SvrAttestationError
   | SvrInvalidDataError
+  | SvrDataMismatchError
   | UnsupportedMediaInputError
   | ChatServiceInactive
   | AppExpiredError
@@ -564,4 +574,5 @@ export type LibSignalError =
   | RegistrationRecoveryVerificationFailedError
   | RegistrationCredentialsCouldNotBeParsedError
   | DeviceIdNotFound
-  | UsernameNotAvailable;
+  | UsernameNotAvailable
+  | UsernameNotSet;

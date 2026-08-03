@@ -76,6 +76,7 @@ zerocopy = { workspace = true }
 prost-build = { workspace = true }
 
 [dev-dependencies]
+attest = { workspace = true, features = ["test-util"] }
 libsignal-net = { path = ".", features = ["test-util"] }
 
 clap = { workspace = true, features = ["derive", "env"] }
@@ -95,6 +96,10 @@ required-features = ["test-util"]
 
 [[example]]
 name = "svrb_test"
+required-features = ["test-util"]
+
+[[example]]
+name = "attest_test_regenerate"
 required-features = ["test-util"]
 
 [[test]]

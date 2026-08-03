@@ -167,7 +167,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
                 };
 
                 let log_safe_description = Redact(&request).to_string();
-                log_and_send("auth", &log_safe_description, || {
+                log_and_send("unauth", &log_safe_description, || {
                     service.send_story(request)
                 })
                 .await?
@@ -182,7 +182,7 @@ impl<T: GrpcServiceProvider> crate::api::messages::UnauthenticatedChatApi<OverGr
                     authorization: Some(auth.into()),
                 };
                 let log_safe_description = Redact(&request).to_string();
-                log_and_send("auth", &log_safe_description, || {
+                log_and_send("unauth", &log_safe_description, || {
                     service.send_single_recipient_message(request)
                 })
                 .await?
@@ -585,6 +585,7 @@ mod test {
     use const_str::hex;
     use futures_util::FutureExt as _;
     use libsignal_core::{Aci, Pni, ServiceId};
+    use libsignal_net::chat::fake::BodyWithTrailers;
     use libsignal_net::infra::errors::RetryLater;
     use libsignal_net_grpc::proto::chat::attachments::get_upload_form_response;
     use libsignal_net_grpc::proto::chat::messages::ChallengeRequired as ChallengeRequiredProto;
@@ -744,7 +745,7 @@ mod test {
     }) => matches Err(RequestError::Unexpected { .. }))]
     #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
     fn test_story(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::MessagesAnonymous::SendMultiRecipientMessage.into(),
@@ -876,7 +877,7 @@ mod test {
         )),
     }) => matches Err(RequestError::Other(SealedSendFailure::Unauthorized)))]
     fn test_sealed_send(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(), RequestError<SealedSendFailure>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::MessagesAnonymous::SendSingleRecipientMessage.into(),
@@ -1303,7 +1304,7 @@ mod test {
         )),
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_unsealed_send(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(), RequestError<UnsealedSendFailure>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::Messages::SendMessage.into(),
@@ -1432,7 +1433,7 @@ mod test {
         )),
     }) => matches Err(RequestError::Unexpected { .. }))]
     fn test_sync_send(
-        response: http::Response<Vec<u8>>,
+        response: http::Response<BodyWithTrailers>,
     ) -> Result<(), RequestError<MismatchedDeviceError>> {
         let validator = GrpcOverrideRequestValidator {
             message: services::Messages::SendMessage.into(),

@@ -95,23 +95,23 @@ export async function testSimpleGrpcRequest<
   return await responseFuture;
 }
 
-export function defineTestGrpcCasesAuth<
-  Api extends Subset<AuthenticatedChatConnection, Api>,
+export function defineTestGrpcCases<
+  Conn,
+  Api extends Subset<Conn, Api>,
   Req,
   Resp
 >(
   tests: Array<Native.GrpcTestCase<Req, Resp>>,
-  check: (
-    chat: PickSubset<AuthenticatedChatConnection, Api>,
-    req: Req,
-    resp: Resp
-  ) => Promise<void>
+  connect: (
+    asyncContext: TokioAsyncContext
+  ) => [PickSubset<Conn, Api>, FakeChatRemote],
+  check: (chat: PickSubset<Conn, Api>, req: Req, resp: Resp) => Promise<void>
 ): void {
   tests.forEach((test) => {
     // "void" is needed since eslint doesn't realize that it() doesn't return a promise
     void it(test.name, async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-      const [chat, fakeRemote] = connectAuth<Api>(tokio);
+      const [chat, fakeRemote] = connect(tokio);
       const responseFuture = check(chat, test.request, test.response);
       const grpcRequest = await fakeRemote.assertReceiveIncomingGrpcRequest();
       expect(grpcRequest.path).to.equal(test.method);

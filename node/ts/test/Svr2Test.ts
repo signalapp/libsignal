@@ -8,6 +8,7 @@ import { Buffer } from 'node:buffer';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import * as Native from '../Native.js';
 import * as SignalClient from '../index.js';
 import * as util from './util.js';
 
@@ -15,18 +16,31 @@ util.initLogger();
 
 describe('Svr2Client', () => {
   // 2026Q1 staging mrenclave from rust/attest/src/constants.rs
-  const stagingMrenclave = Buffer.from(
-    '97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535',
-    'hex'
+  const stagingMrenclave = fs.readFileSync(
+    path.join(
+      import.meta.dirname,
+      '../../../rust/attest/tests/data/svr2.mrenclave'
+    )
   );
 
   // Timestamp matching the handshake data file
-  const attestationTimestamp = new Date(1768516141000);
+  const attestationTimestampBuf = fs.readFileSync(
+    path.join(
+      import.meta.dirname,
+      '../../../rust/attest/tests/data/svr2.timestamp'
+    )
+  );
+  // 'svr2.timestamp' stores a 64-bit BE seconds-since-epoch timestamp.
+  // We can only read 6 bytes of that, since we're reading into a 64-bit
+  // float, but that's okay - we just skip the first two bytes.
+  const attestationTimestamp = new Date(
+    attestationTimestampBuf.readUIntBE(2, 6) * 1000
+  );
 
   const attestationMessage = fs.readFileSync(
     path.join(
       import.meta.dirname,
-      '../../../rust/attest/tests/data/svr2handshakestart.data'
+      '../../../rust/attest/tests/data/svr2.handshakestart'
     )
   );
 
@@ -106,6 +120,30 @@ describe('Svr2Client', () => {
       assert.instanceOf(e, SignalClient.LibSignalErrorBase);
       const err = e as SignalClient.LibSignalError;
       assert.equal(err.operation, 'SgxClientState_EstablishedRecv');
+    }
+  });
+});
+
+describe('Svr2 bridging', () => {
+  it('decryption failure becomes SvrInvalidData', () => {
+    try {
+      Native.TESTING_Svr2MasterKeyRestoreError();
+      assert.fail('unexpected success');
+    } catch (e) {
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
+      assert.equal(err.code, SignalClient.ErrorCode.SvrInvalidData);
+    }
+  });
+
+  it('deserializing a corrupt migration session throws SvrInvalidData', () => {
+    try {
+      SignalClient.Net.Svr2MigrationSession.deserialize(Buffer.of(0xff, 0xff));
+      assert.fail('unexpected success');
+    } catch (e) {
+      assert.instanceOf(e, SignalClient.LibSignalErrorBase);
+      const err = e as SignalClient.LibSignalError;
+      assert.equal(err.code, SignalClient.ErrorCode.SvrInvalidData);
     }
   });
 });

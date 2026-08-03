@@ -106,3 +106,18 @@ export function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
 export function toBase64(buffer: Uint8Array<ArrayBuffer>): string {
   return Buffer.from(buffer).toString('base64');
 }
+
+export async function collectUntilError<T>(
+  stream: ReadableStream<T>
+): Promise<[T[], unknown]> {
+  const received = [];
+  let error = null;
+  try {
+    for await (const next of stream) {
+      received.push(next);
+    }
+  } catch (e) {
+    error = e;
+  }
+  return [received, error];
+}

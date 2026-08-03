@@ -11,10 +11,12 @@ use syn::*;
 use syn_mid::Signature;
 
 use crate::util::{
-    DeriveInputInfo, Impl, NiceMetadataNames, arg_type_info_storage_decl, crates,
-    extract_arg_names_and_types, nice_metadata, nice_type_metadata, result_type,
+    BridgeAsValueOptions, DeriveInputInfo, Impl, NiceMetadataNames, arg_type_info_storage_decl,
+    crates, extract_arg_names_and_types, nice_metadata, nice_type_metadata, result_type,
 };
 use crate::{BridgingKind, ResultInfo, ResultKind};
+
+pub(crate) mod capi;
 
 pub(crate) fn bridge_fn(
     name: &str,
@@ -32,12 +34,12 @@ pub(crate) fn bridge_fn(
 
     let input_args = input_names_and_types
         .iter()
-        .map(|(name, ty)| quote!(#name: ffi_arg_type!(#ty)));
+        .map(|(name, ty)| quote!(#name: <#ty as ffi::ArgTypeInfoBase>::ArgType));
 
     let implicit_args = match bridging_kind {
         BridgingKind::Regular => match (result_info.kind, &sig.output) {
             (ResultKind::Regular, ReturnType::Type(_, ty)) => {
-                quote!(out: *mut ffi_result_type!(#ty),) // note the trailing comma
+                quote!(out: *mut <#ty as ffi::ResultTypeInfo>::ResultType,) // note the trailing comma
             }
             (ResultKind::Void, _) | (_, ReturnType::Default) => quote!(),
         },
@@ -50,8 +52,8 @@ pub(crate) fn bridge_fn(
             }
             let output = result_type(&sig.output);
             quote!(
-                promise: *mut ffi::CPromise<ffi_result_type!(#output)>,
-                async_runtime: ffi_arg_type!(&#runtime), // note the trailing comma
+                promise: *mut ffi::CPromise<<#output as ffi::ResultTypeInfo>::ResultType>,
+                async_runtime: <&#runtime as ffi::ArgTypeInfoBase>::ArgType, // note the trailing comma
             )
         }
     };
@@ -74,9 +76,12 @@ pub(crate) fn bridge_fn(
         },
     );
 
+    let krate = crates::libsignal_bridge_types();
+
     Ok(quote! {
         #[cfg(feature = "ffi")]
         #[unsafe(export_name = concat!(env!("LIBSIGNAL_BRIDGE_FN_PREFIX_FFI"), #name))]
+        #[#krate::ffi::capi::c_export]
         pub unsafe extern "C" fn #wrapper_name(
             #implicit_args
             #(#input_args),*
@@ -233,13 +238,16 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<To
     let callback_fields = callbacks.iter().map(|c| &c.field);
     let callback_impls = callbacks.iter().map(|c| &c.implementation);
     let callback_forwarding_impls = callbacks.iter().map(|c| &c.forwarding_impl);
+    let krate = crates::libsignal_bridge_types();
 
     Ok(quote! {
         // Aliases for the callback functions.
         #[cfg(feature = "ffi")]
+        #[#krate::ffi::capi::c_export]
         pub type #destroy_name = extern "C" fn(ctx: *mut std::ffi::c_void);
         #(
             #[cfg(feature = "ffi")]
+            #[#krate::ffi::capi::c_export]
             pub #callback_aliases;
         )*
 
@@ -248,7 +256,7 @@ pub(crate) fn bridge_trait(trait_to_bridge: &ItemTrait, name: &str) -> Result<To
         // This could be Copy as well, all C structs are Copy,
         // but leaving it out makes it clearer how manual ownership is being transferred.
         #[cfg(feature = "ffi")]
-        #[derive(Clone)]
+        #[derive(Clone, #krate::ffi::capi::IsCType)]
         #[repr(C)]
         pub struct #struct_name {
             ctx: *mut std::ffi::c_void,
@@ -296,7 +304,7 @@ fn bridge_callback_item(
     let result_info = ResultInfo::from(&sig.output);
     let result_ty = result_type(&sig.output);
 
-    // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: ffi_result_type!(u32)) -> c_int
+    // type FfiMyTraitOperation = extern "C" fn(ctx: *mut c_void, foo: u32::ResultType) -> c_int
     let callback_ty_name = format_ident!(
         "{}{}",
         bridge_name,
@@ -311,7 +319,9 @@ fn bridge_callback_item(
 
     let callback_args = item.sig.inputs.iter().filter_map(|arg| match arg {
         FnArg::Receiver(_) => match result_info.kind {
-            ResultKind::Regular => Some(quote!(out: *mut ffi_arg_type!(#result_ty))),
+            ResultKind::Regular => Some(quote!(
+                out: *mut <<#result_ty as ResultLike>::Success as ffi::CallbackResultTypeInfo>::ResultType
+            )),
             ResultKind::Void => None,
         },
         FnArg::Typed(arg) => {
@@ -320,7 +330,7 @@ fn bridge_callback_item(
                 return None;
             };
             let ty = &arg.ty;
-            Some(quote!(#arg_name: ffi_result_type!(#ty)))
+            Some(quote!(#arg_name: <#ty as ffi::ResultTypeInfo>::ResultType))
         }
     });
     let alias = quote! {
@@ -427,12 +437,19 @@ fn bridge_callback_item(
 pub(crate) fn derive_bridged_as_value(
     input: &DeriveInput,
     target: &syn::Path,
+    options: &BridgeAsValueOptions,
 ) -> syn::Result<TokenStream2> {
     if matches!(input.data, Data::Union(_)) {
         return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
     }
-    let result = derive_bridged_as_value_return(input, target)?;
-    let arg = derive_bridged_as_value_arg(input, target)?;
+    let result = options
+        .result
+        .then(|| derive_bridged_as_value_return(input, target))
+        .transpose()?;
+    let arg = options
+        .arg
+        .then(|| derive_bridged_as_value_arg(input, target))
+        .transpose()?;
     Ok(quote! {
         #result
         #arg
@@ -445,6 +462,27 @@ fn derive_bridged_as_value_arg(
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
+
+    let DeriveInputInfo {
+        patterns: field_patterns,
+        field_names,
+        field_types,
+        variant_indices: _,
+        variant_names,
+    } = DeriveInputInfo::new(input, target);
+
+    let mut impl_arg_type_info_base = Impl::new(
+        input,
+        target,
+        Some(parse_quote!(#krate::ffi::ArgTypeInfoBase)),
+    );
+    impl_arg_type_info_base.extra_where.extend(
+        field_types
+            .iter()
+            .flatten()
+            .map(|ty| parse_quote!(#ty: #krate::ffi::ArgTypeInfoBase)),
+    );
+
     let mut impl_arg_type_info = Impl::new(
         input,
         target,
@@ -453,19 +491,13 @@ fn derive_bridged_as_value_arg(
     impl_arg_type_info
         .extra_params
         .extend([parse_quote!('storage)]);
-    let DeriveInputInfo {
-        patterns: field_patterns,
-        field_names,
-        field_types,
-        variant_indices: _,
-        variant_names,
-    } = DeriveInputInfo::new(input, target);
-    impl_arg_type_info
-        .extra_where
-        .extend(field_types.iter().flatten().map(|ty| {
-            parse_quote!(
-                #ty: #krate::ffi::ArgTypeInfo<'storage, ArgType=#krate::ffi_arg_type!(#ty)>)
-        }));
+    impl_arg_type_info.extra_where.extend(
+        field_types
+            .iter()
+            .flatten()
+            .map(|ty| parse_quote!(#ty: #krate::ffi::ArgTypeInfo<'storage>)),
+    );
+
     let mut impl_nice_arg_converter = Impl::new(
         input,
         target,
@@ -488,8 +520,13 @@ fn derive_bridged_as_value_arg(
         &mut impl_nice_arg_converter.extra_where,
     )?;
     let arg_ty = format_ident!("{ident}FfiArg");
-    let (arg_ty_decl, arg_constructors) =
-        ffi_struct(&arg_ty, input, target, &parse_quote!(ffi_arg_type));
+    let (arg_ty_decl, arg_constructors) = ffi_struct(
+        &arg_ty,
+        input,
+        target,
+        &parse_quote!(ArgTypeInfoBase),
+        &parse_quote!(ArgType),
+    );
     let stored_decl_name = format_ident!("{ident}FfiArgStoredType");
     let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input, target);
     Ok(quote! {
@@ -497,8 +534,11 @@ fn derive_bridged_as_value_arg(
         #[cfg(feature = "ffi")]
         #stored_decl
         #[cfg(feature = "ffi")]
-        #impl_arg_type_info {
+        #impl_arg_type_info_base {
             type ArgType = #arg_ty;
+        }
+        #[cfg(feature = "ffi")]
+        #impl_arg_type_info {
             type StoredType = #stored_decl_name<#(
                 (
                     #(<#field_types as #krate::ffi::ArgTypeInfo<'storage>>::StoredType,)*
@@ -531,6 +571,7 @@ fn derive_bridged_as_value_arg(
             ) -> #krate::metadata::ffi::SwiftArgConverter {
                 #register_swift_nice_type
                 #register_swift_arg_converter
+                <#arg_ty as #krate::ffi::capi::IsCType>::register_c_type(ctx);
                 #krate::metadata::ffi::SwiftArgConverter {
                     nice_type: stringify!(#ident).to_string(),
                     converter_type:
@@ -587,8 +628,13 @@ fn derive_bridged_as_value_return(
             .map(|ty| parse_quote!(#ty: #krate::ffi::ResultTypeInfo)),
     );
     let result_ty = format_ident!("{ident}FfiResult");
-    let (result_ty_decl, result_constructors) =
-        ffi_struct(&result_ty, input, target, &parse_quote!(ffi_result_type));
+    let (result_ty_decl, result_constructors) = ffi_struct(
+        &result_ty,
+        input,
+        target,
+        &parse_quote!(ResultTypeInfo),
+        &parse_quote!(ResultType),
+    );
     Ok(quote! {
         #result_ty_decl
         #[cfg(feature = "ffi")]
@@ -611,6 +657,7 @@ fn derive_bridged_as_value_return(
             ) -> #krate::metadata::ffi::SwiftReturnConverter {
                 #register_swift_nice_type
                 #register_swift_result_converter
+                <#result_ty as #krate::ffi::capi::IsCType>::register_c_type(ctx);
                 #krate::metadata::ffi::SwiftReturnConverter {
                     nice_type: stringify!(#ident).to_string(),
                     converter_type:
@@ -625,7 +672,8 @@ fn ffi_struct(
     name: &Ident,
     input: &DeriveInput,
     target: &syn::Path,
-    macro_name: &Ident,
+    field_trait_name: &Ident,
+    field_trait_assoc_type: &Ident,
 ) -> (TokenStream2, Vec<TokenStream2>) {
     let krate = crates::libsignal_bridge_types();
     let DeriveInputInfo {
@@ -640,9 +688,10 @@ fn ffi_struct(
             quote! {
                 #[cfg(feature = "ffi")]
                 #[allow(unused)]
+                #[derive(#krate::ffi::capi::IsCType)]
                 #[repr(C)]
                 pub struct #name {
-                    #(#(#field_names: #krate::#macro_name!(#field_types),)*)*
+                    #(#(#field_names: <#field_types as #krate::ffi::#field_trait_name>::#field_trait_assoc_type,)*)*
                 }
             },
             vec![quote!(#name {#(#(#field_names),*)*})],
@@ -653,7 +702,7 @@ fn ffi_struct(
                     Default::default()
                 } else {
                     quote! {
-                        { #(#names: #krate::#macro_name!(#types),)* }
+                        { #(#names: <#types as #krate::ffi::#field_trait_name>::#field_trait_assoc_type,)* }
                     }
                 }
             });
@@ -661,6 +710,7 @@ fn ffi_struct(
                 quote! {
                     #[cfg(feature = "ffi")]
                     #[allow(unused)]
+                    #[derive(#krate::ffi::capi::IsCType)]
                     #[repr(C)]
                     pub enum #name {
                         #(#variant_names #variant_bodies,)*

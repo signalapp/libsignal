@@ -6,16 +6,16 @@
 import * as Native from '../Native.js';
 import { Aci } from '../Address.js';
 import { PublicKey } from '../EcKeys.js';
-import { Environment, type TokioAsyncContext } from '../net.js';
+import type { Environment, TokioAsyncContext } from '../net.js';
 
 // For JSDoc references
-import { type UnauthenticatedChatConnection } from './Chat.js';
-import {
-  type KeyTransparencyError,
-  type KeyTransparencyVerificationFailed,
-  type ChatServiceInactive,
-  type IoError,
-  type RateLimitedError,
+import type { UnauthenticatedChatConnection } from './Chat.js';
+import type {
+  KeyTransparencyError,
+  KeyTransparencyVerificationFailed,
+  ChatServiceInactive,
+  IoError,
+  RateLimitedError,
 } from '../Errors.js';
 
 /**

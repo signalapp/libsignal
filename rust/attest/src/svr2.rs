@@ -34,6 +34,32 @@ impl PartialEq<svr::RaftGroupConfig> for RaftConfig {
     }
 }
 
+impl RaftConfig {
+    pub fn as_pb(&self) -> svr::RaftGroupConfig {
+        svr::RaftGroupConfig {
+            min_voting_replicas: self.min_voting_replicas,
+            max_voting_replicas: self.max_voting_replicas,
+            super_majority: self.super_majority,
+            group_id: self.group_id,
+            db_version: self.db_version,
+            attestation_timeout: self.attestation_timeout,
+            simulated: self.simulated,
+        }
+    }
+
+    pub fn from_pb(pb: svr::RaftGroupConfig) -> Self {
+        Self {
+            min_voting_replicas: pb.min_voting_replicas,
+            max_voting_replicas: pb.max_voting_replicas,
+            super_majority: pb.super_majority,
+            group_id: pb.group_id,
+            db_version: pb.db_version,
+            attestation_timeout: pb.attestation_timeout,
+            simulated: pb.simulated,
+        }
+    }
+}
+
 /// Lookup the group id constant associated with the `mrenclave`
 pub fn lookup_groupid(mrenclave: &[u8]) -> Option<u64> {
     EXPECTED_RAFT_CONFIG_SVR2
@@ -53,7 +79,7 @@ pub fn new_handshake_with_raft_config_lookup(
             .get(&mrenclave)
             .copied()
             .ok_or(Error::AttestationDataError {
-                reason: format!("unknown mrenclave {:?}", &mrenclave),
+                reason: format!("unknown mrenclave {:?}", mrenclave),
             })?;
     new_handshake(
         mrenclave,
@@ -106,30 +132,31 @@ fn new_handshake_with_constants(
 mod tests {
     use std::time::{Duration, SystemTime};
 
-    use const_str::hex;
-
     use super::*;
 
     #[test]
     fn attest_svr2() {
-        const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1768516141);
-        let mrenclave_bytes =
-            hex!("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535");
+        let mrenclave = include_bytes!("../tests/data/svr2.mrenclave");
+        let attestation_msg = include_bytes!("../tests/data/svr2.handshakestart");
+        let current_time = SystemTime::UNIX_EPOCH
+            + Duration::from_secs(u64::from_be_bytes(*include_bytes!(
+                "../tests/data/svr2.timestamp"
+            )));
+        let advisories = include_bytes!("../tests/data/svr2.advisories")
+            .split(|&b| b == b'\n')
+            .map(|a| String::from_utf8(a.to_vec()).unwrap())
+            .collect::<Vec<_>>();
+        let advisories_arr = advisories.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        let raft_config =
+            svr::RaftGroupConfig::decode(&include_bytes!("../tests/data/svr2.group_config")[..])
+                .unwrap();
+
         new_handshake_with_constants(
-            &mrenclave_bytes,
-            HANDSHAKE_BYTES,
+            &mrenclave[..],
+            attestation_msg,
             current_time,
-            &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-            &RaftConfig {
-                min_voting_replicas: 3,
-                max_voting_replicas: 9,
-                super_majority: 0,
-                group_id: 2330628069874851020,
-                db_version: 2,
-                attestation_timeout: 604800,
-                simulated: false,
-            },
+            &advisories_arr,
+            &RaftConfig::from_pb(raft_config),
             HandshakeType::PostQuantum,
         )
         .unwrap();
@@ -137,26 +164,31 @@ mod tests {
 
     #[test]
     fn attest_svr2_bad_config() {
-        const HANDSHAKE_BYTES: &[u8] = include_bytes!("../tests/data/svr2handshakestart.data");
-        let current_time = SystemTime::UNIX_EPOCH + Duration::from_secs(1768516141);
-        let mrenclave_bytes =
-            hex!("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535");
+        let mrenclave = include_bytes!("../tests/data/svr2.mrenclave");
+        let attestation_msg = include_bytes!("../tests/data/svr2.handshakestart");
+        let current_time = SystemTime::UNIX_EPOCH
+            + Duration::from_secs(u64::from_be_bytes(*include_bytes!(
+                "../tests/data/svr2.timestamp"
+            )));
+        let advisories = include_bytes!("../tests/data/svr2.advisories")
+            .split(|&b| b == b'\n')
+            .map(|a| String::from_utf8(a.to_vec()).unwrap())
+            .collect::<Vec<_>>();
+        let advisories_arr = advisories.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        let mut raft_config =
+            svr::RaftGroupConfig::decode(&include_bytes!("../tests/data/svr2.group_config")[..])
+                .unwrap();
+
+        // Make raft config invalid
+        raft_config.group_id = 0;
 
         assert!(
             new_handshake_with_constants(
-                &mrenclave_bytes,
-                HANDSHAKE_BYTES,
+                &mrenclave[..],
+                attestation_msg,
                 current_time,
-                &["INTEL-SA-00615", "INTEL-SA-00657"] as &[&str],
-                &RaftConfig {
-                    min_voting_replicas: 3,
-                    max_voting_replicas: 9,
-                    super_majority: 0,
-                    group_id: 0, // wrong
-                    db_version: 2,
-                    attestation_timeout: 604800,
-                    simulated: false,
-                },
+                &advisories_arr,
+                &RaftConfig::from_pb(raft_config),
                 HandshakeType::PostQuantum,
             )
             .is_err()

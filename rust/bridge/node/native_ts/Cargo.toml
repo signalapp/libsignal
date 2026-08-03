@@ -18,3 +18,4 @@ anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 heck = { workspace = true }
 minijinja = { workspace = true, features = ["preserve_order"] }
+serde_json = { workspace = true }

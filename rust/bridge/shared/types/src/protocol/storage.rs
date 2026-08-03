@@ -4,7 +4,7 @@
 //
 
 use async_trait::async_trait;
-use libsignal_bridge_macros::bridge_callbacks;
+use libsignal_bridge_macros::{IsCType, bridge_callbacks};
 use libsignal_core::ProtocolAddress;
 use libsignal_protocol::{
     Direction, IdentityChange, IdentityKey, IdentityKeyPair, IdentityKeyStore, KyberPreKeyId,
@@ -46,8 +46,9 @@ trait BridgeIdentityKeyStore {
     ) -> Result<bool, SignalProtocolError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, IsCType)]
 #[repr(C)]
+#[capi(export_name = "Direction", must_export)]
 pub enum FfiDirection {
     Sending = 0,
     Receiving = 1,

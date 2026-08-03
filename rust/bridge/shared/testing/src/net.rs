@@ -6,7 +6,6 @@
 use std::num::NonZeroU16;
 
 use base64::prelude::{BASE64_STANDARD, Engine as _};
-use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::chat::ServerMessageAck;
 use libsignal_bridge_types::net::{BuildVariant, ConnectionManager, TokioAsyncContext};
 use libsignal_core::E164;
@@ -14,6 +13,7 @@ use libsignal_net::cdsi::{CdsiProtocolError, LookupError, LookupResponse, Lookup
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net::infra::route::HttpVersion;
 use libsignal_net::infra::ws::attested::AttestedProtocolError;
+use libsignal_net::svr2::Error as Svr2Error;
 use libsignal_protocol::{Aci, Pni};
 use nonzero_ext::nonzero;
 use uuid::Uuid;
@@ -50,6 +50,12 @@ async fn TESTING_CdsiLookupResponseConvert() -> LookupResponse {
         ],
         debug_permits_used: DEBUG_PERMITS_USED,
     }
+}
+
+/// Returns the SVR2 error produced when a restored blob cannot be decrypted.
+#[bridge_fn(jni = false, ffi = false)]
+fn TESTING_Svr2MasterKeyRestoreError() -> Result<(), Svr2Error> {
+    Err(Svr2Error::DecryptionError)
 }
 
 macro_rules! make_error_testing_enum {

@@ -144,3 +144,14 @@ message BackupSession {
   uint32 max_tries = 3;  // in range [1,255]
   bool is_completed = 4;  // Both Backup and Expose are done
 }
+
+// This is not part of SVR2 protocol!
+//
+// Session state used to serialize an in-progress enclave migration: the master
+// key is written to the current enclave. The current enclave's identity is
+// recorded so a completed session can be recognized as already-done without
+// contacting any enclave, as long as the current enclave has not changed.
+message MigrationSession {
+  bytes backup = 1;  // serialized BackupSession for the write to the current enclave
+  bytes current_mrenclave = 2;  // enclave this session migrated the key to
+}

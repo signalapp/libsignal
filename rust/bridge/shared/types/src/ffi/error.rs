@@ -11,6 +11,7 @@ use attest::enclave::Error as EnclaveError;
 use attest::hsm_enclave::Error as HsmEnclaveError;
 use device_transfer::Error as DeviceTransferError;
 use libsignal_account_keys::Error as PinError;
+use libsignal_bridge_macros::IsCType;
 use libsignal_core::LogSafeDisplay;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::ws::WebSocketConnectError;
@@ -30,8 +31,9 @@ use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
 use crate::support::{IllegalArgumentError, WithContext, describe_panic};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, IsCType)]
 #[repr(C)]
+#[capi(must_export, export_name = "ErrorCode")]
 pub enum SignalErrorCode {
     #[allow(dead_code)]
     UnknownError = 1,
@@ -143,6 +145,7 @@ pub enum SignalErrorCode {
 
     DeviceIdNotFound = 224,
     UsernameNotAvailable = 225,
+    UsernameNotSet = 226,
 }
 
 pub trait UpcastAsAny {
@@ -242,8 +245,9 @@ impl SimpleError {
 /// returning it to C, but unfortunately that isn't stable yet.
 ///
 /// [ThinBox]: https://doc.rust-lang.org/std/boxed/struct.ThinBox.html
-#[derive(Debug)]
-pub struct SignalFfiError(Box<dyn FfiError + Send>);
+#[derive(Debug, IsCType)]
+#[capi(opaque, export_name = "FfiError")]
+pub struct SignalFfiError(std::panic::AssertUnwindSafe<Box<dyn FfiError + Send>>);
 
 impl SignalFfiError {
     pub fn downcast_ref<T: FfiError>(&self) -> Option<&T> {
@@ -263,7 +267,7 @@ impl std::ops::Deref for SignalFfiError {
     type Target = dyn FfiError;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &**self.0
     }
 }
 
@@ -283,7 +287,11 @@ pub trait IntoFfiError {
 
 impl<T: FfiError> IntoFfiError for T {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
-        SignalFfiError(Box::new(self))
+        // The AssertUnwindSafe isn't fully justified -- if an error has interior mutability *and*
+        // makes use of it via FfiError's callbacks *and* there's a panic during one of those
+        // callbacks, we'd be in trouble. But panics while handling errors would be a problem
+        // regardless, and the error will almost certainly be destroyed after that.
+        SignalFfiError(std::panic::AssertUnwindSafe(Box::new(self)))
     }
 }
 
@@ -862,7 +870,7 @@ impl IntoFfiError for libsignal_net_chat::api::DisconnectedError {
         let code = match self {
             Self::ConnectedElsewhere => SignalErrorCode::ConnectedElsewhere,
             Self::ConnectionInvalidated => SignalErrorCode::ConnectionInvalidated,
-            Self::Transport { .. } => SignalErrorCode::NetworkProtocol,
+            Self::Transport { .. } => SignalErrorCode::IoError,
             Self::Closed => SignalErrorCode::ChatServiceInactive,
         };
         SimpleError::new(code, self.to_string())
@@ -1313,5 +1321,11 @@ impl From<WithContext<SignalFfiError>> for std::io::Error {
             inner,
         } = value;
         std::io::Error::other(inner.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::usernames::UsernameNotSet {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::UsernameNotSet, self.to_string())
     }
 }

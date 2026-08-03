@@ -11,6 +11,7 @@
 
 import * as crypto from 'node:crypto';
 import * as Native from './Native.js';
+import * as NativeNice from './NativeNice.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
 import { Aci } from './Address.js';
 import { PrivateKey } from './EcKeys.js';
@@ -65,6 +66,50 @@ export class AccountEntropyPool {
     return new BackupKey(
       Native.AccountEntropyPool_DeriveBackupKey(accountEntropyPool)
     );
+  }
+}
+
+/**
+ * An account's SVR key: the 32-byte root from which account-related secrets are derived.
+ *
+ * This is the same key that {@link AccountEntropyPool.deriveSvrKey} produces. Signal clients
+ * historically call these bytes the "master key"; libsignal calls it the SVR key. The two names
+ * refer to the same value.
+ */
+export class SvrKey extends ByteArray {
+  private readonly __type?: never;
+  static SIZE = 32;
+
+  constructor(contents: Uint8Array<ArrayBuffer>) {
+    super(contents, SvrKey.checkLength(SvrKey.SIZE));
+  }
+
+  /** Derives the raw 32-byte token used to enable registration lock. */
+  deriveRegistrationLock(): Uint8Array<ArrayBuffer> {
+    return NativeNice.SvrKey_DeriveRegistrationLock({
+      svrKey: this.getContents(),
+    });
+  }
+
+  /** Derives the raw 32-byte password used to recover an account without SMS verification. */
+  deriveRegistrationRecoveryPassword(): Uint8Array<ArrayBuffer> {
+    return NativeNice.SvrKey_DeriveRegistrationRecoveryPassword({
+      svrKey: this.getContents(),
+    });
+  }
+
+  /** Derives the raw 32-byte root key used to encrypt data in Storage Service. */
+  deriveStorageServiceKey(): Uint8Array<ArrayBuffer> {
+    return NativeNice.SvrKey_DeriveStorageServiceKey({
+      svrKey: this.getContents(),
+    });
+  }
+
+  /** Derives the raw 32-byte key used to obscure sensitive identifiers in logs. */
+  deriveLoggingKey(): Uint8Array<ArrayBuffer> {
+    return NativeNice.SvrKey_DeriveLoggingKey({
+      svrKey: this.getContents(),
+    });
   }
 }
 

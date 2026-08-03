@@ -34,9 +34,9 @@
 // We use upper case variable names for curve points by convention.
 #![allow(non_snake_case)]
 
-use curve25519_dalek_signal::ristretto::RistrettoPoint;
-use curve25519_dalek_signal::scalar::Scalar;
-use curve25519_dalek_signal::traits::VartimeMultiscalarMul as _;
+use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::scalar::Scalar;
+use curve25519_dalek::traits::VartimeMultiscalarMul as _;
 use partial_default::PartialDefault;
 use poksho::ShoApi;
 use poksho::shoapi::ShoApiExt as _;

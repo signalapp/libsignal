@@ -14,7 +14,7 @@ use std::slice;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
-use neon::prelude::*;
+use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use neon::types::JsBigInt;
 use paste::paste;
 use zkgroup::ZkGroupDeserializationFailure;
@@ -88,9 +88,9 @@ macro_rules! nice_identity_arg_converter {
     };
 }
 macro_rules! nice_identity_result_converter {
-    ($typ:ty) => {
+    ($(<$($generic:ident $(: $bound:tt)?),+>)? $typ:path) => {
         #[cfg(feature = "metadata")]
-        impl NiceResultConverter for $typ {
+        impl $(<$($generic $(: $bound)?),+>)? NiceResultConverter for $typ {
             fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
                 let ty = <$typ as ResultTypeInfo>::register_ts_ffi_type(ctx);
                 TsReturnConverter {
@@ -444,6 +444,7 @@ impl SimpleArgTypeInfo for crate::protocol::Timestamp {
     }
     register_ts_ffi_type!("Timestamp");
 }
+nice_identity_arg_converter!(crate::protocol::Timestamp);
 
 impl SimpleArgTypeInfo for RandomNumberGenerator {
     type ArgType = JsNumber;
@@ -494,6 +495,18 @@ impl SimpleArgTypeInfo for u64 {
     }
     register_ts_ffi_type!("bigint");
 }
+nice_identity_arg_converter!(u64);
+
+impl SimpleArgTypeInfo for i64 {
+    type ArgType = JsBigInt;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        foreign
+            .to_i64(cx)
+            .or_else(|_| cx.throw_range_error("value out of range for Rust i64"))
+    }
+    register_ts_ffi_type!("bigint");
+}
+nice_identity_arg_converter!(i64);
 
 impl SimpleArgTypeInfo for f64 {
     type ArgType = JsNumber;
@@ -519,6 +532,16 @@ impl SimpleArgTypeInfo for uuid::Uuid {
             .or_else(|_| cx.throw_type_error("UUIDs have 16 bytes"))
     }
     register_ts_ffi_type!("Uuid");
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for uuid::Uuid {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "uuid.Uuid".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "uuid.parse".to_string(),
+        }
+    }
 }
 
 impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
@@ -737,6 +760,28 @@ impl SimpleArgTypeInfo for AccountEntropyPool {
         })
     }
     register_ts_ffi_type!("AccountEntropyPool");
+}
+
+impl SimpleArgTypeInfo for DeviceId {
+    type ArgType = <u8 as SimpleArgTypeInfo>::ArgType;
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let raw = <u8 as SimpleArgTypeInfo>::convert_from(cx, foreign)?;
+        match DeviceId::new(raw) {
+            Ok(id) => Ok(id),
+            Err(_) => cx.throw_range_error("Invalid DeviceId"),
+        }
+    }
+    register_ts_ffi_type!("number");
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for DeviceId {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "DeviceId".to_string(),
+            ffi_type: "number".to_string(),
+            converter_function: "identity".to_string(),
+        }
+    }
 }
 
 impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization {
@@ -1421,6 +1466,7 @@ impl<'a> ResultTypeInfo<'a> for crate::protocol::Timestamp {
     }
     register_ts_ffi_type!("Timestamp");
 }
+nice_identity_result_converter!(crate::protocol::Timestamp);
 
 /// Converts non-negative values up to [`Number.MAX_SAFE_INTEGER`][].
 ///
@@ -1448,6 +1494,17 @@ impl<'a> ResultTypeInfo<'a> for u64 {
     }
     register_ts_ffi_type!("bigint");
 }
+nice_identity_result_converter!(u64);
+
+impl<'a> ResultTypeInfo<'a> for i64 {
+    type ResultType = JsBigInt;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(JsBigInt::from_i64(cx, self))
+    }
+    register_ts_ffi_type!("bigint");
+}
+nice_identity_result_converter!(i64);
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
@@ -1480,6 +1537,16 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
         JsUint8Array::from_slice(cx, self.as_bytes())
     }
     register_ts_ffi_type!("Uuid");
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for uuid::Uuid {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "uuid.Uuid".to_string(),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            converter_function: "uuid.stringify".to_string(),
+        }
+    }
 }
 
 impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
@@ -1578,6 +1645,26 @@ impl<'a> ResultTypeInfo<'a> for Box<[Vec<u8>]> {
     #[cfg(feature = "metadata")]
     fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
         make_array_type::<Vec<u8>>(ctx)
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for DeviceId {
+    type ResultType = <u8 as ResultTypeInfo<'a>>::ResultType;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        u8::from(self).convert_into(cx)
+    }
+
+    register_ts_ffi_type!("number");
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for DeviceId {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "DeviceId".to_string(),
+            ffi_type: "number".to_string(),
+            converter_function: "identity".to_string(),
+        }
     }
 }
 
@@ -2113,17 +2200,36 @@ impl<'a> ResultTypeInfo<'a>
     register_ts_ffi_type!("CheckSvr2CredentialsResponse");
 }
 
-impl<'a> ResultTypeInfo<'a> for libsignal_net::chat::server_requests::DisconnectCause {
+impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for crate::support::BridgedError<T> {
+    type ResultType = JsValue;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(self.0.into_throwable(cx, "BridgedError").upcast())
+    }
+    register_ts_ffi_type!("Error");
+}
+nice_identity_result_converter!(<T: SignalNodeError> crate::support::BridgedError<T>);
+nice_identity_result_converter!(<T: SignalNodeError> Option<crate::support::BridgedError<T>>);
+
+impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for BulkPolledStreamTerminationReason<T> {
     type ResultType = JsValue;
 
     fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
         match self {
-            Self::LocalDisconnect => Ok(cx.null().upcast()),
-            Self::Error(err) => Ok(err.into_throwable(cx, "DisconnectCause").upcast()),
+            BulkPolledStreamTerminationReason::Finished => {
+                // We could use any non-null placeholder here, but let's use one that fits
+                // TypeScript idioms.
+                Ok(cx.string("finished").upcast())
+            }
+            BulkPolledStreamTerminationReason::Error(e) => {
+                Ok(crate::support::BridgedError(e).convert_into(cx)?.upcast())
+            }
         }
     }
-    register_ts_ffi_type!("(Error | null)");
+    register_ts_ffi_type!("(\"finished\"|Error)");
 }
+nice_identity_result_converter!(<T: SignalNodeError> BulkPolledStreamTerminationReason<T>);
+nice_identity_result_converter!(<T: SignalNodeError> Option<BulkPolledStreamTerminationReason<T>>);
 
 macro_rules! full_range_integer {
     ($typ:ty) => {
@@ -2250,6 +2356,44 @@ where
         let name = T::name();
         ctx.opaque_types.insert(name.clone());
         format!("Serialized<{name}>")
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for crate::net::chat::CopyBackupMediaStream {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: concat!(
+                "(",
+                "(asyncContext: TokioAsyncContext)",
+                // Note that we delay converting this to a nice type for TS module dependency cycle
+                // reasons.
+                "=> ReadableStream<Native.ReturnFfiBridgeCopyBackupMediaOutcome>",
+                ")"
+            )
+            .to_owned(),
+            ffi_type: "Native.CopyBackupMediaStream".to_owned(),
+            converter_function: "copyBackupMediaStreamConverter".to_owned(),
+        }
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for crate::net::chat::DeleteBackupMediaStream {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: concat!(
+                "(",
+                "(asyncContext: TokioAsyncContext)",
+                // Note that we delay converting this to a nice type for TS module dependency cycle
+                // reasons.
+                "=> ReadableStream<Native.ReturnFfiBridgeDeleteBackupMediaItem>",
+                ")"
+            )
+            .to_owned(),
+            ffi_type: "Native.DeleteBackupMediaStream".to_owned(),
+            converter_function: "deleteBackupMediaStreamConverter".to_owned(),
+        }
     }
 }
 

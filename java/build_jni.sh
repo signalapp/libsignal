@@ -73,6 +73,17 @@ if [[ -n "${LIBSIGNAL_DEBUG:-}" ]]; then
     FEATURES+=("libsignal-debug/enabled")
 fi
 
+check_for_attest_testutil () {
+    if [[ "${RUST_RELEASE}" == "" ]]; then
+        return
+    fi
+    # See rust/attest/src/dcap/endorsements.rs for the strings matched by this pattern.
+    if grep -q -- 'ATTEST TEST-UTIL IS ENABLED' "$1"/*; then
+          echo 'error: attest found in build with test-util active!' >&2
+          exit 2
+    fi
+}
+
 # usage: check_for_debug_level_logs_if_needed lib_dir
 check_for_debug_level_logs_if_needed () {
     if [[ "${RUST_RELEASE}" == "" ]]; then
@@ -140,6 +151,7 @@ build_desktop_for_arch () {
     copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni "$lib_dir" "signal_jni_${suffix}"
     copy_built_library "target/${1}/${RUST_RELEASE:-debug}" signal_jni_testing "$lib_dir" "signal_jni_testing_${suffix}"
     check_for_debug_level_logs_if_needed "$lib_dir"
+    check_for_attest_testutil "$lib_dir"
 }
 
 android_abis=()

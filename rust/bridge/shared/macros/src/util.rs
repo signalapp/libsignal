@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use indexmap::IndexSet;
 use itertools::Itertools as _;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{ToTokens, TokenStreamExt, format_ident, quote};
@@ -160,8 +161,9 @@ pub(crate) struct Impl {
     pub(crate) target: Path,
     pub(crate) trait_name: Option<Path>,
     pub(crate) generics: Generics,
-    pub(crate) extra_where: Vec<WherePredicate>,
+    pub(crate) extra_where: IndexSet<WherePredicate>,
     pub(crate) extra_params: Vec<GenericParam>,
+    pub(crate) unsafe_: Option<Token![unsafe]>,
 }
 
 impl ToTokens for Impl {
@@ -178,7 +180,8 @@ impl ToTokens for Impl {
             .trait_name
             .as_ref()
             .map(|trait_name| quote!(#trait_name for));
-        tokens.append_all(quote!(impl #impl_ #trait_name #target #item_generics #where_));
+        let unsafe_ = &self.unsafe_;
+        tokens.append_all(quote!(#unsafe_ impl #impl_ #trait_name #target #item_generics #where_));
     }
 }
 
@@ -191,9 +194,13 @@ impl Impl {
             target: target.clone(),
             trait_name,
             generics: value.generics.clone(),
-            extra_where: Vec::new(),
+            extra_where: IndexSet::new(),
             extra_params: Vec::new(),
+            unsafe_: None,
         }
+    }
+    pub(crate) fn mark_unsafe(&mut self) {
+        self.unsafe_ = Some(parse_quote!(unsafe));
     }
 }
 
@@ -208,14 +215,14 @@ pub(crate) fn nice_struct_metadata(
     fields: &Fields,
     trait_name: &Path,
     trait_fn: &Ident,
-    where_clause: &mut Vec<WherePredicate>,
+    where_clause: &mut IndexSet<WherePredicate>,
 ) -> TokenStream2 {
     let is_tuple = matches!(fields, Fields::Unnamed(_) | Fields::Unit);
     let krate = crates::libsignal_bridge_types();
     let field_names = get_field_names(fields);
     let field_types = fields.iter().map(|field| &field.ty).collect_vec();
     for ty in &field_types {
-        where_clause.push(parse_quote!(#ty: #trait_name));
+        where_clause.insert(parse_quote!(#ty: #trait_name));
     }
     quote! {
         #krate::metadata::Struct {
@@ -233,7 +240,7 @@ pub(crate) fn nice_struct_metadata(
 /// What are fields named?
 ///
 /// For tuple structs, fields are named like: `_0`, `_1`, ...
-fn get_field_names(fields: &Fields) -> Vec<Ident> {
+pub fn get_field_names(fields: &Fields) -> Vec<Ident> {
     fields
         .iter()
         .enumerate()
@@ -347,7 +354,7 @@ pub(crate) fn nice_type_metadata(
     metadata_field: &Ident,
     trait_name: &Path,
     trait_fn: &Ident,
-    where_clause: &mut Vec<WherePredicate>,
+    where_clause: &mut IndexSet<WherePredicate>,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
@@ -411,6 +418,20 @@ pub(crate) fn arg_type_info_storage_decl(
         #[allow(unused)]
         pub enum #name<#(#variant_names),*> {
             #(#variant_names(#variant_names)),*
+        }
+    }
+}
+
+pub(crate) struct BridgeAsValueOptions {
+    pub arg: bool,
+    pub result: bool,
+}
+
+impl Default for BridgeAsValueOptions {
+    fn default() -> Self {
+        Self {
+            arg: true,
+            result: true,
         }
     }
 }

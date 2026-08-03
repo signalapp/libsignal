@@ -4,11 +4,13 @@
 //
 
 use http::HeaderMap;
+use libsignal_core::LogSafeDisplay;
 use libsignal_net::chat::Response as ChatResponse;
 
 use crate::api::registration::{
     CheckSvr2CredentialsError, CreateSessionError, RegisterAccountError, RegistrationSession,
     RequestVerificationCodeError, ResumeSessionError, SubmitVerificationError, UpdateSessionError,
+    WithRecoveredSession,
 };
 use crate::api::{AllowRateLimitChallenges, RequestError};
 use crate::ws::{CustomError, ResponseError, parse_json_from_body};
@@ -113,6 +115,73 @@ impl<D> From<ResponseError> for RequestError<SubmitVerificationError, D> {
     }
 }
 
+/// Recovers session state carried in the body of a failure response whose status
+/// is one of `statuses`.
+///
+/// The status list is explicit rather than "any body that parses" because some
+/// failure bodies (e.g. a 440's [`VerificationCodeNotDeliverable`]) would parse
+/// into an all-default [`RegistrationSession`] and wrongly update the cache.
+///
+/// [`VerificationCodeNotDeliverable`]: crate::api::registration::VerificationCodeNotDeliverable
+fn recover_session_for_statuses(
+    response: &ChatResponse,
+    statuses: &[u16],
+) -> Option<RegistrationSession> {
+    let ChatResponse {
+        status,
+        message: _,
+        headers,
+        body,
+    } = response;
+    statuses
+        .contains(&status.as_u16())
+        .then(|| session_state_from_json_body(headers, body.as_deref()))
+        .flatten()
+}
+
+/// Session state an endpoint may carry in a failure response body.
+///
+/// This covers every status whose body carries session state, both the ones
+/// that turn into a typed error (409, 418) and the ones that come back as a
+/// generic error (429), so the caller can refresh its cache uniformly.
+///
+/// Defaults to none; endpoints whose responses carry it override.
+trait RecoverSession {
+    fn recover_session(_response: &ChatResponse) -> Option<RegistrationSession> {
+        None
+    }
+}
+
+impl RecoverSession for ResumeSessionError {}
+impl RecoverSession for UpdateSessionError {}
+impl RecoverSession for RequestVerificationCodeError {
+    fn recover_session(response: &ChatResponse) -> Option<RegistrationSession> {
+        recover_session_for_statuses(response, &[409, 418, 429])
+    }
+}
+impl RecoverSession for SubmitVerificationError {
+    fn recover_session(response: &ChatResponse) -> Option<RegistrationSession> {
+        recover_session_for_statuses(response, &[409, 429])
+    }
+}
+
+/// Pairs the plain error conversion with any session recovered from the response.
+impl<E: RecoverSession, D> From<ResponseError> for WithRecoveredSession<RequestError<E, D>>
+where
+    RequestError<E, D>: From<ResponseError>,
+{
+    fn from(value: ResponseError) -> Self {
+        let session = match &value {
+            ResponseError::UnrecognizedStatus { response, .. } => E::recover_session(response),
+            _ => None,
+        };
+        WithRecoveredSession {
+            result: value.into(),
+            session,
+        }
+    }
+}
+
 impl<D> From<ResponseError> for RequestError<CheckSvr2CredentialsError, D> {
     fn from(value: ResponseError) -> Self {
         value.into_request_error(ALLOW_RATE_LIMIT_CHALLENGES, |value| {
@@ -138,13 +207,18 @@ impl<D> From<ResponseError> for RequestError<RegisterAccountError, D> {
                 403 => RegisterAccountError::RegistrationRecoveryVerificationFailed,
                 409 => RegisterAccountError::DeviceTransferIsPossibleButNotSkipped,
                 423 => {
-                    let Some(registration_lock) = body
-                        .as_deref()
-                        .and_then(|body| parse_json_from_body(headers, Some(body)).ok())
-                    else {
-                        return CustomError::NoCustomHandling;
-                    };
-                    RegisterAccountError::RegistrationLock(registration_lock)
+                    // parse_json_from_body already handles missing bodies.
+                    match parse_json_from_body(headers, body.as_deref()) {
+                        Ok(registration_lock) => {
+                            RegisterAccountError::RegistrationLock(registration_lock)
+                        }
+                        Err(e) => {
+                            let e: ResponseError = e;
+                            static_assertions::assert_impl_all!(ResponseError: LogSafeDisplay);
+                            log::warn!("Failed to parse registration lock response: {e}");
+                            return CustomError::NoCustomHandling;
+                        }
+                    }
                 }
                 _ => return CustomError::NoCustomHandling,
             })
@@ -157,6 +231,7 @@ mod test {
     use std::convert::Infallible;
     use std::fmt::Debug;
 
+    use assert_matches::assert_matches;
     use http::{HeaderMap, StatusCode};
     use itertools::Itertools;
     use libsignal_net::infra::AsHttpHeader;
@@ -402,5 +477,37 @@ mod test {
         T: CollectSortedStatuses + IntoDiscriminant<Discriminant: AsStatus> + Debug,
     {
         round_trip_all_variants::<T>();
+    }
+
+    // The server's [`RegistrationLockFailure`] marks `svr2Credentials` as
+    // nullable, so a real 423 body can be just `{"timeRemaining": ...}`.
+    // Such a response must still map to [`RegisterAccountError::RegistrationLock`].
+    // If the body fails to parse, the 423 arm falls through to a generic
+    // "unexpected status" error and the client loses the lock (including its
+    // time remaining).
+    //
+    // [`RegistrationLockFailure`]: https://github.com/signalapp/Signal-Server/blob/6a8bf7f78e3516421382f7773762bf2f7f0a78a9/service/src/main/java/org/whispersystems/textsecuregcm/entities/RegistrationLockFailure.java#L20
+    #[test]
+    fn register_account_423_without_svr2_credentials_is_registration_lock() {
+        let headers = HeaderMap::from_iter([CONTENT_TYPE_JSON]);
+        let status = StatusCode::from_u16(423).unwrap();
+        let error = ResponseError::UnrecognizedStatus {
+            status,
+            response: ChatResponse {
+                status,
+                message: None,
+                headers,
+                body: Some(
+                    serde_json::to_vec(&serde_json::json!({ "timeRemaining": 1234 }))
+                        .unwrap()
+                        .into(),
+                ),
+            },
+        };
+
+        assert_matches!(
+            RequestError::<RegisterAccountError, Infallible>::from(error),
+            RequestError::Other(RegisterAccountError::RegistrationLock(_))
+        );
     }
 }

@@ -16,7 +16,7 @@ workspace = true
 
 [dependencies]
 curve25519-dalek = { workspace = true }
-hmac = { workspace = true, features = ["reset"] }
+hmac = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]

@@ -102,14 +102,23 @@ public sealed interface RequestResult<out T, out E : BadRequestError> {
     }
 }
 
+/**
+ * Classifies `this` as a [RequestResult].
+ */
 @JvmName("toRequestResultTyped")
-internal inline fun <reified E : BadRequestError> Throwable.toRequestResult(): RequestResult<Nothing, E> =
+public inline fun <reified E : BadRequestError> Throwable.toRequestResult(): RequestResult<Nothing, E> =
   when (this) {
     is E -> RequestResult.NonSuccess(this)
     else -> this.toRequestResult() as RequestResult<Nothing, Nothing>
   }
 
-internal fun Throwable.toRequestResult(): RequestResult<Nothing, Nothing> =
+/**
+ * Classifies `this` as a [RequestResult].
+ *
+ * Prefer the generic version when you have an expected [BadRequestError]; otherwise it will be
+ * classified as [RequestResult.ApplicationError].
+ */
+public fun Throwable.toRequestResult(): RequestResult<Nothing, Nothing> =
   when (this) {
     is TimeoutException -> RequestResult.RetryableNetworkError(this, null)
     is ChatServiceInactiveException -> RequestResult.RetryableNetworkError(this)

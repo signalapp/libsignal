@@ -5,13 +5,13 @@
 
 use std::borrow::BorrowMut;
 
-use aes::cipher::Unsigned;
+use aes::cipher::typenum::Unsigned;
 use async_compression::futures::bufread::GzipDecoder;
 use async_trait::async_trait;
 use futures::io::{BufReader, Take};
 use futures::{AsyncRead, AsyncReadExt};
 use hmac::digest::OutputSizeUser;
-use hmac::{Hmac, Mac as _};
+use hmac::{Hmac, KeyInit as _};
 use mediasan_common::{AsyncSkip, AsyncSkipExt as _};
 use sha2::Sha256;
 use subtle::ConstantTimeEq as _;
@@ -283,7 +283,6 @@ async fn hmac_sha256(
 
 #[cfg(test)]
 mod test {
-    use aes::cipher::crypto_common::rand_core::{OsRng, RngCore as _};
     use assert_matches::assert_matches;
     use async_compression::futures::write::GzipEncoder;
     use const_str::{concat_bytes, hex};
@@ -291,6 +290,8 @@ mod test {
     use futures::executor::block_on;
     use futures::io::{Cursor, ErrorKind};
     use protobuf::Message as _;
+    use rand::TryRngCore as _;
+    use rand::rngs::OsRng;
     use test_case::{test_case, test_matrix};
 
     use super::*;
@@ -374,7 +375,9 @@ mod test {
         }
 
         let mut iv = [0; AES_IV_SIZE];
-        OsRng.fill_bytes(&mut iv);
+        OsRng
+            .try_fill_bytes(&mut iv)
+            .expect("OS randomness available");
         let mut ctext = signal_crypto::aes_256_cbc_encrypt(&compressed, &key.aes_key, &iv)
             .expect("can encrypt");
         drop(compressed);

@@ -18,6 +18,7 @@ members = [
     "rust/zkcredential",
     "rust/zkgroup",
     "rust/bridge/ffi",
+    "rust/bridge/ffi/impl",
     "rust/bridge/ffi/native_swift",
     "rust/bridge/jni",
     "rust/bridge/jni/impl",
@@ -41,7 +42,7 @@ default-members = [
 resolver = "2" # so that our dev-dependency features don't leak into products
 
 [workspace.package]
-version = "0.96.4"
+version = "0.99.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 rust-version = "1.88"
@@ -92,23 +93,23 @@ signal-neon-futures = { path = "rust/bridge/node/futures" }
 # that want to use the real things can depend on those directly.
 
 boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.0.2", package = "boring", default-features = false }
-curve25519-dalek-signal = { git = 'https://github.com/signalapp/curve25519-dalek', package = "curve25519-dalek", tag = 'signal-curve25519-4.1.3' }
-spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.5.1" }
+spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.5.3" }
 tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.0.2", package = "tokio-boring" }
 
-aes = "0.8.3"
+aes = "0.9.1"
 aes-gcm-siv = "0.11.1"
 anyhow = "1.0.97"
 arbitrary = "1.4.2"
 argon2 = "0.5.0"
 arrayvec = "0.7.4"
-asn1 = "0.23.0"
+asn1 = "0.24.1"
 assert_cmd = "2.0.13"
 assert_matches = "1.5"
 async-compression = "0.4.5"
 async-trait = "0.1.79"
 atomic-take = "1.1.0"
 auto_enums = "0.8.7"
+backtrace = "0.3.76"
 base64 = "0.22.1"
 bincode = "1.3.2"
 bitflags = "2.9"
@@ -117,35 +118,35 @@ blake2 = "0.10.6"
 boring = { version = "5.0", default-features = false }
 boring-sys = { version = "5.0", default-features = false }
 bytes = "1.11.1"
-cbc = "0.1.2"
+cbc = "0.2.1"
 cfg-if = "1.0.0"
-chacha20poly1305 = "0.10.1"
+chacha20poly1305 = "0.11.0"
 chrono = "0.4.42"
 clap = "4.4.11"
 clap-stdin = "0.8.0"
 const-str = "1.0"
 criterion = "0.5"
-ctr = "0.9.2"
-curve25519-dalek = "4.1.3"
+ctr = "0.10.1"
+curve25519-dalek = "5.0"
 data-encoding-macro = "0.1.18"
 derive-where = "1.6.1"
 derive_more = "2.0.0"
 dir-test = "0.4.1"
 displaydoc = "0.2.5"
-ed25519-dalek = "2.1.0"
+ed25519-dalek = "3.0"
 either = "1.13.0"
 env_logger = "0.11.7"
 flate2 = { version = "1.1.1", default-features = false }
 futures = "0.3"
 futures-util = "0.3"
-ghash = "0.5.0"
+ghash = "0.6.0"
 heck = "0.5"
 hex = "0.4.3"
 hickory-proto = "0.26.1"
-hkdf = "0.12"
-hmac = "0.12.0"
-hpke-rs = "0.6.1"
-hpke-rs-crypto = "0.6.1"
+hkdf = "0.13.0"
+hmac = "0.13.0"
+hpke-rs = "0.7"
+hpke-rs-crypto = "0.7"
 http = "1.3.0"
 http-body = "1.0.1"
 http-body-util = "0.1.3"
@@ -153,13 +154,12 @@ hyper = "1.7"
 hyper-util = "0.1.17"
 indexmap = "2.7.0"
 intmap = "3.1.2"
-itertools = "0.14.0"
+itertools = "0.15.0"
 jni = "0.22.4"
 libc = "0.2.186"
-libcrux-ml-kem = { version = "0.0.8", default-features = false }
+libcrux-ml-kem = { version = "0.0.10", default-features = false }
 linkme = "0.3.33"
 log = "0.4.21"
-log-panics = "2.1.0"
 macro_rules_attribute = "0.2.0"
 mediasan-common = "0.5.3"
 minidump = { version = "0.22.1", default-features = false }
@@ -171,6 +171,7 @@ neon = { version = "1.1.0", default-features = false }
 nonzero_ext = "0.3.0"
 once_cell = "1.20.0"
 partial-default = "0.1.0"
+password-hash = { version = "0.5.0" }
 paste = "1.0.15"
 pbjson = "0.9.0"
 pbjson-build = "0.9.0"
@@ -201,13 +202,13 @@ serde = "1.0.203"
 serde_json = "1.0.45"
 serde_json5 = "0.2.1"
 serde_with = "3.1.0"
-sha1 = "0.10"
-sha2 = "0.10"
+sha1 = "0.11"
+sha2 = "0.11"
 simd_cesu8 = "1.1.1"
 snow = { version = "0.10", default-features = false }
 socks5-server = "0.10.1"
 static_assertions = "1.1"
-strum = "0.27.0"
+strum = "0.28.0"
 subtle = "2.6"
 syn = "2.0.98"
 syn-mid = "0.6"
@@ -219,20 +220,20 @@ tls-parser = "0.12.2"
 tokio = "1.52.2"
 tokio-socks = "0.5.2"
 tokio-stream = "0.1.16"
-tokio-tungstenite = "0.28.0"
+tokio-tungstenite = "0.29.0"
 tokio-util = "0.7.18"
 tonic = { version = "0.14", default-features = false }
 tonic-prost = "0.14"
 tonic-prost-build = { version = "0.14", default-features = false }
 tower-service = "0.3.3"
-tungstenite = "0.28.0"
+tungstenite = "0.29.0"
 unicode-segmentation = "1.12.0"
 url = "2.5.4"
 uuid = "1.5"
 visibility = "0.1.1"
 warp = "0.4.2"
 webpsan = { version = "0.5.3", default-features = false }
-x25519-dalek = "2.0.0"
+x25519-dalek = "3.0"
 zerocopy = "0.8.33"
 zeroize = "1.8.2"
 

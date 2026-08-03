@@ -6,25 +6,30 @@
 // WARNING: this file was automatically generated
 
 import * as Native from './Native.js';
-import {
+import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
-  type GrpcTestCase,
+  GrpcTestCase,
   {% for (ty, v) in ctx.derived_arg_converters|items -%}
-    type {{ ty|arg_ffi_type }},
+    {{ ty|arg_ffi_type }},
   {%- endfor %}
   {% for (ty, v) in ctx.derived_return_converters|items -%}
-    type {{ ty|return_ffi_type }},
+    {{ ty|return_ffi_type }},
   {%- endfor %}
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
 import { ServiceId } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
+import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
-import { TokioAsyncContext } from './net.js';
-import { CdnCredentials } from './net/chat/CdnCredentials.js';
+import type { TokioAsyncContext } from './net.js';
+import type { CdnCredentials } from './net/chat/CdnCredentials.js';
 import {
+  DeviceId,
+  Timestamp,
   cdnCredentialReturnConverter,
+  copyBackupMediaStreamConverter,
+  deleteBackupMediaStreamConverter,
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,
@@ -87,12 +92,12 @@ import { Rng } from './RngForTesting.js';
 {% for (name, struct_or_enum) in ctx.derived_return_converters|items -%}
     {% if struct_or_enum.kind == "Struct" %}
         {% set struct = struct_or_enum %}
-        function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
+        export function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
             return {{ struct_return_converter(struct) }};
         }
     {% else %}
         {% set enum = struct_or_enum %}
-        function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
+        export function {{ name|return_converter_function }}(ffiInput: Native.{{ name|return_ffi_type }}): {{ name }} {
             switch (ffiInput.__type) {
             {% for (variant, struct) in enum.variants -%}
                 case {{ loop.index0 }}:
@@ -109,7 +114,13 @@ import { Rng } from './RngForTesting.js';
                     {%- endif %}
             {%- endfor %}
             default:
-                ffiInput satisfies never;
+                {% if enum.variants|count == 1 -%}
+                    {#- A single-variant enum's FFI type is not a union, so ffiInput itself is
+                        never narrowed; the discriminant still is. -#}
+                    ffiInput.__type satisfies never;
+                {%- else -%}
+                    ffiInput satisfies never;
+                {%- endif %}
                 throw new Error('Unknown FFI return enum type for {{ name }}');
             }
         }
@@ -133,7 +144,7 @@ import { Rng } from './RngForTesting.js';
 {% for (name, struct_or_enum) in ctx.derived_arg_converters|items -%}
     {% if struct_or_enum.kind == "Struct" %}
         {% set struct = struct_or_enum %}
-        function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
+        export function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
             {{ destructure_struct(struct, "niceInput") }}
             return {
                 {%- for (arg, converter) in struct.fields -%}
@@ -143,7 +154,7 @@ import { Rng } from './RngForTesting.js';
         }
     {% else %}
         {% set enum = struct_or_enum %}
-        function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
+        export function {{ name|arg_converter_function }}(niceInput: {{ name }}): Native.{{ name|arg_ffi_type }} {
             {#- TypeScript demands that we check the strings/units first. -#}
             {% for (variant, struct) in enum.variants %}
                 {% if struct.fields|count == 0 %}

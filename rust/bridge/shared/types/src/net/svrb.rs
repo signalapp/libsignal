@@ -5,6 +5,7 @@
 
 use async_trait::async_trait;
 use libsignal_account_keys::BACKUP_KEY_LEN;
+use libsignal_bridge_macros::c_export;
 use libsignal_net::auth::Auth;
 use libsignal_net::enclave::{EnclaveEndpoint, PpssSetup, SvrSgx};
 use libsignal_net::env::SvrBEnv;
@@ -24,6 +25,7 @@ use crate::*;
 bridge_as_handle!(BackupStoreResponse);
 bridge_as_handle!(BackupRestoreResponse);
 
+#[c_export]
 pub type BackupKeyBytes = [u8; BACKUP_KEY_LEN];
 
 pub struct SvrBConnectImpl<'a> {

@@ -6,12 +6,15 @@
 //! This module doesn't use nice derive for bridging because nice derive (does not currently)
 //! support generics in client languages.
 
+use libsignal_net::chat::fake::BodyWithTrailers;
 use libsignal_net_chat::grpc::GrpcTestCase;
+use libsignal_net_chat::grpc::test_case_util::GRPC_STATUS_HEADER;
 
 use crate::*;
 
 #[cfg(feature = "ffi")]
 mod grpc_ffi_testing {
+    use libsignal_bridge_macros::{IsCType, c_export};
     #[cfg(feature = "metadata")]
     use libsignal_bridge_types::ffi::NiceResultConverter;
     use libsignal_bridge_types::ffi::{OwnedBufferOf, ResultTypeInfo, SignalFfiResult};
@@ -19,6 +22,7 @@ mod grpc_ffi_testing {
     use super::*;
 
     #[repr(C)]
+    #[derive(IsCType)]
     pub struct FfiErasedForTesting {
         // The argument should be the pointer to the contents directly.
         // This will be a _shallow_ destroy, because the Box<T> should already be over an FFI-ed
@@ -43,18 +47,20 @@ mod grpc_ffi_testing {
         }
     }
     #[repr(C)]
+    #[derive(IsCType)]
     pub struct GrpcTestCaseBridgedFfi {
         name: *const std::ffi::c_char,
         method: *const std::ffi::c_char,
         request: FfiErasedForTesting,
         request_grpc: OwnedBufferOf<std::ffi::c_uchar>,
-        response_grpc: OwnedBufferOf<std::ffi::c_uchar>,
+        response_grpc: ffi::MutPointer<GrpcTestCaseBridgedResponse>,
         response: FfiErasedForTesting,
     }
 
     /// Just free the outer buffer
     #[unsafe(no_mangle)]
-    pub unsafe extern "C" fn signal_free_testing_signle_grpc_testing_bridged_vec(
+    #[c_export]
+    pub unsafe extern "C" fn signal_free_testing_grpc_test_cases_bridged_vec(
         buffer: OwnedBufferOf<GrpcTestCaseBridgedFfi>,
     ) {
         std::mem::drop(unsafe { buffer.into_box() });
@@ -111,17 +117,71 @@ mod grpc_ffi_testing {
     }
 }
 
-#[cfg(feature = "ffi")]
-pub(super) use grpc_ffi_testing::*;
 pub struct GrpcTestCaseBridged<Req, Resp> {
     name: String,
     method: String,
     request: Req,
     request_grpc: Vec<u8>,
-    response_grpc: Vec<u8>,
+    response_grpc: GrpcTestCaseBridgedResponse,
     response: Resp,
 }
+pub struct GrpcTestCaseBridgedResponse(pub BodyWithTrailers);
+bridge_as_handle!(GrpcTestCaseBridgedResponse);
+bridge_handle_fns!(GrpcTestCaseBridgedResponse, clone = false);
 pub struct GrpcTestCases<Req, Resp>(Vec<GrpcTestCaseBridged<Req, Resp>>);
+
+pub(super) fn grpc_ok_trailers() -> http::HeaderMap {
+    http::HeaderMap::from_iter([(
+        GRPC_STATUS_HEADER,
+        http::HeaderValue::from_static(const_str::to_str!(tonic::Code::Ok as i32)),
+    )])
+}
+
+impl<Req, Resp> GrpcTestCases<Req, Resp> {
+    pub fn from_generalized_test_cases(
+        value: impl IntoIterator<
+            Item = GrpcTestCase<
+                impl Into<Req>,
+                impl prost::Message,
+                http::Response<BodyWithTrailers>,
+                impl Into<Resp>,
+            >,
+        >,
+    ) -> Self {
+        Self(
+            value
+                .into_iter()
+                .map(
+                    |GrpcTestCase {
+                         name,
+                         method,
+                         request,
+                         request_grpc,
+                         response_grpc,
+                         response,
+                     }| {
+                        let (head, body) = response_grpc.into_parts();
+                        assert_eq!(
+                            head.status,
+                            http::StatusCode::OK,
+                            "custom statuses not supported"
+                        );
+                        assert!(head.headers.is_empty(), "headers not supported");
+                        assert!(head.extensions.is_empty(), "extensions not supported");
+                        GrpcTestCaseBridged {
+                            name,
+                            method,
+                            request: request.into(),
+                            response: response.into(),
+                            request_grpc: request_grpc.encode_to_vec(),
+                            response_grpc: GrpcTestCaseBridgedResponse(body),
+                        }
+                    },
+                )
+                .collect(),
+        )
+    }
+}
 
 impl<
     RequestInto: Into<Request>,
@@ -136,35 +196,33 @@ impl<
     fn from(
         value: Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>,
     ) -> Self {
-        Self(
-            value
-                .into_iter()
-                .map(
-                    |GrpcTestCase {
-                         name,
-                         method,
-                         request,
-                         request_grpc,
-                         response_grpc,
-                         response,
-                     }| {
-                        let mut response_grpc = response_grpc.encode_to_vec();
-                        let len = u32::try_from(response_grpc.len()).expect("u32 conversion");
-                        let header =
-                            super::TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len);
-                        response_grpc.splice(0..0, header);
-                        GrpcTestCaseBridged {
-                            name,
-                            method,
-                            request: request.into(),
-                            response: response.into(),
-                            request_grpc: request_grpc.encode_to_vec(),
-                            response_grpc,
-                        }
-                    },
-                )
-                .collect(),
-        )
+        Self::from_generalized_test_cases(value.into_iter().map(
+            |GrpcTestCase {
+                 name,
+                 method,
+                 request,
+                 request_grpc,
+                 response_grpc,
+                 response,
+             }| {
+                let mut response_grpc = response_grpc.encode_to_vec();
+                let len = u32::try_from(response_grpc.len()).expect("u32 conversion");
+                let header = super::TESTING_FakeChatRemoteEnd_GrpcFrameForMessageLength(len);
+                response_grpc.splice(0..0, header);
+                let full_body = BodyWithTrailers {
+                    data: response_grpc,
+                    trailers: grpc_ok_trailers(),
+                };
+                GrpcTestCase {
+                    name,
+                    method,
+                    request,
+                    request_grpc,
+                    response_grpc: http::Response::new(full_body),
+                    response,
+                }
+            },
+        ))
     }
 }
 
@@ -278,8 +336,8 @@ impl<'a, Req: jni::ResultTypeInfo<'a>, Resp: jni::ResultTypeInfo<'a>> jni::Resul
                         name => java.lang.String,
                         method => java.lang.String,
                         request => java.lang.Object,
-                        request_grpc => [jbyte],
-                        response_grpc => [jbyte],
+                        request_grpc => [byte],
+                        response_grpc => long,
                         response => java.lang.Object,
                     ) -> void),
                 )

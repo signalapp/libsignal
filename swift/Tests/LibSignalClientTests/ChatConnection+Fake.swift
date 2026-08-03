@@ -6,6 +6,8 @@
 import Foundation
 import SignalFfi
 
+@testable import LibSignalClient
+
 // These testing endpoints aren't generated in device builds, to save on code size.
 #if !os(iOS) || targetEnvironment(simulator)
 
@@ -210,7 +212,7 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
         uuid: (0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)
     )
 
-    private let tokioAsyncContext: TokioAsyncContext
+    internal let tokioAsyncContext: TokioAsyncContext
 
     required init(owned: NonNull<SignalMutPointerFakeChatRemoteEnd>) {
         fatalError("must not be invoked directly")
@@ -604,14 +606,6 @@ extension SignalConstPointerFakeChatResponse: SignalConstPointer {
     public func toOpaque() -> OpaquePointer? {
         self.raw
     }
-}
-
-extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: PromiseStruct {
-    typealias Result = SignalOptionalPairOfMutPointerHttpRequestu64
-}
-
-extension SignalCPromiseMutPointerFakeChatRemoteEnd: PromiseStruct {
-    typealias Result = SignalMutPointerFakeChatRemoteEnd
 }
 
 #endif

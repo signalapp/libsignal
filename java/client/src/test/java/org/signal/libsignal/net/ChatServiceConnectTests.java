@@ -7,7 +7,6 @@ package org.signal.libsignal.net;
 
 import static org.junit.Assert.*;
 
-import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -74,24 +73,6 @@ public class ChatServiceConnectTests {
   }
 
   @Test
-  public void testConnectUnauthH2() throws Exception {
-    // Use the presence of the environment setting to know whether we should
-    // make network requests in our tests.
-    final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
-    Assume.assumeNotNull(ENABLE_TEST);
-
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    net.setRemoteConfig(Map.of("useH2ForUnauthChat", "true"), Network.BuildVariant.BETA);
-    final Listener listener = new Listener();
-    var chat = net.connectUnauthChat(listener).get();
-    chat.start();
-    Void disconnectFinished = chat.disconnect().get();
-
-    ChatServiceException disconnectReason = listener.disconnectReason.get();
-    assertNull(disconnectReason);
-  }
-
-  @Test
   public void testConnectCancellationUnauth() throws Exception {
     // Use the presence of the environment setting to know whether we should
     // make network requests in our tests.
@@ -107,14 +88,13 @@ public class ChatServiceConnectTests {
   }
 
   @Test
-  public void testConnectAuthH2FlagSmoke() throws Exception {
+  public void testConnectAuthSmoke() throws Exception {
     // Use the presence of the environment setting to know whether we should
     // make network requests in our tests.
     final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
     Assume.assumeNotNull(ENABLE_TEST);
 
     final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
-    net.setRemoteConfig(Map.of("useH2ForAuthChat", "true"), Network.BuildVariant.BETA);
     final Listener listener = new Listener();
 
     final var e =

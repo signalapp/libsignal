@@ -8,8 +8,11 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use ::zkgroup::groups::GroupSendFullToken;
+use futures_util::TryStreamExt;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
+use itertools::Itertools as _;
+use libsignal_account_keys::SvrKey;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::*;
@@ -32,8 +35,9 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
-use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
+use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
 use uuid::Uuid;
@@ -45,6 +49,8 @@ bridge_handle_fns!(HttpRequest, clone = false);
 bridge_handle_fns!(UnauthenticatedChatConnection, clone = false);
 bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
 bridge_handle_fns!(ProvisioningChatConnection, clone = false);
+bridge_handle_fns!(CopyBackupMediaStream, clone = false);
+bridge_handle_fns!(DeleteBackupMediaStream, clone = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -585,6 +591,40 @@ async fn UnauthenticatedChatConnection_backup_get_svrb_credentials(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_message_backup_info(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<BridgeMessageBackupInfo, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .get_message_backup_info(&backup_auth, &mut rng)
+        .await
+        .map(BridgeMessageBackupInfo::from)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_get_media_backup_info(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    rng: RandomNumberGenerator,
+) -> Result<BridgeMediaBackupInfo, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .get_media_backup_info(&backup_auth, &mut rng)
+        .await
+        .map(BridgeMediaBackupInfo::from)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_backup_refresh(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     credential: ::zkgroup::backups::BackupAuthCredential,
@@ -616,23 +656,154 @@ async fn UnauthenticatedChatConnection_backup_delete_all(
         .await
 }
 
+#[bridge_fn(nice = true)]
+fn UnauthenticatedChatConnection_backup_copy_media(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    items: BridgeVec<BridgeCopyBackupMediaItem>,
+    rng: RandomNumberGenerator,
+) -> CopyBackupMediaStream {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    let stream = chat.blocking_require_grpc().copy_backup_media(
+        &backup_auth,
+        items
+            .0
+            .into_iter()
+            .map(
+                |next| libsignal_net_chat::grpc::backups::CopyBackupMediaItem {
+                    source_attachment_cdn: next
+                        .source_attachment_cdn
+                        .try_into()
+                        .expect("CDN numbers are non-negative"),
+                    source_key: next.source_key,
+                    object_length: next
+                        .object_length
+                        .try_into()
+                        .expect("object lengths are non-negative"),
+                    media_id: next.media_id,
+                    encryption_key: next.encryption_key,
+                },
+            )
+            .collect(),
+        &mut rng,
+    );
+    CopyBackupMediaStream::from(BridgeBulkPolledStream::new(
+        stream,
+        BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE,
+        BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME,
+    ))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn CopyBackupMediaStream_next(
+    stream: BridgeHandleRef<'_, CopyBackupMediaStream>,
+) -> CopyBackupMediaNextChunk {
+    match stream.next_chunk().await {
+        Ok(BulkPolledStreamChunk { chunk, termination }) => CopyBackupMediaNextChunk {
+            chunk: chunk.into(),
+            termination,
+        },
+        Err(StreamCancelled) => {
+            log::info!("CopyBackupMediaStream polled after cancellation; reporting Timeout");
+            CopyBackupMediaNextChunk {
+                chunk: Default::default(),
+                termination: Some(BulkPolledStreamTerminationReason::Error(
+                    RequestError::Timeout,
+                )),
+            }
+        }
+    }
+}
+
+#[bridge_fn]
+fn CopyBackupMediaStream_cancel(stream: BridgeHandleRef<'_, CopyBackupMediaStream>) {
+    stream.cancel();
+}
+
+// Used by the test APIs, but must be emitted here to avoid the check for duplicate types in the
+// metadata collector.
+#[bridge_fn(node = false, nice = true)]
+fn CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem()
+-> BridgeVec<BridgeCopyBackupMediaItem> {
+    unreachable!()
+}
+
+#[bridge_fn(nice = true)]
+fn UnauthenticatedChatConnection_backup_delete_media(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    items: BridgeVec<BridgeDeleteBackupMediaItem>,
+    rng: RandomNumberGenerator,
+) -> DeleteBackupMediaStream {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    let stream = chat.blocking_require_grpc().delete_backup_media(
+        &backup_auth,
+        items
+            .0
+            .into_iter()
+            .map(
+                |next| libsignal_net_chat::grpc::backups::DeleteBackupMediaItem {
+                    media_id: next.media_id,
+                    cdn: next.cdn.try_into().expect("CDN numbers are non-negative"),
+                },
+            )
+            .collect_vec(),
+        &mut rng,
+    );
+    DeleteBackupMediaStream::from(BridgeBulkPolledStream::new(
+        stream.map_ok(Into::into),
+        BULK_POLLED_STREAM_DEFAULT_CHUNK_SIZE,
+        BULK_POLLED_STREAM_DEFAULT_DEBOUNCE_TIME,
+    ))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn DeleteBackupMediaStream_next(
+    stream: BridgeHandleRef<'_, DeleteBackupMediaStream>,
+) -> DeleteBackupMediaNextChunk {
+    match stream.next_chunk().await {
+        Ok(BulkPolledStreamChunk { chunk, termination }) => DeleteBackupMediaNextChunk {
+            chunk: chunk.into(),
+            termination,
+        },
+        Err(StreamCancelled) => DeleteBackupMediaNextChunk {
+            chunk: Default::default(),
+            termination: Some(BulkPolledStreamTerminationReason::Error(
+                RequestError::Timeout,
+            )),
+        },
+    }
+}
+
+#[bridge_fn]
+fn DeleteBackupMediaStream_cancel(stream: BridgeHandleRef<'_, DeleteBackupMediaStream>) {
+    stream.cancel();
+}
+
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_set_device_name(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
-    device_id: i32,
+    device_id: DeviceId,
     encrypted_name: Vec<u8>,
 ) -> Result<(), RequestError<DeviceIdNotFoundInAccount>> {
-    // TODO: bridge directly as DeviceId
-    let device_id = u8::try_from(device_id)
-        .ok()
-        .and_then(|id| DeviceId::new(id).ok())
-        .ok_or_else(|| RequestError::Unexpected {
-            log_safe: "Invalid device id".to_string(),
-        })?;
     chat.require_grpc()
         .await
         .set_device_name(device_id, &encrypted_name)
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_remove_device(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    device_id: DeviceId,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.remove_device(device_id).await
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
@@ -780,4 +951,117 @@ async fn AuthenticatedChatConnection_send_sync_message_java(
         .map_err(|e| {
             e.flat_map_other(|e| RequestError::Other(UnsealedSendFailure::MismatchedDevices(e)))
         })
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_username_link(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    username_ciphertext: Vec<u8>,
+    keep_link_handle: bool,
+) -> Result<Uuid, RequestError<libsignal_net_chat::grpc::usernames::UsernameNotSet>> {
+    chat.require_grpc()
+        .await
+        .set_username_link(&username_ciphertext, keep_link_handle)
+        .await
+}
+
+// Only an account's primary device may set a registration lock.
+//
+// Takes the account's raw 32-byte SVR key; libsignal derives the registration lock token from it
+// before sending (the SVR key itself is never transmitted).
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_registration_lock(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    svr_key: [u8; 32],
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_registration_lock(SvrKey::new(svr_key))
+        .await
+}
+
+// Only an account's primary device may clear a registration lock.
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_clear_registration_lock(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.clear_registration_lock().await
+}
+
+// Takes the account's raw 32-byte SVR key; libsignal derives the registration recovery password
+// from it before sending (the SVR key itself is never transmitted).
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_registration_recovery_password(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    svr_key: [u8; 32],
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_registration_recovery_password_from_svr_key(SvrKey::new(svr_key))
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_discoverable_by_phone_number(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    discoverable: bool,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_discoverable_by_phone_number(discoverable)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_delete_username_hash(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.delete_username_hash().await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_delete_username_link(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.delete_username_link().await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_devices(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgeVec<LinkedDevice>, RequestError<Infallible>> {
+    Ok(chat.require_grpc().await.get_devices().await?.into())
+}
+
+// APNs is only used on Apple platforms, and Desktop never sets a push token,
+// so this is only bridged for Swift.
+#[bridge_io(TokioAsyncContext, nice = true, jni = false, node = false)]
+async fn AuthenticatedChatConnection_set_push_token_apns(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    apns_token: String,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_push_token_apns(apns_token)
+        .await
+}
+
+// FCM is only used on Android, and Desktop never sets a push token, so this
+// is only bridged for Java.
+#[bridge_io(TokioAsyncContext, nice = true, ffi = false, node = false)]
+async fn AuthenticatedChatConnection_set_push_token_fcm(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    fcm_token: String,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_push_token_fcm(fcm_token)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_clear_push_token(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.clear_push_token().await
 }

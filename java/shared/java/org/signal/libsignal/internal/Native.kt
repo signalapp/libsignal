@@ -204,15 +204,27 @@ internal object Native {
   @JvmStatic
   public external fun AuthenticatedChatConnection_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
+  public external fun AuthenticatedChatConnection_clear_push_token(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_clear_registration_lock(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_connect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle, username: String, password: String, receiveStories: Boolean, languages: Array<Object>): CompletableFuture<ObjectHandle>
   @JvmStatic
+  public external fun AuthenticatedChatConnection_delete_username_hash(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_delete_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Void?>
+  @JvmStatic
   public external fun AuthenticatedChatConnection_disconnect(asyncRuntime: ObjectHandle, chat: ObjectHandle): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_get_devices(asyncRuntime: ObjectHandle, chat: SimpleOwner): CompletableFuture<Array<*>>
   @JvmStatic
   public external fun AuthenticatedChatConnection_get_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, uploadLength: Long): CompletableFuture<Object>
   @JvmStatic
   public external fun AuthenticatedChatConnection_init_listener(chat: ObjectHandle, listener: BridgeChatListener): Unit
   @JvmStatic
   public external fun AuthenticatedChatConnection_preconnect(asyncRuntime: ObjectHandle, connectionManager: ObjectHandle): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_remove_device(asyncRuntime: ObjectHandle, chat: SimpleOwner, deviceId: Int): CompletableFuture<Void?>
   @JvmStatic
   public external fun AuthenticatedChatConnection_reserve_username_hash(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameHashes: Array<*>): CompletableFuture<ByteArray>
   @JvmStatic
@@ -225,6 +237,16 @@ internal object Native {
   public external fun AuthenticatedChatConnection_send_sync_message_java(asyncRuntime: ObjectHandle, chat: ObjectHandle, timestamp: Long, deviceIds: IntArray, registrationIds: IntArray, contents: Array<Object>, isUrgent: Boolean): CompletableFuture<Void?>
   @JvmStatic
   public external fun AuthenticatedChatConnection_set_device_name(asyncRuntime: ObjectHandle, chat: SimpleOwner, deviceId: Int, encryptedName: ByteArray): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_discoverable_by_phone_number(asyncRuntime: ObjectHandle, chat: SimpleOwner, discoverable: Boolean): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_push_token_fcm(asyncRuntime: ObjectHandle, chat: SimpleOwner, fcmToken: String): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_registration_lock(asyncRuntime: ObjectHandle, chat: SimpleOwner, svrKey: ByteArray): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_registration_recovery_password(asyncRuntime: ObjectHandle, chat: SimpleOwner, svrKey: ByteArray): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_username_link(asyncRuntime: ObjectHandle, chat: SimpleOwner, usernameCiphertext: ByteArray, keepLinkHandle: Boolean): CompletableFuture<UUID>
 
   @JvmStatic @Throws(Exception::class)
   public external fun AvatarUploadCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
@@ -417,6 +439,15 @@ internal object Native {
   @JvmStatic @Throws(Exception::class)
   public external fun ConnectionProxyConfig_new(scheme: String, host: String, port: Int, username: String?, password: String?): ObjectHandle
 
+  @JvmStatic
+  public external fun CopyBackupMediaStream_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic
+  public external fun CopyBackupMediaStream_cancel(stream: SimpleOwner): Unit
+  @JvmStatic
+  public external fun CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem(): Array<*>
+  @JvmStatic
+  public external fun CopyBackupMediaStream_next(asyncRuntime: ObjectHandle, stream: SimpleOwner): CompletableFuture<Object>
+
   @JvmStatic @Throws(Exception::class)
   public external fun CreateCallLinkCredentialPresentation_CheckValidContents(presentationBytes: ByteArray): Unit
   @JvmStatic @Throws(Exception::class)
@@ -482,6 +513,13 @@ internal object Native {
   public external fun DecryptionErrorMessage_GetSerialized(obj: ObjectHandle): ByteArray
   @JvmStatic @Throws(Exception::class)
   public external fun DecryptionErrorMessage_GetTimestamp(obj: ObjectHandle): Long
+
+  @JvmStatic
+  public external fun DeleteBackupMediaStream_Destroy(handle: ObjectHandle): Unit
+  @JvmStatic
+  public external fun DeleteBackupMediaStream_cancel(stream: SimpleOwner): Unit
+  @JvmStatic
+  public external fun DeleteBackupMediaStream_next(asyncRuntime: ObjectHandle, stream: SimpleOwner): CompletableFuture<Object>
 
   @JvmStatic @Throws(Exception::class)
   public external fun DeviceTransfer_GenerateCertificate(privateKey: ByteArray, name: String, daysToExpire: Int): ByteArray
@@ -1350,6 +1388,15 @@ internal object Native {
   public external fun Svr2Client_New(mrenclave: ByteArray, attestationMsg: ByteArray, currentTimestamp: Long): ObjectHandle
 
   @JvmStatic
+  public external fun SvrKey_DeriveLoggingKey(svrKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SvrKey_DeriveRegistrationLock(svrKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SvrKey_DeriveRegistrationRecoveryPassword(svrKey: ByteArray): ByteArray
+  @JvmStatic
+  public external fun SvrKey_DeriveStorageServiceKey(svrKey: ByteArray): ByteArray
+
+  @JvmStatic
   public external fun TokioAsyncContext_Destroy(handle: ObjectHandle): Unit
   @JvmStatic
   public external fun TokioAsyncContext_cancel(context: ObjectHandle, rawCancellationId: Long): Unit
@@ -1361,11 +1408,19 @@ internal object Native {
   @JvmStatic
   public external fun UnauthenticatedChatConnection_account_exists(asyncRuntime: ObjectHandle, chat: SimpleOwner, account: ByteArray): CompletableFuture<Boolean>
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_copy_media(chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, items: Array<*>, rng: Long): ObjectHandle
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_delete_all(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Void?>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_delete_media(chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, items: Array<*>, rng: Long): ObjectHandle
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_cdn_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, cdn: Int, rng: Long): CompletableFuture<Array<Object>>
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_media_backup_info(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Object>
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_media_upload_form(asyncRuntime: ObjectHandle, chat: ObjectHandle, credential: ByteArray, serverKeys: ByteArray, signingKey: ObjectHandle, uploadSize: Long, rng: Long): CompletableFuture<Object>
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_get_message_backup_info(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Object>
   @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_get_svrb_credentials(asyncRuntime: ObjectHandle, chat: SimpleOwner, credential: ByteArray, serverKeys: ByteArray, signingKey: SimpleOwner, rng: Long): CompletableFuture<Pair<String, String>>
   @JvmStatic

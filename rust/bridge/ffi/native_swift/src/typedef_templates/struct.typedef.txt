@@ -1,0 +1,8 @@
+typedef struct {
+  {%- for (field, ty, offset) in fields %}
+    {{ ty }} {{ field }};
+  {%- endfor %}
+} {{ type_name }};
+{%- for (field, ty, offset) in fields %}
+  static_assert_64bit(offsetof({{ type_name }}, {{ field }}) == {{ offset }});
+{%- endfor %}

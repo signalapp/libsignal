@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { type CiphertextMessage } from '../../CiphertextMessage.js';
+import type { CiphertextMessage } from '../../CiphertextMessage.js';
 
 /**
  * A message to send to a single device of a peer.

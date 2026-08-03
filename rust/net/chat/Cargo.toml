@@ -10,6 +10,7 @@ license.workspace = true
 workspace = true
 
 [dependencies]
+libsignal-account-keys = { workspace = true }
 libsignal-core = { workspace = true }
 libsignal-keytrans = { workspace = true }
 libsignal-net = { workspace = true, features = ["tower-service"] }
@@ -23,6 +24,7 @@ async-trait = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
 const-str = { workspace = true }
+data-encoding-macro = { workspace = true }
 derive_more = { workspace = true }
 displaydoc = { workspace = true }
 either = { workspace = true }
@@ -30,6 +32,7 @@ futures-util = { workspace = true }
 hex = { workspace = true }
 http = { workspace = true }
 http-body = { workspace = true }
+http-body-util = { workspace = true }
 itertools = { workspace = true }
 log = { workspace = true }
 pin-project = { workspace = true }
@@ -52,17 +55,14 @@ uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }
 
 [dev-dependencies]
-libsignal-account-keys = { workspace = true }
 libsignal-cli-utils = { workspace = true }
 libsignal-net = { workspace = true, features = ["test-util"] }
 
 anyhow = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-data-encoding-macro = { workspace = true }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
-http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["http2", "client"] }
 hyper-util = { workspace = true }
 nonzero_ext = { workspace = true }
@@ -73,5 +73,6 @@ rand_chacha = { workspace = true }
 scopeguard = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
+testing_logger = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
 tower-service = { workspace = true }

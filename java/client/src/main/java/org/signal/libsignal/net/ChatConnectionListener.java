@@ -41,6 +41,16 @@ public interface ChatConnectionListener {
   default void onReceivedAlerts(ChatConnection chat, String[] alerts) {}
 
   /**
+   * Called with the server's current clock time.
+   *
+   * <p>Like {@link #onIncomingMessage(ChatConnection, byte[], long, ServerMessageAck)}, this
+   * timestamp is in milliseconds since the Unix epoch.
+   *
+   * <p>The default implementation of this method does nothing.
+   */
+  default void onServerTimestamp(ChatConnection chat, long timestamp) {}
+
+  /**
    * Called when the client gets disconnected from the server.
    *
    * <p>This includes both deliberate disconnects as well as unexpected socket closures. In the case

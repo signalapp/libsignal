@@ -9,7 +9,7 @@ import chaiAsPromised from 'chai-as-promised';
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthDevicesService } from '../../net.js';
-import { defineTestGrpcCasesAuth } from './ServiceTestUtils.js';
+import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
@@ -19,8 +19,9 @@ config.truncateThreshold = 0;
 
 describe('AuthDevicesService', () => {
   describe('setDeviceName', () => {
-    defineTestGrpcCasesAuth(
+    defineTestGrpcCases(
       NativeNice.TESTING_SetDeviceNameTests(),
+      connectAuth<AuthDevicesService>,
       async (
         chat: AuthDevicesService,
         { id, encryptedName }: NativeNice.SetDeviceNameArgs,
@@ -44,6 +45,52 @@ describe('AuthDevicesService', () => {
           default:
             resp satisfies never;
         }
+      }
+    );
+  });
+
+  describe('removeDevice', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_RemoveDeviceTests(),
+      connectAuth<AuthDevicesService>,
+      async (
+        chat: AuthDevicesService,
+        { id }: NativeNice.RemoveDeviceArgs,
+        resp: NativeNice.RemoveDeviceOut
+      ) => {
+        const out = chat.removeDevice({ deviceId: id });
+        switch (resp) {
+          case 'success':
+            await out;
+            break;
+          default:
+            resp satisfies never;
+        }
+      }
+    );
+  });
+
+  describe('getDevices', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetDevicesTests(),
+      connectAuth<AuthDevicesService>,
+      async (
+        chat: AuthDevicesService,
+        _args: void,
+        resp: NativeNice.GetDevicesOut
+      ) => {
+        const out = await chat.getDevices();
+        expect(out).to.deep.equal(resp.devices);
+      }
+    );
+  });
+
+  describe('clearPushToken', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_ClearPushTokenTests(),
+      connectAuth<AuthDevicesService>,
+      async (chat: AuthDevicesService, _args: void, _resp: void) => {
+        await chat.clearPushToken();
       }
     );
   });

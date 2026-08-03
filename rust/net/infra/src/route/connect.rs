@@ -251,7 +251,7 @@ pub mod testutils {
 
     impl<R, Inner, Fut, F, C, E> Connector<R, Inner> for ConnectFn<F>
     where
-        F: for<'a> Fn(Inner, R) -> Fut,
+        F: Fn(Inner, R) -> Fut,
         Fut: Future<Output = Result<C, E>> + Send,
     {
         type Connection = C;

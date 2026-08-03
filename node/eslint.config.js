@@ -101,19 +101,24 @@ const config = defineConfig(
       ],
 
       'import/prefer-default-export': 'off',
+      'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
       'import/enforce-node-protocol-usage': ['error', 'always'],
+      'import/no-cycle': 'error',
       'import/no-extraneous-dependencies': [
         'error',
         {
           devDependencies: ['ts/test/**'],
         },
       ],
+
       'prefer-template': 'error',
+
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/consistent-type-assertions': 'error',
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/method-signature-style': 'error',
+
       'jsdoc/check-access': 'error',
       'jsdoc/check-alignment': 'error',
       'jsdoc/check-line-alignment': 'error',

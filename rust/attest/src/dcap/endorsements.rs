@@ -19,12 +19,20 @@ use serde_json::value::RawValue;
 use strum::EnumCount;
 
 use crate::cert_chain::CertChain;
+use crate::constants::SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
 use crate::dcap::ecdsa::{EcdsaSigned, deserialize_ecdsa_signature};
 use crate::dcap::revocation_list::RevocationList;
 use crate::dcap::{Error, Expireable, Result};
 use crate::endian::UInt32LE;
 use crate::error::Context;
 use crate::util;
+
+#[cfg(any(test, feature = "test-util"))]
+#[used]
+static _TEST_UTIL_ENABLED: &str = "ATTEST TEST-UTIL IS ENABLED";
+
+#[cfg(any(test, feature = "test-util"))]
+const SGX_TCB_EVALUATION_NUMBER_USED_ONLY_IN_TESTS_THAT_WILL_NEVER_VALIDATE_SINCE_IT_IS_VERY_EXPIRED: u16 = 12;
 
 // Inline header file references are paths from the root of the repository tree.
 // https://github.com/openenclave/openenclave/tree/v0.17.7
@@ -232,7 +240,7 @@ fn pem_chain_for_field(
 ) -> Result<CertChain> {
     let data = data_for_field(field, offsets, data);
 
-    CertChain::from_pem_data(data).with_context(|| format!("{:?}", &field))
+    CertChain::from_pem_data(data).with_context(|| format!("{:?}", field))
 }
 
 fn der_crl_for_field(
@@ -436,17 +444,22 @@ pub(crate) struct TcbInfo {
     #[serde(with = "hex")]
     pub pce_id: [u8; 2],
     tcb_type: u16,
-    _tcb_evaluation_data_number: u16,
+    pub tcb_evaluation_data_number: u16,
     pub tcb_levels: Vec<TcbLevel>,
 }
 
 impl Expireable for TcbInfo {
     fn valid_at(&self, timestamp: SystemTime) -> bool {
+        let tcb_ok = SGX_TCB_EVALUATION_DATA_NUMBER_MIN <= self.tcb_evaluation_data_number;
+        #[cfg(any(test, feature = "test-util"))]
+        let tcb_ok = tcb_ok
+            || self.tcb_evaluation_data_number
+                == SGX_TCB_EVALUATION_NUMBER_USED_ONLY_IN_TESTS_THAT_WILL_NEVER_VALIDATE_SINCE_IT_IS_VERY_EXPIRED;
         // don't care about issue_date
         // 1. There's no notion of "valid before" like in X509
         // 2. These dates might be *very* recent, and we don't
         //    want to fail requests because of clock skew
-        timestamp <= self.next_update.into()
+        timestamp <= self.next_update.into() && tcb_ok
     }
 }
 

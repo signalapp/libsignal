@@ -139,7 +139,7 @@ export type GrpcTestCase<Req, Resp> = {
   method: string;
   request: Req;
   requestGrpc: Uint8Array<ArrayBuffer>;
-  responseGrpc: Uint8Array<ArrayBuffer>;
+  responseGrpc: GrpcTestCaseBridgedResponse;
   response: Resp;
 };
 export type GrpcTestCaseFfi<Req, Resp> = GrpcTestCase<Req, Resp>;
@@ -185,7 +185,6 @@ export const enum LogLevel { Error = 1, Warn, Info, Debug, Trace }
     {% endif %}
 {%- endfor %}
 
-/* eslint-disable comma-dangle */
 export const NetRemoteConfigKeys = [
   {%- for key in remote_config_keys -%}
     '{{ key }}',

@@ -71,6 +71,26 @@ pub fn AccountEntropyPool_DeriveSvrKey(account_entropy: AccountEntropyPool) -> [
     account_entropy.derive_svr_key()
 }
 
+#[bridge_fn(nice = true)]
+pub fn SvrKey_DeriveRegistrationLock(svr_key: [u8; SVR_KEY_LEN]) -> [u8; 32] {
+    SvrKey::new(svr_key).derive_registration_lock()
+}
+
+#[bridge_fn(nice = true)]
+pub fn SvrKey_DeriveRegistrationRecoveryPassword(svr_key: [u8; SVR_KEY_LEN]) -> [u8; 32] {
+    SvrKey::new(svr_key).derive_registration_recovery_password()
+}
+
+#[bridge_fn(nice = true)]
+pub fn SvrKey_DeriveStorageServiceKey(svr_key: [u8; SVR_KEY_LEN]) -> [u8; 32] {
+    SvrKey::new(svr_key).derive_storage_service_key()
+}
+
+#[bridge_fn(nice = true)]
+pub fn SvrKey_DeriveLoggingKey(svr_key: [u8; SVR_KEY_LEN]) -> [u8; 32] {
+    SvrKey::new(svr_key).derive_logging_key()
+}
+
 #[bridge_fn]
 pub fn AccountEntropyPool_DeriveBackupKey(
     account_entropy: AccountEntropyPool,

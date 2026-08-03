@@ -420,6 +420,52 @@ class RegistrationServiceFakeChatTests {
         #expect(afterNotReady.nextSms == nil)
         #expect(afterNotReady.nextCall == nil)
         #expect(afterNotReady.requestedInformation == [])
+
+        // A 429 (rate limited) response also carries session state in its body,
+        // but comes back as a rateLimitedError rather than a typed error. The
+        // cached session state is still refreshed.
+        async let rateLimited: () = session.requestVerificationCode(
+            transport: .voice,
+            client: "libsignal test",
+            languages: ["fr-CA"]
+        )
+        let (_, rateLimitedRequestId) = try await fakeRemote.getNextIncomingRequest()
+        try fakeRemote.sendResponse(
+            requestId: rateLimitedRequestId,
+            ChatResponse(
+                status: 429,
+                message: "Too many requests",
+                headers: ["content-type": "application/json", "retry-after": "60"],
+                body: Data(
+                    """
+                    {
+                        "allowedToRequestCode": true,
+                        "verified": false,
+                        "nextCall": 99,
+                        "requestedInformation": []
+                    }
+                    """.utf8
+                )
+            )
+        )
+        do {
+            try await rateLimited
+            Issue.record("requestVerificationCode should have failed")
+        } catch SignalError.rateLimitedError(retryAfter: _, message: _) {
+            // This is good.
+        } catch {
+            Issue.record("unexpected error from requestVerificationCode: \(error)")
+        }
+
+        let afterRateLimited = session.sessionState
+        #expect(afterRateLimited.allowedToRequestCode)
+        #expect(!afterRateLimited.verified)
+        #expect(afterRateLimited.nextCall == TimeInterval(99))
+        // Fields absent from the error body must be unset, not carried over from
+        // the previous (not-ready) state, which had nextVerificationAttempt set.
+        #expect(afterRateLimited.nextSms == nil)
+        #expect(afterRateLimited.nextVerificationAttempt == nil)
+        #expect(afterRateLimited.requestedInformation == [])
     }
 
     @Test

@@ -51,6 +51,32 @@ describe('AccountEntropyPool', () => {
   });
 });
 
+describe('SvrKey', () => {
+  const svrKey = new AccountKeys.SvrKey(new Uint8Array(32).fill(0x2a));
+
+  // These known answers were taken from iOS' MasterKeyTest.testDerivedKeys.
+  // See: https://github.com/signalapp/Signal-iOS/blob/265ee500/SignalServiceKit/tests/Account/MasterKeyTest.swift#L54
+
+  it('derives account keys', () => {
+    assert.equal(
+      Buffer.from(svrKey.deriveRegistrationLock()).toString('hex'),
+      '3a40e25812e6c20cca76a602451dd2bc7484553514438cade320c2aef54e10d1'
+    );
+    assert.equal(
+      Buffer.from(svrKey.deriveRegistrationRecoveryPassword()).toString('hex'),
+      '91f959cfee39676dedd028bc8bbbd1e91ffa6a42c57754d095fe8abe7f0d4f56'
+    );
+    assert.equal(
+      Buffer.from(svrKey.deriveStorageServiceKey()).toString('hex'),
+      '3f31b618172a9f8ad45e290788e6176736e6161d4ea0e8050f8553521f59c200'
+    );
+    assert.equal(
+      Buffer.from(svrKey.deriveLoggingKey()).toString('hex'),
+      'cd2a39f4857de4df3fe793d1de061bfa3dd63533c0a4ef79b3fa3eba2bf96e62'
+    );
+  });
+});
+
 describe('BackupKey', () => {
   const aci = Aci.fromUuidBytes(new Uint8Array(16).fill(0x11));
 

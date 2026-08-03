@@ -4,7 +4,7 @@
 //
 
 import * as Native from '../Native.js';
-import { TokioAsyncContext, Environment, Net } from '../net.js';
+import type { TokioAsyncContext, Environment, Net } from '../net.js';
 import { BackupKey, BackupForwardSecrecyToken } from '../AccountKeys.js';
 import { MessageBackupKey } from '../MessageBackup.js';
 import type {

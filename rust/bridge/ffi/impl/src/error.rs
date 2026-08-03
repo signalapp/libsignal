@@ -4,13 +4,12 @@
 //
 
 use std::ffi::c_char;
-use std::panic::AssertUnwindSafe;
 
+use libsignal_bridge::IllegalArgumentError;
 use libsignal_bridge::ffi::{
     self, NullPointerError, SignalFfiError, run_ffi_safe, write_result_to,
 };
-use libsignal_bridge::{IllegalArgumentError, ffi_arg_type, ffi_result_type};
-use libsignal_bridge_macros::bridge_fn;
+use libsignal_bridge_macros::{bridge_fn, c_export};
 use libsignal_core::ProtocolAddress;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::ChallengeOption;
@@ -19,6 +18,7 @@ use uuid::Uuid;
 
 // Not using bridge_fn because it also handles `NULL`.
 #[unsafe(no_mangle)]
+#[c_export]
 pub unsafe extern "C" fn signal_error_get_type(err: *const SignalFfiError) -> u32 {
     match unsafe { err.as_ref() } {
         Some(err) => err.code() as u32,
@@ -80,30 +80,30 @@ fn Error_GetRegistrationErrorNotDeliverable(
 
 // Not using bridge_fn because it returns multiple values.
 #[unsafe(no_mangle)]
+#[c_export]
 pub unsafe extern "C" fn signal_error_get_registration_lock(
     out_time_remaining_seconds: *mut u64,
-    out_svr2_username: *mut *const c_char,
-    out_svr2_password: *mut *const c_char,
+    out_svr2_credentials: *mut ffi::PairOf<*const c_char, *const c_char>,
     err: *const SignalFfiError,
 ) -> *mut SignalFfiError {
-    let err = AssertUnwindSafe(err);
     run_ffi_safe(|| {
         let err = unsafe { err.as_ref().ok_or(NullPointerError)? };
 
         let libsignal_net_chat::api::registration::RegistrationLock {
             time_remaining,
-            svr2_credentials:
-                libsignal_net::auth::Auth {
-                    username: svr2_username,
-                    password: svr2_password,
-                },
+            svr2_credentials,
         } = err.provide_registration_lock().map_err(|_| {
             IllegalArgumentError::new(format!("cannot get registration error from error ({err})"))
         })?;
+        let svr2_credentials = match svr2_credentials {
+            Some(libsignal_net::auth::Auth { username, password }) => {
+                (Some(username.as_str()), Some(password.as_str()))
+            }
+            None => (None, None),
+        };
         unsafe {
             write_result_to(out_time_remaining_seconds, time_remaining.as_secs())?;
-            write_result_to(out_svr2_username, svr2_username.as_str())?;
-            write_result_to(out_svr2_password, svr2_password.as_str())?;
+            write_result_to(out_svr2_credentials, svr2_credentials)?;
         }
         Ok(())
     })

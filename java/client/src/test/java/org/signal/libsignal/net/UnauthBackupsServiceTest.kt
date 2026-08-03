@@ -5,6 +5,10 @@
 
 package org.signal.libsignal.net
 
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
@@ -14,14 +18,21 @@ import org.junit.Assert
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.CopyBackupMediaOut
+import org.signal.libsignal.internal.DeleteBackupMediaOut
+import org.signal.libsignal.internal.GetMediaBackupInfoOut
+import org.signal.libsignal.internal.GetMessageBackupInfoOut
 import org.signal.libsignal.internal.NativeTesting
+import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.protocol.ecc.ECPrivateKey
 import org.signal.libsignal.zkgroup.GenericServerPublicParams
 import org.signal.libsignal.zkgroup.backups.BackupAuthCredential
 import java.net.URI
 import kotlin.io.encoding.Base64
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 
@@ -416,6 +427,70 @@ class UnauthBackupsServiceTest {
   }
 
   @Test
+  fun testGetMessageBackupInfo() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetMessageBackupInfoTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.getMessageBackupInfo(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetMessageBackupInfoOut.Success ->
+              assertEquals(
+                MessageBackupInfo.fromInternal(expected._0),
+                assertIs<RequestResult.Success<MessageBackupInfo>>(actual).result,
+              )
+            GetMessageBackupInfoOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            GetMessageBackupInfoOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
+      )
+    }
+
+  @Test
+  fun testGetMediaBackupInfo() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetMediaBackupInfoTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, _ ->
+          chat.getMediaBackupInfo(
+            TEST_AUTH,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetMediaBackupInfoOut.Success ->
+              assertEquals(
+                MediaBackupInfo.fromInternal(expected._0),
+                assertIs<RequestResult.Success<MediaBackupInfo>>(actual).result,
+              )
+            GetMediaBackupInfoOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            GetMediaBackupInfoOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
+        },
+      )
+    }
+
+  @Test
   fun testGetSvrBCredentials() {
     val credentials =
       testSimpleBackupRequestSuccess(
@@ -449,4 +524,126 @@ class UnauthBackupsServiceTest {
       )
     }
   }
+
+  @Test
+  fun testCopyMedia() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runSuspendingTests(
+        NativeTestingNice.TESTING_CopyBackupMediaTests(),
+        { asyncRuntime, listener ->
+          UnauthenticatedChatConnection.fakeConnect(
+            asyncRuntime,
+            listener,
+            Network.Environment.STAGING,
+          )
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, items ->
+          val inputs =
+            items.map {
+              CopyBackupMediaItem(
+                sourceAttachmentCdn = it.sourceAttachmentCdn,
+                sourceKey = it.sourceKey,
+                objectLength = it.objectLength,
+                mediaId = it.mediaId,
+                encryptionKey = it.encryptionKey,
+              )
+            }
+          chat
+            .copyMedia(
+              TEST_AUTH,
+              inputs,
+              DeterministicRandomSeedUseOnlyForTesting(0),
+            ).map { it as Any }
+            .catch { emit(it.toRequestResult<RequestUnauthorizedException>() as Any) }
+            .toList()
+        },
+        check = { expected, actual ->
+          val actualIter = actual.iterator()
+          for (entry in expected) {
+            val next = actualIter.next()
+            when (entry) {
+              is CopyBackupMediaOut.Item -> {
+                assertIs<CopyBackupMediaOutcome>(next)
+                assertEquals(CopyBackupMediaOutcome.fromFfi(entry._0), next)
+              }
+
+              is CopyBackupMediaOut.CredentialRejected -> {
+                val nonSuccess = assertIs<RequestResult.NonSuccess<*>>(next)
+                assertIs<RequestUnauthorizedException>(nonSuccess.error)
+              }
+
+              is CopyBackupMediaOut.InvalidDataInStream,
+              is CopyBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo,
+              -> {
+                val error = assertIs<RequestResult.ApplicationError>(next)
+                assertIs<UnexpectedResponseException>(error.cause)
+              }
+            }
+          }
+          assertFalse(actualIter.hasNext())
+        },
+      )
+    }
+
+  @Test
+  fun testDeleteMedia() =
+    runTest {
+      NativeTesting.TESTING_EnableDeterministicRngForTesting()
+      GrpcTestCase.runSuspendingTests(
+        NativeTestingNice.TESTING_DeleteBackupMediaTests(),
+        { asyncRuntime, listener ->
+          UnauthenticatedChatConnection.fakeConnect(
+            asyncRuntime,
+            listener,
+            Network.Environment.STAGING,
+          )
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, items ->
+          val inputs =
+            items.map {
+              DeleteBackupMediaItem(
+                mediaId = it.mediaId,
+                cdn = it.cdn,
+              )
+            }
+          chat
+            .deleteMedia(
+              TEST_AUTH,
+              inputs,
+              DeterministicRandomSeedUseOnlyForTesting(0),
+            ).map { it as Any }
+            .catch { emit(it.toRequestResult<RequestUnauthorizedException>() as Any) }
+            .toList()
+        },
+        check = { expected, actual ->
+          val actualIter = actual.iterator()
+          for (entry in expected) {
+            val next = actualIter.next()
+            when (entry) {
+              is DeleteBackupMediaOut.Item -> {
+                assertIs<DeleteBackupMediaItem>(next)
+                assertContentEquals(entry._0.mediaId, next.mediaId)
+                assertEquals(entry._0.cdn, next.cdn)
+              }
+
+              is DeleteBackupMediaOut.CredentialRejected -> {
+                val nonSuccess = assertIs<RequestResult.NonSuccess<*>>(next)
+                assertIs<RequestUnauthorizedException>(nonSuccess.error)
+              }
+
+              is DeleteBackupMediaOut.InvalidDataInStream,
+              is DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo,
+              -> {
+                val error = assertIs<RequestResult.ApplicationError>(next)
+                assertIs<UnexpectedResponseException>(error.cause)
+              }
+            }
+          }
+          assertFalse(actualIter.hasNext())
+        },
+      )
+    }
 }

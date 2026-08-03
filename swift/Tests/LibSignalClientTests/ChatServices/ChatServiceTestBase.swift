@@ -143,7 +143,7 @@ extension ChatServiceTestBase {
             let (request, id) = try await fakeRemote.getNextIncomingGrpcRequest()
             XCTAssertEqual(request.getSingleGrpcMessageData(), test.requestGrpc)
             XCTAssertEqual(request.pathAndQuery, test.method)
-            try await fakeRemote.sendGrpcResponse(requestId: id, ChatResponse(status: 200, body: test.responseGrpc))
+            try await fakeRemote.sendGrpcResponse(requestId: id, test.responseGrpc)
             let result: Result<T, any Error>
             do {
                 result = .success(try await resultFuture)
@@ -160,8 +160,53 @@ internal struct GrpcTestCase<Req, Resp> {
     let method: String
     let request: Req
     let requestGrpc: Data
-    let responseGrpc: Data
+    let responseGrpc: GrpcTestCaseBridgedResponse
     let response: Resp
+}
+
+extension SignalMutPointerGrpcTestCaseBridgedResponse: SignalMutPointer {
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        raw
+    }
+
+    public func const() -> SignalConstPointerGrpcTestCaseBridgedResponse {
+        .init(raw: raw)
+    }
+}
+extension SignalConstPointerGrpcTestCaseBridgedResponse: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        raw
+    }
+}
+
+internal class GrpcTestCaseBridgedResponse: NativeHandleOwner<SignalMutPointerGrpcTestCaseBridgedResponse> {
+    override class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerGrpcTestCaseBridgedResponse>
+    ) -> SignalFfiErrorRef? {
+        signal_grpc_test_case_bridged_response_destroy(handle.pointer)
+    }
+}
+
+extension FakeChatRemote {
+    func sendGrpcResponse(requestId: UInt64, _ response: GrpcTestCaseBridgedResponse) async throws {
+        _ = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
+            self.withNativeHandle { nativeHandle in
+                response.withNativeHandle { response in
+                    signal_testing_fake_chat_remote_end_send_server_grpc_test_case_response(
+                        promise,
+                        asyncContext.const(),
+                        nativeHandle.const(),
+                        requestId,
+                        response.const()
+                    )
+                }
+            }
+        }
+    }
 }
 
 internal enum UneraseType<Converter: NiceReturnConverter> {
@@ -186,7 +231,7 @@ internal enum GrpcTestCaseVecConverter<
 
     static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
         // Since this is just used in testing, we won't worry about leaking memory on error.
-        defer { signal_free_testing_signle_grpc_testing_bridged_vec(value) }
+        defer { signal_free_testing_grpc_test_cases_bridged_vec(value) }
         return try UnsafeBufferPointer<SignalGrpcTestCaseBridgedFfi>(start: value.base, count: value.length).map {
             it in
             GrpcTestCase(
@@ -194,7 +239,7 @@ internal enum GrpcTestCaseVecConverter<
                 method: try StringConverter.convertReturn(consuming: it.method),
                 request: try UneraseType<ReqConverter>.convertReturn(consuming: it.request),
                 requestGrpc: try DataConverter.convertReturn(consuming: it.request_grpc),
-                responseGrpc: try DataConverter.convertReturn(consuming: it.response_grpc),
+                responseGrpc: GrpcTestCaseBridgedResponse(owned: NonNull(it.response_grpc)!),
                 response: try UneraseType<RespConverter>.convertReturn(consuming: it.response),
             )
         }

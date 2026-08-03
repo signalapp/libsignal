@@ -220,7 +220,7 @@ fn match_optional_fields<T, U>(
         (None, None) => Ok(MaybePartial::new_complete(None)),
         (None, Some(_)) => Err(Error::InvalidResponse(format!(
             "Unexpected field in the response: {}",
-            &field
+            field
         ))),
         (Some(_), None) => Ok(MaybePartial::new(None, vec![field])),
     }

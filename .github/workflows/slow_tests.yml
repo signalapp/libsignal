@@ -132,6 +132,8 @@ jobs:
     timeout-minutes: 60
 
     steps:
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
@@ -169,7 +171,7 @@ jobs:
             arch: x86_64
 
     steps:
-      - run: 'echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"'
+      - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
 
       - name: Enable KT skip flag
         if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
@@ -251,6 +253,8 @@ jobs:
     timeout-minutes: 60
 
     steps:
+    - run: 'echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"'
+
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
@@ -422,6 +426,17 @@ jobs:
         run: xcodebuild -scheme LibSignalClient -sdk iphoneos -configuration Release
         working-directory: swift/cocoapods-testing
 
+  rust-audit:
+    name: Rust security audit
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        submodules: recursive
+    - run: cargo +stable install cargo-audit
+    - run: cargo +stable audit -D warnings
+
   rust-stable-testing:
     name: Rust tests (using latest stable)
     runs-on: ubuntu-latest-4-cores
@@ -439,10 +454,6 @@ jobs:
     - run: sudo apt-get install -U gcc-multilib g++-multilib protobuf-compiler
 
     - run: rustup +stable target add i686-unknown-linux-gnu
-
-    - run: cargo +stable install cargo-audit
-
-    - run: cargo +stable audit -D warnings
 
     - name: Run tests
       run: cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
@@ -562,6 +573,7 @@ jobs:
     - node-reproducibility
     - node-windows-arm64
     - swift-cocoapod
+    - rust-audit
     - rust-stable-testing
     - rust-fuzzing
     if: ${{ failure() && github.event_name == 'schedule' }}
