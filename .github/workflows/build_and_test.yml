@@ -118,7 +118,7 @@ jobs:
   rust:
     name: Rust
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
 
     needs: changes
 
@@ -201,7 +201,7 @@ jobs:
   rust32:
     name: Rust (32-bit testing)
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
 
     needs: changes
 
@@ -395,7 +395,7 @@ jobs:
   java_android:
     name: Java Android
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
 
     needs: changes
 
@@ -472,7 +472,7 @@ jobs:
   java_jvm:
     name: Java JVM
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
 
     needs: changes
 
@@ -538,7 +538,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest-4-cores, windows-latest-4-cores, macos-15-xlarge]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     needs: changes
 
@@ -627,7 +627,7 @@ jobs:
   swift_package:
     name: Swift Package
 
-    runs-on: ubuntu-latest-4-cores
+    runs-on: ubuntu-latest
 
     needs: changes
 
@@ -696,7 +696,7 @@ jobs:
   swift_cocoapod:
     name: Swift CocoaPod
 
-    runs-on: macos-15-xlarge
+    runs-on: macos-latest
 
     needs: changes
 

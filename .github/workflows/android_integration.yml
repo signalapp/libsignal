@@ -17,7 +17,7 @@ jobs:
   android-integration:
     name: Android Client Integration Test
 
-    runs-on: ubuntu-latest-8-cores
+    runs-on: ubuntu-latest
 
     timeout-minutes: 60
 
