@@ -16,7 +16,14 @@
 # The annotation can (should) be attached to anything that is accessed from
 # native code. The simple case is methods and fields that are accessed directly
 # via JNI.
--keepclassmembers,includedescriptorclasses class org.signal.libsignal.** {
+#
+# This is -keepclasseswithmembers rather than -keepclassmembers so that
+# annotating a member is sufficient on its own.
+#
+# NB: There is a footgun in that -keepclasseswithmembers requires a class
+# to match *every* member specification in the block, so add new blocks for
+# new independent rules, if they arise.
+-keepclasseswithmembers,includedescriptorclasses class org.signal.libsignal.** {
     @org.signal.libsignal.internal.CalledFromNative *;
 }
 
