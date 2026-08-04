@@ -18,7 +18,7 @@ use libsignal_net::env::{Env, StaticIpOrder, UserAgent};
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::{
-    ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, RouteProvider,
+    ConnectionProxyConfig, DirectOrProxyMode, DirectOrProxyProvider, HttpVersion, RouteProvider,
     RouteProviderExt as _, UnresolvedWebsocketServiceRoute,
 };
 use libsignal_net::infra::tcp_ssl::{InvalidProxyConfig, TcpSslConnector};
@@ -158,6 +158,8 @@ impl ConnectionManager {
             for config in [&mut env.chat_domain_config] {
                 config.connect.hostname = hostname;
                 config.connect.path_prefix = path_prefix;
+                // Set httpw_version to Http1_1 to ensure compatibility with custom chat_cost
+                config.connect.http_version = Some(HttpVersion::Http1_1);
                 config.connect.cert = RootCertificates::Native;
                 config.ip_v4 = &[];
                 config.ip_v6 = &[];
