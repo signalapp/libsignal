@@ -8,6 +8,7 @@
 @file:Suppress(
   "ktlint:standard:function-naming",
   "ktlint:standard:property-naming",
+  "ktlint:standard:class-naming",
   "ktlint:standard:filename",
   "ktlint:standard:max-line-length",
   "PLATFORM_CLASS_MAPPED_TO_KOTLIN",
@@ -23,797 +24,860 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
 public sealed class CopyBackupMediaOut {
   public data class Item(
-    val _0: org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome,
-  ) : CopyBackupMediaOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Item =
-        Item(
-          _0 =
-            downcastFromObject<org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>(
-              _0 as Object,
-            ),
-        )
-    }
-  }
+    public val _0: org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome,
+  ) : CopyBackupMediaOut()
 
-  public data object InvalidDataInStream : CopyBackupMediaOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): InvalidDataInStream = InvalidDataInStream
-  }
+  public data object InvalidDataInStream : CopyBackupMediaOut()
 
-  public data object CredentialRejected : CopyBackupMediaOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : CopyBackupMediaOut()
 
-  public data object CredentialRejectedWithoutAppropriateServerInfo : CopyBackupMediaOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejectedWithoutAppropriateServerInfo =
-      CredentialRejectedWithoutAppropriateServerInfo
-  }
+  public data object CredentialRejectedWithoutAppropriateServerInfo : CopyBackupMediaOut()
 }
 
 public sealed class DeleteBackupMediaOut {
   public data class Item(
-    val _0: org.signal.libsignal.internal.BridgeDeleteBackupMediaItem,
-  ) : DeleteBackupMediaOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Item =
-        Item(
-          _0 =
-            downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(
-              _0 as Object,
-            ),
-        )
-    }
-  }
+    public val _0: org.signal.libsignal.internal.BridgeDeleteBackupMediaItem,
+  ) : DeleteBackupMediaOut()
 
-  public data object InvalidDataInStream : DeleteBackupMediaOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): InvalidDataInStream = InvalidDataInStream
-  }
+  public data object InvalidDataInStream : DeleteBackupMediaOut()
 
-  public data object CredentialRejected : DeleteBackupMediaOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : DeleteBackupMediaOut()
 
-  public data object CredentialRejectedWithoutAppropriateServerInfo : DeleteBackupMediaOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejectedWithoutAppropriateServerInfo =
-      CredentialRejectedWithoutAppropriateServerInfo
-  }
+  public data object CredentialRejectedWithoutAppropriateServerInfo : DeleteBackupMediaOut()
 }
 
 public sealed class GetCdnCredentialsOut {
   public data class Success(
-    val _0: org.signal.libsignal.net.BackupCdnCredentials,
-  ) : GetCdnCredentialsOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Success =
-        Success(
-          _0 =
-            org.signal.libsignal.net.BackupCdnCredentials
-              .fromFfiHeaders(_0 as Array<Object>),
-        )
-    }
-  }
+    public val _0: org.signal.libsignal.net.BackupCdnCredentials,
+  ) : GetCdnCredentialsOut()
 
-  public data object CredentialRejected : GetCdnCredentialsOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : GetCdnCredentialsOut()
 
-  public data object MissingResponse : GetCdnCredentialsOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): MissingResponse = MissingResponse
-  }
+  public data object MissingResponse : GetCdnCredentialsOut()
 }
 
 public data class GetDevicesOut(
-  val devices: List<org.signal.libsignal.internal.LinkedDeviceInternal>,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(devices: Any?): GetDevicesOut =
-      GetDevicesOut(
-        devices =
-          mapBridgeVecReturn<Object, org.signal.libsignal.internal.LinkedDeviceInternal>({
-            downcastFromObject<org.signal.libsignal.internal.LinkedDeviceInternal>(it)
-          })(devices as Array<*>),
-      )
-  }
-}
+  public val devices: List<org.signal.libsignal.internal.LinkedDeviceInternal>,
+)
 
 public sealed class GetMediaBackupInfoOut {
   public data class Success(
-    val _0: org.signal.libsignal.internal.BridgeMediaBackupInfo,
-  ) : GetMediaBackupInfoOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Success =
-        Success(
-          _0 =
-            downcastFromObject<org.signal.libsignal.internal.BridgeMediaBackupInfo>(_0 as Object),
-        )
-    }
-  }
+    public val _0: org.signal.libsignal.internal.BridgeMediaBackupInfo,
+  ) : GetMediaBackupInfoOut()
 
-  public data object CredentialRejected : GetMediaBackupInfoOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : GetMediaBackupInfoOut()
 
-  public data object MissingResponse : GetMediaBackupInfoOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): MissingResponse = MissingResponse
-  }
+  public data object MissingResponse : GetMediaBackupInfoOut()
 }
 
 public sealed class GetMessageBackupInfoOut {
   public data class Success(
-    val _0: org.signal.libsignal.internal.BridgeMessageBackupInfo,
-  ) : GetMessageBackupInfoOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Success =
-        Success(
-          _0 =
-            downcastFromObject<org.signal.libsignal.internal.BridgeMessageBackupInfo>(_0 as Object),
-        )
-    }
-  }
+    public val _0: org.signal.libsignal.internal.BridgeMessageBackupInfo,
+  ) : GetMessageBackupInfoOut()
 
-  public data object CredentialRejected : GetMessageBackupInfoOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : GetMessageBackupInfoOut()
 
-  public data object MissingResponse : GetMessageBackupInfoOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): MissingResponse = MissingResponse
-  }
+  public data object MissingResponse : GetMessageBackupInfoOut()
 }
 
 public sealed class GetSvrBCredentialsOut {
   public data class Success(
-    val username: String,
-    val password: String,
-  ) : GetSvrBCredentialsOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(
-        username: Any?,
-        password: Any?,
-      ): Success =
-        Success(
-          username =
-            identity(username as String),
-          password =
-            identity(password as String),
-        )
-    }
-  }
+    public val username: String,
+    public val password: String,
+  ) : GetSvrBCredentialsOut()
 
-  public data object CredentialRejected : GetSvrBCredentialsOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : GetSvrBCredentialsOut()
 
-  public data object MissingResponse : GetSvrBCredentialsOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): MissingResponse = MissingResponse
-  }
+  public data object MissingResponse : GetSvrBCredentialsOut()
 }
 
 public data class LookUpUsernameLinkArgs(
-  val uuid: java.util.UUID,
-  val entropy: ByteArray,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(
-      uuid: Any?,
-      entropy: Any?,
-    ): LookUpUsernameLinkArgs =
-      LookUpUsernameLinkArgs(
-        uuid =
-          identity(uuid as java.util.UUID),
-        entropy =
-          identity(entropy as ByteArray),
-      )
-  }
-}
+  public val uuid: java.util.UUID,
+  public val entropy: ByteArray,
+)
 
 public sealed class LookUpUsernameLinkOut {
   public data class Success(
-    val _0: String,
-  ) : LookUpUsernameLinkOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Success =
-        Success(
-          _0 =
-            identity(_0 as String),
-        )
-    }
-  }
+    public val _0: String,
+  ) : LookUpUsernameLinkOut()
 
-  public data object NotFound : LookUpUsernameLinkOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): NotFound = NotFound
-  }
+  public data object NotFound : LookUpUsernameLinkOut()
 
-  public data object LinkDataTooShort : LookUpUsernameLinkOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): LinkDataTooShort = LinkDataTooShort
-  }
+  public data object LinkDataTooShort : LookUpUsernameLinkOut()
 
-  public data object MissingResponse : LookUpUsernameLinkOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): MissingResponse = MissingResponse
-  }
+  public data object MissingResponse : LookUpUsernameLinkOut()
 }
 
 public sealed class MySimpleTestEnum {
-  public data object A : MySimpleTestEnum() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): A = A
+  public data object A : MySimpleTestEnum()
 
-    @CalledFromNative
-    internal object FfiArgType : MySimpleTestEnum.FfiArgType()
-
-    override fun toFfiArgType(): FfiArgType = FfiArgType
-  }
-
-  public data object B : MySimpleTestEnum() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): B = B
-
-    @CalledFromNative
-    internal object FfiArgType : MySimpleTestEnum.FfiArgType()
-
-    override fun toFfiArgType(): FfiArgType = FfiArgType
-  }
-
-  public sealed class FfiArgType
-
-  internal abstract fun toFfiArgType(): FfiArgType
+  public data object B : MySimpleTestEnum()
 }
-
-internal fun MySimpleTestEnum.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
 public sealed class MyTestEnum {
-  public data object Unit : MyTestEnum() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): Unit = Unit
-
-    @CalledFromNative
-    internal object FfiArgType : MyTestEnum.FfiArgType()
-
-    override fun toFfiArgType(): FfiArgType = FfiArgType
-  }
+  public data object Unit : MyTestEnum()
 
   public data class Single(
-    val _0: Int,
-  ) : MyTestEnum() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Single =
-        Single(
-          _0 =
-            identity(_0 as Int),
-        )
-    }
-
-    @CalledFromNative
-    @Suppress("ktlint:standard:backing-property-naming")
-    public class FfiArgType : MyTestEnum.FfiArgType {
-      @CalledFromNative
-      internal val _0: Int
-      internal constructor(
-        _0: Int,
-      ) {
-        this._0 = _0
-      }
-    }
-
-    internal override fun toFfiArgType(): FfiArgType =
-      FfiArgType(
-        _0 = identity(_0),
-      )
-  }
+    public val _0: Int,
+  ) : MyTestEnum()
 
   public data class SingleNamed(
-    val x: Int,
-  ) : MyTestEnum() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(x: Any?): SingleNamed =
-        SingleNamed(
-          x =
-            identity(x as Int),
-        )
-    }
-
-    @CalledFromNative
-    @Suppress("ktlint:standard:backing-property-naming")
-    public class FfiArgType : MyTestEnum.FfiArgType {
-      @CalledFromNative
-      internal val x: Int
-      internal constructor(
-        x: Int,
-      ) {
-        this.x = x
-      }
-    }
-
-    internal override fun toFfiArgType(): FfiArgType =
-      FfiArgType(
-        x = identity(x),
-      )
-  }
+    public val x: Int,
+  ) : MyTestEnum()
 
   public data class Double(
-    val _0: Int,
-    val _1: Int,
-  ) : MyTestEnum() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(
-        _0: Any?,
-        _1: Any?,
-      ): Double =
-        Double(
-          _0 =
-            identity(_0 as Int),
-          _1 =
-            identity(_1 as Int),
-        )
-    }
-
-    @CalledFromNative
-    @Suppress("ktlint:standard:backing-property-naming")
-    public class FfiArgType : MyTestEnum.FfiArgType {
-      @CalledFromNative
-      internal val _0: Int
-
-      @CalledFromNative
-      internal val _1: Int
-      internal constructor(
-        _0: Int,
-        _1: Int,
-      ) {
-        this._0 = _0
-        this._1 = _1
-      }
-    }
-
-    internal override fun toFfiArgType(): FfiArgType =
-      FfiArgType(
-        _0 = identity(_0),
-        _1 = identity(_1),
-      )
-  }
+    public val _0: Int,
+    public val _1: Int,
+  ) : MyTestEnum()
 
   public data class Record(
-    val personName: String,
-    val personAge: Int,
-    val position: org.signal.libsignal.internal.MyTestPoint,
-    val funStruct: org.signal.libsignal.internal.MyTestStruct,
-  ) : MyTestEnum() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(
-        person_name: Any?,
-        person_age: Any?,
-        position: Any?,
-        fun_struct: Any?,
-      ): Record =
-        Record(
-          personName =
-            identity(person_name as String),
-          personAge =
-            identity(person_age as Int),
-          position =
-            downcastFromObject<org.signal.libsignal.internal.MyTestPoint>(position as Object),
-          funStruct =
-            downcastFromObject<org.signal.libsignal.internal.MyTestStruct>(fun_struct as Object),
-        )
-    }
-
-    @CalledFromNative
-    @Suppress("ktlint:standard:backing-property-naming")
-    public class FfiArgType : MyTestEnum.FfiArgType {
-      @CalledFromNative
-      internal val person_name: Any?
-
-      @CalledFromNative
-      internal val person_age: Int
-
-      @CalledFromNative
-      internal val position: Any?
-
-      @CalledFromNative
-      internal val fun_struct: Any?
-      internal constructor(
-        person_name: Any?,
-        person_age: Int,
-        position: Any?,
-        fun_struct: Any?,
-      ) {
-        this.person_name = person_name
-        this.person_age = person_age
-        this.position = position
-        this.fun_struct = fun_struct
-      }
-    }
-
-    internal override fun toFfiArgType(): FfiArgType =
-      FfiArgType(
-        person_name = identity(personName),
-        person_age = identity(personAge),
-        position = (org.signal.libsignal.internal.MyTestPoint::toFfiArgTypeObject)(position),
-        fun_struct = (org.signal.libsignal.internal.MyTestStruct::toFfiArgTypeObject)(funStruct),
-      )
-  }
-
-  public sealed class FfiArgType
-
-  internal abstract fun toFfiArgType(): FfiArgType
+    public val personName: String,
+    public val personAge: Int,
+    public val position: org.signal.libsignal.internal.MyTestPoint,
+    public val funStruct: org.signal.libsignal.internal.MyTestStruct,
+  ) : MyTestEnum()
 }
-
-internal fun MyTestEnum.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
 public data class MyTestPoint(
-  val _0: Int,
-  val _1: Int,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(
-      _0: Any?,
-      _1: Any?,
-    ): MyTestPoint =
-      MyTestPoint(
-        _0 =
-          identity(_0 as Int),
-        _1 =
-          identity(_1 as Int),
-      )
-  }
-
-  @CalledFromNative
-  @Suppress("ktlint:standard:backing-property-naming")
-  public class FfiArgType {
-    @CalledFromNative
-    internal val _0: Int
-
-    @CalledFromNative
-    internal val _1: Int
-    internal constructor(
-      _0: Int,
-      _1: Int,
-    ) {
-      this._0 = _0
-      this._1 = _1
-    }
-  }
-
-  internal fun toFfiArgType(): FfiArgType =
-    FfiArgType(
-      _0 = identity(_0),
-      _1 = identity(_1),
-    )
-}
-
-internal fun MyTestPoint.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+  public val _0: Int,
+  public val _1: Int,
+)
 
 public data class MyTestStruct(
-  val myNumericField: Int,
-  val myStringField: String,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(
-      my_numeric_field: Any?,
-      my_string_field: Any?,
-    ): MyTestStruct =
-      MyTestStruct(
-        myNumericField =
-          identity(my_numeric_field as Int),
-        myStringField =
-          identity(my_string_field as String),
-      )
-  }
-
-  @CalledFromNative
-  @Suppress("ktlint:standard:backing-property-naming")
-  public class FfiArgType {
-    @CalledFromNative
-    internal val my_numeric_field: Int
-
-    @CalledFromNative
-    internal val my_string_field: Any?
-    internal constructor(
-      my_numeric_field: Int,
-      my_string_field: Any?,
-    ) {
-      this.my_numeric_field = my_numeric_field
-      this.my_string_field = my_string_field
-    }
-  }
-
-  internal fun toFfiArgType(): FfiArgType =
-    FfiArgType(
-      my_numeric_field = identity(myNumericField),
-      my_string_field = identity(myStringField),
-    )
-}
-
-internal fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+  public val myNumericField: Int,
+  public val myStringField: String,
+)
 
 public data class RemoveDeviceArgs(
-  val id: Int,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(id: Any?): RemoveDeviceArgs =
-      RemoveDeviceArgs(
-        id =
-          identity(id as Int),
-      )
-  }
-}
+  public val id: Int,
+)
 
 public sealed class RemoveDeviceOut {
-  public data object Success : RemoveDeviceOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): Success = Success
-  }
+  public data object Success : RemoveDeviceOut()
 }
 
 public data class ReserveUsernameHashArgs(
-  val usernames: List<ByteArray>,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(usernames: Any?): ReserveUsernameHashArgs =
-      ReserveUsernameHashArgs(
-        usernames =
-          mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(usernames as Array<*>),
-      )
-  }
-}
+  public val usernames: List<ByteArray>,
+)
 
 public sealed class ReserveUsernameHashOut {
   public data class Success(
-    val _0: ByteArray,
-  ) : ReserveUsernameHashOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Success =
-        Success(
-          _0 =
-            identity(_0 as ByteArray),
-        )
-    }
-  }
+    public val _0: ByteArray,
+  ) : ReserveUsernameHashOut()
 
-  public data object UsernameNotAvailable : ReserveUsernameHashOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): UsernameNotAvailable = UsernameNotAvailable
-  }
+  public data object UsernameNotAvailable : ReserveUsernameHashOut()
 }
 
 public data class SetDeviceNameArgs(
-  val id: Int,
-  val encryptedName: ByteArray,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(
-      id: Any?,
-      encrypted_name: Any?,
-    ): SetDeviceNameArgs =
-      SetDeviceNameArgs(
-        id =
-          identity(id as Int),
-        encryptedName =
-          identity(encrypted_name as ByteArray),
-      )
-  }
-}
+  public val id: Int,
+  public val encryptedName: ByteArray,
+)
 
 public sealed class SetDeviceNameOut {
-  public data object Success : SetDeviceNameOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): Success = Success
-  }
+  public data object Success : SetDeviceNameOut()
 
-  public data object DeviceNotFound : SetDeviceNameOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): DeviceNotFound = DeviceNotFound
-  }
+  public data object DeviceNotFound : SetDeviceNameOut()
 }
 
 public data class SetUsernameLinkArgs(
-  val usernameCiphertext: ByteArray,
-  val keepLinkHandle: Boolean,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(
-      username_ciphertext: Any?,
-      keep_link_handle: Any?,
-    ): SetUsernameLinkArgs =
-      SetUsernameLinkArgs(
-        usernameCiphertext =
-          identity(username_ciphertext as ByteArray),
-        keepLinkHandle =
-          identity(keep_link_handle as Boolean),
-      )
-  }
-}
+  public val usernameCiphertext: ByteArray,
+  public val keepLinkHandle: Boolean,
+)
 
 public sealed class SetUsernameLinkOut {
   public data class Success(
-    val _0: java.util.UUID,
-  ) : SetUsernameLinkOut() {
-    public companion object {
-      @JvmStatic
-      @JvmName("fromNative")
-      @CalledFromNative
-      internal fun fromNative(_0: Any?): Success =
-        Success(
-          _0 =
-            identity(_0 as java.util.UUID),
-        )
-    }
-  }
+    public val _0: java.util.UUID,
+  ) : SetUsernameLinkOut()
 
-  public data object UsernameNotSet : SetUsernameLinkOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): UsernameNotSet = UsernameNotSet
-  }
+  public data object UsernameNotSet : SetUsernameLinkOut()
 }
 
 public sealed class SimpleBackupTestOut {
-  public data object Success : SimpleBackupTestOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): Success = Success
-  }
+  public data object Success : SimpleBackupTestOut()
 
-  public data object CredentialRejected : SimpleBackupTestOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): CredentialRejected = CredentialRejected
-  }
+  public data object CredentialRejected : SimpleBackupTestOut()
 
-  public data object MissingResponse : SimpleBackupTestOut() {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(): MissingResponse = MissingResponse
-  }
+  public data object MissingResponse : SimpleBackupTestOut()
 }
 
 public data class TestStreamChunk(
-  val chunk: List<String>,
-  val termination: Any?,
-) {
-  public companion object {
-    @JvmStatic
-    @JvmName("fromNative")
-    @CalledFromNative
-    internal fun fromNative(
-      chunk: Any?,
-      termination: Any?,
-    ): TestStreamChunk =
-      TestStreamChunk(
-        chunk =
-          mapBridgeVecReturn<String, String>({ identity(it) })(chunk as Array<*>),
-        termination =
-          identity(termination as Object?),
-      )
+  public val chunk: List<String>,
+  public val termination: Any?,
+)
+
+public object CopyBackupMediaOut_Item_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): CopyBackupMediaOut.Item =
+    CopyBackupMediaOut.Item(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>(_0 as Object),
+    )
+}
+
+public object CopyBackupMediaOut_InvalidDataInStream_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): CopyBackupMediaOut.InvalidDataInStream = CopyBackupMediaOut.InvalidDataInStream
+}
+
+public object CopyBackupMediaOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): CopyBackupMediaOut.CredentialRejected = CopyBackupMediaOut.CredentialRejected
+}
+
+public object CopyBackupMediaOut_CredentialRejectedWithoutAppropriateServerInfo_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): CopyBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo =
+    CopyBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
+}
+
+public object DeleteBackupMediaOut_Item_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): DeleteBackupMediaOut.Item =
+    DeleteBackupMediaOut.Item(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(_0 as Object),
+    )
+}
+
+public object DeleteBackupMediaOut_InvalidDataInStream_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): DeleteBackupMediaOut.InvalidDataInStream = DeleteBackupMediaOut.InvalidDataInStream
+}
+
+public object DeleteBackupMediaOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): DeleteBackupMediaOut.CredentialRejected = DeleteBackupMediaOut.CredentialRejected
+}
+
+public object DeleteBackupMediaOut_CredentialRejectedWithoutAppropriateServerInfo_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo =
+    DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
+}
+
+public object GetCdnCredentialsOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): GetCdnCredentialsOut.Success =
+    GetCdnCredentialsOut.Success(
+      _0 =
+        org.signal.libsignal.net.BackupCdnCredentials
+          .fromFfiHeaders(_0 as Array<Object>),
+    )
+}
+
+public object GetCdnCredentialsOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetCdnCredentialsOut.CredentialRejected = GetCdnCredentialsOut.CredentialRejected
+}
+
+public object GetCdnCredentialsOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetCdnCredentialsOut.MissingResponse = GetCdnCredentialsOut.MissingResponse
+}
+
+public object GetDevicesOut_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(devices: Any?): GetDevicesOut =
+    GetDevicesOut(
+      devices =
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.LinkedDeviceInternal>({
+          downcastFromObject<org.signal.libsignal.internal.LinkedDeviceInternal>(it)
+        })(devices as Array<*>),
+    )
+}
+
+public object GetMediaBackupInfoOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): GetMediaBackupInfoOut.Success =
+    GetMediaBackupInfoOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeMediaBackupInfo>(_0 as Object),
+    )
+}
+
+public object GetMediaBackupInfoOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetMediaBackupInfoOut.CredentialRejected = GetMediaBackupInfoOut.CredentialRejected
+}
+
+public object GetMediaBackupInfoOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetMediaBackupInfoOut.MissingResponse = GetMediaBackupInfoOut.MissingResponse
+}
+
+public object GetMessageBackupInfoOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): GetMessageBackupInfoOut.Success =
+    GetMessageBackupInfoOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeMessageBackupInfo>(_0 as Object),
+    )
+}
+
+public object GetMessageBackupInfoOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetMessageBackupInfoOut.CredentialRejected = GetMessageBackupInfoOut.CredentialRejected
+}
+
+public object GetMessageBackupInfoOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetMessageBackupInfoOut.MissingResponse = GetMessageBackupInfoOut.MissingResponse
+}
+
+public object GetSvrBCredentialsOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    username: Any?,
+    password: Any?,
+  ): GetSvrBCredentialsOut.Success =
+    GetSvrBCredentialsOut.Success(
+      username =
+        identity(username as String),
+      password =
+        identity(password as String),
+    )
+}
+
+public object GetSvrBCredentialsOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetSvrBCredentialsOut.CredentialRejected = GetSvrBCredentialsOut.CredentialRejected
+}
+
+public object GetSvrBCredentialsOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): GetSvrBCredentialsOut.MissingResponse = GetSvrBCredentialsOut.MissingResponse
+}
+
+public object LookUpUsernameLinkArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    uuid: Any?,
+    entropy: Any?,
+  ): LookUpUsernameLinkArgs =
+    LookUpUsernameLinkArgs(
+      uuid =
+        identity(uuid as java.util.UUID),
+      entropy =
+        identity(entropy as ByteArray),
+    )
+}
+
+public object LookUpUsernameLinkOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): LookUpUsernameLinkOut.Success =
+    LookUpUsernameLinkOut.Success(
+      _0 =
+        identity(_0 as String),
+    )
+}
+
+public object LookUpUsernameLinkOut_NotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): LookUpUsernameLinkOut.NotFound = LookUpUsernameLinkOut.NotFound
+}
+
+public object LookUpUsernameLinkOut_LinkDataTooShort_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): LookUpUsernameLinkOut.LinkDataTooShort = LookUpUsernameLinkOut.LinkDataTooShort
+}
+
+public object LookUpUsernameLinkOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): LookUpUsernameLinkOut.MissingResponse = LookUpUsernameLinkOut.MissingResponse
+}
+
+public object MySimpleTestEnum_A_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): MySimpleTestEnum.A = MySimpleTestEnum.A
+}
+
+public object MySimpleTestEnum_B_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): MySimpleTestEnum.B = MySimpleTestEnum.B
+}
+
+public object MyTestEnum_Unit_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): MyTestEnum.Unit = MyTestEnum.Unit
+}
+
+public object MyTestEnum_Single_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): MyTestEnum.Single =
+    MyTestEnum.Single(
+      _0 =
+        identity(_0 as Int),
+    )
+}
+
+public object MyTestEnum_SingleNamed_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(x: Any?): MyTestEnum.SingleNamed =
+    MyTestEnum.SingleNamed(
+      x =
+        identity(x as Int),
+    )
+}
+
+public object MyTestEnum_Double_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    _0: Any?,
+    _1: Any?,
+  ): MyTestEnum.Double =
+    MyTestEnum.Double(
+      _0 =
+        identity(_0 as Int),
+      _1 =
+        identity(_1 as Int),
+    )
+}
+
+public object MyTestEnum_Record_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    person_name: Any?,
+    person_age: Any?,
+    position: Any?,
+    fun_struct: Any?,
+  ): MyTestEnum.Record =
+    MyTestEnum.Record(
+      personName =
+        identity(person_name as String),
+      personAge =
+        identity(person_age as Int),
+      position =
+        downcastFromObject<org.signal.libsignal.internal.MyTestPoint>(position as Object),
+      funStruct =
+        downcastFromObject<org.signal.libsignal.internal.MyTestStruct>(fun_struct as Object),
+    )
+}
+
+public object MyTestPoint_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    _0: Any?,
+    _1: Any?,
+  ): MyTestPoint =
+    MyTestPoint(
+      _0 =
+        identity(_0 as Int),
+      _1 =
+        identity(_1 as Int),
+    )
+}
+
+public object MyTestStruct_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    my_numeric_field: Any?,
+    my_string_field: Any?,
+  ): MyTestStruct =
+    MyTestStruct(
+      myNumericField =
+        identity(my_numeric_field as Int),
+      myStringField =
+        identity(my_string_field as String),
+    )
+}
+
+public object RemoveDeviceArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(id: Any?): RemoveDeviceArgs =
+    RemoveDeviceArgs(
+      id =
+        identity(id as Int),
+    )
+}
+
+public object RemoveDeviceOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): RemoveDeviceOut.Success = RemoveDeviceOut.Success
+}
+
+public object ReserveUsernameHashArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(usernames: Any?): ReserveUsernameHashArgs =
+    ReserveUsernameHashArgs(
+      usernames =
+        mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(usernames as Array<*>),
+    )
+}
+
+public object ReserveUsernameHashOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): ReserveUsernameHashOut.Success =
+    ReserveUsernameHashOut.Success(
+      _0 =
+        identity(_0 as ByteArray),
+    )
+}
+
+public object ReserveUsernameHashOut_UsernameNotAvailable_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): ReserveUsernameHashOut.UsernameNotAvailable = ReserveUsernameHashOut.UsernameNotAvailable
+}
+
+public object SetDeviceNameArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    id: Any?,
+    encrypted_name: Any?,
+  ): SetDeviceNameArgs =
+    SetDeviceNameArgs(
+      id =
+        identity(id as Int),
+      encryptedName =
+        identity(encrypted_name as ByteArray),
+    )
+}
+
+public object SetDeviceNameOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): SetDeviceNameOut.Success = SetDeviceNameOut.Success
+}
+
+public object SetDeviceNameOut_DeviceNotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): SetDeviceNameOut.DeviceNotFound = SetDeviceNameOut.DeviceNotFound
+}
+
+public object SetUsernameLinkArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    username_ciphertext: Any?,
+    keep_link_handle: Any?,
+  ): SetUsernameLinkArgs =
+    SetUsernameLinkArgs(
+      usernameCiphertext =
+        identity(username_ciphertext as ByteArray),
+      keepLinkHandle =
+        identity(keep_link_handle as Boolean),
+    )
+}
+
+public object SetUsernameLinkOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): SetUsernameLinkOut.Success =
+    SetUsernameLinkOut.Success(
+      _0 =
+        identity(_0 as java.util.UUID),
+    )
+}
+
+public object SetUsernameLinkOut_UsernameNotSet_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): SetUsernameLinkOut.UsernameNotSet = SetUsernameLinkOut.UsernameNotSet
+}
+
+public object SimpleBackupTestOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): SimpleBackupTestOut.Success = SimpleBackupTestOut.Success
+}
+
+public object SimpleBackupTestOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): SimpleBackupTestOut.CredentialRejected = SimpleBackupTestOut.CredentialRejected
+}
+
+public object SimpleBackupTestOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): SimpleBackupTestOut.MissingResponse = SimpleBackupTestOut.MissingResponse
+}
+
+public object TestStreamChunk_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    chunk: Any?,
+    termination: Any?,
+  ): TestStreamChunk =
+    TestStreamChunk(
+      chunk =
+        mapBridgeVecReturn<String, String>({ identity(it) })(chunk as Array<*>),
+      termination =
+        identity(termination as Object?),
+    )
+}
+
+public sealed class MySimpleTestEnum_FfiArgType
+
+@CalledFromNative
+public object MySimpleTestEnum_A_FfiArgType : MySimpleTestEnum_FfiArgType()
+
+public fun MySimpleTestEnum.A.toFfiArgType(): MySimpleTestEnum_A_FfiArgType = MySimpleTestEnum_A_FfiArgType
+
+@CalledFromNative
+public object MySimpleTestEnum_B_FfiArgType : MySimpleTestEnum_FfiArgType()
+
+public fun MySimpleTestEnum.B.toFfiArgType(): MySimpleTestEnum_B_FfiArgType = MySimpleTestEnum_B_FfiArgType
+
+public fun MySimpleTestEnum.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is MySimpleTestEnum.A -> this.toFfiArgType()
+      is MySimpleTestEnum.B -> this.toFfiArgType()
+    },
+  )
+
+public sealed class MyTestEnum_FfiArgType
+
+@CalledFromNative
+public object MyTestEnum_Unit_FfiArgType : MyTestEnum_FfiArgType()
+
+public fun MyTestEnum.Unit.toFfiArgType(): MyTestEnum_Unit_FfiArgType = MyTestEnum_Unit_FfiArgType
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class MyTestEnum_Single_FfiArgType : MyTestEnum_FfiArgType {
+  @CalledFromNative
+  internal val _0: Int
+  internal constructor(
+    _0: Int,
+  ) {
+    this._0 = _0
   }
 }
+
+public fun MyTestEnum.Single.toFfiArgType(): MyTestEnum_Single_FfiArgType =
+  MyTestEnum_Single_FfiArgType(
+    _0 = identity(_0),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class MyTestEnum_SingleNamed_FfiArgType : MyTestEnum_FfiArgType {
+  @CalledFromNative
+  internal val x: Int
+  internal constructor(
+    x: Int,
+  ) {
+    this.x = x
+  }
+}
+
+public fun MyTestEnum.SingleNamed.toFfiArgType(): MyTestEnum_SingleNamed_FfiArgType =
+  MyTestEnum_SingleNamed_FfiArgType(
+    x = identity(x),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class MyTestEnum_Double_FfiArgType : MyTestEnum_FfiArgType {
+  @CalledFromNative
+  internal val _0: Int
+
+  @CalledFromNative
+  internal val _1: Int
+  internal constructor(
+    _0: Int,
+    _1: Int,
+  ) {
+    this._0 = _0
+    this._1 = _1
+  }
+}
+
+public fun MyTestEnum.Double.toFfiArgType(): MyTestEnum_Double_FfiArgType =
+  MyTestEnum_Double_FfiArgType(
+    _0 = identity(_0),
+    _1 = identity(_1),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class MyTestEnum_Record_FfiArgType : MyTestEnum_FfiArgType {
+  @CalledFromNative
+  internal val person_name: Any?
+
+  @CalledFromNative
+  internal val person_age: Int
+
+  @CalledFromNative
+  internal val position: Any?
+
+  @CalledFromNative
+  internal val fun_struct: Any?
+  internal constructor(
+    person_name: Any?,
+    person_age: Int,
+    position: Any?,
+    fun_struct: Any?,
+  ) {
+    this.person_name = person_name
+    this.person_age = person_age
+    this.position = position
+    this.fun_struct = fun_struct
+  }
+}
+
+public fun MyTestEnum.Record.toFfiArgType(): MyTestEnum_Record_FfiArgType =
+  MyTestEnum_Record_FfiArgType(
+    person_name = identity(personName),
+    person_age = identity(personAge),
+    position = (org.signal.libsignal.internal.MyTestPoint::toFfiArgTypeObject)(position),
+    fun_struct = (org.signal.libsignal.internal.MyTestStruct::toFfiArgTypeObject)(funStruct),
+  )
+
+public fun MyTestEnum.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is MyTestEnum.Unit -> this.toFfiArgType()
+      is MyTestEnum.Single -> this.toFfiArgType()
+      is MyTestEnum.SingleNamed -> this.toFfiArgType()
+      is MyTestEnum.Double -> this.toFfiArgType()
+      is MyTestEnum.Record -> this.toFfiArgType()
+    },
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class MyTestPoint_FfiArgType {
+  @CalledFromNative
+  internal val _0: Int
+
+  @CalledFromNative
+  internal val _1: Int
+  internal constructor(
+    _0: Int,
+    _1: Int,
+  ) {
+    this._0 = _0
+    this._1 = _1
+  }
+}
+
+public fun MyTestPoint.toFfiArgType(): MyTestPoint_FfiArgType =
+  MyTestPoint_FfiArgType(
+    _0 = identity(_0),
+    _1 = identity(_1),
+  )
+
+public fun MyTestPoint.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class MyTestStruct_FfiArgType {
+  @CalledFromNative
+  internal val my_numeric_field: Int
+
+  @CalledFromNative
+  internal val my_string_field: Any?
+  internal constructor(
+    my_numeric_field: Int,
+    my_string_field: Any?,
+  ) {
+    this.my_numeric_field = my_numeric_field
+    this.my_string_field = my_string_field
+  }
+}
+
+public fun MyTestStruct.toFfiArgType(): MyTestStruct_FfiArgType =
+  MyTestStruct_FfiArgType(
+    my_numeric_field = identity(myNumericField),
+    my_string_field = identity(myStringField),
+  )
+
+public fun MyTestStruct.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
 public object NativeTestingNice {
   public fun TESTING_BackupDeleteAllTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.SimpleBackupTestOut>> {

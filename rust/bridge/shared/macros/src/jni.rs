@@ -444,7 +444,7 @@ pub(crate) fn derive_bridged_as_value(
         return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
     }
     let ident = &input.ident;
-    let base_class = quote!(org.signal.libsignal.internal.#ident);
+    let base_class = format!("org.signal.libsignal.internal.{ident}");
     let result = options
         .result
         .then(|| derive_bridged_as_value_return(input, target, &base_class))
@@ -462,7 +462,7 @@ pub(crate) fn derive_bridged_as_value(
 fn derive_bridged_as_value_arg(
     input: &DeriveInput,
     target: &syn::Path,
-    base_class: &TokenStream2,
+    base_class: &str,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
@@ -514,10 +514,10 @@ fn derive_bridged_as_value_arg(
     // This macro operates similarly to the other nice derive ArgTypeInfo impls. It determines
     // which variant is being provided via a series of instanceof checks.
     let classes = match &input.data {
-        Data::Struct(_) => vec![quote!(#base_class::FfiArgType)],
+        Data::Struct(_) => vec![format!("{base_class}_FfiArgType")],
         Data::Enum(_) => variant_names
             .iter()
-            .map(|variant| quote!(#base_class::#variant::FfiArgType))
+            .map(|variant| format!("{base_class}_{variant}_FfiArgType"))
             .collect_vec(),
         Data::Union(_) => unreachable!(),
     };
@@ -582,7 +582,7 @@ fn derive_bridged_as_value_arg(
                     }
                 )*
                 Err(#krate::jni::BridgeLayerError::BadArgument(
-                    concat!("Invalid variant for enum ", stringify!(#base_class)).to_string()
+                    concat!("Invalid variant for enum ", #base_class).to_string()
                 ))
             }
             fn load_from(stored_arg: &'storage mut Self::StoredType) -> Self {
@@ -602,10 +602,10 @@ fn derive_bridged_as_value_arg(
                 #register_kt_nice_type
                 #register_kt_arg_converter
                 #krate::metadata::jni::KtArgConverter {
-                    nice_type: stringify!(#base_class).to_string(),
+                    nice_type: #base_class.to_string(),
                     ffi_type: "Object".to_string(),
                     ffi_field_type_erased: "Any?".to_string(),
-                    converter_function: concat!("(", stringify!(#base_class), "::toFfiArgTypeObject)").to_string()
+                    converter_function: concat!("(", #base_class, "::toFfiArgTypeObject)").to_string()
                 }
             }
         }
@@ -615,10 +615,9 @@ fn derive_bridged_as_value_arg(
 fn derive_bridged_as_value_return(
     input: &DeriveInput,
     target: &syn::Path,
-    base_class: &TokenStream2,
+    base_class: &str,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
-    let ident = &input.ident;
     let mut impl_nice_result_converter = Impl::new(
         input,
         target,
@@ -661,19 +660,22 @@ fn derive_bridged_as_value_return(
             .flatten()
             .map(|ty| parse_quote!(#ty: #krate::jni::ResultTypeInfo<'jni_context>)),
     );
-    // To produce the right nice type, the macro invokes #ident.#variant.fromNative(native args)
+    // To produce the right nice type, the macro invokes #ident_#variant_ReturnConverter.fromNative(native args)
     // Unlike with other client languages, fromNative invokes the underlying return converters
     // directly (and so the final return converter for this derived type will be 'identity').
-    let (class_names, classes) = match &input.data {
-        Data::Struct(_) => (vec![base_class.to_string()], vec![base_class.clone()]),
+    let (return_converters, variant_classes) = match &input.data {
+        Data::Struct(_) => (
+            vec![format!("{base_class}_ReturnConverter")],
+            vec![base_class.to_string()],
+        ),
         Data::Enum(_) => (
             variant_names
                 .iter()
-                .map(|variant| format!("org.signal.libsignal.internal.{ident}${variant}"))
+                .map(|variant| format!("{base_class}_{variant}_ReturnConverter"))
                 .collect_vec(),
             variant_names
                 .iter()
-                .map(|variant| quote!(org.signal.libsignal.internal.#ident::#variant))
+                .map(|variant| format!("{base_class}${variant}"))
                 .collect_vec(),
         ),
         Data::Union(_) => unreachable!(),
@@ -692,8 +694,10 @@ fn derive_bridged_as_value_return(
                 match self {
                     #(#patterns => {
                         #(let #fields = #krate::jni::ResultTypeInfo::convert_into(#fields, jni_env)?;)*
-                        let class = #krate::jni::find_class(jni_env, #krate::jni::ClassName(#class_names))
-                            .check_exceptions(jni_env, CONTEXT_STR)?;
+                        let class = #krate::jni::find_class(
+                            jni_env,
+                            #krate::jni::ClassName(#return_converters)
+                        ).check_exceptions(jni_env, CONTEXT_STR)?;
                         #(let #fields = #krate::jni::box_primitive_if_needed(jni_env, #fields.into())?;)*
                         #krate::jni::call_static_method_checked(
                             jni_env,
@@ -705,7 +709,7 @@ fn derive_bridged_as_value_return(
                                     // change it, but for now, let's just box everything into an
                                     // object.
                                     #(#fields => java.lang.Object,)*
-                                ) -> #classes
+                                ) -> #variant_classes
                             ),
                         )
                     })*
@@ -720,9 +724,9 @@ fn derive_bridged_as_value_return(
                 #register_kt_result_converter
                 #register_kt_nice_type
                 #krate::jni::KtReturnConverter {
-                    nice_type: stringify!(#base_class).to_string(),
+                    nice_type: #base_class.to_string(),
                     ffi_type: "Object".to_string(),
-                    converter_function: concat!("downcastFromObject<", stringify!(#base_class), ">").to_string(),
+                    converter_function: concat!("downcastFromObject<", #base_class, ">").to_string(),
                 }
             }
         }
