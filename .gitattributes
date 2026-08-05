@@ -11,3 +11,14 @@ acknowledgments/acknowledgments.*.hbs merge text=auto
 
 **/*.kt.in linguist-language=Kotlin
 **/*.ts.in linguist-language=TypeScript
+
+java/client/src/main/java/org/signal/libsignal/internal/NativeNice.kt linguist-generated
+java/client/src/test/java/org/signal/libsignal/internal/NativeTestingNice.kt linguist-generated
+java/shared/java/org/signal/libsignal/internal/Native.kt linguist-generated
+java/shared/java/org/signal/libsignal/internal/NativeTesting.kt linguist-generated
+node/ts/Native.ts linguist-generated
+node/ts/NativeNice.ts linguist-generated
+swift/Sources/LibSignalClient/NativeNice.swift linguist-generated
+swift/Sources/SignalFfi/signal_ffi_testing.h linguist-generated
+swift/Sources/SignalFfi/signal_ffi.h linguist-generated
+swift/Tests/LibSignalClientTests/NativeTestingNice.swift linguist-generated
