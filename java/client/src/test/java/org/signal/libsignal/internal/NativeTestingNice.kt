@@ -205,6 +205,31 @@ public data class TestStreamChunk(
   public val termination: Any?,
 )
 
+public object BridgeCopyBackupMediaItem_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    source_attachment_cdn: Any?,
+    source_key: Any?,
+    object_length: Any?,
+    media_id: Any?,
+    encryption_key: Any?,
+  ): BridgeCopyBackupMediaItem =
+    BridgeCopyBackupMediaItem(
+      sourceAttachmentCdn =
+        identity(source_attachment_cdn as Int),
+      sourceKey =
+        identity(source_key as String),
+      objectLength =
+        identity(object_length as Long),
+      mediaId =
+        identity(media_id as ByteArray),
+      encryptionKey =
+        identity(encryption_key as ByteArray),
+    )
+}
+
 public object CopyBackupMediaOut_Item_ReturnConverter {
   @CalledFromNative
   @JvmStatic

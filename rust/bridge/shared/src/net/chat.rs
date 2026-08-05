@@ -723,14 +723,6 @@ fn CopyBackupMediaStream_cancel(stream: BridgeHandleRef<'_, CopyBackupMediaStrea
     stream.cancel();
 }
 
-// Used by the test APIs, but must be emitted here to avoid the check for duplicate types in the
-// metadata collector.
-#[bridge_fn(node = false, nice = true)]
-fn CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem()
--> BridgeVec<BridgeCopyBackupMediaItem> {
-    unreachable!()
-}
-
 #[bridge_fn(nice = true)]
 fn UnauthenticatedChatConnection_backup_delete_media(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,

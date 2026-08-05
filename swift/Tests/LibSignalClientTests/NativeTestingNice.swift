@@ -359,6 +359,31 @@ enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_Der
     }
 }
 
+enum
+    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult_DerivedReturnConverterBridgeCopyBackupMediaItem:
+        FfiOwnedBufferOfMaxAlignedProject
+{
+    public typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult
+    public typealias Element = DerivedReturnConverterBridgeCopyBackupMediaItem.FfiReturn
+    public static func empty() -> Buffer {
+        Buffer()
+    }
+    public static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    public static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
+
 enum FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter:
     FfiOwnedBufferOfMaxAlignedProject
 {
@@ -681,6 +706,36 @@ internal struct TestStreamChunk {
     var chunk: [String]
     var termination: BulkPolledStreamTermination?
 
+}
+
+internal enum DerivedReturnConverterBridgeCopyBackupMediaItem: NiceReturnConverter {
+    typealias NiceReturn = BridgeCopyBackupMediaItem
+    typealias FfiReturn = SignalBridgeCopyBackupMediaItemFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeCopyBackupMediaItemFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let source_attachment_cdn = Result {
+            try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.source_attachment_cdn)
+        }
+        let source_key = Result { try StringConverter.convertReturn(consuming: ffiValue.source_key) }
+        let object_length = Result { try IdentityConverter<Int64>.convertReturn(consuming: ffiValue.object_length) }
+        let media_id = Result {
+            try FixedByteArrayConverter<FixedByteArrayHelper15>.convertReturn(consuming: ffiValue.media_id)
+        }
+        let encryption_key = Result {
+            try FixedByteArrayConverter<FixedByteArrayHelper64>.convertReturn(consuming: ffiValue.encryption_key)
+        }
+
+        return BridgeCopyBackupMediaItem(
+            sourceAttachmentCdn: try source_attachment_cdn.get(),
+            sourceKey: try source_key.get(),
+            objectLength: try object_length.get(),
+            mediaId: try media_id.get(),
+            encryptionKey: try encryption_key.get()
+        )
+    }
 }
 
 internal enum DerivedReturnConverterCopyBackupMediaOut: NiceReturnConverter {
@@ -2921,38 +2976,6 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
-
-    }
-    internal static func TESTING_forceEmitVecOfBridgeCopyBackupMediaOut() throws -> [CopyBackupMediaOut] {
-        var rawOutput = ArrayReturnConverter<
-            DerivedReturnConverterCopyBackupMediaOut,
-            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult_DerivedReturnConverterCopyBackupMediaOut
-        >.emptyFfiReturn()
-        try checkError(
-            SignalFfi.signal_testing_force_emit_vec_of_bridge_copy_backup_media_out(
-                &rawOutput,
-            )
-        )
-        return try ArrayReturnConverter<
-            DerivedReturnConverterCopyBackupMediaOut,
-            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult_DerivedReturnConverterCopyBackupMediaOut
-        >.convertReturn(consuming: rawOutput)
-
-    }
-    internal static func TESTING_forceEmitVecOfBridgeDeleteBackupMediaOut() throws -> [DeleteBackupMediaOut] {
-        var rawOutput = ArrayReturnConverter<
-            DerivedReturnConverterDeleteBackupMediaOut,
-            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut
-        >.emptyFfiReturn()
-        try checkError(
-            SignalFfi.signal_testing_force_emit_vec_of_bridge_delete_backup_media_out(
-                &rawOutput,
-            )
-        )
-        return try ArrayReturnConverter<
-            DerivedReturnConverterDeleteBackupMediaOut,
-            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult_DerivedReturnConverterDeleteBackupMediaOut
-        >.convertReturn(consuming: rawOutput)
 
     }
 }

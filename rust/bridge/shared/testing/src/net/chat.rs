@@ -725,12 +725,6 @@ fn TESTING_CopyBackupMediaTests() -> GrpcTestCases<
     )
 }
 
-#[bridge_fn(jni = false, node = false, nice = true)]
-fn TESTING_forceEmitVecOfBridgeCopyBackupMediaOut() -> BridgeVec<remote_derives::CopyBackupMediaOut>
-{
-    unreachable!()
-}
-
 #[bridge_fn(nice = true)]
 fn TESTING_DeleteBackupMediaTests() -> GrpcTestCases<
     BridgeVec<BridgeDeleteBackupMediaItem>,
@@ -739,12 +733,6 @@ fn TESTING_DeleteBackupMediaTests() -> GrpcTestCases<
     GrpcTestCases::from_generalized_test_cases(
         libsignal_net_chat::grpc::backups::test_cases::delete_media_test_cases(),
     )
-}
-
-#[bridge_fn(jni = false, node = false, nice = true)]
-fn TESTING_forceEmitVecOfBridgeDeleteBackupMediaOut()
--> BridgeVec<remote_derives::DeleteBackupMediaOut> {
-    unreachable!()
 }
 
 #[bridge_fn(nice = true)]

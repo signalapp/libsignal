@@ -859,9 +859,6 @@ internal object Native {
   public external fun CopyBackupMediaStream_cancel(stream: SimpleOwner): Unit
 
   @JvmStatic
-  public external fun CopyBackupMediaStream_forceEmitVecOfBridgeCopyBackupMediaItem(): Array<*>
-
-  @JvmStatic
   public external fun CopyBackupMediaStream_next(
     asyncRuntime: ObjectHandle,
     stream: SimpleOwner,
