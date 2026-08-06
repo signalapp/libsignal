@@ -5,9 +5,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import Foundation
 import PackageDescription
 
-let rustBuildDir = "../target/debug/"
+// Honor a user-defined Cargo target directory (CARGO_TARGET_DIR) if set,
+// falling back to the workspace default of `<repo>/target`.
+let cargoTargetDir = ProcessInfo.processInfo.environment["CARGO_TARGET_DIR"] ?? "../target"
+let rustBuildDir = "\(cargoTargetDir)/debug/"
 
 let package = Package(
     name: "LibSignalClient",

@@ -49,9 +49,11 @@ copy_built_library() {
       out_dir=$(dirname "$3"x) # trailing x to distinguish directories from files
       echo_then_run mkdir -p "${out_dir}"
       echo_then_run cp "${possible_library_path}" "$3/${possible_augmented_name}"
-      break
+      return
     fi
   done
+  echo "error: no built library '${2}' found in '${1}' (looked for lib${2}.dylib, lib${2}.so, ${2}.dll); is CARGO_TARGET_DIR set correctly?" >&2
+  exit 1
 }
 
 echo_then_run() {
