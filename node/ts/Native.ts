@@ -2313,7 +2313,6 @@ type NativeFunctions = {
   ) => number;
   SessionRecord_HasUsableSenderChain: (
     s: Wrapper<SessionRecord>,
-    require_pq_ratio: number,
     now: Timestamp
   ) => boolean;
   SessionRecord_Serialize: (

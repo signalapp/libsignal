@@ -5686,7 +5686,6 @@ SignalFfiError* signal_session_record_get_remote_registration_id(
 SignalFfiError* signal_session_record_has_usable_sender_chain(
   bool* out,
   SignalConstPointerSessionRecord s,
-  double require_pq_ratio,
   uint64_t now
 );
 SignalFfiError* signal_session_record_serialize(

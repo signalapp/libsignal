@@ -189,11 +189,10 @@ class SessionTests: TestCaseBase {
 
         let initial_session = try! alice_store.loadSession(for: bob_address, context: NullContext())!
         XCTAssertTrue(
-            initial_session.hasCurrentState(requirePqRatio: 1.0, now: Date(timeIntervalSinceReferenceDate: 0))
+            initial_session.hasCurrentState(now: Date(timeIntervalSinceReferenceDate: 0))
         )
         XCTAssertFalse(
             initial_session.hasCurrentState(
-                requirePqRatio: 1.0,
                 now: Date(timeIntervalSinceReferenceDate: 60 * 60 * 24 * 90)
             )
         )
@@ -215,11 +214,10 @@ class SessionTests: TestCaseBase {
 
         let updated_session = try! alice_store.loadSession(for: bob_address, context: NullContext())!
         XCTAssertTrue(
-            updated_session.hasCurrentState(requirePqRatio: 1.0, now: Date(timeIntervalSinceReferenceDate: 0))
+            updated_session.hasCurrentState(now: Date(timeIntervalSinceReferenceDate: 0))
         )
         XCTAssertFalse(
             updated_session.hasCurrentState(
-                requirePqRatio: 1.0,
                 now: Date(timeIntervalSinceReferenceDate: 60 * 60 * 24 * 90)
             )
         )
@@ -516,14 +514,14 @@ class SessionTests: TestCaseBase {
 
         let session: SessionRecord! = try! alice_store.loadSession(for: bob_address, context: NullContext())
         XCTAssertNotNil(session)
-        XCTAssertTrue(session.hasCurrentState(requirePqRatio: 1.0))
+        XCTAssertTrue(session.hasCurrentState)
         XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey))
         session.archiveCurrentState()
-        XCTAssertFalse(session.hasCurrentState(requirePqRatio: 1.0))
+        XCTAssertFalse(session.hasCurrentState)
         XCTAssertFalse(try! session.currentRatchetKeyMatches(IdentityKeyPair.generate().publicKey))
         // A redundant archive shouldn't break anything.
         session.archiveCurrentState()
-        XCTAssertFalse(session.hasCurrentState(requirePqRatio: 1.0))
+        XCTAssertFalse(session.hasCurrentState)
     }
 
     func testSealedSenderGroupCipher() throws {
@@ -968,7 +966,7 @@ private func initializeSessionsV4(
     )
 
     XCTAssertEqual(
-        try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState(requirePqRatio: 1.0),
+        try! alice_store.loadSession(for: bob_address, context: NullContext())?.hasCurrentState,
         true
     )
     XCTAssertEqual(

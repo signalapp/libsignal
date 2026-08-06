@@ -2872,7 +2872,6 @@ internal object Native {
   @Throws(Exception::class)
   public external fun SessionRecord_HasUsableSenderChain(
     s: ObjectHandle,
-    requirePqRatio: Double,
     now: Long,
   ): Boolean
 

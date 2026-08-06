@@ -65,7 +65,6 @@ pub use protocol::{
     CiphertextMessage, CiphertextMessageType, DecryptionErrorMessage, KyberPayload,
     PlaintextContent, PreKeySignalMessage, SenderKeyDistributionMessage, SenderKeyMessage,
     SignalMessage, extract_decryption_error_message_from_serialized_content,
-    should_use_nonpq_session,
 };
 pub use ratchet::{
     AliceSignalProtocolParameters, BobSignalProtocolParameters, initialize_alice_session_record,
