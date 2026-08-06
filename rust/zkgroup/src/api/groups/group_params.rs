@@ -160,14 +160,14 @@ impl GroupSecretParams {
         ciphertext: api::groups::ProfileKeyCiphertext,
         user_id: libsignal_core::Aci,
     ) -> Result<api::profiles::ProfileKey, ZkGroupVerificationFailure> {
-        let profile_key_struct =
+        let profile_key_bytes =
             crypto::profile_key_encryption::ProfileKeyEncryptionDomain::decrypt(
                 &self.profile_key_enc_key_pair,
                 &ciphertext.ciphertext,
                 uuid::Uuid::from(user_id).into_bytes(),
             )?;
         Ok(api::profiles::ProfileKey {
-            bytes: profile_key_struct.bytes,
+            bytes: profile_key_bytes,
         })
     }
 

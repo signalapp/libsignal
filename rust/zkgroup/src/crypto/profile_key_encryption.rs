@@ -73,31 +73,40 @@ impl ProfileKeyEncryptionDomain {
         key_pair: &KeyPair,
         ciphertext: &Ciphertext,
         uid_bytes: UidBytes,
-    ) -> Result<profile_key_struct::ProfileKeyStruct, ZkGroupVerificationFailure> {
+    ) -> Result<ProfileKeyBytes, ZkGroupVerificationFailure> {
         let M4 = key_pair
             .decrypt_to_second_point(ciphertext)
             .map_err(|_| ZkGroupVerificationFailure)?;
         let candidates = M4.map_to_curve_inverse();
 
         let target_M3 = key_pair.a1.invert() * ciphertext.as_points()[0];
+        Self::decrypt_from_candidates(
+            uid_bytes,
+            target_M3,
+            candidates
+                .first_chunk::<8>()
+                .expect("we only need the positive candidates"),
+        )
+    }
+
+    // Factored out for additional testing.
+    fn decrypt_from_candidates(
+        uid_bytes: UidBytes,
+        target_M3: RistrettoPoint,
+        candidates: &[CtOption<[u8; 32]>; 8],
+    ) -> Result<ProfileKeyBytes, ZkGroupVerificationFailure> {
         let seed_sho = profile_key_struct::ProfileKeyStruct::seed_M3();
 
-        let mut retval = CtOption::new(
-            profile_key_struct::ProfileKeyStruct::partial_default(),
-            Choice::from(0u8),
-        );
+        let mut retval = CtOption::new(ProfileKeyBytes::partial_default(), Choice::from(0u8));
         // The number of valid solutions found. Note we would see if n_found > 1 because the closures in
         // CtOption::and_then and CtOption::or_else always run.
         let mut n_found = 0;
         #[allow(clippy::needless_range_loop)]
-        // Only iterate the first 8 solutions, i.e., the positive ones.
-        for i in 0..8 {
+        for i in 0..candidates.len() {
             retval = retval.or_else(|| {
                 candidates[i].and_then(|profile_key_bytes| {
-                    let mut candidate_retval = CtOption::new(
-                        profile_key_struct::ProfileKeyStruct::partial_default(),
-                        Choice::from(0u8),
-                    );
+                    let mut candidate_retval =
+                        CtOption::new(ProfileKeyBytes::partial_default(), Choice::from(0u8));
                     for j in 0..8 {
                         candidate_retval = candidate_retval.or_else(|| {
                             let mut pk = profile_key_bytes;
@@ -116,11 +125,8 @@ impl ProfileKeyEncryptionDomain {
                                 uid_bytes,
                             );
                             let found = M3.ct_eq(&target_M3);
-                            n_found += found.unwrap_u8();
-                            CtOption::new(
-                                profile_key_struct::ProfileKeyStruct { bytes: pk, M3, M4 },
-                                found,
-                            )
+                            n_found += (found & candidates[i].is_some()).unwrap_u8();
+                            CtOption::new(pk, found)
                         });
                     }
                     candidate_retval
@@ -139,6 +145,8 @@ impl ProfileKeyEncryptionDomain {
 
 #[cfg(test)]
 mod tests {
+    use test_case::test_case;
+
     use super::*;
     use crate::common::constants::*;
 
@@ -186,7 +194,7 @@ mod tests {
 
         let plaintext =
             ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext2, uid_bytes).unwrap();
-        assert!(plaintext == profile_key);
+        assert_eq!(plaintext, profile_key.bytes);
 
         let mut sho = Sho::new(b"Test_Repeated_ProfileKeyEnc/Dec", b"seed");
         for _ in 0..100 {
@@ -196,42 +204,123 @@ mod tests {
             let profile_key =
                 profile_key_struct::ProfileKeyStruct::new(profile_key_bytes, uid_bytes);
             let ciphertext = key_pair.encrypt(&profile_key);
-            assert!(
-                ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
-                    == profile_key
+            assert_eq!(
+                ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap(),
+                profile_key.bytes
             );
         }
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32, TEST_ARRAY_16);
         let ciphertext = key_pair.encrypt(&profile_key);
-        assert!(
-            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
-                == profile_key
+        assert_eq!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap(),
+            profile_key.bytes
         );
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32_2, TEST_ARRAY_16);
         let ciphertext = key_pair.encrypt(&profile_key);
-        assert!(
-            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
-                == profile_key
+        assert_eq!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap(),
+            profile_key.bytes
         );
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32_3, TEST_ARRAY_16);
         let ciphertext = key_pair.encrypt(&profile_key);
-        assert!(
-            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
-                == profile_key
+        assert_eq!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap(),
+            profile_key.bytes
         );
 
         let uid_bytes = TEST_ARRAY_16;
         let profile_key = profile_key_struct::ProfileKeyStruct::new(TEST_ARRAY_32_4, TEST_ARRAY_16);
         let ciphertext = key_pair.encrypt(&profile_key);
-        assert!(
-            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap()
-                == profile_key
+        assert_eq!(
+            ProfileKeyEncryptionDomain::decrypt(&key_pair, &ciphertext, uid_bytes).unwrap(),
+            profile_key.bytes
         );
+    }
+
+    /// Not constant-time!
+    fn convert_option_to_ct_option<T: PartialDefault>(input: Option<T>) -> CtOption<T> {
+        match input {
+            Some(value) => CtOption::new(value, Choice::from(1)),
+            None => CtOption::new(T::partial_default(), Choice::from(0)),
+        }
+    }
+
+    const ALL_ZEROS_PROFILE_KEY: ProfileKeyBytes = [0; PROFILE_KEY_LEN];
+
+    #[test_case(
+        [None, None, None, None, None, None, None, None] =>
+        matches Err(_);
+        "all invalid"
+    )]
+    #[test_case(
+        [Some([0; 32]), Some([1; 32]), Some([2; 32]), Some([3; 32]), Some([4; 32]), Some([5; 32]), Some([6; 32]), Some([7; 32])] =>
+        matches Ok(ALL_ZEROS_PROFILE_KEY);
+        "valid all-zeros profile key"
+    )]
+    #[test_case(
+        [Some([0xff; 32]), Some([1; 32]), Some([2; 32]), Some([3; 32]), Some([4; 32]), Some([5; 32]), Some([6; 32]), Some([7; 32])] =>
+        matches Err(_);
+        "candidates for some other profile key"
+    )]
+    #[test_case(
+        [Some([0; 32]), None, None, None, None, None, None, None] =>
+        matches Ok(ALL_ZEROS_PROFILE_KEY);
+        "valid all-zeros profile key with invalid candidates"
+    )]
+    #[test_case(
+        [None, None, None, Some([0; 32]), None, None, None, None] =>
+        matches Ok(ALL_ZEROS_PROFILE_KEY);
+        "another valid all-zeros profile key with invalid candidates"
+    )]
+    #[test_case(
+        [Some([0; 32]), None, Some([2; 32]), Some([3; 32]), Some([4; 32]), Some([5; 32]), Some([6; 32]), Some([7; 32])] =>
+        matches Ok(ALL_ZEROS_PROFILE_KEY);
+        "valid all-zeros profile key with exactly one invalid candidate"
+    )]
+    #[test_case(
+        [None, Some([1; 32]), Some([2; 32]), Some([3; 32]), Some([4; 32]), Some([5; 32]), Some([6; 32]), Some([7; 32])] =>
+        matches Err(_);
+        "no matching profile key but also exactly one invalid candidate"
+    )]
+    #[test_case(
+        [None, Some([1; 32]), Some([2; 32]), None, Some([4; 32]), Some([5; 32]), Some([6; 32]), None] =>
+        matches Err(_);
+        "no matching profile key and multiple invalid candidates"
+    )]
+    // A more realistic version of this would have values differing by one bit, but the effect is
+    // the same.
+    #[test_case(
+        [None, Some([0; 32]), None, Some([0; 32]), None, None, None, None] =>
+        matches Err(_);
+        "multiple matching candidates"
+    )]
+    #[test_case(
+        [Some([1; 32]), Some([0; 32]), Some([1; 32]), Some([0; 32]), Some([1; 32]), Some([1; 32]), Some([1; 32]), Some([1; 32])] =>
+        matches Err(_);
+        "multiple matching candidates without any invalid"
+    )]
+    fn test_edge_cases_with_all_zero_profile_keys(
+        candidates: [Option<[u8; 32]>; 8],
+    ) -> Result<ProfileKeyBytes, ZkGroupVerificationFailure> {
+        let uid_bytes = TEST_ARRAY_16;
+        // These cases rely on the behavior of `CtOption::and_then` exposing an all-zeros
+        // (`Default`) value when the option is in the `None` state. Therefore, we need a profile
+        // key that could conceivably be encoded as all-zeros, the simplest of which is...all-zeros.
+        let target_m3 = profile_key_struct::ProfileKeyStruct::calc_M3(
+            profile_key_struct::ProfileKeyStruct::seed_M3(),
+            ALL_ZEROS_PROFILE_KEY,
+            uid_bytes,
+        );
+        ProfileKeyEncryptionDomain::decrypt_from_candidates(
+            uid_bytes,
+            target_m3,
+            &candidates.map(convert_option_to_ct_option),
+        )
     }
 }
