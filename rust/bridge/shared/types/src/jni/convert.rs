@@ -1593,6 +1593,7 @@ impl<'a> ResultTypeInfo<'a> for Option<String> {
         }
     }
 }
+nice_identity_result_converter!(Option<String>, "String?");
 
 impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JString<'a>;
@@ -3734,6 +3735,7 @@ macro_rules! jni_result_type {
     (BridgeMessageBackupInfo) => {::jni::objects::JObject<'local>};
     (CopyBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
     (DeleteBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
+    (ListMediaResponse) => {::jni::objects::JObject<'local>};
 
     // Testing derived types
     (MySimpleTestEnum) => {::jni::objects::JObject<'local>};

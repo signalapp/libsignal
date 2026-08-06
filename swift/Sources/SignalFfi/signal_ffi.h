@@ -887,6 +887,44 @@ static_assert_64bit(alignof(SignalType_ConstPointer_SignalServerMessageAck) == 8
 typedef const SignalUnauthenticatedChatConnection* SignalType_ConstPointer_SignalUnauthenticatedChatConnection;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalUnauthenticatedChatConnection) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalUnauthenticatedChatConnection) == 8);
+typedef struct {
+  int32_t cdn;
+  SignalType_FixedArray15_uint8_t media_id;
+  int64_t object_length;
+} SignalListMediaItemFfiResult;
+static_assert_64bit(offsetof(SignalListMediaItemFfiResult, cdn) == 0);
+static_assert_64bit(offsetof(SignalListMediaItemFfiResult, media_id) == 4);
+static_assert_64bit(offsetof(SignalListMediaItemFfiResult, object_length) == 24);
+static_assert_64bit(sizeof(SignalListMediaItemFfiResult) == 32);
+static_assert_64bit(alignof(SignalListMediaItemFfiResult) == 8);
+typedef SignalListMediaItemFfiResult* SignalType_MutPointer_SignalListMediaItemFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalListMediaItemFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalListMediaItemFfiResult) == 8);
+typedef struct {
+  SignalListMediaItemFfiResult* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult) == 8);
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult items;
+  const int8_t* backup_dir;
+  const int8_t* media_dir;
+  const int8_t* cursor;
+} SignalListMediaResponseFfiResult;
+static_assert_64bit(offsetof(SignalListMediaResponseFfiResult, items) == 0);
+static_assert_64bit(offsetof(SignalListMediaResponseFfiResult, backup_dir) == 24);
+static_assert_64bit(offsetof(SignalListMediaResponseFfiResult, media_dir) == 32);
+static_assert_64bit(offsetof(SignalListMediaResponseFfiResult, cursor) == 40);
+static_assert_64bit(sizeof(SignalListMediaResponseFfiResult) == 48);
+static_assert_64bit(alignof(SignalListMediaResponseFfiResult) == 8);
+typedef const SignalListMediaResponseFfiResult* SignalType_ConstPointer_SignalListMediaResponseFfiResult;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalListMediaResponseFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalListMediaResponseFfiResult) == 8);
 typedef struct SignalRegistrationAccountAttributes SignalRegistrationAccountAttributes;
 typedef const SignalRegistrationAccountAttributes* SignalType_ConstPointer_SignalRegistrationAccountAttributes;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalRegistrationAccountAttributes) == 8);
@@ -2381,6 +2419,22 @@ static_assert_64bit(alignof(SignalCPromiseDeleteBackupMediaNextChunkFfiResult) =
 typedef SignalCPromiseDeleteBackupMediaNextChunkFfiResult* SignalType_MutPointer_SignalCPromiseDeleteBackupMediaNextChunkFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseDeleteBackupMediaNextChunkFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseDeleteBackupMediaNextChunkFfiResult) == 8);
+typedef void (*SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalListMediaResponseFfiResult, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseListMediaResponseFfiResult;
+static_assert_64bit(offsetof(SignalCPromiseListMediaResponseFfiResult, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseListMediaResponseFfiResult, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseListMediaResponseFfiResult, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseListMediaResponseFfiResult) == 24);
+static_assert_64bit(alignof(SignalCPromiseListMediaResponseFfiResult) == 8);
+typedef SignalCPromiseListMediaResponseFfiResult* SignalType_MutPointer_SignalCPromiseListMediaResponseFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseListMediaResponseFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseListMediaResponseFfiResult) == 8);
 typedef uint16_t* SignalType_MutPointer_uint16_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_uint16_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_uint16_t) == 8);
@@ -5823,6 +5877,17 @@ SignalFfiError* signal_unauthenticated_chat_connection_backup_get_upload_form(
   SignalBorrowedBuffer server_keys,
   SignalConstPointerPrivateKey signing_key,
   uint64_t upload_size,
+  int64_t rng
+);
+SignalFfiError* signal_unauthenticated_chat_connection_backup_list_media(
+  SignalCPromiseListMediaResponseFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalBorrowedBuffer credential,
+  SignalBorrowedBuffer server_keys,
+  SignalConstPointerPrivateKey signing_key,
+  const int8_t* cursor,
+  int32_t limit,
   int64_t rng
 );
 SignalFfiError* signal_unauthenticated_chat_connection_backup_refresh(

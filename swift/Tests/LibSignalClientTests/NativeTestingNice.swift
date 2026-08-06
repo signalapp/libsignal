@@ -594,6 +594,19 @@ internal enum GetSvrBCredentialsOut {
     case missingResponse
 }
 
+internal struct ListMediaArgs {
+    var cursor: String?
+    var limit: Int32
+
+}
+
+internal enum ListMediaOut {
+    case page(ListMediaResponse)
+    case malformedMediaId
+    case credentialRejected
+    case missingResponse
+}
+
 internal struct LookUpUsernameLinkArgs {
     var uuid: UUID
     var entropy: Data
@@ -918,6 +931,49 @@ internal enum DerivedReturnConverterGetSvrBCredentialsOut: NiceReturnConverter {
             return GetSvrBCredentialsOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for GetSvrBCredentialsOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterListMediaArgs: NiceReturnConverter {
+    typealias NiceReturn = ListMediaArgs
+    typealias FfiReturn = SignalListMediaArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalListMediaArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let cursor = Result { try OptionalStringConverter.convertReturn(consuming: ffiValue.cursor) }
+        let limit = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.limit) }
+
+        return ListMediaArgs(cursor: try cursor.get(), limit: try limit.get())
+    }
+}
+
+internal enum DerivedReturnConverterListMediaOut: NiceReturnConverter {
+    typealias NiceReturn = ListMediaOut
+    typealias FfiReturn = SignalListMediaOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalListMediaOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalListMediaOutFfiResultPage:
+            let _0 = Result {
+                try DerivedReturnConverterListMediaResponse.convertReturn(
+                    consuming: ffiValue.page._0
+                )
+            }
+            return ListMediaOut.page(try _0.get())
+        case SignalListMediaOutFfiResultMalformedMediaId:
+            return ListMediaOut.malformedMediaId
+        case SignalListMediaOutFfiResultCredentialRejected:
+            return ListMediaOut.credentialRejected
+        case SignalListMediaOutFfiResultMissingResponse:
+            return ListMediaOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ListMediaOut: \(ffiTag)")
         }
     }
 }
@@ -1978,6 +2034,19 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_BackupListMediaTests() throws -> [GrpcTestCase<ListMediaArgs, ListMediaOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterListMediaArgs, DerivedReturnConverterListMediaOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_backup_list_media_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterListMediaArgs, DerivedReturnConverterListMediaOut>
+            .convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_BackupRefreshTests() throws -> [GrpcTestCase<Void, SimpleBackupTestOut>] {

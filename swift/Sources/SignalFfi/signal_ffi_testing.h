@@ -740,6 +740,31 @@ typedef struct {
 static_assert_64bit(sizeof(SignalGetSvrBCredentialsOutFfiResult) == 24);
 static_assert_64bit(alignof(SignalGetSvrBCredentialsOutFfiResult) == 8);
 typedef struct {
+  const int8_t* cursor;
+  int32_t limit;
+} SignalListMediaArgsFfiResult;
+static_assert_64bit(offsetof(SignalListMediaArgsFfiResult, cursor) == 0);
+static_assert_64bit(offsetof(SignalListMediaArgsFfiResult, limit) == 8);
+static_assert_64bit(sizeof(SignalListMediaArgsFfiResult) == 16);
+static_assert_64bit(alignof(SignalListMediaArgsFfiResult) == 8);
+typedef enum {
+  SignalListMediaOutFfiResultPage,
+  SignalListMediaOutFfiResultMalformedMediaId,
+  SignalListMediaOutFfiResultCredentialRejected,
+  SignalListMediaOutFfiResultMissingResponse,
+} SignalListMediaOutFfiResult_Tag;
+typedef struct {
+  SignalListMediaResponseFfiResult _0;
+} SignalListMediaOutFfiResultSignalPage_Body;
+typedef struct {
+  SignalListMediaOutFfiResult_Tag tag;
+  union {
+    SignalListMediaOutFfiResultSignalPage_Body page;
+  };
+} SignalListMediaOutFfiResult;
+static_assert_64bit(sizeof(SignalListMediaOutFfiResult) == 56);
+static_assert_64bit(alignof(SignalListMediaOutFfiResult) == 8);
+typedef struct {
   SignalUuid uuid;
   SignalType_FixedArray32_uint8_t entropy;
 } SignalLookUpUsernameLinkArgsFfiResult;
@@ -1108,6 +1133,9 @@ SignalFfiError* signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(
   SignalMutPointerNonSuspendingBackgroundThreadRuntime p
 );
 SignalFfiError* signal_testing_backup_delete_all_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_backup_list_media_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_backup_refresh_tests(

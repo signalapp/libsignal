@@ -3133,6 +3133,18 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_backup_list_media(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: ByteArray,
+    serverKeys: ByteArray,
+    signingKey: SimpleOwner,
+    cursor: String,
+    limit: Int,
+    rng: Long,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_backup_refresh(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

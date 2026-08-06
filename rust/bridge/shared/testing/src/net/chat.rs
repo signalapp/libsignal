@@ -494,6 +494,7 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
+    use libsignal_bridge_types::net::chat::remote_derives::ListMediaResponse;
     use libsignal_bridge_types::net::chat::{
         BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem, BridgeMediaBackupInfo,
         BridgeMessageBackupInfo,
@@ -635,6 +636,35 @@ mod remote_derives {
         CredentialRejected,
         MissingResponse,
     }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct ListMediaArgs {
+        pub cursor: Option<String>,
+        pub limit: i32,
+    }
+    impl From<libsignal_net_chat::grpc::backups::test_cases::ListMediaArgs> for ListMediaArgs {
+        fn from(value: libsignal_net_chat::grpc::backups::test_cases::ListMediaArgs) -> Self {
+            let libsignal_net_chat::grpc::backups::test_cases::ListMediaArgs { cursor, limit } =
+                value;
+            Self {
+                cursor,
+                limit: limit
+                    .map(|x| x.try_into().expect("limit maxes out at 10_000"))
+                    .unwrap_or(-1),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::ListMediaOut)]
+    #[bridge(arg = false)]
+    pub enum ListMediaOut {
+        Page(ListMediaResponse),
+        MalformedMediaId,
+        CredentialRejected,
+        MissingResponse,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -764,4 +794,10 @@ fn TESTING_GetBackupCdnCredentialsTests() -> GrpcTestCases<i32, remote_derives::
 fn TESTING_GetBackupSvrBCredentialsTests()
 -> GrpcTestCases<(), remote_derives::GetSvrBCredentialsOut> {
     libsignal_net_chat::grpc::backups::test_cases::get_svrb_credentials_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_BackupListMediaTests()
+-> GrpcTestCases<remote_derives::ListMediaArgs, remote_derives::ListMediaOut> {
+    libsignal_net_chat::grpc::backups::test_cases::list_media_test_cases().into()
 }

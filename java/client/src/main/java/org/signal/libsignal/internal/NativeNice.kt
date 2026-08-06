@@ -83,6 +83,19 @@ public data class LinkedDeviceInternal(
   public val createdAtCiphertext: ByteArray,
 )
 
+public data class ListMediaItem(
+  public val cdn: Int,
+  public val mediaId: ByteArray,
+  public val objectLength: Long,
+)
+
+public data class ListMediaResponse(
+  public val items: List<org.signal.libsignal.internal.ListMediaItem>,
+  public val backupDir: String,
+  public val mediaDir: String,
+  public val cursor: String?,
+)
+
 public object BridgeCopyBackupMediaOutcome_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -244,6 +257,49 @@ public object LinkedDeviceInternal_ReturnConverter {
         identity(registration_id as Int),
       createdAtCiphertext =
         identity(created_at_ciphertext as ByteArray),
+    )
+}
+
+public object ListMediaItem_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    cdn: Any?,
+    media_id: Any?,
+    object_length: Any?,
+  ): ListMediaItem =
+    ListMediaItem(
+      cdn =
+        identity(cdn as Int),
+      mediaId =
+        identity(media_id as ByteArray),
+      objectLength =
+        identity(object_length as Long),
+    )
+}
+
+public object ListMediaResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    items: Any?,
+    backup_dir: Any?,
+    media_dir: Any?,
+    cursor: Any?,
+  ): ListMediaResponse =
+    ListMediaResponse(
+      items =
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.ListMediaItem>({
+          downcastFromObject<org.signal.libsignal.internal.ListMediaItem>(it)
+        })(items as Array<*>),
+      backupDir =
+        identity(backup_dir as String),
+      mediaDir =
+        identity(media_dir as String),
+      cursor =
+        identity(cursor as String?),
     )
 }
 
@@ -890,6 +946,45 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { mapPair<String, String, String, String>({ identity(it) }, { identity(it) })(it) }
+  }
+
+  public fun UnauthenticatedChatConnection_backup_list_media(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    credential: org.signal.libsignal.zkgroup.backups.BackupAuthCredential,
+    serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
+    signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
+    cursor: String,
+    limit: Int,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<org.signal.libsignal.internal.ListMediaResponse> {
+    val ffi_chat = identity(chat)
+    val ffi_credential =
+      (org.signal.libsignal.zkgroup.backups.BackupAuthCredential::getInternalContentsForJNI)(credential)
+    val ffi_server_keys =
+      (org.signal.libsignal.zkgroup.GenericServerPublicParams::getInternalContentsForJNI)(serverKeys)
+    val ffi_signing_key = identity(signingKey)
+    val ffi_cursor = identity(cursor)
+    val ffi_limit = identity(limit)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_backup_list_media(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_credential,
+          ffi_server_keys,
+          ffi_signing_key,
+          ffi_cursor,
+          ffi_limit,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.ListMediaResponse>(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_refresh(

@@ -16,6 +16,7 @@ import org.signal.libsignal.internal.GetCdnCredentialsOut
 import org.signal.libsignal.internal.GetMediaBackupInfoOut
 import org.signal.libsignal.internal.GetMessageBackupInfoOut
 import org.signal.libsignal.internal.GetSvrBCredentialsOut
+import org.signal.libsignal.internal.ListMediaOut
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.SimpleBackupTestOut
@@ -521,6 +522,39 @@ class UnauthBackupsServiceTest {
             }
           }
           assertFalse(actualIter.hasNext())
+        },
+      )
+    }
+
+  @Test
+  fun testListMedia() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_BackupListMediaTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthBackupsService,
+        invoke = { chat, args ->
+          chat.listMedia(
+            TEST_AUTH,
+            args.cursor,
+            if (args.limit < 0) null else args.limit,
+            DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is ListMediaOut.Page ->
+              assertEquals(
+                ListBackupMediaResponse.fromInternal(expected._0),
+                assertIs<RequestResult.Success<ListBackupMediaResponse>>(actual).result,
+              )
+            ListMediaOut.CredentialRejected ->
+              actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
+            ListMediaOut.MalformedMediaId, ListMediaOut.MissingResponse ->
+              assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+          }
         },
       )
     }

@@ -446,6 +446,46 @@ class UnauthBackupsServiceTests: UnauthChatServiceTestBase<any UnauthBackupsServ
             }
         )
     }
+
+    func testListMedia() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_BackupListMediaTests(),
+            invoke: { api, args in
+                try await api.listBackupMedia(
+                    auth: TEST_AUTH,
+                    cursor: args.cursor,
+                    limit: args.limit < 0 ? nil : Int(args.limit),
+                    rngForTesting: 0
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .page(let expected):
+                    let response = try actual.get()
+                    XCTAssertEqual(
+                        response.items,
+                        expected.items.map {
+                            .init(cdn: $0.cdn, mediaId: $0.mediaId, objectLength: UInt64($0.objectLength))
+                        }
+                    )
+                    XCTAssertEqual(response.backupDir, expected.backupDir)
+                    XCTAssertEqual(response.mediaDir, expected.mediaDir)
+                    XCTAssertEqual(response.cursor, expected.cursor)
+                case .credentialRejected:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.requestUnauthorized(_) {}
+                case .malformedMediaId, .missingResponse:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
+
+    }
 }
 
 extension CopyBackupMediaOutcome: Equatable {

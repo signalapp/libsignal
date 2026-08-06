@@ -1053,6 +1053,43 @@ extension SignalCPromiseDeleteBackupMediaNextChunkFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseListMediaResponseFfiResult: SignalCPromise {
+
+    typealias Result = SignalListMediaResponseFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
 
     typealias First = SignalCStringPtr?
@@ -1427,6 +1464,31 @@ enum
     }
 }
 
+enum
+    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult_DerivedReturnConverterListMediaItem:
+        FfiOwnedBufferOfMaxAlignedProject
+{
+    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult
+    typealias Element = DerivedReturnConverterListMediaItem.FfiReturn
+    static func empty() -> Buffer {
+        Buffer()
+    }
+    static func project(
+        _ buffer: Buffer
+    ) -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
+    }
+    static func typeErased(
+        _ buffer: Buffer
+    ) -> SignalOwnedBufferOfMaxAlignedc_void {
+        SignalOwnedBufferOfMaxAlignedc_void(
+            base: UnsafeMutableRawPointer(buffer.base),
+            length: buffer.length,
+            size_bytes: buffer.size_bytes,
+        )
+    }
+}
+
 internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
@@ -1530,6 +1592,21 @@ internal struct LinkedDeviceInternal {
     var lastSeen: Date
     var registrationId: UInt16
     var createdAtCiphertext: Data
+
+}
+
+internal struct ListMediaItem {
+    var cdn: Int32
+    var mediaId: Data
+    var objectLength: Int64
+
+}
+
+internal struct ListMediaResponse {
+    var items: [ListMediaItem]
+    var backupDir: String
+    var mediaDir: String
+    var cursor: String?
 
 }
 
@@ -1705,6 +1782,51 @@ internal enum DerivedReturnConverterLinkedDeviceInternal: NiceReturnConverter {
             lastSeen: try last_seen.get(),
             registrationId: try registration_id.get(),
             createdAtCiphertext: try created_at_ciphertext.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterListMediaItem: NiceReturnConverter {
+    typealias NiceReturn = ListMediaItem
+    typealias FfiReturn = SignalListMediaItemFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalListMediaItemFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let cdn = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.cdn) }
+        let media_id = Result {
+            try FixedByteArrayConverter<FixedByteArrayHelper15>.convertReturn(consuming: ffiValue.media_id)
+        }
+        let object_length = Result { try IdentityConverter<Int64>.convertReturn(consuming: ffiValue.object_length) }
+
+        return ListMediaItem(cdn: try cdn.get(), mediaId: try media_id.get(), objectLength: try object_length.get())
+    }
+}
+
+internal enum DerivedReturnConverterListMediaResponse: NiceReturnConverter {
+    typealias NiceReturn = ListMediaResponse
+    typealias FfiReturn = SignalListMediaResponseFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalListMediaResponseFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let items = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterListMediaItem,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult_DerivedReturnConverterListMediaItem
+            >.convertReturn(consuming: ffiValue.items)
+        }
+        let backup_dir = Result { try StringConverter.convertReturn(consuming: ffiValue.backup_dir) }
+        let media_dir = Result { try StringConverter.convertReturn(consuming: ffiValue.media_dir) }
+        let cursor = Result { try OptionalStringConverter.convertReturn(consuming: ffiValue.cursor) }
+
+        return ListMediaResponse(
+            items: try items.get(),
+            backupDir: try backup_dir.get(),
+            mediaDir: try media_dir.get(),
+            cursor: try cursor.get()
         )
     }
 }
@@ -2597,6 +2719,53 @@ internal enum NativeNice {
                 }
         return try PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>
             .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_backup_list_media(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: BackupAuthCredential,
+        serverKeys server_keys: GenericServerPublicParams,
+        signingKey signing_key: PrivateKey,
+        cursor: String,
+        limit: Int32,
+        rng: Int64,
+    ) async throws -> ListMediaResponse {
+        let rawOutput: DerivedReturnConverterListMediaResponse.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<BackupAuthCredential>.convertArgBorrowed(credential) { credentialFfi in
+                            ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(server_keys) {
+                                server_keysFfi in
+                                BridgeHandleRefConverter<SignalMutPointerPrivateKey, PrivateKey>.convertArgBorrowed(
+                                    signing_key
+                                ) { signing_keyFfi in
+                                    StringConverter.convertArgBorrowed(cursor) { cursorFfi in
+                                        IdentityConverter<Int32>.convertArgBorrowed(limit) { limitFfi in
+                                            IdentityConverter.convertArgBorrowed(rng) { rngFfi in
+                                                SignalFfi.signal_unauthenticated_chat_connection_backup_list_media(
+                                                    promiseFfi,
+                                                    asyncContextFfi.const(),
+                                                    chatFfi,
+                                                    credentialFfi,
+                                                    server_keysFfi,
+                                                    signing_keyFfi,
+                                                    cursorFfi,
+                                                    limitFfi,
+                                                    rngFfi,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterListMediaResponse.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_backup_refresh(

@@ -33,6 +33,10 @@ import type {
   ReturnFfiGetMessageBackupInfoOut,
   ReturnFfiGetSvrBCredentialsOut,
   ReturnFfiLinkedDeviceInternal,
+  ReturnFfiListMediaArgs,
+  ReturnFfiListMediaItem,
+  ReturnFfiListMediaOut,
+  ReturnFfiListMediaResponse,
   ReturnFfiLookUpUsernameLinkArgs,
   ReturnFfiLookUpUsernameLinkOut,
   ReturnFfiMyRemoteDeriveEnum,
@@ -177,6 +181,32 @@ export type LinkedDeviceInternal = {
   lastSeen: Timestamp;
   registrationId: number;
   createdAtCiphertext: Uint8Array<ArrayBuffer>;
+};
+
+export type ListMediaArgs = {
+  cursor: string | null;
+  limit: number;
+};
+
+export type ListMediaItem = {
+  cdn: number;
+  mediaId: Uint8Array<ArrayBuffer>;
+  objectLength: bigint;
+};
+
+export type ListMediaOut =
+  | {
+      page: ListMediaResponse;
+    }
+  | 'malformedMediaId'
+  | 'credentialRejected'
+  | 'missingResponse';
+
+export type ListMediaResponse = {
+  items: Array<ListMediaItem>;
+  backupDir: string;
+  mediaDir: string;
+  cursor: string | null;
 };
 
 export type LookUpUsernameLinkArgs = {
@@ -361,7 +391,9 @@ export function returnConverterCopyBackupMediaNextChunk(
   return {
     chunk: ((arr: Array<ReturnFfiBridgeCopyBackupMediaOutcome>) =>
       arr.map(returnConverterBridgeCopyBackupMediaOutcome))(ffiInput.chunk),
-    termination: identity(ffiInput.termination),
+    termination: ((a) => (a === null ? null : identity(a)))(
+      ffiInput.termination
+    ),
   };
 }
 
@@ -392,7 +424,9 @@ export function returnConverterDeleteBackupMediaNextChunk(
   return {
     chunk: ((arr: Array<ReturnFfiBridgeDeleteBackupMediaItem>) =>
       arr.map(returnConverterBridgeDeleteBackupMediaItem))(ffiInput.chunk),
-    termination: identity(ffiInput.termination),
+    termination: ((a) => (a === null ? null : identity(a)))(
+      ffiInput.termination
+    ),
   };
 }
 
@@ -516,6 +550,58 @@ export function returnConverterLinkedDeviceInternal(
     lastSeen: identity(ffiInput.last_seen),
     registrationId: identity(ffiInput.registration_id),
     createdAtCiphertext: identity(ffiInput.created_at_ciphertext),
+  };
+}
+
+export function returnConverterListMediaArgs(
+  ffiInput: Native.ReturnFfiListMediaArgs
+): ListMediaArgs {
+  return {
+    cursor: ((a) => (a === null ? null : identity(a)))(ffiInput.cursor),
+    limit: identity(ffiInput.limit),
+  };
+}
+
+export function returnConverterListMediaItem(
+  ffiInput: Native.ReturnFfiListMediaItem
+): ListMediaItem {
+  return {
+    cdn: identity(ffiInput.cdn),
+    mediaId: identity(ffiInput.media_id),
+    objectLength: identity(ffiInput.object_length),
+  };
+}
+
+export function returnConverterListMediaOut(
+  ffiInput: Native.ReturnFfiListMediaOut
+): ListMediaOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        page: returnConverterListMediaResponse(ffiInput._0),
+      };
+    case 1:
+      return 'malformedMediaId';
+    case 2:
+      return 'credentialRejected';
+    case 3:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for ListMediaOut');
+  }
+}
+
+export function returnConverterListMediaResponse(
+  ffiInput: Native.ReturnFfiListMediaResponse
+): ListMediaResponse {
+  return {
+    items: ((arr: Array<ReturnFfiListMediaItem>) =>
+      arr.map(returnConverterListMediaItem))(ffiInput.items),
+    backupDir: identity(ffiInput.backup_dir),
+    mediaDir: identity(ffiInput.media_dir),
+    cursor: ((a) => (a === null ? null : identity(a)))(ffiInput.cursor),
   };
 }
 
@@ -766,7 +852,9 @@ export function returnConverterTestStreamChunk(
 ): TestStreamChunk {
   return {
     chunk: ((arr: Array<string>) => arr.map(identity))(ffiInput.chunk),
-    termination: identity(ffiInput.termination),
+    termination: ((a) => (a === null ? null : identity(a)))(
+      ffiInput.termination
+    ),
   };
 }
 
@@ -1249,6 +1337,15 @@ export function TESTING_BackupDeleteAllTests(): Array<
   )(Native.TESTING_BackupDeleteAllTests());
 }
 
+export function TESTING_BackupListMediaTests(): Array<
+  GrpcTestCase<ListMediaArgs, ListMediaOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterListMediaArgs,
+    returnConverterListMediaOut
+  )(Native.TESTING_BackupListMediaTests());
+}
+
 export function TESTING_BackupRefreshTests(): Array<
   GrpcTestCase<void, SimpleBackupTestOut>
 > {
@@ -1634,7 +1731,9 @@ export function TESTING_ReturnSomeIoError({
 }: {
   present: boolean;
 }): Error | null {
-  return identity(Native.TESTING_ReturnSomeIoError(identity(present)));
+  return ((a) => (a === null ? null : identity(a)))(
+    Native.TESTING_ReturnSomeIoError(identity(present))
+  );
 }
 
 export function TESTING_SetDeviceNameTests(): Array<
@@ -2392,6 +2491,43 @@ export async function UnauthenticatedChatConnection_backup_get_svrb_credentials(
         ByteArray.prototype.getContents.call(credential),
         ByteArray.prototype.getContents.call(server_keys),
         identity(signing_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_backup_list_media({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  serverKeys: server_keys,
+  signingKey: signing_key,
+  cursor: cursor,
+  limit: limit,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.BackupAuthCredential;
+  serverKeys: zkgroup.GenericServerPublicParams;
+  signingKey: Native.Wrapper<Native.PrivateKey>;
+  cursor: string;
+  limit: number;
+  rng: Rng | undefined;
+}): Promise<ListMediaResponse> {
+  return returnConverterListMediaResponse(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_backup_list_media(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        ByteArray.prototype.getContents.call(server_keys),
+        identity(signing_key),
+        identity(cursor),
+        identity(limit),
         ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )

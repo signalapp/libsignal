@@ -154,6 +154,7 @@ impl std::fmt::Display for RedactBase64<'_> {
         )
     }
 }
+impl_debug_from_display!(RedactBase64<'__lifetime>);
 
 pub struct DebugAsStrOrBytes<'b>(pub &'b [u8]);
 impl std::fmt::Debug for DebugAsStrOrBytes<'_> {

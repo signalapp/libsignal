@@ -211,6 +211,57 @@ public data class DeleteBackupMediaItem(
   override fun hashCode(): Int = Objects.hash(mediaId.contentHashCode(), cdn)
 }
 
+/** @see UnauthBackupsService.listMedia */
+public data class ListBackupMediaResponse(
+  /** The requested page of items. */
+  val items: List<Item>,
+  /**
+   * The base directory of the backup data on the CDN.
+   *
+   * Always non-empty, even if no media has been stored to the CDN or the credential is for a tier
+   * that does not support media.
+   */
+  val backupDir: String,
+  /**
+   * The prefix path component for media objects on a CDN.
+   *
+   * Stored media for a `mediaId` can be found at `/backupDir/mediaDir/mediaId`, where the
+   * `mediaId` is encoded in unpadded url-safe base64. Always non-empty, even if no media has been
+   * stored to the CDN or the credential is for a tier that does not support media.
+   */
+  val mediaDir: String,
+  /**
+   * If set, the cursor value to pass to the next list request to continue listing. If absent, all
+   * objects have been listed.
+   */
+  val cursor: String?,
+) {
+  public data class Item(
+    val cdn: Int,
+    val mediaId: ByteArray,
+    val objectLength: Long,
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (other !is Item) {
+        return false
+      }
+      return cdn == other.cdn && mediaId.contentEquals(other.mediaId) && objectLength == other.objectLength
+    }
+
+    override fun hashCode(): Int = Objects.hash(cdn, mediaId.contentHashCode(), objectLength)
+  }
+
+  public companion object {
+    public fun fromInternal(response: org.signal.libsignal.internal.ListMediaResponse): ListBackupMediaResponse =
+      ListBackupMediaResponse(
+        items = response.items.map { Item(cdn = it.cdn, mediaId = it.mediaId, objectLength = it.objectLength) },
+        backupDir = response.backupDir,
+        mediaDir = response.mediaDir,
+        cursor = response.cursor,
+      )
+  }
+}
+
 public data class DeterministicRandomSeedUseOnlyForTesting(
   val seed: Long,
 ) {
@@ -612,4 +663,42 @@ public class UnauthBackupsService(
       cancel = Native::DeleteBackupMediaStream_cancel,
     )
   }
+
+  /**
+   * Lists media objects stored with this backup ID.
+   *
+   * This is a paginated API; each invocation will return a `cursor` to use in subsequent requests.
+   * The final page will not have a `cursor`.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [RequestUnauthorizedException] means that the authorization
+   * failed.
+   *
+   * @param cursor pass the cursor from a previous response to fetch the next page of items
+   * @param limit a value up to `10_000`; omit this to leave the page size up to the server
+   */
+  public fun listMedia(
+    auth: BackupAuth,
+    cursor: String? = null,
+    limit: Int? = null,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<ListBackupMediaResponse, RequestUnauthorizedException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_backup_list_media(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = auth.credential,
+          serverKeys = auth.serverKeys,
+          signingKey = auth.signingKey,
+          cursor = cursor ?: "",
+          limit = limit ?: -1,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(ListBackupMediaResponse.fromInternal(it)) },
+          onError = { it.toRequestResult<RequestUnauthorizedException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }

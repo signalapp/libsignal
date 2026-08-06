@@ -440,4 +440,44 @@ describe('UnauthBackupsService', () => {
       }
     );
   });
+
+  describe('listBackupMedia', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_BackupListMediaTests(),
+      connectUnauth<UnauthBackupsService>,
+      async (chat, { cursor, limit }, expected) => {
+        const actual = chat.listBackupMedia({
+          auth: TEST_AUTH,
+          cursor: cursor ?? undefined,
+          limit: limit < 0 ? undefined : limit,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (typeof expected !== 'string') {
+          const expectedPage: Partial<NativeNice.ListMediaResponse> =
+            expected.page;
+          // Convert `cursor: string | null` representation to `cursor?: string`.
+          if (!expectedPage.cursor) {
+            delete expectedPage.cursor;
+          }
+          expect(await actual).to.deep.equal(expectedPage);
+        } else {
+          switch (expected) {
+            case 'credentialRejected':
+              await expect(actual)
+                .to.eventually.be.rejectedWith(LibSignalErrorBase)
+                .and.deep.include({ code: ErrorCode.RequestUnauthorized });
+              break;
+            case 'malformedMediaId':
+            case 'missingResponse':
+              await expect(actual)
+                .to.eventually.be.rejectedWith(LibSignalErrorBase)
+                .and.deep.include({ code: ErrorCode.IoError });
+              break;
+            default:
+              expected satisfies never;
+          }
+        }
+      }
+    );
+  });
 });

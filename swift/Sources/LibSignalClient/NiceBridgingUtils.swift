@@ -118,6 +118,23 @@ internal struct StringConverter: NiceArgConverter, NiceReturnConverter {
     }
 }
 
+internal struct OptionalStringConverter: NiceReturnConverter {
+    typealias FfiReturn = UnsafePointer<CChar>?
+    typealias NiceReturn = String?
+
+    static func emptyFfiReturn() -> UnsafePointer<CChar>? {
+        nil
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        guard let value = value else {
+            return nil
+        }
+        defer { signal_free_string(value) }
+        return String(cString: value)
+    }
+}
+
 internal protocol DefaultInit {
     init()
 }

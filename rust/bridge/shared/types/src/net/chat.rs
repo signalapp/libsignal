@@ -1105,6 +1105,7 @@ bridge_as_handle!(
 );
 
 pub mod remote_derives {
+    use libsignal_bridge_macros::StructuralFrom;
     use libsignal_core::DeviceId;
 
     use super::*;
@@ -1118,6 +1119,50 @@ pub mod remote_derives {
         pub last_seen: Timestamp,
         pub registration_id: u16,
         pub created_at_ciphertext: Vec<u8>,
+    }
+
+    #[derive(BridgedAsValue)]
+    pub struct ListMediaItem {
+        pub cdn: i32,
+        pub media_id: [u8; MEDIA_ID_LEN],
+        pub object_length: i64,
+    }
+
+    impl From<libsignal_net_chat::grpc::backups::ListMediaItem> for ListMediaItem {
+        fn from(value: libsignal_net_chat::grpc::backups::ListMediaItem) -> Self {
+            let libsignal_net_chat::grpc::backups::ListMediaItem {
+                cdn,
+                media_id,
+                object_length,
+            } = value;
+            Self {
+                cdn: cdn.try_into().expect("CDN numbers are small"),
+                media_id,
+                object_length: object_length.try_into().expect("object lengths fit in i64"),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::ListMediaResponse)]
+    #[bridge(arg = false)]
+    pub struct ListMediaResponse {
+        /// The requested page of items.
+        pub items: BridgeVec<ListMediaItem>,
+        /// The base directory of the backup data on the CDN.
+        ///
+        /// Always non-empty, even if no media has been stored to the CDN or the credential is for a
+        /// tier that does not support media.
+        pub backup_dir: String,
+        /// The prefix path component for media objects on a CDN.
+        ///
+        /// Stored media for a `media_id` can be found at `/backup_dir/media_dir/media_id`, where the
+        /// `media_id` is encoded in unpadded url-safe base64. Always non-empty, even if no media has
+        /// been stored to the CDN or the credential is for a tier that does not support media.
+        pub media_dir: String,
+        /// If set, the cursor value to pass to the next list request to continue listing. If absent,
+        /// all objects have been listed.
+        pub cursor: Option<String>,
     }
 }
 

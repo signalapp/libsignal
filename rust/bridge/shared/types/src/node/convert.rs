@@ -1597,6 +1597,20 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
         format!("({} | null)", T::register_ts_ffi_type(ctx))
     }
 }
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter> NiceResultConverter for Option<T> {
+    fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        let inner = T::register_ts_result_converter(ctx);
+        TsReturnConverter {
+            nice_type: format!("({} | null)", inner.nice_type),
+            ffi_type: format!("({} | null)", inner.ffi_type),
+            converter_function: format!(
+                "((a) => a === null ? null : ({})(a))",
+                inner.converter_function
+            ),
+        }
+    }
+}
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     type ResultType = JsUint8Array;
@@ -2209,7 +2223,6 @@ impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for crate::support::BridgedError
     register_ts_ffi_type!("Error");
 }
 nice_identity_result_converter!(<T: SignalNodeError> crate::support::BridgedError<T>);
-nice_identity_result_converter!(<T: SignalNodeError> Option<crate::support::BridgedError<T>>);
 
 impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for BulkPolledStreamTerminationReason<T> {
     type ResultType = JsValue;
@@ -2229,7 +2242,6 @@ impl<'a, T: SignalNodeError> ResultTypeInfo<'a> for BulkPolledStreamTerminationR
     register_ts_ffi_type!("(\"finished\"|Error)");
 }
 nice_identity_result_converter!(<T: SignalNodeError> BulkPolledStreamTerminationReason<T>);
-nice_identity_result_converter!(<T: SignalNodeError> Option<BulkPolledStreamTerminationReason<T>>);
 
 macro_rules! full_range_integer {
     ($typ:ty) => {

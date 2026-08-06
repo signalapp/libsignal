@@ -1195,6 +1195,15 @@ impl ResultTypeInfo for Option<String> {
         }
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Option<String> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "String?".to_string(),
+            converter_type: "OptionalStringConverter".to_string(),
+        }
+    }
+}
 
 /// Allocates and returns a new Rust-owned C string.
 impl ResultTypeInfo for &str {

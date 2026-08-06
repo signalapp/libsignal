@@ -91,6 +91,23 @@ public sealed class GetSvrBCredentialsOut {
   public data object MissingResponse : GetSvrBCredentialsOut()
 }
 
+public data class ListMediaArgs(
+  public val cursor: String?,
+  public val limit: Int,
+)
+
+public sealed class ListMediaOut {
+  public data class Page(
+    public val _0: org.signal.libsignal.internal.ListMediaResponse,
+  ) : ListMediaOut()
+
+  public data object MalformedMediaId : ListMediaOut()
+
+  public data object CredentialRejected : ListMediaOut()
+
+  public data object MissingResponse : ListMediaOut()
+}
+
 public data class LookUpUsernameLinkArgs(
   public val uuid: java.util.UUID,
   public val entropy: ByteArray,
@@ -413,6 +430,54 @@ public object GetSvrBCredentialsOut_MissingResponse_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): GetSvrBCredentialsOut.MissingResponse = GetSvrBCredentialsOut.MissingResponse
+}
+
+public object ListMediaArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    cursor: Any?,
+    limit: Any?,
+  ): ListMediaArgs =
+    ListMediaArgs(
+      cursor =
+        identity(cursor as String?),
+      limit =
+        identity(limit as Int),
+    )
+}
+
+public object ListMediaOut_Page_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): ListMediaOut.Page =
+    ListMediaOut.Page(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.ListMediaResponse>(_0 as Object),
+    )
+}
+
+public object ListMediaOut_MalformedMediaId_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): ListMediaOut.MalformedMediaId = ListMediaOut.MalformedMediaId
+}
+
+public object ListMediaOut_CredentialRejected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): ListMediaOut.CredentialRejected = ListMediaOut.CredentialRejected
+}
+
+public object ListMediaOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): ListMediaOut.MissingResponse = ListMediaOut.MissingResponse
 }
 
 public object LookUpUsernameLinkArgs_ReturnConverter {
@@ -913,6 +978,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.SimpleBackupTestOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SimpleBackupTestOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_BackupListMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.ListMediaArgs, org.signal.libsignal.internal.ListMediaOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_BackupListMediaTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.ListMediaArgs, org.signal.libsignal.internal.ListMediaOut>({
+        downcastFromObject<org.signal.libsignal.internal.ListMediaArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.ListMediaOut>(it) })(ffiOut)
   }
 
   public fun TESTING_BackupRefreshTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.SimpleBackupTestOut>> {

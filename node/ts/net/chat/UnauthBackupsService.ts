@@ -108,6 +108,38 @@ export type DeleteBackupMediaItem = {
   cdn: number;
 };
 
+export type ListMediaItem = {
+  cdn: number;
+  mediaId: Uint8Array<ArrayBuffer>;
+  objectLength: bigint;
+};
+
+/** @see UnauthBackupsService#listBackupMedia */
+export type ListMediaResponse = {
+  /** The requested page of items. */
+  items: ListMediaItem[];
+  /**
+   * The base directory of the backup data on the CDN.
+   *
+   * Always non-empty, even if no media has been stored to the CDN or the credential is for a tier
+   * that does not support media.
+   */
+  backupDir: string;
+  /**
+   * The prefix path component for media objects on a CDN.
+   *
+   * Stored media for a `mediaId` can be found at `/backupDir/mediaDir/mediaId`, where the
+   * `mediaId` is encoded in unpadded url-safe base64. Always non-empty, even if no media has been
+   * stored to the CDN or the credential is for a tier that does not support media.
+   */
+  mediaDir: string;
+  /**
+   * If set, the cursor value to pass to the next list request to continue listing. If absent, all
+   * objects have been listed.
+   */
+  cursor?: string;
+};
+
 export interface UnauthBackupsService {
   /**
    * Get a messages backup upload form
@@ -288,6 +320,28 @@ export interface UnauthBackupsService {
     items: ReadonlyArray<DeleteBackupMediaItem>;
     rng?: Rng;
   }) => ReadableStream<DeleteBackupMediaItem>;
+
+  /**
+   * Lists media objects stored with this backup ID.
+   *
+   * This is a paginated API; each invocation will return a `cursor` to use in subsequent requests.
+   * The final page will not have a `cursor`.
+   *
+   * @param cursor pass the cursor from a previous response to fetch the next page of items
+   * @param limit a value up to `10_000`; omit this to leave the page size up to the server
+   * @param rng should be omitted in production
+   * @throws {RequestUnauthorizedError} if authorization fails
+   * @throws {StandardNetworkError}
+   */
+  listBackupMedia: (
+    request: {
+      auth: BackupAuth;
+      cursor?: string;
+      limit?: number;
+      rng?: Rng;
+    },
+    options?: RequestOptions
+  ) => Promise<ListMediaResponse>;
 }
 
 UnauthenticatedChatConnection.prototype.getUploadForm = async function (
@@ -533,4 +587,32 @@ UnauthenticatedChatConnection.prototype.deleteBackupMedia = function ({
       },
     })
   );
+};
+
+UnauthenticatedChatConnection.prototype.listBackupMedia = async function (
+  { auth: { credential, serverKeys, signingKey }, cursor, limit, rng },
+  options
+) {
+  const {
+    items,
+    backupDir,
+    mediaDir,
+    cursor: nextCursor,
+  } = await NativeNice.UnauthenticatedChatConnection_backup_list_media({
+    asyncContext: this._asyncContext,
+    chat: this._chatService,
+    credential,
+    serverKeys,
+    signingKey,
+    cursor: cursor ?? '',
+    limit: limit ?? -1,
+    rng,
+    abortSignal: options?.abortSignal,
+  });
+  return {
+    items,
+    backupDir,
+    mediaDir,
+    ...(nextCursor ? { cursor: nextCursor } : {}),
+  };
 };

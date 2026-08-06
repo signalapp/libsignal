@@ -299,6 +299,39 @@ export type ReturnFfiLinkedDeviceInternal = {
   created_at_ciphertext: Uint8Array<ArrayBuffer>;
 };
 
+export type ReturnFfiListMediaArgs = {
+  cursor: string | null;
+  limit: number;
+};
+
+export type ReturnFfiListMediaItem = {
+  cdn: number;
+  media_id: Uint8Array<ArrayBuffer>;
+  object_length: bigint;
+};
+
+export type ReturnFfiListMediaOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiListMediaResponse;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiListMediaResponse = {
+  items: Array<ReturnFfiListMediaItem>;
+  backup_dir: string;
+  media_dir: string;
+  cursor: string | null;
+};
+
 export type ReturnFfiLookUpUsernameLinkArgs = {
   uuid: Uint8Array<ArrayBuffer>;
   entropy: Uint8Array<ArrayBuffer>;
@@ -2441,6 +2474,9 @@ type NativeFunctions = {
   TESTING_BackupDeleteAllTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiSimpleBackupTestOut>
   >;
+  TESTING_BackupListMediaTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiListMediaArgs, ReturnFfiListMediaOut>
+  >;
   TESTING_BackupRefreshTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiSimpleBackupTestOut>
   >;
@@ -3006,6 +3042,16 @@ type NativeFunctions = {
     upload_size: bigint,
     rng: RandomNumberGenerator
   ) => CancellablePromise<UploadForm>;
+  UnauthenticatedChatConnection_backup_list_media: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Uint8Array<ArrayBuffer>,
+    server_keys: Uint8Array<ArrayBuffer>,
+    signing_key: Wrapper<PrivateKey>,
+    cursor: string,
+    limit: number,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<ReturnFfiListMediaResponse>;
   UnauthenticatedChatConnection_backup_refresh: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -3695,6 +3741,7 @@ const {
   SvrKey_DeriveRegistrationRecoveryPassword,
   SvrKey_DeriveStorageServiceKey,
   TESTING_BackupDeleteAllTests,
+  TESTING_BackupListMediaTests,
   TESTING_BackupRefreshTests,
   TESTING_BackupSetPublicKeyTests,
   TESTING_BridgedStringMap_dump_to_json,
@@ -3890,6 +3937,7 @@ const {
   UnauthenticatedChatConnection_backup_get_message_backup_info,
   UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
+  UnauthenticatedChatConnection_backup_list_media,
   UnauthenticatedChatConnection_backup_refresh,
   UnauthenticatedChatConnection_backup_set_public_key,
   UnauthenticatedChatConnection_connect,
@@ -4438,6 +4486,7 @@ export {
   SvrKey_DeriveRegistrationRecoveryPassword,
   SvrKey_DeriveStorageServiceKey,
   TESTING_BackupDeleteAllTests,
+  TESTING_BackupListMediaTests,
   TESTING_BackupRefreshTests,
   TESTING_BackupSetPublicKeyTests,
   TESTING_BridgedStringMap_dump_to_json,
@@ -4633,6 +4682,7 @@ export {
   UnauthenticatedChatConnection_backup_get_message_backup_info,
   UnauthenticatedChatConnection_backup_get_svrb_credentials,
   UnauthenticatedChatConnection_backup_get_upload_form,
+  UnauthenticatedChatConnection_backup_list_media,
   UnauthenticatedChatConnection_backup_refresh,
   UnauthenticatedChatConnection_backup_set_public_key,
   UnauthenticatedChatConnection_connect,

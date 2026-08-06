@@ -86,6 +86,49 @@ public struct MediaBackupInfo: Sendable, Equatable {
     }
 }
 
+/// See ``UnauthBackupsService/listBackupMedia(auth:cursor:limit:)``.
+public struct ListBackupMediaResponse: Sendable {
+    // swiftlint:disable:previous explicit_init_for_public_struct - it's below the nested type
+    public struct Item: Sendable, Equatable {
+        public var cdn: Int32
+        public var mediaId: Data
+        public var objectLength: UInt64
+
+        public init(cdn: Int32, mediaId: Data, objectLength: UInt64) {
+            self.cdn = cdn
+            self.mediaId = mediaId
+            self.objectLength = objectLength
+        }
+    }
+
+    /// The requested page of items.
+    public var items: [Item]
+
+    /// The base directory of the backup data on the CDN.
+    ///
+    /// Always non-empty, even if no media has been stored to the CDN or the credential is for a
+    /// tier that does not support media.
+    public var backupDir: String
+
+    /// The prefix path component for media objects on a CDN.
+    ///
+    /// Stored media for a `mediaId` can be found at `/backupDir/mediaDir/mediaId`, where the
+    /// `mediaId` is encoded in unpadded url-safe base64. Always non-empty, even if no media has
+    /// been stored to the CDN or the credential is for a tier that does not support media.
+    public var mediaDir: String
+
+    /// If set, the cursor value to pass to the next list request to continue listing. If absent, all
+    /// objects have been listed.
+    public var cursor: String?
+
+    public init(items: [Item], backupDir: String, mediaDir: String, cursor: String? = nil) {
+        self.items = items
+        self.backupDir = backupDir
+        self.mediaDir = mediaDir
+        self.cursor = cursor
+    }
+}
+
 public protocol UnauthBackupsService: Sendable {
     /// Get a messages backup upload form
     ///
@@ -218,6 +261,18 @@ public protocol UnauthBackupsService: Sendable {
         auth: BackupAuth,
         items: some Sequence<DeleteBackupMediaItem>
     ) throws -> ColdAsyncStream<DeleteBackupMediaItem>
+
+    /// Lists media objects stored with this backup ID.
+    ///
+    /// This is a paginated API; each invocation will return a `cursor` to use in subsequent requests.
+    /// The final page will not have a `cursor`.
+    ///
+    /// - Parameter cursor: pass the cursor from a previous response to fetch the next page of items
+    /// - Parameter limit: a value up to `10_000`; omit this to leave the page size up to the server
+    /// - Throws:
+    ///   - ``SignalError/requestUnauthorized(_:)`` if there are authorization issues
+    ///   - the standard Signal network errors
+    func listBackupMedia(auth: BackupAuth, cursor: String?, limit: Int?) async throws -> ListBackupMediaResponse
 }
 
 extension UnauthenticatedChatConnection: UnauthBackupsService {
@@ -276,6 +331,11 @@ extension UnauthenticatedChatConnection: UnauthBackupsService {
     ) throws -> ColdAsyncStream<DeleteBackupMediaItem> {
         try self.deleteBackupMedia(auth: auth, items: items, rngForTesting: -1)
     }
+
+    public func listBackupMedia(auth: BackupAuth, cursor: String?, limit: Int?) async throws -> ListBackupMediaResponse
+    {
+        try await self.listBackupMedia(auth: auth, cursor: cursor, limit: limit, rngForTesting: -1)
+    }
 }
 
 internal protocol UnauthBackupsServiceImpl: Sendable {
@@ -301,6 +361,12 @@ internal protocol UnauthBackupsServiceImpl: Sendable {
     func getBackupSvrBCredentials(auth: BackupAuth, rngForTesting: Int64) async throws -> Auth
     func refreshBackup(auth: BackupAuth, rngForTesting: Int64) async throws
     func backupDeleteAll(auth: BackupAuth, rngForTesting: Int64) async throws
+    func listBackupMedia(
+        auth: BackupAuth,
+        cursor: String?,
+        limit: Int?,
+        rngForTesting: Int64
+    ) async throws -> ListBackupMediaResponse
 
     func copyBackupMedia(
         auth: BackupAuth,
@@ -528,6 +594,32 @@ extension UnauthenticatedChatConnection: UnauthBackupsServiceImpl {
             cancel: signal_delete_backup_media_stream_cancel,
         )
     }
+
+    func listBackupMedia(
+        auth: BackupAuth,
+        cursor: String?,
+        limit: Int?,
+        rngForTesting: Int64
+    ) async throws -> ListBackupMediaResponse {
+        let result = try await NativeNice.UnauthenticatedChatConnection_backup_list_media(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            credential: auth.credential,
+            serverKeys: auth.serverKeys,
+            signingKey: auth.signingKey,
+            cursor: cursor ?? "",
+            limit: Int32(limit ?? -1),
+            rng: rngForTesting
+        )
+        return ListBackupMediaResponse(
+            items: result.items.map {
+                .init(cdn: $0.cdn, mediaId: $0.mediaId, objectLength: UInt64(exactly: $0.objectLength)!)
+            },
+            backupDir: result.backupDir,
+            mediaDir: result.mediaDir,
+            cursor: result.cursor
+        )
+    }
 }
 
 /// A single item to copy from the attachment CDN to the backup CDN.
@@ -566,8 +658,8 @@ public struct CopyBackupMediaItem {
     }
 }
 
-// swiftlint:disable explicit_init_for_public_struct - it's below the nested type
 public struct CopyBackupMediaOutcome {
+    // swiftlint:disable:previous explicit_init_for_public_struct - it's below the nested type
     public enum Result {
         case success(cdn: Int32)
         case sourceNotFound

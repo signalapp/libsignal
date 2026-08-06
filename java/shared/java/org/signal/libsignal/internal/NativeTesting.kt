@@ -83,6 +83,9 @@ public object NativeTesting {
   public external fun TESTING_BackupDeleteAllTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_BackupListMediaTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_BackupRefreshTests(): Array<Object>
 
   @JvmStatic

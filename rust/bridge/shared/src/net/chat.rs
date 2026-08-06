@@ -15,6 +15,7 @@ use itertools::Itertools as _;
 use libsignal_account_keys::SvrKey;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
+use libsignal_bridge_types::net::chat::remote_derives::ListMediaResponse;
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
@@ -776,6 +777,30 @@ async fn DeleteBackupMediaStream_next(
 #[bridge_fn]
 fn DeleteBackupMediaStream_cancel(stream: BridgeHandleRef<'_, DeleteBackupMediaStream>) {
     stream.cancel();
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_backup_list_media(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: ::zkgroup::backups::BackupAuthCredential,
+    server_keys: ::zkgroup::generic_server_params::GenericServerPublicParams,
+    signing_key: BridgeHandleRef<'_, PrivateKey>,
+    cursor: String,
+    limit: i32,
+    rng: RandomNumberGenerator,
+) -> Result<ListMediaResponse, RequestError<BackupAuthCredentialRejected>> {
+    let mut rng = rng.create();
+    let backup_auth = BackupAuth::new(&credential, &server_keys, &signing_key);
+    chat.require_grpc()
+        .await
+        .list_backup_media(
+            &backup_auth,
+            (!cursor.is_empty()).then_some(cursor),
+            limit.try_into().ok(),
+            &mut rng,
+        )
+        .await
+        .map(Into::into)
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
