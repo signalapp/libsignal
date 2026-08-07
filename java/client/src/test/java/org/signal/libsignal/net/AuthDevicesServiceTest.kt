@@ -83,7 +83,7 @@ class AuthDevicesServiceTest {
         },
         check = { expected, actual ->
           assertEquals(
-            expected.devices.map(LinkedDevice::fromInternal),
+            expected.devices,
             assertIs<RequestResult.Success<List<LinkedDevice>>>(actual).result,
           )
         },

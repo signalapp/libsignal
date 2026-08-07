@@ -59,7 +59,9 @@ fn write_kt(dst: &Path, code: &str, verify: bool) -> anyhow::Result<()> {
         ])
         .status()?;
     anyhow::ensure!(status.success(), "kotlin formatting failed");
-    let code = std::fs::read_to_string(&tmp.path)?;
+    let code = std::fs::read_to_string(&tmp.path)?
+        .replace("// BEGIN BLOCK COMMENT", "/*")
+        .replace("// END BLOCK COMMENT", "*/");
     if verify {
         anyhow::ensure!(
             std::fs::read_to_string(dst)? == code,

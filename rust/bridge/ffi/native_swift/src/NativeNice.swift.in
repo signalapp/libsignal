@@ -112,6 +112,10 @@ import SignalFfi
 {% endfor %}
 
 {% for (name, struct_or_enum) in ctx.derived_types|items %}
+    {% if struct_or_enum.nice_type %}
+        // BEGIN BLOCK COMMENT
+        // {{ struct_or_enum.nice_type }}
+    {% endif %}
     {% if struct_or_enum.kind == "Struct" %}
         {% set struct = struct_or_enum %}
         internal struct {{ name }} {
@@ -145,12 +149,16 @@ import SignalFfi
             {% endfor -%}
         }
     {% endif %}
+    {% if struct_or_enum.nice_type %}
+        // END BLOCK COMMENT
+    {% endif %}
 {% endfor %}
 
 
 {% for (name, struct_or_enum) in ctx.derived_return_converters|items %}
+    {% set nice_type = struct_or_enum.nice_type or name %}
     internal enum {{ name|return_converter }}: NiceReturnConverter {
-        typealias NiceReturn = {{ name }}
+        typealias NiceReturn = {{ nice_type }}
         typealias FfiReturn = Signal{{ name }}FfiResult
         static func emptyFfiReturn() -> FfiReturn {
             {% if struct_or_enum.kind == "Enum" and (not enum_has_payload(struct_or_enum)) -%}
@@ -166,7 +174,7 @@ import SignalFfi
                 {% for (field, ty) in struct.fields -%}
                     let {{ field }} = Result { try {{ ty.converter_type }}.convertReturn(consuming: ffiValue.{{ field }}) }
                 {% endfor %}
-                return {{ name }}(
+                return {{ nice_type }}(
                     {%- for (field, ty) in struct.fields -%}
                         {{ field|to_lower_camel_case }}: try {{ field }}.get()
                         {%- if not loop.last %},{% endif -%}
@@ -185,7 +193,7 @@ import SignalFfi
                                 )
                             }
                         {% endfor -%}
-                        return {{ name }}.{{ variant|to_lower_camel_case }}{% if struct.fields|count > 0 %}(
+                        return {{ nice_type }}.{{ variant|to_lower_camel_case }}{% if struct.fields|count > 0 %}(
                             {%- for (field, ty) in struct.fields -%}
                                 {% if not struct.is_tuple %}{{ field|to_lower_camel_case }}:{% endif %} try {{ field }}.get()
                                 {%- if not loop.last %},{% endif -%}
@@ -239,6 +247,7 @@ import SignalFfi
 {% endmacro %}
 
 {% for (name, struct_or_enum) in ctx.derived_arg_converters|items %}
+    {% set nice_type = struct_or_enum.nice_type or name %}
     {% if struct_or_enum.kind == "Enum" and enum_has_payload(struct_or_enum) %}
         {%- set enum = struct_or_enum -%}
         internal enum {{ name }}ArgConverterKeepAlive {
@@ -252,7 +261,7 @@ import SignalFfi
         }
     {% endif %}
     internal enum {{ name|arg_converter }}: NiceArgConverter {
-        typealias NiceArg = {{ name }}
+        typealias NiceArg = {{ nice_type }}
         typealias FfiArg = Signal{{ name }}FfiArg
         {% if struct_or_enum.kind == "Struct" %}
             {% set struct = struct_or_enum %}

@@ -438,6 +438,7 @@ fn bridge_callback_item(item: &TraitItem, wrapper_name: &Ident) -> Result<Callba
 pub(crate) fn derive_bridged_as_value(
     input: &DeriveInput,
     target: &syn::Path,
+    nice_type: Option<&str>,
     options: &BridgeAsValueOptions,
 ) -> syn::Result<TokenStream2> {
     if matches!(input.data, Data::Union(_)) {
@@ -447,11 +448,11 @@ pub(crate) fn derive_bridged_as_value(
     let base_class = format!("org.signal.libsignal.internal.{ident}");
     let result = options
         .result
-        .then(|| derive_bridged_as_value_return(input, target, &base_class))
+        .then(|| derive_bridged_as_value_return(input, target, &base_class, nice_type))
         .transpose()?;
     let arg = options
         .arg
-        .then(|| derive_bridged_as_value_arg(input, target, &base_class))
+        .then(|| derive_bridged_as_value_arg(input, target, &base_class, nice_type))
         .transpose()?;
     Ok(quote! {
         #result
@@ -463,6 +464,7 @@ fn derive_bridged_as_value_arg(
     input: &DeriveInput,
     target: &syn::Path,
     base_class: &str,
+    nice_type: Option<&str>,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
@@ -500,6 +502,7 @@ fn derive_bridged_as_value_arg(
         &parse_quote!(#krate::jni::NiceArgConverter),
         &parse_quote!(register_kt_nice_type),
         &mut impl_nice_arg_converter.extra_where,
+        nice_type,
     )?;
     let register_kt_arg_converter = nice_type_metadata(
         input,
@@ -508,6 +511,7 @@ fn derive_bridged_as_value_arg(
         &parse_quote!(#krate::jni::NiceArgConverter),
         &parse_quote!(register_kt_arg_converter),
         &mut impl_nice_arg_converter.extra_where,
+        nice_type,
     )?;
     let stored_decl_name = format_ident!("{ident}JniArgStoredType");
     let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input, target);
@@ -525,6 +529,7 @@ fn derive_bridged_as_value_arg(
         .iter()
         .map(|fields| fields.iter().map(ToString::to_string).collect_vec())
         .collect_vec();
+    let nice_type = nice_type.unwrap_or(base_class);
     Ok(quote! {
         #[cfg(feature = "jni")]
         #stored_decl
@@ -602,10 +607,10 @@ fn derive_bridged_as_value_arg(
                 #register_kt_nice_type
                 #register_kt_arg_converter
                 #krate::metadata::jni::KtArgConverter {
-                    nice_type: #base_class.to_string(),
+                    nice_type: #nice_type.to_string(),
                     ffi_type: "Object".to_string(),
                     ffi_field_type_erased: "Any?".to_string(),
-                    converter_function: concat!("(", #base_class, "::toFfiArgTypeObject)").to_string()
+                    converter_function: concat!("(", #nice_type, "::toFfiArgTypeObject)").to_string()
                 }
             }
         }
@@ -616,6 +621,7 @@ fn derive_bridged_as_value_return(
     input: &DeriveInput,
     target: &syn::Path,
     base_class: &str,
+    nice_type: Option<&str>,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let mut impl_nice_result_converter = Impl::new(
@@ -638,6 +644,7 @@ fn derive_bridged_as_value_return(
         &parse_quote!(#krate::jni::NiceResultConverter),
         &parse_quote!(register_kt_nice_type),
         &mut impl_nice_result_converter.extra_where,
+        nice_type,
     )?;
     let register_kt_result_converter = nice_type_metadata(
         input,
@@ -646,6 +653,7 @@ fn derive_bridged_as_value_return(
         &parse_quote!(#krate::jni::NiceResultConverter),
         &parse_quote!(register_kt_result_converter),
         &mut impl_nice_result_converter.extra_where,
+        nice_type,
     )?;
     let DeriveInputInfo {
         patterns,
@@ -663,7 +671,7 @@ fn derive_bridged_as_value_return(
     // To produce the right nice type, the macro invokes #ident_#variant_ReturnConverter.fromNative(native args)
     // Unlike with other client languages, fromNative invokes the underlying return converters
     // directly (and so the final return converter for this derived type will be 'identity').
-    let (return_converters, variant_classes) = match &input.data {
+    let (return_converters, _variant_classes) = match &input.data {
         Data::Struct(_) => (
             vec![format!("{base_class}_ReturnConverter")],
             vec![base_class.to_string()],
@@ -680,6 +688,7 @@ fn derive_bridged_as_value_return(
         ),
         Data::Union(_) => unreachable!(),
     };
+    let nice_type = nice_type.unwrap_or(base_class);
     Ok(quote! {
         #[cfg(feature = "jni")]
         #impl_result_type_info {
@@ -709,7 +718,7 @@ fn derive_bridged_as_value_return(
                                     // change it, but for now, let's just box everything into an
                                     // object.
                                     #(#fields => java.lang.Object,)*
-                                ) -> #variant_classes
+                                ) -> java.lang.Object
                             ),
                         )
                     })*
@@ -724,9 +733,9 @@ fn derive_bridged_as_value_return(
                 #register_kt_result_converter
                 #register_kt_nice_type
                 #krate::jni::KtReturnConverter {
-                    nice_type: #base_class.to_string(),
+                    nice_type: #nice_type.to_string(),
                     ffi_type: "Object".to_string(),
-                    converter_function: concat!("downcastFromObject<", #base_class, ">").to_string(),
+                    converter_function: concat!("downcastFromObject<", #nice_type, ">").to_string(),
                 }
             }
         }

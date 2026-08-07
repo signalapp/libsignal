@@ -393,6 +393,7 @@ fn derive_bridged_as_value_arg(
         &parse_quote!(#krate::node::NiceArgConverter),
         &parse_quote!(register_ts_nice_type),
         &mut impl_nice_arg_converter.extra_where,
+        None,
     )?;
     let register_ts_arg_converter = nice_type_metadata(
         input,
@@ -401,6 +402,7 @@ fn derive_bridged_as_value_arg(
         &parse_quote!(#krate::node::NiceArgConverter),
         &parse_quote!(register_ts_arg_converter),
         &mut impl_nice_arg_converter.extra_where,
+        None,
     )?;
     let stored_decl_name = format_ident!("{ident}NodeArgStoredType");
     let stored_decl = arg_type_info_storage_decl(&stored_decl_name, input, target);
@@ -538,6 +540,7 @@ fn derive_bridged_as_value_return(
         &parse_quote!(#krate::node::NiceResultConverter),
         &parse_quote!(register_ts_nice_type),
         &mut impl_nice_result_converter.extra_where,
+        None,
     )?;
     let register_ts_result_converter = nice_type_metadata(
         input,
@@ -546,6 +549,7 @@ fn derive_bridged_as_value_return(
         &parse_quote!(#krate::node::NiceResultConverter),
         &parse_quote!(register_ts_result_converter),
         &mut impl_nice_result_converter.extra_where,
+        None,
     )?;
     let DeriveInputInfo {
         patterns,

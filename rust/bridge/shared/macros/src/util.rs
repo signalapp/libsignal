@@ -355,8 +355,14 @@ pub(crate) fn nice_type_metadata(
     trait_name: &Path,
     trait_fn: &Ident,
     where_clause: &mut IndexSet<WherePredicate>,
+    nice_type: Option<&str>,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
+    let nice_type = if let Some(x) = nice_type {
+        quote!(Some(#x.to_string()))
+    } else {
+        quote!(None)
+    };
     let ident = &input.ident;
     Ok(match &input.data {
         Data::Struct(data) => {
@@ -366,7 +372,10 @@ pub(crate) fn nice_type_metadata(
                 #krate::metadata::insert_checked(
                     &mut #ctx.#metadata_field,
                     stringify!(#ident).to_string(),
-                    ns.into(),
+                    #krate::metadata::DerivedType {
+                        nice_type: #nice_type,
+                        body: ns.into()
+                    },
                 );
             }
         }
@@ -383,9 +392,12 @@ pub(crate) fn nice_type_metadata(
                 #krate::metadata::insert_checked(
                     &mut #ctx.#metadata_field,
                     stringify!(#ident).into(),
-                    #krate::metadata::Enum {
-                        variants,
-                    }.into(),
+                    #krate::metadata::DerivedType {
+                        nice_type: #nice_type,
+                        body: #krate::metadata::Enum {
+                            variants,
+                        }.into(),
+                    },
                 );
             }
         }

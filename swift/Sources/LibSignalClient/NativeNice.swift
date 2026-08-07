@@ -1586,6 +1586,9 @@ internal struct DeleteBackupMediaNextChunk {
 
 }
 
+/*
+// LinkedDevice
+
 internal struct LinkedDeviceInternal {
     var id: DeviceId
     var encryptedName: Data
@@ -1594,6 +1597,8 @@ internal struct LinkedDeviceInternal {
     var createdAtCiphertext: Data
 
 }
+
+*/
 
 internal struct ListMediaItem {
     var cdn: Int32
@@ -1759,7 +1764,7 @@ internal enum DerivedReturnConverterDeleteBackupMediaNextChunk: NiceReturnConver
 }
 
 internal enum DerivedReturnConverterLinkedDeviceInternal: NiceReturnConverter {
-    typealias NiceReturn = LinkedDeviceInternal
+    typealias NiceReturn = LinkedDevice
     typealias FfiReturn = SignalLinkedDeviceInternalFfiResult
     static func emptyFfiReturn() -> FfiReturn {
         SignalLinkedDeviceInternalFfiResult()
@@ -1776,7 +1781,7 @@ internal enum DerivedReturnConverterLinkedDeviceInternal: NiceReturnConverter {
             try DataConverter.convertReturn(consuming: ffiValue.created_at_ciphertext)
         }
 
-        return LinkedDeviceInternal(
+        return LinkedDevice(
             id: try id.get(),
             encryptedName: try encrypted_name.get(),
             lastSeen: try last_seen.get(),
@@ -2076,7 +2081,7 @@ internal enum NativeNice {
     internal static func AuthenticatedChatConnection_get_devices(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
-    ) async throws -> [LinkedDeviceInternal] {
+    ) async throws -> [LinkedDevice] {
         let rawOutput:
             ArrayReturnConverter<
                 DerivedReturnConverterLinkedDeviceInternal,

@@ -405,6 +405,24 @@ public object NativeTesting {
   public external fun TESTING_LookUpUsernameLinkTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_MyNiceTypeEnum_identity(x: Object): Object
+
+  @JvmStatic
+  public external fun TESTING_MyNiceTypeEnum_to_string(x: Object): String
+
+  @JvmStatic
+  public external fun TESTING_MyNiceTypeSimpleEnum_identity(x: Object): Object
+
+  @JvmStatic
+  public external fun TESTING_MyNiceTypeSimpleEnum_to_string(x: Object): String
+
+  @JvmStatic
+  public external fun TESTING_MyNiceTypeStruct_identity(x: Object): Object
+
+  @JvmStatic
+  public external fun TESTING_MyNiceTypeStruct_to_string(x: Object): String
+
+  @JvmStatic
   public external fun TESTING_MySimpleTestEnum_BridgeVec_identity(x: Array<*>): Array<*>
 
   @JvmStatic

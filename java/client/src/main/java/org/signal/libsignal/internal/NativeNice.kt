@@ -11,6 +11,7 @@
   "ktlint:standard:class-naming",
   "ktlint:standard:filename",
   "ktlint:standard:max-line-length",
+  "ktlint:standard:no-consecutive-comments",
   "PLATFORM_CLASS_MAPPED_TO_KOTLIN",
 )
 
@@ -75,6 +76,9 @@ public data class DeleteBackupMediaNextChunk(
   public val termination: Any?,
 )
 
+/*
+// org.signal.libsignal.net.LinkedDevice
+
 public data class LinkedDeviceInternal(
   public val id: org.signal.libsignal.protocol.DeviceId,
   public val encryptedName: ByteArray,
@@ -82,6 +86,8 @@ public data class LinkedDeviceInternal(
   public val registrationId: Int,
   public val createdAtCiphertext: ByteArray,
 )
+
+*/
 
 public data class ListMediaItem(
   public val cdn: Int,
@@ -103,7 +109,7 @@ public object BridgeCopyBackupMediaOutcome_ReturnConverter {
   internal fun fromNative(
     media_id: Any?,
     result: Any?,
-  ): BridgeCopyBackupMediaOutcome =
+  ): Any? =
     BridgeCopyBackupMediaOutcome(
       mediaId =
         identity(media_id as ByteArray),
@@ -116,7 +122,7 @@ public object BridgeCopyBackupMediaResult_Success_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
-  internal fun fromNative(cdn: Any?): BridgeCopyBackupMediaResult.Success =
+  internal fun fromNative(cdn: Any?): Any? =
     BridgeCopyBackupMediaResult.Success(
       cdn =
         identity(cdn as Int),
@@ -127,22 +133,21 @@ public object BridgeCopyBackupMediaResult_SourceNotFound_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
-  internal fun fromNative(): BridgeCopyBackupMediaResult.SourceNotFound = BridgeCopyBackupMediaResult.SourceNotFound
+  internal fun fromNative(): Any? = BridgeCopyBackupMediaResult.SourceNotFound
 }
 
 public object BridgeCopyBackupMediaResult_WrongSourceLength_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
-  internal fun fromNative(): BridgeCopyBackupMediaResult.WrongSourceLength =
-    BridgeCopyBackupMediaResult.WrongSourceLength
+  internal fun fromNative(): Any? = BridgeCopyBackupMediaResult.WrongSourceLength
 }
 
 public object BridgeCopyBackupMediaResult_OutOfSpace_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
-  internal fun fromNative(): BridgeCopyBackupMediaResult.OutOfSpace = BridgeCopyBackupMediaResult.OutOfSpace
+  internal fun fromNative(): Any? = BridgeCopyBackupMediaResult.OutOfSpace
 }
 
 public object BridgeDeleteBackupMediaItem_ReturnConverter {
@@ -152,7 +157,7 @@ public object BridgeDeleteBackupMediaItem_ReturnConverter {
   internal fun fromNative(
     media_id: Any?,
     cdn: Any?,
-  ): BridgeDeleteBackupMediaItem =
+  ): Any? =
     BridgeDeleteBackupMediaItem(
       mediaId =
         identity(media_id as ByteArray),
@@ -169,7 +174,7 @@ public object BridgeMediaBackupInfo_ReturnConverter {
     backup_dir: Any?,
     media_dir: Any?,
     used_space: Any?,
-  ): BridgeMediaBackupInfo =
+  ): Any? =
     BridgeMediaBackupInfo(
       backupDir =
         identity(backup_dir as String),
@@ -188,7 +193,7 @@ public object BridgeMessageBackupInfo_ReturnConverter {
     backup_dir: Any?,
     cdn: Any?,
     backup_name: Any?,
-  ): BridgeMessageBackupInfo =
+  ): Any? =
     BridgeMessageBackupInfo(
       backupDir =
         identity(backup_dir as String),
@@ -206,7 +211,7 @@ public object CopyBackupMediaNextChunk_ReturnConverter {
   internal fun fromNative(
     chunk: Any?,
     termination: Any?,
-  ): CopyBackupMediaNextChunk =
+  ): Any? =
     CopyBackupMediaNextChunk(
       chunk =
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>({
@@ -224,7 +229,7 @@ public object DeleteBackupMediaNextChunk_ReturnConverter {
   internal fun fromNative(
     chunk: Any?,
     termination: Any?,
-  ): DeleteBackupMediaNextChunk =
+  ): Any? =
     DeleteBackupMediaNextChunk(
       chunk =
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>({
@@ -245,8 +250,8 @@ public object LinkedDeviceInternal_ReturnConverter {
     last_seen: Any?,
     registration_id: Any?,
     created_at_ciphertext: Any?,
-  ): LinkedDeviceInternal =
-    LinkedDeviceInternal(
+  ): Any? =
+    org.signal.libsignal.net.LinkedDevice(
       id =
         identity(id as org.signal.libsignal.protocol.DeviceId),
       encryptedName =
@@ -268,7 +273,7 @@ public object ListMediaItem_ReturnConverter {
     cdn: Any?,
     media_id: Any?,
     object_length: Any?,
-  ): ListMediaItem =
+  ): Any? =
     ListMediaItem(
       cdn =
         identity(cdn as Int),
@@ -288,7 +293,7 @@ public object ListMediaResponse_ReturnConverter {
     backup_dir: Any?,
     media_dir: Any?,
     cursor: Any?,
-  ): ListMediaResponse =
+  ): Any? =
     ListMediaResponse(
       items =
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.ListMediaItem>({
@@ -439,7 +444,7 @@ public object NativeNice {
   public fun AuthenticatedChatConnection_get_devices(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
-  ): CompletableFuture<List<org.signal.libsignal.internal.LinkedDeviceInternal>> {
+  ): CompletableFuture<List<org.signal.libsignal.net.LinkedDevice>> {
     val ffi_chat = identity(chat)
     val ffiOut =
       NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
@@ -451,8 +456,8 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply {
-        mapBridgeVecReturn<Object, org.signal.libsignal.internal.LinkedDeviceInternal>({
-          downcastFromObject<org.signal.libsignal.internal.LinkedDeviceInternal>(it)
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.LinkedDevice>({
+          downcastFromObject<org.signal.libsignal.net.LinkedDevice>(it)
         })(it)
       }
   }

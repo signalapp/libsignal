@@ -70,7 +70,7 @@ class AuthDevicesServiceTests: AuthChatServiceTestBase<any AuthDevicesService> {
                 try await api.getDevices()
             },
             check: { expected, actual in
-                XCTAssertEqual(expected.devices.map { LinkedDevice.fromInternal($0) }, try actual.get())
+                XCTAssertEqual(expected.devices, try actual.get())
             }
         )
     }

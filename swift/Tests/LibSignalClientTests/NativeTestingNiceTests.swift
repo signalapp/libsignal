@@ -11,6 +11,19 @@ import Foundation
 import SignalFfi
 import Testing
 
+internal enum MyNiceTypeEnum {
+    case unit
+    case single(Int32)
+}
+internal enum MyNiceTypeSimpleEnum {
+    case a
+    case b
+}
+internal struct MyNiceTypeStruct {
+    var x: Int32
+    var y: Int32
+}
+
 extension NiceArgConverter {
     fileprivate static func testConversion(
         items: any Sequence<NiceArg>,
@@ -304,6 +317,55 @@ struct NativeTestingNiceTests {
             nativeToString: { try NativeTestingNice.TESTING_conversion_Timestamp_to_string(x: $0) },
             rawNativeToString: SignalFfi.signal_testing_conversion_timestamp_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_Timestamp_identity(x: $0) },
+        )
+    }
+
+    @Test
+    func testMyNiceTypeSimpleEnum() throws {
+        try DerivedArgConverterMyNiceTypeSimpleEnumNot.testConversion(
+            items: [.a, .b],
+            toString: {
+                switch $0 {
+                case .a:
+                    "\"A\""
+                case .b:
+                    "\"B\""
+                }
+            },
+            nativeToString: { try NativeTestingNice.TESTING_MyNiceTypeSimpleEnum_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_my_nice_type_simple_enum_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_MyNiceTypeSimpleEnum_identity(x: $0) }
+        )
+    }
+
+    @Test
+    func testMyNiceTypeEnum() throws {
+        try DerivedArgConverterMyNiceTypeEnumNot.testConversion(
+            items: [.unit, .single(12)],
+            toString: {
+                switch $0 {
+                case .single(let x):
+                    "{\"Single\":\(x)}"
+                case .unit:
+                    "\"Unit\""
+                }
+            },
+            nativeToString: { try NativeTestingNice.TESTING_MyNiceTypeEnum_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_my_nice_type_enum_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_MyNiceTypeEnum_identity(x: $0) }
+        )
+    }
+
+    @Test
+    func testMyNiceTypeStruct() throws {
+        try DerivedArgConverterMyNiceTypeStructNot.testConversion(
+            items: [.init(x: 1, y: 2)],
+            toString: {
+                "{\"x\":\($0.x),\"y\":\($0.y)}"
+            },
+            nativeToString: { try NativeTestingNice.TESTING_MyNiceTypeStruct_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_my_nice_type_struct_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_MyNiceTypeStruct_identity(x: $0) }
         )
     }
 

@@ -81,9 +81,9 @@ pub struct SwiftMetadataContext {
 
     pub fixed_byte_array_lengths: BTreeSet<usize>,
 
-    pub derived_types: BTreeMap<String, StructOrEnum<NiceType>>,
-    pub derived_return_converters: BTreeMap<String, StructOrEnum<SwiftReturnConverter>>,
-    pub derived_arg_converters: BTreeMap<String, StructOrEnum<SwiftArgConverter>>,
+    pub derived_types: BTreeMap<String, DerivedType<NiceType>>,
+    pub derived_return_converters: BTreeMap<String, DerivedType<SwiftReturnConverter>>,
+    pub derived_arg_converters: BTreeMap<String, DerivedType<SwiftArgConverter>>,
 
     /// Map from the name of a `FfiBorrowedSliceConstructor` to information about the constructor
     pub ffi_borrowed_slice_cons: BTreeMap<String, FfiBorrowedSliceConstructor>,

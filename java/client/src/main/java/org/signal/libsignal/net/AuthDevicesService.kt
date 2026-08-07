@@ -6,7 +6,6 @@
 package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
-import org.signal.libsignal.internal.LinkedDeviceInternal
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.DeviceId
@@ -36,18 +35,6 @@ public data class LinkedDevice(
    */
   val createdAtCiphertext: ByteArray,
 ) {
-  // These need to be public for testing
-  public companion object {
-    public fun fromInternal(it: LinkedDeviceInternal): LinkedDevice =
-      LinkedDevice(
-        id = it.id,
-        encryptedName = it.encryptedName,
-        lastSeen = it.lastSeen,
-        registrationId = it.registrationId,
-        createdAtCiphertext = it.createdAtCiphertext,
-      )
-  }
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -145,7 +132,7 @@ public class AuthDevicesService(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
         ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it.map(LinkedDevice::fromInternal)) },
+          onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult() },
         )
     } catch (e: Throwable) {

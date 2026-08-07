@@ -23,6 +23,25 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
+sealed class MyNiceTypeEnum {
+  public data object Unit : MyNiceTypeEnum()
+
+  public data class Single(
+    public val _0: Int,
+  ) : MyNiceTypeEnum()
+}
+
+sealed class MyNiceTypeSimpleEnum {
+  public data object A : MyNiceTypeSimpleEnum()
+
+  public data object B : MyNiceTypeSimpleEnum()
+}
+
+data class MyNiceTypeStruct(
+  public val x: Int,
+  public val y: Int,
+)
+
 class NativeTestingNiceTest {
   private fun <T> testConversion(
     items: Sequence<T>,
@@ -266,6 +285,62 @@ class NativeTestingNiceTest {
       },
       nativeToString = NativeTestingNice::TESTING_MyTestEnum_to_string,
       nativeIdentity = NativeTestingNice::TESTING_MyTestEnum_identity,
+    )
+
+  @Test
+  fun myNiceTypeSimpleEnum() =
+    testConversion(
+      items =
+        sequenceOf(
+          MyNiceTypeSimpleEnum.A,
+          MyNiceTypeSimpleEnum.B,
+        ),
+      nativeToString = NativeTestingNice::TESTING_MyNiceTypeSimpleEnum_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MyNiceTypeSimpleEnum_identity,
+      toString = {
+        when (it) {
+          MyNiceTypeSimpleEnum.A -> "\"A\""
+          MyNiceTypeSimpleEnum.B -> "\"B\""
+        }
+      },
+    )
+
+  @Test
+  fun myNiceTypeStruct() =
+    testConversion(
+      items =
+        sequenceOf(
+          MyNiceTypeStruct(1, 2),
+        ),
+      nativeToString = NativeTestingNice::TESTING_MyNiceTypeStruct_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MyNiceTypeStruct_identity,
+      toString = {
+        buildJsonObject {
+          put("x", it.x)
+          put("y", it.y)
+        }.toString()
+      },
+    )
+
+  @Test
+  fun myNiceTypeEnum() =
+    testConversion(
+      items =
+        sequenceOf(
+          MyNiceTypeEnum.Unit,
+          MyNiceTypeEnum.Single(17),
+        ),
+      nativeToString = NativeTestingNice::TESTING_MyNiceTypeEnum_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_MyNiceTypeEnum_identity,
+      toString = {
+        when (it) {
+          MyNiceTypeEnum.Unit -> "\"Unit\""
+          is MyNiceTypeEnum.Single ->
+            buildJsonObject {
+              put("Single", it._0)
+            }.toString()
+        }
+      },
     )
 
   @Test

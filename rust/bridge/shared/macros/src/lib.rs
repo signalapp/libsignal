@@ -609,6 +609,8 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     let mut node = true;
     let mut ffi = true;
     let mut jni = true;
+    let mut ffi_nice_type = None;
+    let mut jni_nice_type = None;
     let mut remote: Option<syn::Path> = None;
     let mut options = util::BridgeAsValueOptions::default();
     for attr in &item.attrs {
@@ -625,9 +627,17 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
                     let flag: LitBool = meta.value()?.parse()?;
                     ffi = flag.value();
                     Ok(())
+                } else if meta.path.is_ident("ffi_nice_type") {
+                    let name: LitStr = meta.value()?.parse()?;
+                    ffi_nice_type = Some(name.value());
+                    Ok(())
                 } else if meta.path.is_ident("jni") {
                     let flag: LitBool = meta.value()?.parse()?;
                     jni = flag.value();
+                    Ok(())
+                } else if meta.path.is_ident("jni_nice_type") {
+                    let name: LitStr = meta.value()?.parse()?;
+                    jni_nice_type = Some(name.value());
                     Ok(())
                 } else if meta.path.is_ident("remote") {
                     remote = Some(meta.value()?.parse()?);
@@ -654,12 +664,22 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
         None
     };
     let ffi = if ffi {
-        Some(ffi::derive_bridged_as_value(&item, &target, &options)?)
+        Some(ffi::derive_bridged_as_value(
+            &item,
+            &target,
+            ffi_nice_type.as_deref(),
+            &options,
+        )?)
     } else {
         None
     };
     let jni = if jni {
-        Some(jni::derive_bridged_as_value(&item, &target, &options)?)
+        Some(jni::derive_bridged_as_value(
+            &item,
+            &target,
+            jni_nice_type.as_deref(),
+            &options,
+        )?)
     } else {
         None
     };

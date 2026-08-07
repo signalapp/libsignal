@@ -11,6 +11,7 @@
     "ktlint:standard:class-naming",
     "ktlint:standard:filename",
     "ktlint:standard:max-line-length",
+    "ktlint:standard:no-consecutive-comments",
     "PLATFORM_CLASS_MAPPED_TO_KOTLIN",
 )
 
@@ -30,14 +31,14 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
 {% macro converter_name(name, kind) %}{{ name|replace(".", "_") }}_{{kind}}{% endmacro %}
 
-{% macro struct_return_converter(name, return_converter) %}
+{% macro struct_return_converter(name, return_converter, nice_type) %}
     {{pub_for_tests}} object {{ converter_name(name, "ReturnConverter") }} {
         @CalledFromNative
         @JvmStatic
         @JvmName("fromNative")
         internal fun fromNative(
             {%- for (field, ty) in return_converter.fields -%}{{ field }}: Any?,{%- endfor -%}
-        ): {{ name }} = {{ name }}{% if return_converter.fields|count > 0 %}(
+        ): Any? = {{ nice_type }}{% if return_converter.fields|count > 0 %}(
             {%- for (field, ty) in return_converter.fields -%}
                 {{ field|to_lower_camel_case }} =
                     {{ ty.converter_function }}({{ field }} as {{ ty.ffi_type }}),
@@ -46,12 +47,12 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
     }
 {% endmacro %}
 
-{% macro struct_arg_converter(name, arg_converter, superclass) %}
+{% macro struct_arg_converter(name, arg_converter, superclass, nice_type) %}
     {%- if arg_converter.fields|count == 0 -%}
         @CalledFromNative
         {{pub_for_tests}} object {{ converter_name(name, "FfiArgType") }}
             {%- if superclass -%}: {{ superclass }}(){%- endif -%}
-        {{pub_for_tests}} fun {{ name }}.toFfiArgType(): {{ converter_name(name, "FfiArgType") }} =
+        {{pub_for_tests}} fun {{ nice_type }}.toFfiArgType(): {{ converter_name(name, "FfiArgType") }} =
             {{ converter_name(name, "FfiArgType") }}
     {%- else -%}
         @CalledFromNative
@@ -71,7 +72,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
                 {%- endfor %}
             }
         }
-        {{pub_for_tests}} fun {{ name }}.toFfiArgType(): {{ converter_name(name, "FfiArgType") }} =
+        {{pub_for_tests}} fun {{ nice_type }}.toFfiArgType(): {{ converter_name(name, "FfiArgType") }} =
             {{ converter_name(name, "FfiArgType") }}(
                 {% for (field, ty) in arg_converter.fields -%}
                     {{ field }} = {{ ty.converter_function }}({{ field|to_lower_camel_case }}),
@@ -93,6 +94,10 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 {% endmacro %}
 
 {% for (name, struct_or_enum) in ctx.derived_types|items %}
+    {% if struct_or_enum.nice_type %}
+        // BEGIN BLOCK COMMENT
+        // {{ struct_or_enum.nice_type }}
+    {% endif %}
     {% if struct_or_enum.kind == "Struct" %}
         {{ struct_class(
             name,
@@ -110,6 +115,9 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
             {%- endfor %}
         }
     {% endif %}
+    {% if struct_or_enum.nice_type %}
+        // END BLOCK COMMENT
+    {% endif %}
 {% endfor %}
 
 {% for (name, struct_or_enum) in ctx.derived_return_converters|items %}
@@ -117,25 +125,29 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
         {{ struct_return_converter(
             name,
             struct_or_enum,
+            struct_or_enum.nice_type or name,
         ) }}
     {% else %}
         {% for (variant, struct) in struct_or_enum.variants %}
             {{ struct_return_converter(
                 name ~ "." ~ variant,
                 struct,
+                (struct_or_enum.nice_type or name) ~ "." ~ variant,
             ) }}
         {% endfor %}
     {% endif %}
 {% endfor %}
 
 {% for (name, struct_or_enum) in ctx.derived_arg_converters|items %}
+    {% set nice_name = struct_or_enum.nice_type or name %}
     {% if struct_or_enum.kind == "Struct" %}
         {{ struct_arg_converter(
             name,
             struct_or_enum,
             superclass=none,
+            nice_type=nice_name,
         ) }}
-        {{pub_for_tests}} fun {{ name }}.toFfiArgTypeObject(): Object =
+        {{pub_for_tests}} fun {{ nice_name }}.toFfiArgTypeObject(): Object =
             convertToObject(this.toFfiArgType())
     {% else %}
         {{pub_for_tests}} sealed class {{ converter_name(name, "FfiArgType") }}()
@@ -144,11 +156,12 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
                 name ~ "." ~ variant,
                 struct,
                 superclass=converter_name(name, "FfiArgType"),
+                nice_type=nice_name ~ "." ~ variant,
             ) }}
         {% endfor %}
-        {{pub_for_tests}} fun {{name}}.toFfiArgTypeObject(): Object = convertToObject(when(this) {
+        {{pub_for_tests}} fun {{nice_name}}.toFfiArgTypeObject(): Object = convertToObject(when(this) {
             {% for (variant, struct) in struct_or_enum.variants -%}
-                is {{ name }}.{{ variant }} -> this.toFfiArgType()
+                is {{ nice_name }}.{{ variant }} -> this.toFfiArgType()
             {% endfor %}
         })
     {% endif %}

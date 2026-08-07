@@ -572,7 +572,7 @@ internal enum GetCdnCredentialsOut {
 }
 
 internal struct GetDevicesOut {
-    var devices: [LinkedDeviceInternal]
+    var devices: [LinkedDevice]
 
 }
 
@@ -619,6 +619,37 @@ internal enum LookUpUsernameLinkOut {
     case linkDataTooShort
     case missingResponse
 }
+
+/*
+// MyNiceTypeEnum
+
+internal enum MyNiceTypeEnumNot {
+    case unit
+    case single(Int32)
+}
+
+*/
+
+/*
+// MyNiceTypeSimpleEnum
+
+internal enum MyNiceTypeSimpleEnumNot {
+    case a
+    case b
+}
+
+*/
+
+/*
+// MyNiceTypeStruct
+
+internal struct MyNiceTypeStructNot {
+    var x: Int32
+    var y: Int32
+
+}
+
+*/
 
 internal enum MyRemoteDeriveEnum {
     case unit
@@ -1023,6 +1054,64 @@ internal enum DerivedReturnConverterLookUpUsernameLinkOut: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterMyNiceTypeEnumNot: NiceReturnConverter {
+    typealias NiceReturn = MyNiceTypeEnum
+    typealias FfiReturn = SignalMyNiceTypeEnumNotFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMyNiceTypeEnumNotFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalMyNiceTypeEnumNotFfiResultUnit:
+            return MyNiceTypeEnum.unit
+        case SignalMyNiceTypeEnumNotFfiResultSingle:
+            let _0 = Result {
+                try IdentityConverter<Int32>.convertReturn(
+                    consuming: ffiValue.single._0
+                )
+            }
+            return MyNiceTypeEnum.single(try _0.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for MyNiceTypeEnumNot: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterMyNiceTypeSimpleEnumNot: NiceReturnConverter {
+    typealias NiceReturn = MyNiceTypeSimpleEnum
+    typealias FfiReturn = SignalMyNiceTypeSimpleEnumNotFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMyNiceTypeSimpleEnumNotFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalMyNiceTypeSimpleEnumNotFfiResultA:
+            return MyNiceTypeSimpleEnum.a
+        case SignalMyNiceTypeSimpleEnumNotFfiResultB:
+            return MyNiceTypeSimpleEnum.b
+        default:
+            throw SignalError.internalError("Unexpected enum tag for MyNiceTypeSimpleEnumNot: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterMyNiceTypeStructNot: NiceReturnConverter {
+    typealias NiceReturn = MyNiceTypeStruct
+    typealias FfiReturn = SignalMyNiceTypeStructNotFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalMyNiceTypeStructNotFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let x = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.x) }
+        let y = Result { try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.y) }
+
+        return MyNiceTypeStruct(x: try x.get(), y: try y.get())
+    }
+}
+
 internal enum DerivedReturnConverterMyRemoteDeriveEnum: NiceReturnConverter {
     typealias NiceReturn = MyRemoteDeriveEnum
     typealias FfiReturn = SignalMyRemoteDeriveEnumFfiResult
@@ -1392,6 +1481,176 @@ internal enum DerivedReturnConverterTestStreamChunk: NiceReturnConverter {
         }
 
         return TestStreamChunk(chunk: try chunk.get(), termination: try termination.get())
+    }
+}
+
+internal enum MyNiceTypeEnumNotArgConverterKeepAlive {
+    case unit(())
+    case single((IdentityConverter<Int32>.KeepAlive?))
+}
+
+internal enum DerivedArgConverterMyNiceTypeEnumNot: NiceArgConverter {
+    typealias NiceArg = MyNiceTypeEnum
+    typealias FfiArg = SignalMyNiceTypeEnumNotFfiArg
+    typealias KeepAlive = MyNiceTypeEnumNotArgConverterKeepAlive
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+
+        case .unit:
+            return (
+                SignalMyNiceTypeEnumNotFfiArg.init(
+                    tag: SignalMyNiceTypeEnumNotFfiArgUnit,
+                    .init(),
+                ),
+                nil,
+            )
+
+        case .single(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    IdentityConverter<Int32>.FfiArg,
+                    IdentityConverter<Int32>.KeepAlive?,
+                ) = IdentityConverter<Int32>.convertArg(_0)
+
+            let ffiStructArg = SignalMyNiceTypeEnumNotFfiArgSignalSingle_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalMyNiceTypeEnumNotFfiArg.init(
+                    tag: SignalMyNiceTypeEnumNotFfiArgSingle,
+                    .init(single: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .single($0) },
+            )
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .unit:
+            return try niceThunk(
+                SignalMyNiceTypeEnumNotFfiArg.init(
+                    tag: SignalMyNiceTypeEnumNotFfiArgUnit,
+                    .init(),
+                )
+            )
+
+        case .single(
+            let _0,
+        ):
+
+            return try IdentityConverter<Int32>.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalMyNiceTypeEnumNotFfiArg.init(
+                        tag: SignalMyNiceTypeEnumNotFfiArgSingle,
+                        .init(
+                            single:
+                                SignalMyNiceTypeEnumNotFfiArgSignalSingle_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        }
+    }
+}
+
+internal enum DerivedArgConverterMyNiceTypeSimpleEnumNot: NiceArgConverter {
+    typealias NiceArg = MyNiceTypeSimpleEnum
+    typealias FfiArg = SignalMyNiceTypeSimpleEnumNotFfiArg
+    typealias KeepAlive = ()
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+
+        case .a:
+            return (SignalMyNiceTypeSimpleEnumNotFfiArgA, nil)
+
+        case .b:
+            return (SignalMyNiceTypeSimpleEnumNotFfiArgB, nil)
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .a:
+            return try niceThunk(SignalMyNiceTypeSimpleEnumNotFfiArgA)
+
+        case .b:
+            return try niceThunk(SignalMyNiceTypeSimpleEnumNotFfiArgB)
+
+        }
+    }
+}
+
+internal enum DerivedArgConverterMyNiceTypeStructNot: NiceArgConverter {
+    typealias NiceArg = MyNiceTypeStruct
+    typealias FfiArg = SignalMyNiceTypeStructNotFfiArg
+
+    typealias KeepAlive = (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let x = niceArg.x
+        let y = niceArg.y
+
+        let (x_ffi, x_keepalive):
+            (
+                IdentityConverter<Int32>.FfiArg,
+                IdentityConverter<Int32>.KeepAlive?,
+            ) = IdentityConverter<Int32>.convertArg(x)
+        let (y_ffi, y_keepalive):
+            (
+                IdentityConverter<Int32>.FfiArg,
+                IdentityConverter<Int32>.KeepAlive?,
+            ) = IdentityConverter<Int32>.convertArg(y)
+
+        let ffiStructArg = FfiArg(x: x_ffi, y: y_ffi, )
+        let ffiStructKeepAlive: (IdentityConverter<Int32>.KeepAlive?, IdentityConverter<Int32>.KeepAlive?, )? =
+            (x_keepalive != nil || y_keepalive != nil || false)
+            ? (x_keepalive, y_keepalive,)
+            : nil
+
+        return (ffiStructArg, ffiStructKeepAlive)
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        let x = niceArg.x
+        let y = niceArg.y
+
+        return try IdentityConverter<Int32>.convertArgBorrowed(x) {
+            ffi_x in
+            return try IdentityConverter<Int32>.convertArgBorrowed(y) {
+                ffi_y in
+
+                return try niceThunk(
+                    FfiArg(
+                        x: ffi_x,
+                        y: ffi_y,
+                    )
+                )
+
+            }
+        }
+
     }
 }
 
@@ -2252,6 +2511,96 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<
             DerivedReturnConverterLookUpUsernameLinkArgs, DerivedReturnConverterLookUpUsernameLinkOut
         >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_MyNiceTypeEnum_identity(
+        x: MyNiceTypeEnum,
+    ) throws -> MyNiceTypeEnum {
+        try DerivedArgConverterMyNiceTypeEnumNot.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMyNiceTypeEnumNot.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_nice_type_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMyNiceTypeEnumNot.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyNiceTypeEnum_to_string(
+        x: MyNiceTypeEnum,
+    ) throws -> String {
+        try DerivedArgConverterMyNiceTypeEnumNot.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_nice_type_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyNiceTypeSimpleEnum_identity(
+        x: MyNiceTypeSimpleEnum,
+    ) throws -> MyNiceTypeSimpleEnum {
+        try DerivedArgConverterMyNiceTypeSimpleEnumNot.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMyNiceTypeSimpleEnumNot.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_nice_type_simple_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMyNiceTypeSimpleEnumNot.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyNiceTypeSimpleEnum_to_string(
+        x: MyNiceTypeSimpleEnum,
+    ) throws -> String {
+        try DerivedArgConverterMyNiceTypeSimpleEnumNot.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_nice_type_simple_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyNiceTypeStruct_identity(
+        x: MyNiceTypeStruct,
+    ) throws -> MyNiceTypeStruct {
+        try DerivedArgConverterMyNiceTypeStructNot.convertArgBorrowed(x) { xFfi in
+            var rawOutput = DerivedReturnConverterMyNiceTypeStructNot.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_nice_type_struct_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try DerivedReturnConverterMyNiceTypeStructNot.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_MyNiceTypeStruct_to_string(
+        x: MyNiceTypeStruct,
+    ) throws -> String {
+        try DerivedArgConverterMyNiceTypeStructNot.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_my_nice_type_struct_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
 
     }
     internal static func TESTING_MyRemoteDeriveEnum_identity(

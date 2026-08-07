@@ -3743,6 +3743,9 @@ macro_rules! jni_result_type {
     (MyTestPoint) => {::jni::objects::JObject<'local>};
     (MyTestStruct) => {::jni::objects::JObject<'local>};
     (TestStreamChunk) => {::jni::objects::JObject<'local>};
+    (MyNiceTypeStructNot) => {::jni::objects::JObject<'local>};
+    (MyNiceTypeEnumNot) => {::jni::objects::JObject<'local>};
+    (MyNiceTypeSimpleEnumNot) => {::jni::objects::JObject<'local>};
 
     ( $handle:ty ) => {
         $crate::jni::ObjectHandle

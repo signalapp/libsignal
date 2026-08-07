@@ -404,7 +404,9 @@ fn main() -> anyhow::Result<()> {
             .stderr(Stdio::inherit())
             .output()?;
         anyhow::ensure!(out.status.success(), "swift formatting failed");
-        let code = String::from_utf8(out.stdout)?;
+        let code = String::from_utf8(out.stdout)?
+            .replace("// BEGIN BLOCK COMMENT", "/*")
+            .replace("// END BLOCK COMMENT", "*/");
         if args.verify {
             anyhow::ensure!(
                 std::fs::read_to_string(&dst)? == code,

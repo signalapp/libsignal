@@ -254,6 +254,44 @@ typedef SignalDeleteBackupMediaOutFfiResult* SignalType_MutPointer_SignalDeleteB
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalDeleteBackupMediaOutFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalDeleteBackupMediaOutFfiResult) == 8);
 typedef enum {
+  SignalMyNiceTypeEnumNotFfiResultUnit,
+  SignalMyNiceTypeEnumNotFfiResultSingle,
+} SignalMyNiceTypeEnumNotFfiResult_Tag;
+typedef struct {
+  int32_t _0;
+} SignalMyNiceTypeEnumNotFfiResultSignalSingle_Body;
+typedef struct {
+  SignalMyNiceTypeEnumNotFfiResult_Tag tag;
+  union {
+    SignalMyNiceTypeEnumNotFfiResultSignalSingle_Body single;
+  };
+} SignalMyNiceTypeEnumNotFfiResult;
+static_assert_64bit(sizeof(SignalMyNiceTypeEnumNotFfiResult) == 8);
+static_assert_64bit(alignof(SignalMyNiceTypeEnumNotFfiResult) == 4);
+typedef SignalMyNiceTypeEnumNotFfiResult* SignalType_MutPointer_SignalMyNiceTypeEnumNotFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalMyNiceTypeEnumNotFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalMyNiceTypeEnumNotFfiResult) == 8);
+typedef enum {
+  SignalMyNiceTypeSimpleEnumNotFfiResultA,
+  SignalMyNiceTypeSimpleEnumNotFfiResultB,
+} SignalMyNiceTypeSimpleEnumNotFfiResult;
+static_assert_64bit(sizeof(SignalMyNiceTypeSimpleEnumNotFfiResult) == 4);
+static_assert_64bit(alignof(SignalMyNiceTypeSimpleEnumNotFfiResult) == 4);
+typedef SignalMyNiceTypeSimpleEnumNotFfiResult* SignalType_MutPointer_SignalMyNiceTypeSimpleEnumNotFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalMyNiceTypeSimpleEnumNotFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalMyNiceTypeSimpleEnumNotFfiResult) == 8);
+typedef struct {
+  int32_t x;
+  int32_t y;
+} SignalMyNiceTypeStructNotFfiResult;
+static_assert_64bit(offsetof(SignalMyNiceTypeStructNotFfiResult, x) == 0);
+static_assert_64bit(offsetof(SignalMyNiceTypeStructNotFfiResult, y) == 4);
+static_assert_64bit(sizeof(SignalMyNiceTypeStructNotFfiResult) == 8);
+static_assert_64bit(alignof(SignalMyNiceTypeStructNotFfiResult) == 4);
+typedef SignalMyNiceTypeStructNotFfiResult* SignalType_MutPointer_SignalMyNiceTypeStructNotFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalMyNiceTypeStructNotFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalMyNiceTypeStructNotFfiResult) == 8);
+typedef enum {
   SignalMySimpleTestEnumFfiResultA,
   SignalMySimpleTestEnumFfiResultB,
 } SignalMySimpleTestEnumFfiResult;
@@ -865,6 +903,35 @@ typedef enum {
 } SignalSimpleBackupTestOutFfiResult;
 static_assert_64bit(sizeof(SignalSimpleBackupTestOutFfiResult) == 4);
 static_assert_64bit(alignof(SignalSimpleBackupTestOutFfiResult) == 4);
+typedef enum {
+  SignalMyNiceTypeEnumNotFfiArgUnit,
+  SignalMyNiceTypeEnumNotFfiArgSingle,
+} SignalMyNiceTypeEnumNotFfiArg_Tag;
+typedef struct {
+  int32_t _0;
+} SignalMyNiceTypeEnumNotFfiArgSignalSingle_Body;
+typedef struct {
+  SignalMyNiceTypeEnumNotFfiArg_Tag tag;
+  union {
+    SignalMyNiceTypeEnumNotFfiArgSignalSingle_Body single;
+  };
+} SignalMyNiceTypeEnumNotFfiArg;
+static_assert_64bit(sizeof(SignalMyNiceTypeEnumNotFfiArg) == 8);
+static_assert_64bit(alignof(SignalMyNiceTypeEnumNotFfiArg) == 4);
+typedef enum {
+  SignalMyNiceTypeSimpleEnumNotFfiArgA,
+  SignalMyNiceTypeSimpleEnumNotFfiArgB,
+} SignalMyNiceTypeSimpleEnumNotFfiArg;
+static_assert_64bit(sizeof(SignalMyNiceTypeSimpleEnumNotFfiArg) == 4);
+static_assert_64bit(alignof(SignalMyNiceTypeSimpleEnumNotFfiArg) == 4);
+typedef struct {
+  int32_t x;
+  int32_t y;
+} SignalMyNiceTypeStructNotFfiArg;
+static_assert_64bit(offsetof(SignalMyNiceTypeStructNotFfiArg, x) == 0);
+static_assert_64bit(offsetof(SignalMyNiceTypeStructNotFfiArg, y) == 4);
+static_assert_64bit(sizeof(SignalMyNiceTypeStructNotFfiArg) == 8);
+static_assert_64bit(alignof(SignalMyNiceTypeStructNotFfiArg) == 4);
 typedef struct {
   int32_t _0;
   int32_t _1;
@@ -1544,6 +1611,30 @@ SignalFfiError* signal_testing_key_trans_stored_account_data(
 );
 SignalFfiError* signal_testing_look_up_username_link_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_my_nice_type_enum_identity(
+  SignalMyNiceTypeEnumNotFfiResult* out,
+  SignalMyNiceTypeEnumNotFfiArg x
+);
+SignalFfiError* signal_testing_my_nice_type_enum_to_string(
+  SignalCStringPtr* out,
+  SignalMyNiceTypeEnumNotFfiArg x
+);
+SignalFfiError* signal_testing_my_nice_type_simple_enum_identity(
+  SignalMyNiceTypeSimpleEnumNotFfiResult* out,
+  SignalMyNiceTypeSimpleEnumNotFfiArg x
+);
+SignalFfiError* signal_testing_my_nice_type_simple_enum_to_string(
+  SignalCStringPtr* out,
+  SignalMyNiceTypeSimpleEnumNotFfiArg x
+);
+SignalFfiError* signal_testing_my_nice_type_struct_identity(
+  SignalMyNiceTypeStructNotFfiResult* out,
+  SignalMyNiceTypeStructNotFfiArg x
+);
+SignalFfiError* signal_testing_my_nice_type_struct_to_string(
+  SignalCStringPtr* out,
+  SignalMyNiceTypeStructNotFfiArg x
 );
 SignalFfiError* signal_testing_my_remote_derive_enum_identity(
   SignalMyRemoteDeriveEnumFfiResult* out,

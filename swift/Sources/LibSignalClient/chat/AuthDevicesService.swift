@@ -33,16 +33,6 @@ public struct LinkedDevice: Equatable {
         self.registrationId = registrationId
         self.createdAtCiphertext = createdAtCiphertext
     }
-
-    internal static func fromInternal(_ it: LinkedDeviceInternal) -> LinkedDevice {
-        LinkedDevice(
-            id: it.id,
-            encryptedName: it.encryptedName,
-            lastSeen: it.lastSeen,
-            registrationId: it.registrationId,
-            createdAtCiphertext: it.createdAtCiphertext,
-        )
-    }
 }
 
 public protocol AuthDevicesService: Sendable {
@@ -98,7 +88,7 @@ extension AuthenticatedChatConnection: AuthDevicesService {
         return try await NativeNice.AuthenticatedChatConnection_get_devices(
             asyncContext: self.tokioAsyncContext,
             chat: self,
-        ).map { LinkedDevice.fromInternal($0) }
+        )
     }
 
     public func removeDevice(deviceId: DeviceId) async throws {

@@ -1111,7 +1111,11 @@ pub mod remote_derives {
     use super::*;
 
     #[derive(BridgedAsValue)]
-    #[bridge(remote = libsignal_net_chat::grpc::devices::LinkedDevice)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::devices::LinkedDevice,
+        ffi_nice_type = "LinkedDevice",
+        jni_nice_type = "org.signal.libsignal.net.LinkedDevice",
+    )]
     #[allow(unused)]
     pub struct LinkedDeviceInternal {
         pub id: DeviceId,
