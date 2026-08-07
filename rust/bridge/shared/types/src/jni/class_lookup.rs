@@ -34,7 +34,7 @@ pub fn save_class_loader(
         .get_class_loader(env)
         .check_exceptions(env, "save_class_loader")?;
     if cl.is_null() {
-        return Err(BridgeLayerError::NullPointer(Some("class loader")));
+        return Err(BridgeLayerError::null_pointer(Some("class loader")));
     }
     let cl = env
         .new_global_ref(cl)

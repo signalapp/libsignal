@@ -122,7 +122,7 @@ impl<T: for<'a> ResultTypeInfo<'a> + std::panic::UnwindSafe, U> ResultReporter
                                 })
                                 .map_err(Into::into)
                         })
-                        .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
+                        .unwrap_or_else(|panic| Err(BridgeLayerError::unexpected_panic(panic).into()))
                     })
                 };
 
@@ -225,11 +225,12 @@ where
     Ok(java_future.into())
 }
 
-/// Catches panics that occur in `future` and converts them to [`BridgeLayerError::UnexpectedPanic`].
+/// Catches panics that occur in `future` and converts them to
+/// [`crate::jni::BridgeLayerErrorInner::UnexpectedPanic`]
 pub fn catch_unwind<'a, O>(
     future: impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'a,
 ) -> impl Future<Output = SignalJniResult<O>> + Send + std::panic::UnwindSafe + 'a {
     future
         .catch_unwind()
-        .unwrap_or_else(|panic| Err(BridgeLayerError::UnexpectedPanic(panic).into()))
+        .unwrap_or_else(|panic| Err(BridgeLayerError::unexpected_panic(panic).into()))
 }

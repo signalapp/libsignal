@@ -586,7 +586,7 @@ fn derive_bridged_as_value_arg(
                         return Ok(#stored_decl_name::#variant_names((#(#field_names, )*)));
                     }
                 )*
-                Err(#krate::jni::BridgeLayerError::BadArgument(
+                Err(#krate::jni::BridgeLayerError::bad_argument(
                     concat!("Invalid variant for enum ", #base_class).to_string()
                 ))
             }

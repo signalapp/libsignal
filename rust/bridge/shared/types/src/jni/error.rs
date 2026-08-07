@@ -5,6 +5,7 @@
 
 use std::fmt::{self, Debug};
 use std::io::Error as IoError;
+use std::mem::ManuallyDrop;
 
 use jni::JavaVM;
 use jni::objects::{Auto, Global, JObject, JString, JThrowable};
@@ -105,7 +106,7 @@ where
 /// These errors will always be converted to RuntimeExceptions or Errors, i.e. unchecked throwables,
 /// except for the [`Self::CallbackException`] case, which is rethrown.
 #[derive(Debug)]
-pub enum BridgeLayerError {
+pub enum BridgeLayerErrorInner {
     Jni(jni::errors::Error),
     BadArgument(String),
     BadJniParameter(&'static str),
@@ -117,7 +118,7 @@ pub enum BridgeLayerError {
     UnexpectedPanic(std::boxed::Box<dyn std::any::Any + std::marker::Send>),
 }
 
-impl fmt::Display for BridgeLayerError {
+impl fmt::Display for BridgeLayerErrorInner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Jni(s) => write!(f, "JNI error {s}"),
@@ -146,17 +147,105 @@ impl fmt::Display for BridgeLayerError {
     }
 }
 
+pub struct BridgeLayerError {
+    // This is ManuallyDrop, so we can manually drop it in an #[inline(never)] drop implementation,
+    // to prevent the destructor from being inlined into every place where the error gets dropped.
+    inner: ManuallyDrop<Box<BridgeLayerErrorInner>>,
+}
+
+impl BridgeLayerError {
+    #[inline(never)]
+    pub fn jni(x: jni::errors::Error) -> Self {
+        BridgeLayerErrorInner::Jni(x).into()
+    }
+    #[inline(never)]
+    pub fn bad_argument(x: String) -> Self {
+        BridgeLayerErrorInner::BadArgument(x).into()
+    }
+    #[inline(never)]
+    pub fn bad_jni_parameter(x: &'static str) -> Self {
+        BridgeLayerErrorInner::BadJniParameter(x).into()
+    }
+    #[inline(never)]
+    pub fn unexpected_jni_result_type(x: &'static str, y: &'static str) -> Self {
+        BridgeLayerErrorInner::UnexpectedJniResultType(x, y).into()
+    }
+    #[inline(never)]
+    pub fn null_pointer(x: Option<&'static str>) -> Self {
+        BridgeLayerErrorInner::NullPointer(x).into()
+    }
+    #[inline(never)]
+    pub fn integer_overflow(x: String) -> Self {
+        BridgeLayerErrorInner::IntegerOverflow(x).into()
+    }
+    #[inline(never)]
+    pub fn callback_exception(x: &'static str, y: ThrownException) -> Self {
+        BridgeLayerErrorInner::CallbackException(x, y).into()
+    }
+    #[inline(never)]
+    pub fn unexpected_panic(x: std::boxed::Box<dyn std::any::Any + std::marker::Send>) -> Self {
+        BridgeLayerErrorInner::UnexpectedPanic(x).into()
+    }
+    #[inline(never)]
+    pub fn incorrect_array_length(expected: usize, actual: usize) -> Self {
+        BridgeLayerErrorInner::IncorrectArrayLength { expected, actual }.into()
+    }
+}
+
+impl From<BridgeLayerErrorInner> for BridgeLayerError {
+    fn from(value: BridgeLayerErrorInner) -> Self {
+        Self {
+            inner: ManuallyDrop::new(Box::new(value)),
+        }
+    }
+}
+
+impl std::fmt::Debug for BridgeLayerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        std::fmt::Debug::fmt(self.as_ref(), f)
+    }
+}
+
+impl std::fmt::Display for BridgeLayerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        std::fmt::Display::fmt(self.as_ref(), f)
+    }
+}
+
+impl std::ops::Drop for BridgeLayerError {
+    #[inline(never)]
+    fn drop(&mut self) {
+        unsafe { ManuallyDrop::drop(&mut self.inner) }
+    }
+}
+
+impl AsRef<BridgeLayerErrorInner> for BridgeLayerError {
+    fn as_ref(&self) -> &BridgeLayerErrorInner {
+        &self.inner
+    }
+}
+
+impl BridgeLayerError {
+    pub fn into_inner(mut self) -> BridgeLayerErrorInner {
+        *unsafe {
+            let out = ManuallyDrop::take(&mut self.inner);
+            std::mem::forget(self);
+            out
+        }
+    }
+}
+
 impl From<WithContext<BridgeLayerError>> for SignalProtocolError {
     fn from(value: WithContext<BridgeLayerError>) -> Self {
         let WithContext {
             operation: _,
             inner,
         } = value;
-        match inner {
-            BridgeLayerError::BadJniParameter(m) => {
+        match inner.into_inner() {
+            BridgeLayerErrorInner::BadJniParameter(m) => {
                 SignalProtocolError::InvalidArgument(m.to_string())
             }
-            BridgeLayerError::CallbackException(callback, exception) => {
+            BridgeLayerErrorInner::CallbackException(callback, exception) => {
                 SignalProtocolError::ApplicationCallbackError(callback, Box::new(exception))
             }
             err => SignalProtocolError::FfiBindingError(err.to_string()),
@@ -354,7 +443,7 @@ impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
             if matches!(e, jni::errors::Error::JavaException) {
                 if let Some(throwable) = env.exception_occurred() {
                     env.exception_clear();
-                    return Err(BridgeLayerError::CallbackException(
+                    return Err(BridgeLayerError::callback_exception(
                         context,
                         ThrownException::new(env, throwable)?,
                     ));
@@ -363,7 +452,7 @@ impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
                     "'{context}' produced a Java exception, but it has already been cleared from the JVM state"
                 );
             }
-            Err(BridgeLayerError::Jni(e))
+            Err(BridgeLayerError::jni(e))
         }
 
         self.map_err(|e| match check_error(e, env, context) {
@@ -377,7 +466,7 @@ impl<T> HandleJniError<T> for Result<T, jni::errors::Error> {
                 !matches!(e, jni::errors::Error::JavaException),
                 "catching Java exceptions is not supported here"
             );
-            BridgeLayerError::Jni(e)
+            BridgeLayerError::jni(e)
         })
     }
 }

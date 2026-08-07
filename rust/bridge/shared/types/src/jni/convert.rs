@@ -371,7 +371,7 @@ impl SimpleArgTypeInfo<'_> for u32 {
     type ArgType = jint;
     fn convert_from(_env: &mut jni::Env, foreign: &jint) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
-            return Err(BridgeLayerError::IntegerOverflow(format!(
+            return Err(BridgeLayerError::integer_overflow(format!(
                 "{foreign} to u32"
             )));
         }
@@ -416,7 +416,7 @@ impl SimpleArgTypeInfo<'_> for crate::protocol::Timestamp {
     type ArgType = jlong;
     fn convert_from(_env: &mut jni::Env, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
-            return Err(BridgeLayerError::IntegerOverflow(format!(
+            return Err(BridgeLayerError::integer_overflow(format!(
                 "{foreign} to Timestamp (u64)"
             )));
         }
@@ -467,7 +467,7 @@ impl SimpleArgTypeInfo<'_> for crate::zkgroup::Timestamp {
     type ArgType = jlong;
     fn convert_from(_env: &mut jni::Env, foreign: &jlong) -> Result<Self, BridgeLayerError> {
         if *foreign < 0 {
-            return Err(BridgeLayerError::IntegerOverflow(format!(
+            return Err(BridgeLayerError::integer_overflow(format!(
                 "{foreign} to Timestamp (u64)"
             )));
         }
@@ -491,7 +491,7 @@ impl SimpleArgTypeInfo<'_> for DeviceSpecifier {
                 .and_then(|id| DeviceId::new(id).ok())
                 .map(DeviceSpecifier::Specific)
                 .ok_or_else(|| {
-                    BridgeLayerError::IntegerOverflow("Illegal DeviceSpecifier value".to_string())
+                    BridgeLayerError::integer_overflow("Illegal DeviceSpecifier value".to_string())
                 })
         }
     }
@@ -505,7 +505,7 @@ impl<'a> SimpleArgTypeInfo<'a> for DeviceId {
     ) -> Result<Self, BridgeLayerError> {
         let foreign = <u8 as SimpleArgTypeInfo<'a>>::convert_from(env, foreign)?;
         DeviceId::new(foreign)
-            .map_err(|_| BridgeLayerError::BadArgument("Invalid DeviceId".to_string()))
+            .map_err(|_| BridgeLayerError::bad_argument("Invalid DeviceId".to_string()))
     }
 }
 nice_identity_arg_converter!(DeviceId, "org.signal.libsignal.protocol.DeviceId");
@@ -515,7 +515,7 @@ impl SimpleArgTypeInfo<'_> for u8 {
     type ArgType = jint;
     fn convert_from(_env: &mut jni::Env, foreign: &jint) -> Result<Self, BridgeLayerError> {
         u8::try_from(*foreign)
-            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{foreign} to u8")))
+            .map_err(|_| BridgeLayerError::integer_overflow(format!("{foreign} to u8")))
     }
 }
 nice_identity_arg_converter!(u8, "Int");
@@ -525,7 +525,7 @@ impl SimpleArgTypeInfo<'_> for u16 {
     type ArgType = jint;
     fn convert_from(_env: &mut jni::Env, foreign: &jint) -> Result<Self, BridgeLayerError> {
         u16::try_from(*foreign)
-            .map_err(|_| BridgeLayerError::IntegerOverflow(format!("{foreign} to u16")))
+            .map_err(|_| BridgeLayerError::integer_overflow(format!("{foreign} to u16")))
     }
 }
 nice_identity_arg_converter!(u16, "Int");
@@ -534,7 +534,7 @@ impl<'a> SimpleArgTypeInfo<'a> for String {
     type ArgType = JString<'a>;
     fn convert_from(env: &mut jni::Env, foreign: &JString<'a>) -> Result<Self, BridgeLayerError> {
         if foreign.is_null() {
-            return Err(BridgeLayerError::NullPointer(Some("java.lang.String")));
+            return Err(BridgeLayerError::null_pointer(Some("java.lang.String")));
         }
         foreign
             .try_to_string(env)
@@ -584,7 +584,7 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_core::E164 {
     ) -> Result<Self, BridgeLayerError> {
         let e164 = String::convert_from(env, foreign)?;
         let e164 = e164.parse().map_err(|_: ParseIntError| {
-            BridgeLayerError::BadArgument(format!("'{e164}' is not an e164"))
+            BridgeLayerError::bad_argument(format!("'{e164}' is not an e164"))
         })?;
         Ok(e164)
     }
@@ -612,7 +612,7 @@ impl<'a> SimpleArgTypeInfo<'a> for AccountEntropyPool {
     ) -> Result<Self, BridgeLayerError> {
         let pool = String::convert_from(env, foreign)?;
         pool.parse().map_err(|e: InvalidAccountEntropyPool| {
-            BridgeLayerError::BadArgument(format!("bad account entropy pool: {e}"))
+            BridgeLayerError::bad_argument(format!("bad account entropy pool: {e}"))
         })
     }
 }
@@ -652,7 +652,7 @@ impl<'a> SimpleArgTypeInfo<'a>
             let bytes = <&[u8]>::load_from(&mut elements_guard);
             let token =
                 zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
-                    BridgeLayerError::BadArgument("bad GroupSendFullToken".into())
+                    BridgeLayerError::bad_argument("bad GroupSendFullToken".into())
                 })?;
             Ok(Self::Group(token))
         }
@@ -671,7 +671,7 @@ macro_rules! zkgroup_serialize_type {
                 let bytes = <&[u8]>::load_from(&mut elements_guard);
                 let token =
                     zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
-                        BridgeLayerError::BadArgument(concat!("bad ", stringify!($ty)).into())
+                        BridgeLayerError::bad_argument(concat!("bad ", stringify!($ty)).into())
                     })?;
                 Ok(token)
             }
@@ -775,10 +775,10 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         let elements = unsafe { foreign.get_elements(env, ReleaseMode::NoCopyBack) }
             .check_exceptions(env, "<&[u8; LEN]>::borrow")?;
         if elements.len() != BACKUP_KEY_LEN {
-            return Err(BridgeLayerError::IncorrectArrayLength {
-                expected: BACKUP_KEY_LEN,
-                actual: elements.len(),
-            });
+            return Err(BridgeLayerError::incorrect_array_length(
+                BACKUP_KEY_LEN,
+                elements.len(),
+            ));
         }
         Ok(libsignal_account_keys::BackupKey(
             zerocopy::IntoBytes::as_bytes(&*elements)
@@ -801,7 +801,7 @@ impl<'a> SimpleArgTypeInfo<'a> for libsignal_net::chat::LanguageList {
     ) -> Result<Self, BridgeLayerError> {
         let entries = Box::<[String]>::convert_from(env, foreign)?;
         libsignal_net::chat::LanguageList::parse(&entries)
-            .map_err(|_| BridgeLayerError::BadArgument("invalid language in list".to_owned()))
+            .map_err(|_| BridgeLayerError::bad_argument("invalid language in list".to_owned()))
     }
 }
 
@@ -947,7 +947,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Vec<&'a [u8]> {
             JniErrorOrNull::Jni(jni_error) => {
                 Err(jni_error).check_exceptions(env, "Vec<&[u8]>::convert_from")
             }
-            JniErrorOrNull::Null(message) => Err(BridgeLayerError::NullPointer(Some(message))),
+            JniErrorOrNull::Null(message) => Err(BridgeLayerError::null_pointer(Some(message))),
         })
     }
 }
@@ -1123,7 +1123,7 @@ impl<'a> CallbackResultTypeInfo<'a> for PublicKey {
         foreign: Self::ResultType,
     ) -> Result<Self, BridgeLayerError> {
         <Option<PublicKey>>::convert_from_callback(env, Nullable(foreign))?
-            .ok_or(BridgeLayerError::NullPointer(Some("PublicKey")))
+            .ok_or(BridgeLayerError::null_pointer(Some("PublicKey")))
     }
 }
 
@@ -1161,7 +1161,7 @@ impl<'a> CallbackResultTypeInfo<'a> for PrivateKey {
         foreign: Self::ResultType,
     ) -> Result<Self, BridgeLayerError> {
         if foreign.is_null() {
-            Err(BridgeLayerError::NullPointer(Some("PrivateKey")))
+            Err(BridgeLayerError::null_pointer(Some("PrivateKey")))
         } else {
             let handle: jlong = call_method_checked(
                 env,
@@ -1329,7 +1329,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         store: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if store.0.is_null() {
-            return Err(BridgeLayerError::NullPointer(Some("BridgeChatListener")));
+            return Err(BridgeLayerError::null_pointer(Some("BridgeChatListener")));
         }
         Ok(Some(JniChatListener::new(env, store)?))
     }
@@ -1348,7 +1348,7 @@ impl<'storage, 'param: 'storage, 'context: 'param> ArgTypeInfo<'storage, 'param,
         store: &Self::ArgType,
     ) -> Result<Self::StoredType, BridgeLayerError> {
         if store.0.is_null() {
-            return Err(BridgeLayerError::NullPointer(Some(
+            return Err(BridgeLayerError::null_pointer(Some(
                 "BridgeProvisioningListener",
             )));
         }
@@ -1383,7 +1383,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
         JavaCiphertextMessage(foreign): &Self::ArgType,
     ) -> Result<Self, BridgeLayerError> {
         if foreign.is_null() {
-            return Err(BridgeLayerError::NullPointer(Some("CipherTextMessageRef")));
+            return Err(BridgeLayerError::null_pointer(Some("CipherTextMessageRef")));
         }
 
         None.or_else(|| {
@@ -1422,7 +1422,7 @@ impl<'a> SimpleArgTypeInfo<'a> for CiphertextMessageRef<'a> {
             )
             .transpose()
         })
-        .unwrap_or(Err(BridgeLayerError::BadArgument(
+        .unwrap_or(Err(BridgeLayerError::bad_argument(
             "unknown CiphertextMessage subclass".to_string(),
         )))
     }
@@ -1675,10 +1675,7 @@ impl<'a, const LEN: usize> SimpleArgTypeInfo<'a> for [u8; LEN] {
         let elements = unsafe { foreign.get_elements(env, ReleaseMode::NoCopyBack) }
             .check_exceptions(env, "<&[u8; LEN]>::borrow")?;
         <&[u8; LEN]>::try_from(zerocopy::IntoBytes::as_bytes(&elements[..]))
-            .map_err(|_| BridgeLayerError::IncorrectArrayLength {
-                expected: LEN,
-                actual: elements.len(),
-            })
+            .map_err(|_| BridgeLayerError::incorrect_array_length(LEN, elements.len()))
             .copied()
     }
 }
@@ -1711,10 +1708,10 @@ impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
         let elements = unsafe { env.get_array_elements(foreign, ReleaseMode::NoCopyBack) }
             .check_exceptions(env, "<&[u8; LEN]>::borrow")?;
         if elements.len() != LEN {
-            return Err(BridgeLayerError::IncorrectArrayLength {
-                expected: LEN,
-                actual: elements.len(),
-            });
+            return Err(BridgeLayerError::incorrect_array_length(
+                LEN,
+                elements.len(),
+            ));
         }
         Ok(elements)
     }
@@ -1862,14 +1859,14 @@ pub trait BridgeHandle: Sized + 'static {
     /// cannot guarantee it.
     unsafe fn native_handle_cast(handle: jlong) -> Result<NonNull<Self>, BridgeLayerError> {
         if handle == 0 {
-            return Err(BridgeLayerError::NullPointer(None));
+            return Err(BridgeLayerError::null_pointer(None));
         }
 
         let addr = if cfg!(feature = "jni-type-tagging") {
             if ((handle >> TYPE_TAG_POINTER_OFFSET) & 0xFF) as u8 != Self::TYPE_TAG {
-                return Err(BridgeLayerError::BadJniParameter(
-                    std::any::type_name::<Self>(),
-                ));
+                return Err(BridgeLayerError::bad_jni_parameter(std::any::type_name::<
+                    Self,
+                >()));
             }
             handle & !(0xFF << TYPE_TAG_POINTER_OFFSET)
         } else {
@@ -2314,7 +2311,7 @@ where
         let p = P::convert_from(env, foreign)?;
         p.try_into()
             .map_err(|e| {
-                BridgeLayerError::BadArgument(format!(
+                BridgeLayerError::bad_argument(format!(
                     "invalid {}: {e}",
                     std::any::type_name::<T>()
                 ))
@@ -2332,7 +2329,7 @@ impl<'a> SimpleArgTypeInfo<'a> for ServiceId {
             .as_ref()
             .and_then(Self::parse_from_service_id_fixed_width_binary)
             .ok_or_else(|| {
-                BridgeLayerError::BadArgument("invalid Service-Id-FixedWidthBinary".to_string())
+                BridgeLayerError::bad_argument("invalid Service-Id-FixedWidthBinary".to_string())
             })
     }
 }
@@ -2357,7 +2354,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Aci {
     ) -> Result<Self, BridgeLayerError> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
-            .map_err(|_| BridgeLayerError::BadArgument("not an ACI".to_string()))
+            .map_err(|_| BridgeLayerError::bad_argument("not an ACI".to_string()))
     }
 }
 
@@ -2369,7 +2366,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Pni {
     ) -> Result<Self, BridgeLayerError> {
         ServiceId::convert_from(env, foreign)?
             .try_into()
-            .map_err(|_| BridgeLayerError::BadArgument("not a PNI".to_string()))
+            .map_err(|_| BridgeLayerError::bad_argument("not a PNI".to_string()))
     }
 }
 
@@ -2512,7 +2509,7 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::net::registration::SignedPublicPreKey 
         let (key_id, public_key, signature) = values;
 
         let key_id = key_id.try_into().map_err(|_| {
-            BridgeLayerError::IntegerOverflow("id field is out of bounds".to_owned())
+            BridgeLayerError::integer_overflow("id field is out of bounds".to_owned())
         })?;
 
         let public_key = {
@@ -2535,7 +2532,7 @@ impl<'a> SimpleArgTypeInfo<'a> for crate::net::registration::SignedPublicPreKey 
                 .transpose()
             })
             .unwrap_or_else(|| {
-                Err(BridgeLayerError::BadArgument(
+                Err(BridgeLayerError::bad_argument(
                     "publicKey type is not supported".to_owned(),
                 ))
             })?
@@ -3054,7 +3051,7 @@ where
                 // This is not *really* the correct error, it will produce an
                 // IllegalArgumentException even though we're making a result. But also we shouldn't
                 // in practice try to return arrays of 2 billion objects.
-                BridgeLayerError::IntegerOverflow(format!("{len}_usize to i32"))
+                BridgeLayerError::integer_overflow(format!("{len}_usize to i32"))
             })?,
             element_type,
             JavaObject::null(),

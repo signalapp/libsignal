@@ -9,11 +9,11 @@ use jni::strings::JNIString;
 use crate::jni::{BridgeLayerError, HandleJniError as _, JniArgs};
 
 /// Calls a method and translates any thrown exceptions to
-/// [`BridgeLayerError::CallbackException`].
+/// [`crate::jni::BridgeLayerErrorInner::CallbackException`].
 ///
 /// Wraps [`jni::Env::call_method`].
-/// The result must have the correct type, or [`BridgeLayerError::UnexpectedJniResultType`] will be
-/// returned instead.
+/// The result must have the correct type, or
+/// [`crate::jni::BridgeLayerErrorInner::UnexpectedJniResultType`] will be returned instead.
 pub fn call_method_checked<
     'input,
     'output,
@@ -42,11 +42,11 @@ pub fn call_method_checked<
 }
 
 /// Calls a method and translates any thrown exceptions to
-/// [`BridgeLayerError::CallbackException`].
+/// [`crate::jni::BridgeLayerErrorInner::CallbackException`].
 ///
 /// Wraps [`jni::Env::call_static_method`].
-/// The result must have the correct type, or [`BridgeLayerError::UnexpectedJniResultType`] will be
-/// returned instead.
+/// The result must have the correct type, or
+/// [`crate::jni::BridgeLayerErrorInner::UnexpectedJniResultType`] will be returned instead.
 pub fn call_static_method_checked<
     'input,
     'output,
@@ -150,7 +150,7 @@ fn check_exceptions_and_convert_result<'output, R: TryFrom<JValueOwned<'output>>
     let type_name = result.type_name();
     result
         .try_into()
-        .map_err(|_| BridgeLayerError::UnexpectedJniResultType(fn_name, type_name))
+        .map_err(|_| BridgeLayerError::unexpected_jni_result_type(fn_name, type_name))
 }
 
 mod check_annotations {

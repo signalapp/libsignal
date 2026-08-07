@@ -104,8 +104,8 @@ impl From<BridgeOrIoError> for IoError {
     fn from(value: BridgeOrIoError) -> Self {
         match value {
             BridgeOrIoError::Io(error) => error,
-            BridgeOrIoError::Bridge(bridge_layer_error) => match bridge_layer_error {
-                BridgeLayerError::CallbackException(_method_name, exception) => {
+            BridgeOrIoError::Bridge(bridge_layer_error) => match bridge_layer_error.into_inner() {
+                BridgeLayerErrorInner::CallbackException(_method_name, exception) => {
                     IoError::other(exception)
                 }
                 e => IoError::other(e.to_string()),

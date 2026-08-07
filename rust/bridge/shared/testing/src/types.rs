@@ -159,7 +159,7 @@ impl<'a> jni::SimpleArgTypeInfo<'a> for ErrorOnBorrow {
         _env: &mut ::jni::Env<'a>,
         _foreign: &Self::ArgType,
     ) -> Result<Self, jni::BridgeLayerError> {
-        Err(jni::BridgeLayerError::BadArgument(
+        Err(jni::BridgeLayerError::bad_argument(
             "deliberate error".to_string(),
         ))
     }
@@ -333,7 +333,7 @@ impl<'a> jni::ResultTypeInfo<'a> for ErrorOnReturn {
         self,
         _env: &mut ::jni::Env<'a>,
     ) -> Result<Self::ResultType, jni::BridgeLayerError> {
-        Err(jni::BridgeLayerError::BadArgument(
+        Err(jni::BridgeLayerError::bad_argument(
             "deliberate error".to_string(),
         ))
     }
