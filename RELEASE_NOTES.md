@@ -1,6 +1,2 @@
-v0.100.0
+v0.100.1
 
-- New typed APIs:
-  - `UnauthBackupsService.listBackupMedia`
-
-- SPQR: Remove requirePqRatio argument for sessions, instead requiring for all sessions.
