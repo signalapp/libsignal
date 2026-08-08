@@ -27,7 +27,6 @@ signal-crypto = { workspace = true }
 assert_matches = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
-bincode = { workspace = true }
 boring-signal = { workspace = true }
 bytes = { workspace = true }
 const-str = { workspace = true }
