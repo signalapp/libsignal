@@ -148,6 +148,8 @@ jni_custom_spellings! {
     pub struct JavaSignedPublicPreKey<'a>(pub JObject<'a>);
     #[kt = "SimpleOwner"]
     pub struct JavaSimpleOwner<'a>(pub JObject<'a>);
+    #[kt = "Float?"]
+    pub struct JavaOptionalFloat<'a>(pub JObject<'a>);
 }
 
 pub type JavaObject<'a> = JObject<'a>;

@@ -3270,6 +3270,13 @@ internal object Native {
   ): CompletableFuture<ByteArray>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_submit_call_quality_survey(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    survey: Object,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   @Throws(Exception::class)
   public external fun UnidentifiedSenderMessageContent_Deserialize(data: ByteArray): ObjectHandle
 

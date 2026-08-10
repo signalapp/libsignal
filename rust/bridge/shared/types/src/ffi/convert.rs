@@ -559,6 +559,15 @@ impl SimpleArgTypeInfo for Option<String> {
         }
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for Option<String> {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "String?".to_string(),
+            converter_type: "OptionalStringConverter".to_string(),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo for uuid::Uuid {
     type ArgType = super::Uuid;
@@ -2040,6 +2049,67 @@ trivial!(i64, "Int64");
 trivial!(usize, "UInt");
 trivial!(bool, "Bool");
 trivial!(f64, "Double");
+trivial!(f32, "Float");
+
+macro_rules! simple_optional {
+    ($ty:ty) => {
+        impl SimpleArgTypeInfo for Option<$ty> {
+            type ArgType = OptionalOf<<$ty as SimpleArgTypeInfo>::ArgType>;
+
+            fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+                Ok(if foreign.present {
+                    Some(<$ty as SimpleArgTypeInfo>::convert_from(unsafe {
+                        foreign.value.assume_init_read()
+                    })?)
+                } else {
+                    None
+                })
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for Option<$ty> {
+            fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+                let opt = <OptionalOf<<$ty as SimpleArgTypeInfo>::ArgType>>::register_c_type(ctx);
+                let opt = opt.swift_name();
+                let ty = <$ty as NiceArgConverter>::register_swift_arg_converter(ctx);
+                SwiftArgConverter {
+                    nice_type: format!("{}?", ty.nice_type),
+                    converter_type: format!("OptionalArgConverter<{}, {opt}>", ty.converter_type),
+                }
+            }
+        }
+        impl ResultTypeInfo for Option<$ty> {
+            type ResultType = OptionalOf<<$ty as ResultTypeInfo>::ResultType>;
+
+            fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+                Ok(if let Some(x) = self {
+                    OptionalOf::some(x.convert_into()?)
+                } else {
+                    OptionalOf::NONE
+                })
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for Option<$ty> {
+            fn register_swift_result_converter(
+                ctx: &mut SwiftMetadataContext,
+            ) -> SwiftReturnConverter {
+                let opt = OptionalOf::<<$ty as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+                let opt = opt.swift_name();
+                let ty = <$ty as NiceResultConverter>::register_swift_result_converter(ctx);
+                SwiftReturnConverter {
+                    nice_type: format!("{}?", ty.nice_type),
+                    converter_type: format!(
+                        "OptionalReturnConverter<{}, {opt}>",
+                        ty.converter_type
+                    ),
+                }
+            }
+        }
+    };
+}
+simple_optional!(f32);
+simple_optional!(Vec<u8>);
 
 #[cfg(test)]
 mod test {

@@ -8,6 +8,7 @@ use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use libsignal_bridge_types::net::TokioAsyncContext;
 #[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
 use libsignal_bridge_types::net::chat::BridgeDeleteBackupMediaItem;
+use libsignal_bridge_types::net::chat::remote_derives::CallQualitySurveyInternal;
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, BridgeCopyBackupMediaItem, ChatListener, HttpRequest,
     ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
@@ -800,4 +801,9 @@ fn TESTING_GetBackupSvrBCredentialsTests()
 fn TESTING_BackupListMediaTests()
 -> GrpcTestCases<remote_derives::ListMediaArgs, remote_derives::ListMediaOut> {
     libsignal_net_chat::grpc::backups::test_cases::list_media_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SubmitCallQualitySurveyTests() -> GrpcTestCases<CallQualitySurveyInternal, ()> {
+    libsignal_net_chat::grpc::call_quality::test_cases::submit_call_quality_survey_test_cases()
+        .into()
 }

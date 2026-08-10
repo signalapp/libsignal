@@ -20,6 +20,14 @@ static_assert_64bit(alignof(SignalType_ConstPointer_SignalType_FixedArray32_uint
 typedef const SignalType_ConstPointer_SignalType_FixedArray32_uint8_t* SignalType_ConstPointer_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t) == 8);
+static_assert_64bit(sizeof(int8_t) == 1);
+static_assert_64bit(alignof(int8_t) == 1);
+typedef const int8_t* SignalCStringPtr;
+static_assert_64bit(sizeof(SignalCStringPtr) == 8);
+static_assert_64bit(alignof(SignalCStringPtr) == 8);
+typedef const SignalCStringPtr* SignalType_ConstPointer_SignalCStringPtr;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalCStringPtr) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalCStringPtr) == 8);
 typedef uint8_t SignalType_FixedArray129_uint8_t[129];
 static_assert_64bit(sizeof(SignalType_FixedArray129_uint8_t) == 129);
 static_assert_64bit(alignof(SignalType_FixedArray129_uint8_t) == 1);
@@ -112,11 +120,6 @@ static_assert_64bit(alignof(SignalType_ConstPointer_bool) == 8);
 typedef const void* SignalType_ConstPointer_void;
 static_assert_64bit(sizeof(SignalType_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_void) == 8);
-static_assert_64bit(sizeof(int8_t) == 1);
-static_assert_64bit(alignof(int8_t) == 1);
-typedef const int8_t* SignalCStringPtr;
-static_assert_64bit(sizeof(SignalCStringPtr) == 8);
-static_assert_64bit(alignof(SignalCStringPtr) == 8);
 typedef struct SignalPinHash SignalPinHash;
 typedef const SignalPinHash* SignalType_ConstPointer_SignalPinHash;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalPinHash) == 8);
@@ -2441,6 +2444,14 @@ static_assert_64bit(alignof(SignalType_MutPointer_uint16_t) == 8);
 typedef uint64_t* SignalType_MutPointer_uint64_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_uint64_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_uint64_t) == 8);
+static_assert_64bit(sizeof(float) == 4);
+static_assert_64bit(alignof(float) == 4);
+typedef float MaybeUninitOff32;
+static_assert_64bit(sizeof(MaybeUninitOff32) == 4);
+static_assert_64bit(alignof(MaybeUninitOff32) == 4);
+typedef SignalBorrowedBuffer MaybeUninitOfBorrowedBuffer;
+static_assert_64bit(sizeof(MaybeUninitOfBorrowedBuffer) == 16);
+static_assert_64bit(alignof(MaybeUninitOfBorrowedBuffer) == 8);
 typedef enum {
   SignalLogLevelError = 1,
   SignalLogLevelWarn = 2,
@@ -2477,6 +2488,14 @@ static_assert_64bit(offsetof(SignalBorrowedSliceOfc_uchar32, base) == 0);
 static_assert_64bit(offsetof(SignalBorrowedSliceOfc_uchar32, length) == 8);
 static_assert_64bit(sizeof(SignalBorrowedSliceOfc_uchar32) == 16);
 static_assert_64bit(alignof(SignalBorrowedSliceOfc_uchar32) == 8);
+typedef struct {
+  const SignalCStringPtr* base;
+  size_t length;
+} SignalBorrowedSliceOfCStringPtr;
+static_assert_64bit(offsetof(SignalBorrowedSliceOfCStringPtr, base) == 0);
+static_assert_64bit(offsetof(SignalBorrowedSliceOfCStringPtr, length) == 8);
+static_assert_64bit(sizeof(SignalBorrowedSliceOfCStringPtr) == 16);
+static_assert_64bit(alignof(SignalBorrowedSliceOfCStringPtr) == 8);
 typedef struct {
   const SignalBorrowedBuffer* base;
   size_t length;
@@ -2929,6 +2948,22 @@ static_assert_64bit(offsetof(SignalOptionalBorrowedSliceOfc_uchar, value) == 8);
 static_assert_64bit(sizeof(SignalOptionalBorrowedSliceOfc_uchar) == 24);
 static_assert_64bit(alignof(SignalOptionalBorrowedSliceOfc_uchar) == 8);
 typedef struct {
+  bool present;
+  MaybeUninitOff32 value;
+} SignalOptionalOff32;
+static_assert_64bit(offsetof(SignalOptionalOff32, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOff32, value) == 4);
+static_assert_64bit(sizeof(SignalOptionalOff32) == 8);
+static_assert_64bit(alignof(SignalOptionalOff32) == 4);
+typedef struct {
+  bool present;
+  MaybeUninitOfBorrowedBuffer value;
+} SignalOptionalOfBorrowedBuffer;
+static_assert_64bit(offsetof(SignalOptionalOfBorrowedBuffer, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfBorrowedBuffer, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfBorrowedBuffer) == 24);
+static_assert_64bit(alignof(SignalOptionalOfBorrowedBuffer) == 8);
+typedef struct {
   void* base;
   size_t length;
   size_t size_bytes;
@@ -3047,6 +3082,54 @@ enum SignalSvr2CredentialsResult {
 typedef uint8_t SignalSvr2CredentialsResult;
 static_assert_64bit(sizeof(SignalSvr2CredentialsResult) == 1);
 static_assert_64bit(alignof(SignalSvr2CredentialsResult) == 1);
+typedef struct {
+  bool user_satisfied;
+  SignalBorrowedSliceOfCStringPtr call_quality_issues;
+  const int8_t* additional_issues_description;
+  const int8_t* debug_log_url;
+  uint64_t start_timestamp;
+  uint64_t end_timestamp;
+  const int8_t* call_type;
+  bool success;
+  const int8_t* call_end_reason;
+  SignalOptionalOff32 connection_rtt_median;
+  SignalOptionalOff32 audio_rtt_median;
+  SignalOptionalOff32 video_rtt_median;
+  SignalOptionalOff32 audio_recv_jitter_median;
+  SignalOptionalOff32 video_recv_jitter_median;
+  SignalOptionalOff32 audio_send_jitter_median;
+  SignalOptionalOff32 video_send_jitter_median;
+  SignalOptionalOff32 audio_recv_packet_loss_fraction;
+  SignalOptionalOff32 video_recv_packet_loss_fraction;
+  SignalOptionalOff32 audio_send_packet_loss_fraction;
+  SignalOptionalOff32 video_send_packet_loss_fraction;
+  SignalOptionalOfBorrowedBuffer call_telemetry;
+  SignalOptionalOfBorrowedBuffer call_id_hash;
+} SignalCallQualitySurveyInternalFfiArg;
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, user_satisfied) == 0);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_quality_issues) == 8);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, additional_issues_description) == 24);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, debug_log_url) == 32);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, start_timestamp) == 40);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, end_timestamp) == 48);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_type) == 56);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, success) == 64);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_end_reason) == 72);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, connection_rtt_median) == 80);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, audio_rtt_median) == 88);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, video_rtt_median) == 96);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, audio_recv_jitter_median) == 104);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, video_recv_jitter_median) == 112);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, audio_send_jitter_median) == 120);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, video_send_jitter_median) == 128);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, audio_recv_packet_loss_fraction) == 136);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, video_recv_packet_loss_fraction) == 144);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, audio_send_packet_loss_fraction) == 152);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, video_send_packet_loss_fraction) == 160);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_telemetry) == 168);
+static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_id_hash) == 192);
+static_assert_64bit(sizeof(SignalCallQualitySurveyInternalFfiArg) == 216);
+static_assert_64bit(alignof(SignalCallQualitySurveyInternalFfiArg) == 8);
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
@@ -6003,6 +6086,12 @@ SignalFfiError* signal_unauthenticated_chat_connection_send_raw_grpc(
   const int8_t* service,
   const int8_t* method,
   SignalBorrowedBuffer payload
+);
+SignalFfiError* signal_unauthenticated_chat_connection_submit_call_quality_survey(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalCallQualitySurveyInternalFfiArg survey
 );
 SignalFfiError* signal_unidentified_sender_message_content_deserialize(
   SignalMutPointerUnidentifiedSenderMessageContent* out,

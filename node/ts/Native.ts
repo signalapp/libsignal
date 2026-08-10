@@ -198,6 +198,31 @@ export type ReturnFfiBridgeMessageBackupInfo = {
   backup_name: string;
 };
 
+export type ReturnFfiCallQualitySurveyInternal = {
+  user_satisfied: boolean;
+  call_quality_issues: Array<string>;
+  additional_issues_description: string | null;
+  debug_log_url: string | null;
+  start_timestamp: Timestamp;
+  end_timestamp: Timestamp;
+  call_type: string;
+  success: boolean;
+  call_end_reason: string;
+  connection_rtt_median: number | null;
+  audio_rtt_median: number | null;
+  video_rtt_median: number | null;
+  audio_recv_jitter_median: number | null;
+  video_recv_jitter_median: number | null;
+  audio_send_jitter_median: number | null;
+  video_send_jitter_median: number | null;
+  audio_recv_packet_loss_fraction: number | null;
+  video_recv_packet_loss_fraction: number | null;
+  audio_send_packet_loss_fraction: number | null;
+  video_send_packet_loss_fraction: number | null;
+  call_telemetry: Uint8Array<ArrayBuffer> | null;
+  call_id_hash: Uint8Array<ArrayBuffer> | null;
+};
+
 export type ReturnFfiCopyBackupMediaNextChunk = {
   chunk: Array<ReturnFfiBridgeCopyBackupMediaOutcome>;
   termination: ('finished' | Error) | null;
@@ -490,6 +515,31 @@ export type ArgFfiBridgeCopyBackupMediaItem = {
 export type ArgFfiBridgeDeleteBackupMediaItem = {
   media_id: Uint8Array<ArrayBuffer>;
   cdn: number;
+};
+
+export type ArgFfiCallQualitySurveyInternal = {
+  user_satisfied: boolean;
+  call_quality_issues: Array<string>;
+  additional_issues_description: string | null;
+  debug_log_url: string | null;
+  start_timestamp: Timestamp;
+  end_timestamp: Timestamp;
+  call_type: string;
+  success: boolean;
+  call_end_reason: string;
+  connection_rtt_median: number | null;
+  audio_rtt_median: number | null;
+  video_rtt_median: number | null;
+  audio_recv_jitter_median: number | null;
+  video_recv_jitter_median: number | null;
+  audio_send_jitter_median: number | null;
+  video_send_jitter_median: number | null;
+  audio_recv_packet_loss_fraction: number | null;
+  video_recv_packet_loss_fraction: number | null;
+  audio_send_packet_loss_fraction: number | null;
+  video_send_packet_loss_fraction: number | null;
+  call_telemetry: Uint8Array<ArrayBuffer> | null;
+  call_id_hash: Uint8Array<ArrayBuffer> | null;
 };
 
 export type ArgFfiMyRemoteDeriveEnum =
@@ -2838,6 +2888,9 @@ type NativeFunctions = {
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  TESTING_SubmitCallQualitySurveyTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiCallQualitySurveyInternal, void>
+  >;
   TESTING_Svr2MasterKeyRestoreError: () => void;
   TESTING_TestStreamChunk_return: () => ReturnFfiTestStreamChunk;
   TESTING_TestingHandleType_getValue: (
@@ -2904,6 +2957,38 @@ type NativeFunctions = {
     x: number
   ) => CancellablePromise<number>;
   TESTING_conversion_DeviceId_to_string: (x: number) => string;
+  TESTING_conversion_Float_identity: (x: number) => number;
+  TESTING_conversion_Float_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number
+  ) => CancellablePromise<number>;
+  TESTING_conversion_Float_to_string: (x: number) => string;
+  TESTING_conversion_OptionalBytes_identity: (
+    x: Uint8Array<ArrayBuffer> | null
+  ) => Uint8Array<ArrayBuffer> | null;
+  TESTING_conversion_OptionalBytes_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Uint8Array<ArrayBuffer> | null
+  ) => CancellablePromise<Uint8Array<ArrayBuffer> | null>;
+  TESTING_conversion_OptionalBytes_to_string: (
+    x: Uint8Array<ArrayBuffer> | null
+  ) => string;
+  TESTING_conversion_OptionalFloat_identity: (
+    x: number | null
+  ) => number | null;
+  TESTING_conversion_OptionalFloat_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: number | null
+  ) => CancellablePromise<number | null>;
+  TESTING_conversion_OptionalFloat_to_string: (x: number | null) => string;
+  TESTING_conversion_OptionalString_identity: (
+    x: string | null
+  ) => string | null;
+  TESTING_conversion_OptionalString_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: string | null
+  ) => CancellablePromise<string | null>;
+  TESTING_conversion_OptionalString_to_string: (x: string | null) => string;
   TESTING_conversion_ServiceId_identity: (
     x: Uint8Array<ArrayBuffer>
   ) => Uint8Array<ArrayBuffer>;
@@ -3149,6 +3234,11 @@ type NativeFunctions = {
     method: string,
     payload: Uint8Array<ArrayBuffer>
   ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
+  UnauthenticatedChatConnection_submit_call_quality_survey: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    survey: ArgFfiCallQualitySurveyInternal
+  ) => CancellablePromise<void>;
   UnidentifiedSenderMessageContent_Deserialize: (
     data: Uint8Array<ArrayBuffer>
   ) => UnidentifiedSenderMessageContent;
@@ -3874,6 +3964,7 @@ const {
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_SubmitCallQualitySurveyTests,
   TESTING_Svr2MasterKeyRestoreError,
   TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
@@ -3900,6 +3991,18 @@ const {
   TESTING_conversion_DeviceId_identity,
   TESTING_conversion_DeviceId_identity_async,
   TESTING_conversion_DeviceId_to_string,
+  TESTING_conversion_Float_identity,
+  TESTING_conversion_Float_identity_async,
+  TESTING_conversion_Float_to_string,
+  TESTING_conversion_OptionalBytes_identity,
+  TESTING_conversion_OptionalBytes_identity_async,
+  TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalFloat_identity,
+  TESTING_conversion_OptionalFloat_identity_async,
+  TESTING_conversion_OptionalFloat_to_string,
+  TESTING_conversion_OptionalString_identity,
+  TESTING_conversion_OptionalString_identity_async,
+  TESTING_conversion_OptionalString_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
@@ -3952,6 +4055,7 @@ const {
   UnauthenticatedChatConnection_send_message,
   UnauthenticatedChatConnection_send_multi_recipient_message,
   UnauthenticatedChatConnection_send_raw_grpc,
+  UnauthenticatedChatConnection_submit_call_quality_survey,
   UnidentifiedSenderMessageContent_Deserialize,
   UnidentifiedSenderMessageContent_GetContentHint,
   UnidentifiedSenderMessageContent_GetContents,
@@ -4619,6 +4723,7 @@ export {
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_SubmitCallQualitySurveyTests,
   TESTING_Svr2MasterKeyRestoreError,
   TESTING_TestStreamChunk_return,
   TESTING_TestingHandleType_getValue,
@@ -4645,6 +4750,18 @@ export {
   TESTING_conversion_DeviceId_identity,
   TESTING_conversion_DeviceId_identity_async,
   TESTING_conversion_DeviceId_to_string,
+  TESTING_conversion_Float_identity,
+  TESTING_conversion_Float_identity_async,
+  TESTING_conversion_Float_to_string,
+  TESTING_conversion_OptionalBytes_identity,
+  TESTING_conversion_OptionalBytes_identity_async,
+  TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalFloat_identity,
+  TESTING_conversion_OptionalFloat_identity_async,
+  TESTING_conversion_OptionalFloat_to_string,
+  TESTING_conversion_OptionalString_identity,
+  TESTING_conversion_OptionalString_identity_async,
+  TESTING_conversion_OptionalString_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
@@ -4697,6 +4814,7 @@ export {
   UnauthenticatedChatConnection_send_message,
   UnauthenticatedChatConnection_send_multi_recipient_message,
   UnauthenticatedChatConnection_send_raw_grpc,
+  UnauthenticatedChatConnection_submit_call_quality_survey,
   UnidentifiedSenderMessageContent_Deserialize,
   UnidentifiedSenderMessageContent_GetContentHint,
   UnidentifiedSenderMessageContent_GetContents,

@@ -11,6 +11,7 @@ import type {
   GrpcTestCase,
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
+  ArgFfiCallQualitySurveyInternal,
   ArgFfiMyRemoteDeriveEnum,
   ArgFfiMyRemoteDeriveStruct,
   ArgFfiMySimpleTestEnum,
@@ -23,6 +24,7 @@ import type {
   ReturnFfiBridgeDeleteBackupMediaItem,
   ReturnFfiBridgeMediaBackupInfo,
   ReturnFfiBridgeMessageBackupInfo,
+  ReturnFfiCallQualitySurveyInternal,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
   ReturnFfiDeleteBackupMediaNextChunk,
@@ -73,6 +75,7 @@ import {
   identity,
   serviceIdArgConverter,
   grpcTestCaseConverter,
+  liftNull,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 
@@ -112,6 +115,31 @@ export type BridgeMessageBackupInfo = {
   backupDir: string;
   cdn: number;
   backupName: string;
+};
+
+export type CallQualitySurveyInternal = {
+  userSatisfied: boolean;
+  callQualityIssues: Array<string>;
+  additionalIssuesDescription: string | null;
+  debugLogUrl: string | null;
+  startTimestamp: Timestamp;
+  endTimestamp: Timestamp;
+  callType: string;
+  success: boolean;
+  callEndReason: string;
+  connectionRttMedian: number | null;
+  audioRttMedian: number | null;
+  videoRttMedian: number | null;
+  audioRecvJitterMedian: number | null;
+  videoRecvJitterMedian: number | null;
+  audioSendJitterMedian: number | null;
+  videoSendJitterMedian: number | null;
+  audioRecvPacketLossFraction: number | null;
+  videoRecvPacketLossFraction: number | null;
+  audioSendPacketLossFraction: number | null;
+  videoSendPacketLossFraction: number | null;
+  callTelemetry: Uint8Array<ArrayBuffer> | null;
+  callIdHash: Uint8Array<ArrayBuffer> | null;
 };
 
 export type CopyBackupMediaNextChunk = {
@@ -385,15 +413,62 @@ export function returnConverterBridgeMessageBackupInfo(
   };
 }
 
+export function returnConverterCallQualitySurveyInternal(
+  ffiInput: Native.ReturnFfiCallQualitySurveyInternal
+): CallQualitySurveyInternal {
+  return {
+    userSatisfied: identity(ffiInput.user_satisfied),
+    callQualityIssues: ((arr: Array<string>) => arr.map(identity))(
+      ffiInput.call_quality_issues
+    ),
+    additionalIssuesDescription: liftNull(identity)(
+      ffiInput.additional_issues_description
+    ),
+    debugLogUrl: liftNull(identity)(ffiInput.debug_log_url),
+    startTimestamp: identity(ffiInput.start_timestamp),
+    endTimestamp: identity(ffiInput.end_timestamp),
+    callType: identity(ffiInput.call_type),
+    success: identity(ffiInput.success),
+    callEndReason: identity(ffiInput.call_end_reason),
+    connectionRttMedian: liftNull(identity)(ffiInput.connection_rtt_median),
+    audioRttMedian: liftNull(identity)(ffiInput.audio_rtt_median),
+    videoRttMedian: liftNull(identity)(ffiInput.video_rtt_median),
+    audioRecvJitterMedian: liftNull(identity)(
+      ffiInput.audio_recv_jitter_median
+    ),
+    videoRecvJitterMedian: liftNull(identity)(
+      ffiInput.video_recv_jitter_median
+    ),
+    audioSendJitterMedian: liftNull(identity)(
+      ffiInput.audio_send_jitter_median
+    ),
+    videoSendJitterMedian: liftNull(identity)(
+      ffiInput.video_send_jitter_median
+    ),
+    audioRecvPacketLossFraction: liftNull(identity)(
+      ffiInput.audio_recv_packet_loss_fraction
+    ),
+    videoRecvPacketLossFraction: liftNull(identity)(
+      ffiInput.video_recv_packet_loss_fraction
+    ),
+    audioSendPacketLossFraction: liftNull(identity)(
+      ffiInput.audio_send_packet_loss_fraction
+    ),
+    videoSendPacketLossFraction: liftNull(identity)(
+      ffiInput.video_send_packet_loss_fraction
+    ),
+    callTelemetry: liftNull(identity)(ffiInput.call_telemetry),
+    callIdHash: liftNull(identity)(ffiInput.call_id_hash),
+  };
+}
+
 export function returnConverterCopyBackupMediaNextChunk(
   ffiInput: Native.ReturnFfiCopyBackupMediaNextChunk
 ): CopyBackupMediaNextChunk {
   return {
     chunk: ((arr: Array<ReturnFfiBridgeCopyBackupMediaOutcome>) =>
       arr.map(returnConverterBridgeCopyBackupMediaOutcome))(ffiInput.chunk),
-    termination: ((a) => (a === null ? null : identity(a)))(
-      ffiInput.termination
-    ),
+    termination: liftNull(identity)(ffiInput.termination),
   };
 }
 
@@ -424,9 +499,7 @@ export function returnConverterDeleteBackupMediaNextChunk(
   return {
     chunk: ((arr: Array<ReturnFfiBridgeDeleteBackupMediaItem>) =>
       arr.map(returnConverterBridgeDeleteBackupMediaItem))(ffiInput.chunk),
-    termination: ((a) => (a === null ? null : identity(a)))(
-      ffiInput.termination
-    ),
+    termination: liftNull(identity)(ffiInput.termination),
   };
 }
 
@@ -557,7 +630,7 @@ export function returnConverterListMediaArgs(
   ffiInput: Native.ReturnFfiListMediaArgs
 ): ListMediaArgs {
   return {
-    cursor: ((a) => (a === null ? null : identity(a)))(ffiInput.cursor),
+    cursor: liftNull(identity)(ffiInput.cursor),
     limit: identity(ffiInput.limit),
   };
 }
@@ -601,7 +674,7 @@ export function returnConverterListMediaResponse(
       arr.map(returnConverterListMediaItem))(ffiInput.items),
     backupDir: identity(ffiInput.backup_dir),
     mediaDir: identity(ffiInput.media_dir),
-    cursor: ((a) => (a === null ? null : identity(a)))(ffiInput.cursor),
+    cursor: liftNull(identity)(ffiInput.cursor),
   };
 }
 
@@ -852,9 +925,7 @@ export function returnConverterTestStreamChunk(
 ): TestStreamChunk {
   return {
     chunk: ((arr: Array<string>) => arr.map(identity))(ffiInput.chunk),
-    termination: ((a) => (a === null ? null : identity(a)))(
-      ffiInput.termination
-    ),
+    termination: liftNull(identity)(ffiInput.termination),
   };
 }
 
@@ -882,6 +953,71 @@ export function argConverterBridgeDeleteBackupMediaItem(
 ): Native.ArgFfiBridgeDeleteBackupMediaItem {
   const { mediaId: media_id, cdn: cdn } = niceInput;
   return { media_id: identity(media_id), cdn: identity(cdn) };
+}
+
+export function argConverterCallQualitySurveyInternal(
+  niceInput: CallQualitySurveyInternal
+): Native.ArgFfiCallQualitySurveyInternal {
+  const {
+    userSatisfied: user_satisfied,
+    callQualityIssues: call_quality_issues,
+    additionalIssuesDescription: additional_issues_description,
+    debugLogUrl: debug_log_url,
+    startTimestamp: start_timestamp,
+    endTimestamp: end_timestamp,
+    callType: call_type,
+    success: success,
+    callEndReason: call_end_reason,
+    connectionRttMedian: connection_rtt_median,
+    audioRttMedian: audio_rtt_median,
+    videoRttMedian: video_rtt_median,
+    audioRecvJitterMedian: audio_recv_jitter_median,
+    videoRecvJitterMedian: video_recv_jitter_median,
+    audioSendJitterMedian: audio_send_jitter_median,
+    videoSendJitterMedian: video_send_jitter_median,
+    audioRecvPacketLossFraction: audio_recv_packet_loss_fraction,
+    videoRecvPacketLossFraction: video_recv_packet_loss_fraction,
+    audioSendPacketLossFraction: audio_send_packet_loss_fraction,
+    videoSendPacketLossFraction: video_send_packet_loss_fraction,
+    callTelemetry: call_telemetry,
+    callIdHash: call_id_hash,
+  } = niceInput;
+  return {
+    user_satisfied: identity(user_satisfied),
+    call_quality_issues: ((arr: Array<string>) => arr.map(identity))(
+      call_quality_issues
+    ),
+    additional_issues_description: liftNull(identity)(
+      additional_issues_description
+    ),
+    debug_log_url: liftNull(identity)(debug_log_url),
+    start_timestamp: identity(start_timestamp),
+    end_timestamp: identity(end_timestamp),
+    call_type: identity(call_type),
+    success: identity(success),
+    call_end_reason: identity(call_end_reason),
+    connection_rtt_median: liftNull(identity)(connection_rtt_median),
+    audio_rtt_median: liftNull(identity)(audio_rtt_median),
+    video_rtt_median: liftNull(identity)(video_rtt_median),
+    audio_recv_jitter_median: liftNull(identity)(audio_recv_jitter_median),
+    video_recv_jitter_median: liftNull(identity)(video_recv_jitter_median),
+    audio_send_jitter_median: liftNull(identity)(audio_send_jitter_median),
+    video_send_jitter_median: liftNull(identity)(video_send_jitter_median),
+    audio_recv_packet_loss_fraction: liftNull(identity)(
+      audio_recv_packet_loss_fraction
+    ),
+    video_recv_packet_loss_fraction: liftNull(identity)(
+      video_recv_packet_loss_fraction
+    ),
+    audio_send_packet_loss_fraction: liftNull(identity)(
+      audio_send_packet_loss_fraction
+    ),
+    video_send_packet_loss_fraction: liftNull(identity)(
+      video_send_packet_loss_fraction
+    ),
+    call_telemetry: liftNull(identity)(call_telemetry),
+    call_id_hash: liftNull(identity)(call_id_hash),
+  };
 }
 
 export function argConverterMyRemoteDeriveEnum(
@@ -1731,7 +1867,7 @@ export function TESTING_ReturnSomeIoError({
 }: {
   present: boolean;
 }): Error | null {
-  return ((a) => (a === null ? null : identity(a)))(
+  return liftNull(identity)(
     Native.TESTING_ReturnSomeIoError(identity(present))
   );
 }
@@ -1779,6 +1915,15 @@ export function TESTING_SetUsernameLinkTests(): Array<
     returnConverterSetUsernameLinkArgs,
     returnConverterSetUsernameLinkOut
   )(Native.TESTING_SetUsernameLinkTests());
+}
+
+export function TESTING_SubmitCallQualitySurveyTests(): Array<
+  GrpcTestCase<CallQualitySurveyInternal, void>
+> {
+  return grpcTestCaseConverter(
+    returnConverterCallQualitySurveyInternal,
+    identity
+  )(Native.TESTING_SubmitCallQualitySurveyTests());
 }
 
 export function TESTING_TestStreamChunk_return(): TestStreamChunk {
@@ -2032,6 +2177,155 @@ export function TESTING_conversion_DeviceId_to_string({
   x: DeviceId;
 }): string {
   return identity(Native.TESTING_conversion_DeviceId_to_string(identity(x)));
+}
+
+export function TESTING_conversion_Float_identity({
+  x: x,
+}: {
+  x: number;
+}): number {
+  return identity(Native.TESTING_conversion_Float_identity(identity(x)));
+}
+export async function TESTING_conversion_Float_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: number;
+}): Promise<number> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_Float_identity_async(asyncContext, identity(x))
+    )
+  );
+}
+
+export function TESTING_conversion_Float_to_string({
+  x: x,
+}: {
+  x: number;
+}): string {
+  return identity(Native.TESTING_conversion_Float_to_string(identity(x)));
+}
+
+export function TESTING_conversion_OptionalBytes_identity({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer> | null;
+}): Uint8Array<ArrayBuffer> | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionalBytes_identity(liftNull(identity)(x))
+  );
+}
+export async function TESTING_conversion_OptionalBytes_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Uint8Array<ArrayBuffer> | null;
+}): Promise<Uint8Array<ArrayBuffer> | null> {
+  return liftNull(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_OptionalBytes_identity_async(
+        asyncContext,
+        liftNull(identity)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_OptionalBytes_to_string({
+  x: x,
+}: {
+  x: Uint8Array<ArrayBuffer> | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionalBytes_to_string(liftNull(identity)(x))
+  );
+}
+
+export function TESTING_conversion_OptionalFloat_identity({
+  x: x,
+}: {
+  x: number | null;
+}): number | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionalFloat_identity(liftNull(identity)(x))
+  );
+}
+export async function TESTING_conversion_OptionalFloat_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: number | null;
+}): Promise<number | null> {
+  return liftNull(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_OptionalFloat_identity_async(
+        asyncContext,
+        liftNull(identity)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_OptionalFloat_to_string({
+  x: x,
+}: {
+  x: number | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionalFloat_to_string(liftNull(identity)(x))
+  );
+}
+
+export function TESTING_conversion_OptionalString_identity({
+  x: x,
+}: {
+  x: string | null;
+}): string | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionalString_identity(liftNull(identity)(x))
+  );
+}
+export async function TESTING_conversion_OptionalString_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: string | null;
+}): Promise<string | null> {
+  return liftNull(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_OptionalString_identity_async(
+        asyncContext,
+        liftNull(identity)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_OptionalString_to_string({
+  x: x,
+}: {
+  x: string | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionalString_to_string(liftNull(identity)(x))
+  );
 }
 
 export function TESTING_conversion_ServiceId_identity({
@@ -2591,6 +2885,28 @@ export async function UnauthenticatedChatConnection_backup_set_public_key({
         ByteArray.prototype.getContents.call(server_keys),
         identity(signing_key),
         ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_submit_call_quality_survey({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  survey: survey,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  survey: CallQualitySurveyInternal;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_submit_call_quality_survey(
+        asyncContext,
+        identity(chat),
+        argConverterCallQualitySurveyInternal(survey)
       )
     )
   );

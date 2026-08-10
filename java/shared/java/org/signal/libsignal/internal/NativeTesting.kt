@@ -614,6 +614,9 @@ public object NativeTesting {
   ): Unit
 
   @JvmStatic
+  public external fun TESTING_SubmitCallQualitySurveyTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_TestStreamChunk_return(): Object
 
   @JvmStatic
@@ -681,6 +684,30 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_conversion_DeviceId_to_string(x: Int): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_Float_identity(x: Float): Float
+
+  @JvmStatic
+  public external fun TESTING_conversion_Float_to_string(x: Float): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionalBytes_identity(x: ByteArray?): ByteArray?
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionalBytes_to_string(x: ByteArray?): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionalFloat_identity(x: Float?): Float?
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionalFloat_to_string(x: Float?): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionalString_identity(x: String?): String?
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionalString_to_string(x: String?): String
 
   @JvmStatic
   public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray

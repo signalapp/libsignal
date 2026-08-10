@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.internal
 
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -361,6 +362,74 @@ class NativeTestingNiceTest {
       nativeIdentity = NativeTestingNice::TESTING_conversion_Uuid_identity,
     )
   }
+
+  val floatsToTest: Sequence<Float> =
+    sequenceOf(
+      0.0f,
+      1.2f,
+      -1.2f,
+      Float.NaN,
+      Float.POSITIVE_INFINITY,
+      Float.NEGATIVE_INFINITY,
+    )
+
+  fun float2string(x: Float): String =
+    if (x == 0f) {
+      "0"
+    } else {
+      x.toString().replace("Infinity", "inf")
+    }
+
+  @Test
+  fun testFloat() {
+    testConversion(
+      floatsToTest,
+      toString = this::float2string,
+      nativeToString = NativeTestingNice::TESTING_conversion_Float_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_Float_identity,
+    )
+  }
+
+  @Test
+  fun testOptionalFloat() {
+    testConversion(
+      sequenceOf(floatsToTest, sequenceOf(null)).flatten(),
+      toString = {
+        if (it == null) {
+          ""
+        } else {
+          float2string(it)
+        }
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionalFloat_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalFloat_identity,
+    )
+  }
+
+  @Test
+  fun testOptionalString() =
+    testConversion(
+      sequenceOf(null, "", "a", "abc"),
+      toString = Json::encodeToString,
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionalString_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalString_identity,
+    )
+
+  @Test
+  fun testOptionalBytes() =
+    testConversion(
+      sequenceOf(null, byteArrayOf(), byteArrayOf(0), byteArrayOf(0, 1)),
+      toString = {
+        if (it == null) {
+          "%"
+        } else {
+          Base64.encode(it)
+        }
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionalBytes_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalBytes_identity,
+      equality = java.util.Arrays::equals,
+    )
 
   @Test
   fun testReturnedError() {

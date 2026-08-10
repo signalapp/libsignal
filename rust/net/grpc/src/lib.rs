@@ -26,6 +26,9 @@ pub mod proto {
                 pub mod backup {
                     tonic::include_proto!("org.signal.chat.backup");
                 }
+                pub mod call_quality {
+                    tonic::include_proto!("org.signal.chat.calling.quality");
+                }
                 pub mod device {
                     tonic::include_proto!("org.signal.chat.device");
                 }

@@ -15,7 +15,9 @@ use itertools::Itertools as _;
 use libsignal_account_keys::SvrKey;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
-use libsignal_bridge_types::net::chat::remote_derives::ListMediaResponse;
+use libsignal_bridge_types::net::chat::remote_derives::{
+    CallQualitySurveyInternal, ListMediaResponse,
+};
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
 use libsignal_bridge_types::support::AsType;
@@ -1081,4 +1083,15 @@ async fn AuthenticatedChatConnection_clear_push_token(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
 ) -> Result<(), RequestError<Infallible>> {
     chat.require_grpc().await.clear_push_token().await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_submit_call_quality_survey(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    survey: CallQualitySurveyInternal,
+) -> Result<(), RequestError<core::convert::Infallible>> {
+    chat.require_grpc()
+        .await
+        .submit_call_quality_survey(survey.into())
+        .await
 }

@@ -786,20 +786,21 @@ pub fn derive_bridged_as_value(item: TokenStream) -> TokenStream {
 
 fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut from: Option<syn::Path> = None;
+    let mut impl_into = false;
     for attr in &item.attrs {
         if attr.path().is_ident("structural_from") {
             attr.parse_nested_meta(|meta| {
-                from = Some(meta.path);
+                if meta.path.is_ident("into") {
+                    impl_into = true;
+                } else {
+                    from = Some(meta.path);
+                }
                 Ok(())
             })?;
         }
     }
+    let ident = &item.ident;
     let from = from.ok_or_else(|| syn::Error::new_spanned(&item, "Missing structural_from()"))?;
-    let impl_ = util::Impl::new(
-        &item,
-        &item.ident.clone().into(),
-        Some(parse_quote!(From<#from>)),
-    );
     let util::DeriveInputInfo {
         patterns: to_patterns,
         field_names,
@@ -810,8 +811,24 @@ fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::T
         patterns: from_patterns,
         ..
     } = util::DeriveInputInfo::new(&item, &from);
+    let into_impl = if impl_into {
+        Some(quote! {
+            impl From<#ident> for #from {
+                fn from(from_value: #ident) -> Self {
+                    match from_value {
+                        #(#to_patterns => {
+                            #(let #field_names = #field_names.into();)*
+                            #from_patterns
+                        })*
+                    }
+                }
+            }
+        })
+    } else {
+        None
+    };
     Ok(quote! {
-        #impl_ {
+        impl From<#from> for #ident {
             fn from(from_value: #from) -> Self {
                 match from_value {
                     #(#from_patterns => {
@@ -821,6 +838,7 @@ fn derive_structural_from_inner(item: DeriveInput) -> syn::Result<proc_macro2::T
                 }
             }
         }
+        #into_impl
     })
 }
 

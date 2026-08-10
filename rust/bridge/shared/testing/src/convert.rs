@@ -578,4 +578,63 @@ pub mod test_conversions {
     fn TESTING_conversion_Timestamp_identity(x: Timestamp) -> Timestamp {
         x
     }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalFloat_to_string(x: Option<f32>) -> String {
+        x.map(|x| x.to_string()).unwrap_or_default()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalFloat_identity(x: Option<f32>) -> Option<f32> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionalFloat_identity_async(x: Option<f32>) -> Option<f32> {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Float_to_string(x: f32) -> String {
+        x.to_string()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_Float_identity(x: f32) -> f32 {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_Float_identity_async(x: f32) -> f32 {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalString_to_string(x: Option<String>) -> String {
+        serde_json::to_string(&x).expect("can convert to json")
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalString_identity(x: Option<String>) -> Option<String> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionalString_identity_async(x: Option<String>) -> Option<String> {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalBytes_to_string(x: Option<Vec<u8>>) -> String {
+        if let Some(x) = x {
+            use base64::prelude::*;
+            BASE64_STANDARD.encode(&x)
+        } else {
+            "%".to_string()
+        }
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalBytes_identity(x: Option<Vec<u8>>) -> Option<Vec<u8>> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionalBytes_identity_async(
+        x: Option<Vec<u8>>,
+    ) -> Option<Vec<u8>> {
+        x
+    }
 }

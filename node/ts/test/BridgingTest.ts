@@ -386,6 +386,39 @@ describe('NativeTestingNice', () => {
       });
     }
   });
+  it('OptionalData', async () => {
+    for (const item of [
+      null,
+      new Uint8Array(),
+      new Uint8Array([0]),
+      new Uint8Array([0, 1]),
+    ]) {
+      await testConversion({
+        item,
+        toString: item === null ? '%' : toBase64(item),
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionalBytes_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionalBytes_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionalBytes_identity_async,
+      });
+    }
+  });
+  it('OptionalString', async () => {
+    for (const item of [null, '', 'a', 'abc']) {
+      await testConversion({
+        item,
+        toString: JSON.stringify(item),
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionalString_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionalString_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionalString_identity_async,
+      });
+    }
+  });
   it('BridgeVec of MySimpleTestEnum', async () => {
     for (const item of [
       [],
@@ -475,6 +508,40 @@ describe('NativeTestingNice', () => {
           NativeNice.TESTING_conversion_DeviceId_identity_async,
       });
     }
+  });
+  it('Floats', async () => {
+    for (const item of [3.640625, 0.0, 1, -1, NaN, Infinity, -Infinity]) {
+      const toString = `${item}`.replace('Infinity', 'inf');
+      await testConversion({
+        item,
+        toString,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_Float_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_Float_identity({ x }),
+        nativeIdentityAsync: NativeNice.TESTING_conversion_Float_identity_async,
+      });
+      await testConversion({
+        item,
+        toString,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionalFloat_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionalFloat_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionalFloat_identity_async,
+      });
+    }
+    await testConversion({
+      item: null,
+      toString: '',
+      nativeToString: (x) =>
+        NativeNice.TESTING_conversion_OptionalFloat_to_string({ x }),
+      nativeIdentity: (x) =>
+        NativeNice.TESTING_conversion_OptionalFloat_identity({ x }),
+      nativeIdentityAsync:
+        NativeNice.TESTING_conversion_OptionalFloat_identity_async,
+    });
   });
   it('should handle async', async () => {
     for (const count of [0, 1, 2, 4, 8, 16, 32, 64, 128, 256]) {

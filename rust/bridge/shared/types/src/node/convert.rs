@@ -1004,6 +1004,18 @@ where
     }
 }
 
+#[cfg(feature = "metadata")]
+impl<T: NiceArgConverter> NiceArgConverter for Option<T> {
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        let t = T::register_ts_arg_converter(ctx);
+        TsArgConverter {
+            nice_type: format!("({} | null)", t.nice_type),
+            ffi_type: format!("({} | null)", t.ffi_type),
+            converter_function: format!("liftNull({})", t.converter_function),
+        }
+    }
+}
+
 /// Calculates a checksum to verify that a buffer wasn't mutated out from under us.
 ///
 /// By default, this only checks the first 1024 bytes of the buffer, but it will check the entire
@@ -1597,17 +1609,15 @@ impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {
         format!("({} | null)", T::register_ts_ffi_type(ctx))
     }
 }
+
 #[cfg(feature = "metadata")]
 impl<T: NiceResultConverter> NiceResultConverter for Option<T> {
     fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
-        let inner = T::register_ts_result_converter(ctx);
+        let t = T::register_ts_result_converter(ctx);
         TsReturnConverter {
-            nice_type: format!("({} | null)", inner.nice_type),
-            ffi_type: format!("({} | null)", inner.ffi_type),
-            converter_function: format!(
-                "((a) => a === null ? null : ({})(a))",
-                inner.converter_function
-            ),
+            nice_type: format!("({} | null)", t.nice_type),
+            ffi_type: format!("({} | null)", t.ffi_type),
+            converter_function: format!("liftNull({})", t.converter_function),
         }
     }
 }
@@ -2320,6 +2330,35 @@ where
         P::register_ts_ffi_type(ctx)
     }
 }
+
+impl SimpleArgTypeInfo for f32 {
+    type ArgType = JsNumber;
+
+    #[allow(clippy::cast_possible_truncation)]
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let foreign = foreign.value(cx);
+        Ok(foreign as f32)
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+        "number".to_string()
+    }
+}
+nice_identity_arg_converter!(f32);
+impl<'a> ResultTypeInfo<'a> for f32 {
+    type ResultType = JsNumber;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.number(self))
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+        "number".to_string()
+    }
+}
+nice_identity_result_converter!(f32);
 
 impl<T> SimpleArgTypeInfo for Serialized<T>
 where

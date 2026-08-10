@@ -81,3 +81,12 @@ export function grpcTestCaseConverter<ReqIn, ReqOut, RespIn, RespOut>(
     });
   };
 }
+
+export function liftNull<In, Out>(
+  f: (x: In) => Out
+): (x: In | null) => Out | null {
+  return function (x: In | null): Out | null {
+    if (x === null) return null;
+    return f(x);
+  };
+}

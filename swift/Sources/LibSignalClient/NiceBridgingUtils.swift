@@ -118,7 +118,27 @@ internal struct StringConverter: NiceArgConverter, NiceReturnConverter {
     }
 }
 
-internal struct OptionalStringConverter: NiceReturnConverter {
+internal struct OptionalStringConverter: NiceReturnConverter, NiceArgConverter {
+    typealias NiceArg = String?
+    typealias FfiArg = UnsafePointer<CChar>?
+    typealias KeepAlive = StringConverter.KeepAlive
+
+    static func convertArg(_ arg: NiceArg) -> (FfiArg, KeepAlive?) {
+        if let arg = arg {
+            return StringConverter.convertArg(arg)
+        } else {
+            return (nil, nil)
+        }
+    }
+
+    static func convertArgBorrowed<Result>(_ arg: NiceArg, _ thunk: (FfiArg) throws -> Result) rethrows -> Result {
+        if let arg = arg {
+            return try StringConverter.convertArgBorrowed(arg, thunk)
+        } else {
+            return try thunk(nil)
+        }
+    }
+
     typealias FfiReturn = UnsafePointer<CChar>?
     typealias NiceReturn = String?
 
@@ -147,6 +167,7 @@ extension Int16: DefaultInit {}
 extension UInt16: DefaultInit {}
 extension Int8: DefaultInit {}
 extension UInt8: DefaultInit {}
+extension Float: DefaultInit {}
 
 internal struct IdentityConverter<T: DefaultInit>: NiceArgConverter, NiceReturnConverter {
     typealias NiceArg = T
@@ -575,4 +596,59 @@ internal enum TimestampConverter: NiceArgConverter, NiceReturnConverter {
     typealias KeepAlive = Unit
     typealias NiceReturn = Date
     typealias FfiReturn = UInt64
+}
+
+internal protocol SignalOptionalOf {
+    associatedtype Contents
+    init()
+    init(generic_present: CBool, generic_value: Contents)
+    var generic_present: CBool { get set }
+    var generic_value: Contents { get set }
+}
+
+internal enum OptionalArgConverter<Inner: NiceArgConverter, FfiOptional: SignalOptionalOf>: NiceArgConverter
+where FfiOptional.Contents == Inner.FfiArg {
+    typealias NiceArg = Inner.NiceArg?
+    typealias FfiArg = FfiOptional
+    typealias KeepAlive = Inner.KeepAlive
+
+    static func convertArg(_ arg: Inner.NiceArg?) -> (FfiOptional, Inner.KeepAlive?) {
+        if let arg = arg {
+            let (ffi, keepAlive) = Inner.convertArg(arg)
+            return (FfiOptional(generic_present: true, generic_value: ffi), keepAlive)
+        } else {
+            return (FfiOptional(), nil)
+        }
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: Inner.NiceArg?,
+        _ thunk: (FfiOptional) throws -> Result
+    ) rethrows -> Result {
+        if let arg = arg {
+            return try Inner.convertArgBorrowed(arg) {
+                return try thunk(FfiOptional(generic_present: true, generic_value: $0))
+            }
+        } else {
+            return try thunk(FfiOptional())
+        }
+    }
+}
+
+internal enum OptionalReturnConverter<Inner: NiceReturnConverter, FfiOptional: SignalOptionalOf>: NiceReturnConverter
+where FfiOptional.Contents == Inner.FfiReturn {
+    typealias NiceReturn = Inner.NiceReturn?
+    typealias FfiReturn = FfiOptional
+
+    static func emptyFfiReturn() -> FfiOptional {
+        FfiOptional(generic_present: false, generic_value: Inner.emptyFfiReturn())
+    }
+
+    static func convertReturn(consuming value: FfiOptional) throws -> Inner.NiceReturn? {
+        if value.generic_present {
+            return try Inner.convertReturn(consuming: value.generic_value)
+        } else {
+            return nil
+        }
+    }
 }

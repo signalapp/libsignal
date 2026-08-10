@@ -66,6 +66,36 @@ public data class BridgeMessageBackupInfo(
   public val backupName: String,
 )
 
+/*
+// org.signal.libsignal.net.CallQualitySurvey
+
+public data class CallQualitySurveyInternal(
+  public val userSatisfied: Boolean,
+  public val callQualityIssues: List<String>,
+  public val additionalIssuesDescription: String?,
+  public val debugLogUrl: String?,
+  public val startTimestamp: java.time.Instant,
+  public val endTimestamp: java.time.Instant,
+  public val callType: String,
+  public val success: Boolean,
+  public val callEndReason: String,
+  public val connectionRttMedian: Float?,
+  public val audioRttMedian: Float?,
+  public val videoRttMedian: Float?,
+  public val audioRecvJitterMedian: Float?,
+  public val videoRecvJitterMedian: Float?,
+  public val audioSendJitterMedian: Float?,
+  public val videoSendJitterMedian: Float?,
+  public val audioRecvPacketLossFraction: Float?,
+  public val videoRecvPacketLossFraction: Float?,
+  public val audioSendPacketLossFraction: Float?,
+  public val videoSendPacketLossFraction: Float?,
+  public val callTelemetry: ByteArray?,
+  public val callIdHash: ByteArray?,
+)
+
+*/
+
 public data class CopyBackupMediaNextChunk(
   public val chunk: List<org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>,
   public val termination: Any?,
@@ -375,6 +405,155 @@ public fun BridgeDeleteBackupMediaItem.toFfiArgType(): BridgeDeleteBackupMediaIt
   )
 
 public fun BridgeDeleteBackupMediaItem.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class CallQualitySurveyInternal_FfiArgType {
+  @CalledFromNative
+  internal val user_satisfied: Boolean
+
+  @CalledFromNative
+  internal val call_quality_issues: Any?
+
+  @CalledFromNative
+  internal val additional_issues_description: Any?
+
+  @CalledFromNative
+  internal val debug_log_url: Any?
+
+  @CalledFromNative
+  internal val start_timestamp: Long
+
+  @CalledFromNative
+  internal val end_timestamp: Long
+
+  @CalledFromNative
+  internal val call_type: Any?
+
+  @CalledFromNative
+  internal val success: Boolean
+
+  @CalledFromNative
+  internal val call_end_reason: Any?
+
+  @CalledFromNative
+  internal val connection_rtt_median: Any?
+
+  @CalledFromNative
+  internal val audio_rtt_median: Any?
+
+  @CalledFromNative
+  internal val video_rtt_median: Any?
+
+  @CalledFromNative
+  internal val audio_recv_jitter_median: Any?
+
+  @CalledFromNative
+  internal val video_recv_jitter_median: Any?
+
+  @CalledFromNative
+  internal val audio_send_jitter_median: Any?
+
+  @CalledFromNative
+  internal val video_send_jitter_median: Any?
+
+  @CalledFromNative
+  internal val audio_recv_packet_loss_fraction: Any?
+
+  @CalledFromNative
+  internal val video_recv_packet_loss_fraction: Any?
+
+  @CalledFromNative
+  internal val audio_send_packet_loss_fraction: Any?
+
+  @CalledFromNative
+  internal val video_send_packet_loss_fraction: Any?
+
+  @CalledFromNative
+  internal val call_telemetry: Any?
+
+  @CalledFromNative
+  internal val call_id_hash: Any?
+  internal constructor(
+    user_satisfied: Boolean,
+    call_quality_issues: Any?,
+    additional_issues_description: Any?,
+    debug_log_url: Any?,
+    start_timestamp: Long,
+    end_timestamp: Long,
+    call_type: Any?,
+    success: Boolean,
+    call_end_reason: Any?,
+    connection_rtt_median: Any?,
+    audio_rtt_median: Any?,
+    video_rtt_median: Any?,
+    audio_recv_jitter_median: Any?,
+    video_recv_jitter_median: Any?,
+    audio_send_jitter_median: Any?,
+    video_send_jitter_median: Any?,
+    audio_recv_packet_loss_fraction: Any?,
+    video_recv_packet_loss_fraction: Any?,
+    audio_send_packet_loss_fraction: Any?,
+    video_send_packet_loss_fraction: Any?,
+    call_telemetry: Any?,
+    call_id_hash: Any?,
+  ) {
+    this.user_satisfied = user_satisfied
+    this.call_quality_issues = call_quality_issues
+    this.additional_issues_description = additional_issues_description
+    this.debug_log_url = debug_log_url
+    this.start_timestamp = start_timestamp
+    this.end_timestamp = end_timestamp
+    this.call_type = call_type
+    this.success = success
+    this.call_end_reason = call_end_reason
+    this.connection_rtt_median = connection_rtt_median
+    this.audio_rtt_median = audio_rtt_median
+    this.video_rtt_median = video_rtt_median
+    this.audio_recv_jitter_median = audio_recv_jitter_median
+    this.video_recv_jitter_median = video_recv_jitter_median
+    this.audio_send_jitter_median = audio_send_jitter_median
+    this.video_send_jitter_median = video_send_jitter_median
+    this.audio_recv_packet_loss_fraction = audio_recv_packet_loss_fraction
+    this.video_recv_packet_loss_fraction = video_recv_packet_loss_fraction
+    this.audio_send_packet_loss_fraction = audio_send_packet_loss_fraction
+    this.video_send_packet_loss_fraction = video_send_packet_loss_fraction
+    this.call_telemetry = call_telemetry
+    this.call_id_hash = call_id_hash
+  }
+}
+
+public fun org.signal.libsignal.net.CallQualitySurvey.toFfiArgType(): CallQualitySurveyInternal_FfiArgType =
+  CallQualitySurveyInternal_FfiArgType(
+    user_satisfied = identity(userSatisfied),
+    call_quality_issues =
+      mapBridgeVecArg<String, String>({
+        identity(it)
+      })(callQualityIssues),
+    additional_issues_description = identity(additionalIssuesDescription),
+    debug_log_url = identity(debugLogUrl),
+    start_timestamp = (java.time.Instant::toEpochMilli)(startTimestamp),
+    end_timestamp = (java.time.Instant::toEpochMilli)(endTimestamp),
+    call_type = identity(callType),
+    success = identity(success),
+    call_end_reason = identity(callEndReason),
+    connection_rtt_median = identity(connectionRttMedian),
+    audio_rtt_median = identity(audioRttMedian),
+    video_rtt_median = identity(videoRttMedian),
+    audio_recv_jitter_median = identity(audioRecvJitterMedian),
+    video_recv_jitter_median = identity(videoRecvJitterMedian),
+    audio_send_jitter_median = identity(audioSendJitterMedian),
+    video_send_jitter_median = identity(videoSendJitterMedian),
+    audio_recv_packet_loss_fraction = identity(audioRecvPacketLossFraction),
+    video_recv_packet_loss_fraction = identity(videoRecvPacketLossFraction),
+    audio_send_packet_loss_fraction = identity(audioSendPacketLossFraction),
+    video_send_packet_loss_fraction = identity(videoSendPacketLossFraction),
+    call_telemetry = identity(callTelemetry),
+    call_id_hash = identity(callIdHash),
+  )
+
+public fun org.signal.libsignal.net.CallQualitySurvey.toFfiArgTypeObject(): Object =
+  convertToObject(this.toFfiArgType())
 
 public object NativeNice {
   public fun AuthenticatedChatConnection_clear_push_token(
@@ -1050,6 +1229,25 @@ public object NativeNice {
           ffi_server_keys,
           ffi_signing_key,
           ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun UnauthenticatedChatConnection_submit_call_quality_survey(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    survey: org.signal.libsignal.net.CallQualitySurvey,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_survey = (org.signal.libsignal.net.CallQualitySurvey::toFfiArgTypeObject)(survey)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_submit_call_quality_survey(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_survey,
         )
       }
     return ffiOut

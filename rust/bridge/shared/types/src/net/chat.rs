@@ -1168,6 +1168,107 @@ pub mod remote_derives {
         /// all objects have been listed.
         pub cursor: Option<String>,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::call_quality::CallQualitySurvey, into)]
+    #[bridge(
+        ffi_nice_type = "CallQualitySurvey",
+        jni_nice_type = "org.signal.libsignal.net.CallQualitySurvey"
+    )]
+    pub struct CallQualitySurveyInternal {
+        /// Indicates whether the caller was generally satisfied with the quality of
+        /// the call
+        pub user_satisfied: bool,
+
+        /// A list of call quality issues selected by the caller
+        pub call_quality_issues: BridgeVec<String>,
+
+        /// A free-form description of any additional issues as written by the caller
+        pub additional_issues_description: Option<String>,
+
+        /// A URL for a set of debug logs associated with the call if the caller chose
+        /// to submit debug logs
+        pub debug_log_url: Option<String>,
+
+        /// The time at which the call started in milliseconds since the epoch
+        pub start_timestamp: Timestamp,
+
+        /// The time at which the call ended in milliseconds since the epoch
+        pub end_timestamp: Timestamp,
+
+        /// The type of call, note that direct voice calls can become video calls and
+        /// vice versa, and this field indicates which mode was selected at call
+        /// initiation time. At the time of writing, expected call types are
+        /// "direct_voice", "direct_video", "group", and "call_link".
+        pub call_type: String,
+
+        /// Indicates whether the call completed without error or if it terminated
+        /// abnormally
+        pub success: bool,
+
+        /// A client-defined, but human-readable reason for call termination
+        pub call_end_reason: String,
+
+        /// The median round-trip time, measured in milliseconds, for STUN/ICE packets
+        /// (i.e. connection maintenance and establishment)
+        pub connection_rtt_median: Option<f32>,
+
+        /// The median round-trip time, measured in milliseconds, for RTP/RTCP packets
+        /// for audio streams
+        pub audio_rtt_median: Option<f32>,
+
+        /// The median round-trip time, measured in milliseconds, for RTP/RTCP packets
+        /// for video streams
+        pub video_rtt_median: Option<f32>,
+
+        /// The median jitter for audio streams, measured in milliseconds, for the
+        /// duration of the call as measured by the client submitting the survey
+        pub audio_recv_jitter_median: Option<f32>,
+
+        /// The median jitter for video streams, measured in milliseconds, for the
+        /// duration of the call as measured by the client submitting the survey
+        pub video_recv_jitter_median: Option<f32>,
+
+        /// The median jitter for audio streams, measured in milliseconds, for the
+        /// duration of the call as measured by the remote endpoint in the call (either
+        /// the peer of the client submitting the survey in a direct call or the SFU in
+        /// a group call)
+        pub audio_send_jitter_median: Option<f32>,
+
+        /// The median jitter for video streams, measured in milliseconds, for the
+        /// duration of the call as measured by the remote endpoint in the call (either
+        /// the peer of the client submitting the survey in a direct call or the SFU in
+        /// a group call)
+        pub video_send_jitter_median: Option<f32>,
+
+        /// The fraction of audio packets lost over the duration of the call as
+        /// measured by the client submitting the survey
+        pub audio_recv_packet_loss_fraction: Option<f32>,
+
+        /// The fraction of video packets lost over the duration of the call as
+        /// measured by the client submitting the survey
+        pub video_recv_packet_loss_fraction: Option<f32>,
+
+        /// The fraction of audio packets lost over the duration of the call as
+        /// measured by the remote endpoint in the call (either the peer of the client
+        /// submitting the survey in a direct call or the SFU in a group call)
+        pub audio_send_packet_loss_fraction: Option<f32>,
+
+        /// The fraction of video packets lost over the duration of the call as
+        /// measured by the remote endpoint in the call (either the peer of the client
+        /// submitting the survey in a direct call or the SFU in a group call)
+        pub video_send_packet_loss_fraction: Option<f32>,
+
+        /// Machine-generated telemetry from the call, this is a serialized protobuf
+        /// entity generated (and, critically, explained to the user!) by the calling
+        /// library
+        pub call_telemetry: Option<Vec<u8>>,
+
+        /// A hash of a call ID (shared between clients and never sent to the calling
+        /// server) that can be used to correlate survey responses from multiple
+        /// participants in a call.
+        pub call_id_hash: Option<Vec<u8>>,
+    }
 }
 
 #[cfg(test)]

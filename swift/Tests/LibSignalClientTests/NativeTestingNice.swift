@@ -279,6 +279,33 @@ extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: SignalCPromise {
 
 }
 
+extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
+
+    public typealias Contents = SignalOwnedBuffer
+
+    public init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfOwnedBuffer,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    public var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    public var generic_value: MaybeUninitOfOwnedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalPairOfi32CStringPtr: SignalPairOf {
 
     public typealias First = Int32
@@ -335,16 +362,6 @@ extension SignalPairOfu32u32: SignalPairOf {
         set { second = newValue }
     }
 
-}
-
-enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter: FfiBorrowedSliceConstructor {
-    public typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfCStringPtr
-    public typealias Element = StringConverter.FfiArg
-    public static func construct(
-        _ buffer: UnsafeBufferPointer<Element>,
-    ) -> BorrowedSlice {
-        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
-    }
 }
 
 enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_DerivedArgConverterMySimpleTestEnum:
@@ -778,6 +795,123 @@ internal enum DerivedReturnConverterBridgeCopyBackupMediaItem: NiceReturnConvert
             objectLength: try object_length.get(),
             mediaId: try media_id.get(),
             encryptionKey: try encryption_key.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterCallQualitySurveyInternal: NiceReturnConverter {
+    typealias NiceReturn = CallQualitySurvey
+    typealias FfiReturn = SignalCallQualitySurveyInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCallQualitySurveyInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let user_satisfied = Result { try IdentityConverter<Bool>.convertReturn(consuming: ffiValue.user_satisfied) }
+        let call_quality_issues = Result {
+            try ArrayReturnConverter<
+                StringConverter,
+                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedCStringPtr_StringConverter
+            >.convertReturn(consuming: ffiValue.call_quality_issues)
+        }
+        let additional_issues_description = Result {
+            try OptionalStringConverter.convertReturn(consuming: ffiValue.additional_issues_description)
+        }
+        let debug_log_url = Result { try OptionalStringConverter.convertReturn(consuming: ffiValue.debug_log_url) }
+        let start_timestamp = Result { try TimestampConverter.convertReturn(consuming: ffiValue.start_timestamp) }
+        let end_timestamp = Result { try TimestampConverter.convertReturn(consuming: ffiValue.end_timestamp) }
+        let call_type = Result { try StringConverter.convertReturn(consuming: ffiValue.call_type) }
+        let success = Result { try IdentityConverter<Bool>.convertReturn(consuming: ffiValue.success) }
+        let call_end_reason = Result { try StringConverter.convertReturn(consuming: ffiValue.call_end_reason) }
+        let connection_rtt_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.connection_rtt_median
+            )
+        }
+        let audio_rtt_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.audio_rtt_median
+            )
+        }
+        let video_rtt_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.video_rtt_median
+            )
+        }
+        let audio_recv_jitter_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.audio_recv_jitter_median
+            )
+        }
+        let video_recv_jitter_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.video_recv_jitter_median
+            )
+        }
+        let audio_send_jitter_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.audio_send_jitter_median
+            )
+        }
+        let video_send_jitter_median = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.video_send_jitter_median
+            )
+        }
+        let audio_recv_packet_loss_fraction = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.audio_recv_packet_loss_fraction
+            )
+        }
+        let video_recv_packet_loss_fraction = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.video_recv_packet_loss_fraction
+            )
+        }
+        let audio_send_packet_loss_fraction = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.audio_send_packet_loss_fraction
+            )
+        }
+        let video_send_packet_loss_fraction = Result {
+            try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: ffiValue.video_send_packet_loss_fraction
+            )
+        }
+        let call_telemetry = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.call_telemetry
+            )
+        }
+        let call_id_hash = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.call_id_hash
+            )
+        }
+
+        return CallQualitySurvey(
+            userSatisfied: try user_satisfied.get(),
+            callQualityIssues: try call_quality_issues.get(),
+            additionalIssuesDescription: try additional_issues_description.get(),
+            debugLogUrl: try debug_log_url.get(),
+            startTimestamp: try start_timestamp.get(),
+            endTimestamp: try end_timestamp.get(),
+            callType: try call_type.get(),
+            success: try success.get(),
+            callEndReason: try call_end_reason.get(),
+            connectionRttMedian: try connection_rtt_median.get(),
+            audioRttMedian: try audio_rtt_median.get(),
+            videoRttMedian: try video_rtt_median.get(),
+            audioRecvJitterMedian: try audio_recv_jitter_median.get(),
+            videoRecvJitterMedian: try video_recv_jitter_median.get(),
+            audioSendJitterMedian: try audio_send_jitter_median.get(),
+            videoSendJitterMedian: try video_send_jitter_median.get(),
+            audioRecvPacketLossFraction: try audio_recv_packet_loss_fraction.get(),
+            videoRecvPacketLossFraction: try video_recv_packet_loss_fraction.get(),
+            audioSendPacketLossFraction: try audio_send_packet_loss_fraction.get(),
+            videoSendPacketLossFraction: try video_send_packet_loss_fraction.get(),
+            callTelemetry: try call_telemetry.get(),
+            callIdHash: try call_id_hash.get()
         )
     }
 }
@@ -2924,6 +3058,18 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_SubmitCallQualitySurveyTests() throws -> [GrpcTestCase<CallQualitySurvey, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<DerivedReturnConverterCallQualitySurveyInternal, VoidConverter>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_submit_call_quality_survey_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterCallQualitySurveyInternal, VoidConverter>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_TestStreamChunk_return() throws -> TestStreamChunk {
         var rawOutput = DerivedReturnConverterTestStreamChunk.emptyFfiReturn()
         try checkError(
@@ -3163,6 +3309,130 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_device_id_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Float_identity(
+        x: Float,
+    ) throws -> Float {
+        try IdentityConverter<Float>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = IdentityConverter<Float>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_float_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try IdentityConverter<Float>.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_Float_to_string(
+        x: Float,
+    ) throws -> String {
+        try IdentityConverter<Float>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_float_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalBytes_identity(
+        x: Data?,
+    ) throws -> Data? {
+        try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_bytes_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: rawOutput
+            )
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalBytes_to_string(
+        x: Data?,
+    ) throws -> String {
+        try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_bytes_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalFloat_identity(
+        x: Float?,
+    ) throws -> Float? {
+        try OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_float_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try OptionalReturnConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertReturn(
+                consuming: rawOutput
+            )
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalFloat_to_string(
+        x: Float?,
+    ) throws -> String {
+        try OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_float_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalString_identity(
+        x: String?,
+    ) throws -> String? {
+        try OptionalStringConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = OptionalStringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_string_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try OptionalStringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalString_to_string(
+        x: String?,
+    ) throws -> String {
+        try OptionalStringConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_string_to_string(
                     &rawOutput,
                     xFfi,
                 )

@@ -195,3 +195,60 @@ impl<T: Finalize> Finalize for BridgedCallbacks<T> {
         self.0.finalize(cx);
     }
 }
+
+/// neon implements [`neon::types::Finalize`] for a limited number of tuple sizes. We need more
+/// elements than they implement. Hence this trait.
+pub trait NodeFinalizeTuple {
+    fn tuple_finalize<'a, C: Context<'a>>(self, c: &mut C);
+}
+
+impl NodeFinalizeTuple for () {
+    #[inline]
+    fn tuple_finalize<'a, C: Context<'a>>(self, _: &mut C) {}
+}
+macro_rules! node_finalize_tuple{
+    ($([$($targ:ident),*$(,)?]),*$(,)?) => {$(
+        impl<$($targ: Finalize),*> NodeFinalizeTuple for ($($targ,)*) {
+            #[inline]
+            #[allow(non_snake_case)]
+            fn tuple_finalize<'a, C: Context<'a>>(self, c: &mut C) {
+                let ($($targ,)*) = self;
+                $($targ.finalize(c);)*
+            }
+        }
+    )*};
+}
+node_finalize_tuple! {
+    [T1],
+    [T1, T2],
+    [T1, T2, T3],
+    [T1, T2, T3, T4],
+    [T1, T2, T3, T4, T5],
+    [T1, T2, T3, T4, T5, T6],
+    [T1, T2, T3, T4, T5, T6, T7],
+    [T1, T2, T3, T4, T5, T6, T7, T8],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, T28],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, T28, T29],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, T28, T29, T30],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, T28, T29, T30, T31],
+    [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, T23, T24, T25, T26, T27, T28, T29, T30, T31, T32],
+}

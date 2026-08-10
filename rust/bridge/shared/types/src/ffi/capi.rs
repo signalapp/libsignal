@@ -5,6 +5,7 @@
 
 use std::alloc::Layout;
 use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 #[cfg(feature = "metadata")]
 use std::{collections::BTreeSet, sync::Arc};
 
@@ -119,6 +120,8 @@ impl<T> CTypeMemoryLayoutTyped<T> {
 /// 2. Don't call `register_c_type_inner` directly on other types (call `register_c_type`)
 /// 3. The types and typedefs returned from `CType` must correctly model the Rust type
 /// 4. If not treated as opaque, `Self` must have a stable `repr` (e.g. `repr(C)`)
+/// 5. If not opaque, `Self` should not have a destructor, and should be copyable (as in all C
+///    types are copyable; `Self` need not neccessarily implement `Copy`)
 pub unsafe trait IsCType: 'static {
     /// If present, what's the layout for the current type.
     ///
@@ -315,4 +318,26 @@ function_types! {
     [A, B, C, D, E],
     [A, B, C, D, E, F],
     [A, B, C, D, E, F, G],
+}
+
+unsafe impl<T: IsCType> IsCType for MaybeUninit<T> {
+    const LAYOUT: Option<CTypeMemoryLayoutTyped<Self>> = match T::LAYOUT {
+        None => None,
+        Some(x) => Some(CTypeMemoryLayoutTyped::new(x.size(), x.align())),
+    };
+    #[cfg(feature = "metadata")]
+    fn register_c_type_inner(ctx: &mut SwiftMetadataContext) -> CType {
+        let inner = T::register_c_type(ctx);
+        let type_name = format!("MaybeUninitOf{}", inner.mangling_component);
+        CType {
+            rust_type: RustType::of::<Self>(),
+            dependencies: BTreeSet::from_iter([RustType::of::<T>()]),
+            type_name: type_name.clone(),
+            swift_name: None,
+            ptr_type_name: None,
+            mangling_component: type_name.clone(),
+            utility_typedefs: format!("typedef {} {type_name};", inner.ptr_type_name()).into(),
+            layout: Self::LAYOUT.map(|layout| layout.layout()),
+        }
+    }
 }

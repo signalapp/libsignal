@@ -4,6 +4,7 @@
 //
 
 use std::ffi::CString;
+use std::mem::MaybeUninit;
 
 use derive_where::derive_where;
 use libsignal_bridge_macros::c_export;
@@ -324,6 +325,26 @@ pub struct OptionalUuid {
 pub struct PairOf<First, Second> {
     pub first: First,
     pub second: Second,
+}
+
+#[repr(C)]
+#[derive(IsCType)]
+#[capi(swift_protocol)]
+pub struct OptionalOf<Contents> {
+    pub present: bool,
+    pub value: MaybeUninit<Contents>,
+}
+impl<T> OptionalOf<T> {
+    pub const NONE: Self = OptionalOf {
+        present: false,
+        value: MaybeUninit::uninit(),
+    };
+    pub const fn some(t: T) -> Self {
+        OptionalOf {
+            present: true,
+            value: MaybeUninit::new(t),
+        }
+    }
 }
 
 #[repr(C)]

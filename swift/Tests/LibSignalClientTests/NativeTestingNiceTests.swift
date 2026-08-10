@@ -147,6 +147,32 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testOptionalBytes() throws {
+        try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.testConversion(
+            items: [nil, Data(), Data([0]), Data([0, 1])],
+            toString: { $0?.base64EncodedString() ?? "%" },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_OptionalBytes_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_optional_bytes_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionalBytes_identity(x: $0) },
+        )
+    }
+    @Test
+    func testOptionalString() throws {
+        try OptionalStringConverter.testConversion(
+            items: [nil, "", "a", "abc"],
+            toString: {
+                if let x = $0 {
+                    "\"\(x)\""
+                } else {
+                    "null"
+                }
+            },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_OptionalString_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_optional_string_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionalString_identity(x: $0) },
+        )
+    }
+    @Test
     func testData32() throws {
         try FixedByteArrayConverter<FixedByteArrayHelper32>.testConversion(
             items: [Data((0..<32).map { _ in UInt8.random(in: 0...255) })],
@@ -318,6 +344,55 @@ struct NativeTestingNiceTests {
             rawNativeToString: SignalFfi.signal_testing_conversion_timestamp_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_conversion_Timestamp_identity(x: $0) },
         )
+    }
+
+    let testFloats = [
+        0.0,
+        1.2,
+        -1.2,
+        Float.nan,
+        Float.infinity,
+        -Float.infinity,
+    ]
+
+    func float2str(_ x: Float) -> String {
+        if x == 0.0 {
+            "0"
+        } else if x.isNaN {
+            "NaN"
+        } else {
+            "\(x)"
+        }
+    }
+
+    @Test
+    func testFloat() throws {
+        try IdentityConverter<Float>
+            .testConversion(
+                items: testFloats,
+                toString: float2str,
+                nativeToString: { try NativeTestingNice.TESTING_conversion_Float_to_string(x: $0) },
+                rawNativeToString: SignalFfi.signal_testing_conversion_float_to_string,
+                nativeIdentity: { try NativeTestingNice.TESTING_conversion_Float_identity(x: $0) },
+            )
+    }
+
+    @Test
+    func testOptionalFloat() throws {
+        try OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>
+            .testConversion(
+                items: testFloats + [nil],
+                toString: {
+                    if let x = $0 {
+                        float2str(x)
+                    } else {
+                        ""
+                    }
+                },
+                nativeToString: { try NativeTestingNice.TESTING_conversion_OptionalFloat_to_string(x: $0) },
+                rawNativeToString: SignalFfi.signal_testing_conversion_optional_float_to_string,
+                nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionalFloat_identity(x: $0) },
+            )
     }
 
     @Test

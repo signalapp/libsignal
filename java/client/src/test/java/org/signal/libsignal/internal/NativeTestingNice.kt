@@ -282,6 +282,82 @@ public object BridgeCopyBackupMediaItem_ReturnConverter {
     )
 }
 
+public object CallQualitySurveyInternal_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    user_satisfied: Any?,
+    call_quality_issues: Any?,
+    additional_issues_description: Any?,
+    debug_log_url: Any?,
+    start_timestamp: Any?,
+    end_timestamp: Any?,
+    call_type: Any?,
+    success: Any?,
+    call_end_reason: Any?,
+    connection_rtt_median: Any?,
+    audio_rtt_median: Any?,
+    video_rtt_median: Any?,
+    audio_recv_jitter_median: Any?,
+    video_recv_jitter_median: Any?,
+    audio_send_jitter_median: Any?,
+    video_send_jitter_median: Any?,
+    audio_recv_packet_loss_fraction: Any?,
+    video_recv_packet_loss_fraction: Any?,
+    audio_send_packet_loss_fraction: Any?,
+    video_send_packet_loss_fraction: Any?,
+    call_telemetry: Any?,
+    call_id_hash: Any?,
+  ): Any? =
+    org.signal.libsignal.net.CallQualitySurvey(
+      userSatisfied =
+        identity(user_satisfied as Boolean),
+      callQualityIssues =
+        mapBridgeVecReturn<String, String>({ identity(it) })(call_quality_issues as Array<*>),
+      additionalIssuesDescription =
+        identity(additional_issues_description as String?),
+      debugLogUrl =
+        identity(debug_log_url as String?),
+      startTimestamp =
+        (java.time.Instant::ofEpochMilli)(start_timestamp as Long),
+      endTimestamp =
+        (java.time.Instant::ofEpochMilli)(end_timestamp as Long),
+      callType =
+        identity(call_type as String),
+      success =
+        identity(success as Boolean),
+      callEndReason =
+        identity(call_end_reason as String),
+      connectionRttMedian =
+        identity(connection_rtt_median as Float?),
+      audioRttMedian =
+        identity(audio_rtt_median as Float?),
+      videoRttMedian =
+        identity(video_rtt_median as Float?),
+      audioRecvJitterMedian =
+        identity(audio_recv_jitter_median as Float?),
+      videoRecvJitterMedian =
+        identity(video_recv_jitter_median as Float?),
+      audioSendJitterMedian =
+        identity(audio_send_jitter_median as Float?),
+      videoSendJitterMedian =
+        identity(video_send_jitter_median as Float?),
+      audioRecvPacketLossFraction =
+        identity(audio_recv_packet_loss_fraction as Float?),
+      videoRecvPacketLossFraction =
+        identity(video_recv_packet_loss_fraction as Float?),
+      audioSendPacketLossFraction =
+        identity(audio_send_packet_loss_fraction as Float?),
+      videoSendPacketLossFraction =
+        identity(video_send_packet_loss_fraction as Float?),
+      callTelemetry =
+        identity(call_telemetry as ByteArray?),
+      callIdHash =
+        identity(call_id_hash as ByteArray?),
+    )
+}
+
 public object CopyBackupMediaOut_Item_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1579,6 +1655,16 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_SubmitCallQualitySurveyTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.net.CallQualitySurvey, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SubmitCallQualitySurveyTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Void?, org.signal.libsignal.net.CallQualitySurvey, Void?>({
+        downcastFromObject<org.signal.libsignal.net.CallQualitySurvey>(it)
+      }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_TestStreamChunk_return(): org.signal.libsignal.internal.TestStreamChunk {
     val ffiOut =
       NativeTesting.TESTING_TestStreamChunk_return()
@@ -1728,6 +1814,86 @@ public object NativeTestingNice {
     val ffi_x = identity(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_DeviceId_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Float_identity(x: Float): Float {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Float_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_Float_to_string(x: Float): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_Float_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalBytes_identity(x: ByteArray?): ByteArray? {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalBytes_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalBytes_to_string(x: ByteArray?): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalBytes_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalFloat_identity(x: Float?): Float? {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalFloat_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalFloat_to_string(x: Float?): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalFloat_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalString_identity(x: String?): String? {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalString_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalString_to_string(x: String?): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalString_to_string(
         ffi_x,
       )
 

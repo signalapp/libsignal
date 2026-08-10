@@ -10,7 +10,7 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 use jni::objects::{JByteBuffer, JIntArray, JObjectArray};
 use jni::refs::{Auto, IntoAuto as _, Reference};
-use jni::sys::{JNI_FALSE, JNI_TRUE, jbyte};
+use jni::sys::{JNI_FALSE, JNI_TRUE, jbyte, jfloat};
 use jni::{jni_sig, jni_sig_str, jni_str};
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
@@ -141,6 +141,7 @@ kt_spelling! {
     jbyte => "Byte",
     jint => "Int",
     jlong => "Long",
+    jfloat => "Float",
     jdouble => "Double",
     // TODO: This should be Any
     JObject<'_> => "Object",
@@ -556,6 +557,7 @@ impl<'a> SimpleArgTypeInfo<'a> for Option<String> {
         }
     }
 }
+nice_identity_arg_converter!(Option<String>, "String?");
 
 impl<'a> SimpleArgTypeInfo<'a> for uuid::Uuid {
     type ArgType = JavaUUID<'a>;
@@ -1585,11 +1587,11 @@ impl<'a> ResultTypeInfo<'a> for String {
 nice_identity_result_converter!(String, "String");
 
 impl<'a> ResultTypeInfo<'a> for Option<String> {
-    type ResultType = JString<'a>;
+    type ResultType = Nullable<JString<'a>>;
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         match self {
-            Some(s) => s.convert_into(env),
-            None => Ok(JString::null()),
+            Some(s) => s.convert_into(env).map(Nullable),
+            None => Ok(Nullable(JString::null())),
         }
     }
 }
@@ -1664,6 +1666,23 @@ impl<'a> ResultTypeInfo<'a> for Option<Vec<u8>> {
         self.as_deref().convert_into(env)
     }
 }
+nice_identity_result_converter!(Option<Vec<u8>>, "ByteArray?");
+
+impl<'a> SimpleArgTypeInfo<'a> for Option<Vec<u8>> {
+    type ArgType = Nullable<JByteArray<'a>>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        Nullable(foreign): &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            Ok(None)
+        } else {
+            Vec::<u8>::convert_from(env, foreign).map(Some)
+        }
+    }
+}
+nice_identity_arg_converter!(Option<Vec<u8>>, "ByteArray?");
 
 impl<'a, const LEN: usize> SimpleArgTypeInfo<'a> for [u8; LEN] {
     type ArgType = JByteArray<'a>;
@@ -2701,6 +2720,63 @@ impl<'a> ResultTypeInfo<'a> for libsignal_net_chat::api::ChallengeOption {
     }
 }
 
+impl<'a> SimpleArgTypeInfo<'a> for f32 {
+    type ArgType = ::jni::sys::jfloat;
+
+    fn convert_from(
+        _env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        Ok(*foreign)
+    }
+}
+nice_identity_arg_converter!(f32, "Float");
+impl<'a> SimpleArgTypeInfo<'a> for Option<f32> {
+    type ArgType = JavaOptionalFloat<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        JavaOptionalFloat(foreign): &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            return Ok(None);
+        }
+        Ok(Some(call_method_checked(
+            env,
+            foreign,
+            "floatValue",
+            jni_args!(() -> float),
+        )?))
+    }
+}
+nice_identity_arg_converter!(Option<f32>, "Float?");
+
+impl<'a> ResultTypeInfo<'a> for Option<f32> {
+    type ResultType = JavaOptionalFloat<'a>;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        if let Some(x) = self {
+            new_instance(
+                env,
+                ClassName("java.lang.Float"),
+                jni_args!((x => float) -> void),
+            )
+            .map(JavaOptionalFloat)
+        } else {
+            Ok(Default::default())
+        }
+    }
+}
+nice_identity_result_converter!(Option<f32>, "Float?");
+
+impl<'a> ResultTypeInfo<'a> for f32 {
+    type ResultType = ::jni::sys::jfloat;
+
+    fn convert_into(self, _env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        Ok(self)
+    }
+}
+nice_identity_result_converter!(f32, "Float");
+
 impl<'a> ResultTypeInfo<'a> for &'_ [libsignal_net_chat::api::ChallengeOption] {
     type ResultType = JObjectArray<'a>;
 
@@ -3150,7 +3226,7 @@ impl<'a> ResultTypeInfo<'a> for MessageBackupValidationOutcome {
             element_class,
             found_unknown_fields.into_iter().map(|f| f.to_string()),
         )?;
-        let error_message = error_message.convert_into(env)?;
+        let Nullable(error_message) = error_message.convert_into(env)?;
 
         new_instance(
             env,
@@ -3337,6 +3413,12 @@ macro_rules! jni_arg_type {
     (Option<u32>) => {
         ::jni::sys::jint
     };
+    (f32) => {
+        ::jni::sys::jfloat
+    };
+    (Option<f32>) => {
+        $crate::jni::JavaOptionalFloat<'local>
+    };
     (u64) => {
         ::jni::sys::jlong
     };
@@ -3438,6 +3520,9 @@ macro_rules! jni_arg_type {
     };
     (Vec<u8>) => {
         ::jni::objects::JByteArray<'local>
+    };
+    (Option<Vec<u8> >) => {
+        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
     };
     (Vec<&[u8]>) => {
         jni::JavaByteBufferArray<'local>
@@ -3571,6 +3656,15 @@ macro_rules! jni_result_type {
     };
     (Option<u64>) => {
         ::jni::sys::jlong
+    };
+    (Option<Vec<u8>>) => {
+        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
+    };
+    (f32) => {
+        ::jni::sys::jfloat
+    };
+    (Option<f32>) => {
+        $crate::jni::JavaOptionalFloat<'local>
     };
     (Option<$typ:tt>) => {
         $crate::jni::Nullable<$crate::jni_result_type!($typ)>

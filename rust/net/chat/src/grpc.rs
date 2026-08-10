@@ -8,6 +8,7 @@
 
 pub mod accounts;
 pub mod backups;
+pub mod call_quality;
 pub mod devices;
 mod messages;
 mod profiles;
