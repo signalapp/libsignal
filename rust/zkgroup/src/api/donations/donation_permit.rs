@@ -51,7 +51,8 @@ fn nonce_to_point(nonce: &NonceBytes) -> RistrettoPoint {
 /// A key pair used to issue and verify donation permits for a particular expiration.
 ///
 /// These are intended to be cheaply cached; the redeeming server only needs the derived key pair,
-/// never the root secret.
+/// never the root secret. (Note that this is not a security boundary: the root secret can be
+/// recovered from the derived key pair.)
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct DonationPermitDerivedKeyPair {
     reserved: ReservedByte,

@@ -103,7 +103,9 @@ impl Serialize for ServerRootKeyPair {
 
 /// A *specific* secret key pair for issuing and verifying endorsements.
 ///
-/// Derived from a [`ServerRootKeyPair`].
+/// Derived from a [`ServerRootKeyPair`]. Note that this derivation is *not* a "trapdoor"; someone
+/// who has both the derived key pair (specifically the private key) and the original tag info can
+/// reverse the derivation to recover the root key.
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct ServerDerivedKeyPair {
     sk_prime: Scalar,
