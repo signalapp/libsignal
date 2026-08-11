@@ -3570,7 +3570,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## bitflags 2.13.0, glob 0.3.3, log 0.4.33, num-derive 0.4.2, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.14, regex-syntax 0.8.11, regex 1.12.4
+## bitflags 2.13.0, glob 0.3.3, log 0.4.33, num-derive 0.5.1, num-integer 0.1.46, num-traits 0.2.19, range-map 0.2.0, regex-automata 0.4.14, regex-syntax 0.8.11, regex 1.12.4
 
 ```
 Copyright (c) 2014 The Rust Project Developers
@@ -3864,7 +3864,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## procfs-core 0.17.0
+## procfs-core 0.18.0
 
 ```
 Copyright (c) 2015 The procfs Developers
@@ -6803,7 +6803,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## breakpad-symbols 0.22.2, minidump-common 0.22.2, minidump-processor 0.22.1, minidump-unwind 0.22.2, minidump 0.22.2
+## breakpad-symbols 0.27.0, minidump-common 0.27.0, minidump-processor 0.27.0, minidump-unwind 0.27.0, minidump 0.27.0
 
 ```
 MIT License
@@ -6830,7 +6830,7 @@ SOFTWARE.
 
 ```
 
-## scroll_derive 0.12.1
+## scroll_derive 0.13.1
 
 ```
 MIT License
@@ -7455,7 +7455,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-## adler2 2.0.1, anyhow 1.0.103, async-trait 0.1.89, atomic-waker 1.1.2, auto_enums 0.8.9, curve25519-dalek-derive 0.1.1, derive_utils 0.15.1, displaydoc 0.2.6, dyn-clone 1.0.20, fastrand 2.4.1, home 0.5.12, itoa 1.0.18, linkme-impl 0.3.36, linkme 0.3.36, linux-raw-sys 0.12.1, linux-raw-sys 0.4.15, minimal-lexical 0.2.1, num_enum 0.7.6, num_enum_derive 0.7.6, once_cell 1.21.4, paste 1.0.15, pin-project-internal 1.1.13, pin-project-lite 0.2.17, pin-project 1.1.13, prettyplease 0.2.37, proc-macro-crate 3.5.0, proc-macro2 1.0.106, quote 1.0.46, ref-cast-impl 1.0.25, ref-cast 1.0.25, rustix 0.38.44, rustix 1.1.4, rustversion 1.0.23, semver 1.0.28, send_wrapper 0.6.0, serde 1.0.228, serde_core 1.0.228, serde_derive 1.0.228, serde_json 1.0.150, syn-mid 0.6.1, syn 2.0.118, thiserror-impl 1.0.69, thiserror-impl 2.0.18, thiserror 1.0.69, thiserror 2.0.18, unicode-ident 1.0.24, zmij 1.0.21
+## adler2 2.0.1, anyhow 1.0.103, async-trait 0.1.89, atomic-waker 1.1.2, auto_enums 0.8.9, curve25519-dalek-derive 0.1.1, derive_utils 0.15.1, displaydoc 0.2.6, dyn-clone 1.0.20, fastrand 2.4.1, home 0.5.12, itoa 1.0.18, linkme-impl 0.3.36, linkme 0.3.36, linux-raw-sys 0.12.1, linux-raw-sys 0.4.15, minimal-lexical 0.2.1, num_enum 0.7.6, num_enum_derive 0.7.6, once_cell 1.21.4, paste 1.0.15, pin-project-internal 1.1.13, pin-project-lite 0.2.17, pin-project 1.1.13, prettyplease 0.2.37, proc-macro-crate 3.5.0, proc-macro2 1.0.106, quote 1.0.46, ref-cast-impl 1.0.25, ref-cast 1.0.25, rustix 0.38.44, rustix 1.1.4, rustversion 1.0.23, semver 1.0.28, send_wrapper 0.6.0, serde 1.0.228, serde_core 1.0.228, serde_derive 1.0.228, serde_json 1.0.150, syn-mid 0.6.1, syn 2.0.118, syn 3.0.3, thiserror-impl 1.0.69, thiserror-impl 2.0.18, thiserror 1.0.69, thiserror 2.0.18, unicode-ident 1.0.24, zmij 1.0.21
 
 ```
 Permission is hereby granted, free of charge, to any
@@ -7900,7 +7900,7 @@ SOFTWARE.
 
 ```
 
-## scroll 0.12.0
+## scroll 0.13.0
 
 ```
 The MIT License (MIT)

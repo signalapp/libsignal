@@ -162,9 +162,9 @@ linkme = "0.3.33"
 log = "0.4.21"
 macro_rules_attribute = "0.2.0"
 mediasan-common = "0.5.3"
-minidump = { version = "0.22.1", default-features = false }
-minidump-processor = { version = "0.22.1", default-features = false }
-minidump-unwind = { version = "0.22.1", default-features = false }
+minidump = { version = "0.27.0", default-features = false }
+minidump-processor = { version = "0.27.0", default-features = false }
+minidump-unwind = { version = "0.27.0", default-features = false }
 minijinja = "2.19.0"
 mp4san = "0.5.3"
 neon = { version = "1.1.0", default-features = false }
