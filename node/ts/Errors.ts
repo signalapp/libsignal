@@ -95,6 +95,7 @@ export enum ErrorCode {
 
   UsernameNotAvailable,
   UsernameNotSet,
+  UsernameReservationNotFound,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -509,6 +510,10 @@ export type StandardNetworkError =
 export type UsernameNotSet = LibSignalErrorCommon & {
   code: ErrorCode.UsernameNotSet;
 };
+
+export type UsernameReservationNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.UsernameReservationNotFound;
+};
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -575,4 +580,5 @@ export type LibSignalError =
   | RegistrationCredentialsCouldNotBeParsedError
   | DeviceIdNotFound
   | UsernameNotAvailable
-  | UsernameNotSet;
+  | UsernameNotSet
+  | UsernameReservationNotFound;

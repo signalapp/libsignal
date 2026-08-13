@@ -542,6 +542,20 @@ mod remote_derives {
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ConfirmUsernameArgs)]
+    pub(super) struct ConfirmUsernameArgs {
+        username: String,
+        username_ciphertext: Vec<u8>,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::ConfirmUsernameOut)]
+    pub(super) enum ConfirmUsernameOut {
+        Success(Uuid),
+        ReservationNotFound,
+        UsernameNotAvailable,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::usernames::test_cases::SetUsernameLinkArgs)]
     pub struct SetUsernameLinkArgs {
         pub username_ciphertext: Vec<u8>,
@@ -684,6 +698,11 @@ fn TESTING_RemoveDeviceTests()
 fn TESTING_ReserveUsernameHashTests()
 -> GrpcTestCases<remote_derives::ReserveUsernameHashArgs, remote_derives::ReserveUsernameHashOut> {
     libsignal_net_chat::grpc::usernames::test_cases::reserve_username_hash_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_ConfirmUsernameTests()
+-> GrpcTestCases<remote_derives::ConfirmUsernameArgs, remote_derives::ConfirmUsernameOut> {
+    libsignal_net_chat::grpc::usernames::test_cases::confirm_username_test_cases().into()
 }
 #[bridge_fn(nice = true)]
 fn TESTING_SetUsernameLinkTests()

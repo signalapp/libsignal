@@ -8,8 +8,10 @@ import * as NativeNice from '../../NativeNice.js';
 import type {
   UsernameNotAvailable,
   UsernameNotSet,
+  UsernameReservationNotFound,
   StandardNetworkError,
 } from '../../Errors.js';
+import type { Rng } from '../../RngForTesting.js';
 import type { Uuid } from '../../uuid.js';
 
 declare module '../Chat' {
@@ -37,6 +39,34 @@ export interface AuthUsernamesService {
     },
     options?: RequestOptions
   ) => Promise<UsernameHash>;
+  /**
+   * Sets the account's username to a previously-reserved value (see
+   * {@link AuthUsernamesService#reserveUsernameHash}), along with the encrypted username for the
+   * account's username link.
+   *
+   * The zero-knowledge proof that must accompany the username hash is generated internally.
+   * Returns the server-generated username link handle for the newly-confirmed username.
+   *
+   * @param username the username whose previously-reserved hash should be claimed; must be a
+   * valid username (e.g. one produced by the `usernames` module)
+   * @param usernameCiphertext the encrypted username for the account's username link; must be
+   * between 1 and 128 bytes
+   * @param rng should be omitted in production
+   *
+   * @throws {UsernameReservationNotFound} if the username's hash was not reserved for this
+   * account
+   * @throws {UsernameNotAvailable} if the reservation lapsed and the username was claimed by
+   * another account
+   * @throws {StandardNetworkError}
+   */
+  confirmUsername: (
+    request: {
+      username: string;
+      usernameCiphertext: Uint8Array<ArrayBuffer>;
+      rng?: Rng;
+    },
+    options?: RequestOptions
+  ) => Promise<Uuid>;
   /**
    * For the given encrypted username, generate a username link handle. The username link handle
    * can be used to lookup the encrypted username.
@@ -94,6 +124,28 @@ AuthenticatedChatConnection.prototype.reserveUsernameHash = async function (
     abortSignal: options?.abortSignal,
     chat: this.chatService,
     usernameHashes,
+  });
+};
+
+AuthenticatedChatConnection.prototype.confirmUsername = async function (
+  {
+    username,
+    usernameCiphertext,
+    rng,
+  }: {
+    username: string;
+    usernameCiphertext: Uint8Array<ArrayBuffer>;
+    rng?: Rng;
+  },
+  options?: RequestOptions
+): Promise<Uuid> {
+  return await NativeNice.AuthenticatedChatConnection_confirm_username({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    username,
+    usernameCiphertext,
+    rng,
   });
 };
 

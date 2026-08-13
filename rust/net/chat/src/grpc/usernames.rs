@@ -10,6 +10,9 @@ use displaydoc::Display;
 use libsignal_core::Aci;
 use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::AccountsAnonymousClient;
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
+use libsignal_net_grpc::proto::chat::account::confirm_username_hash_response::{
+    ConfirmedUsernameHash, Response as ConfirmUsernameResponse,
+};
 use libsignal_net_grpc::proto::chat::account::*;
 use libsignal_net_grpc::proto::chat::errors;
 use uuid::Uuid;
@@ -28,11 +31,35 @@ pub struct UsernameNotAvailable;
 /// The authenticated account did not have a username set.
 pub struct UsernameNotSet;
 
+/// Recoverable errors produced by [`Auth::confirm_username`].
+#[derive(Debug, Display)]
+pub enum ConfirmUsernameError {
+    /// The username hash was not reserved for this account.
+    ReservationNotFound,
+    /// The reservation lapsed and the username was claimed by another account.
+    UsernameNotAvailable,
+}
+
 impl std::fmt::Display for Redact<ReserveUsernameHashRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(ReserveUsernameHashRequest { username_hashes }) = self;
         f.debug_struct("ReserveUsernameHash")
             .field("username_hashes.len", &username_hashes.len())
+            .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<ConfirmUsernameHashRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(ConfirmUsernameHashRequest {
+            username_hash,
+            zk_proof,
+            username_ciphertext,
+        }) = self;
+        f.debug_struct("ConfirmUsernameHash")
+            .field("username_hash.len", &username_hash.len())
+            .field("zk_proof.len", &zk_proof.len())
+            .field("username_ciphertext.len", &username_ciphertext.len())
             .finish()
     }
 }
@@ -95,6 +122,69 @@ impl<T: GrpcServiceProvider> Auth<T> {
             reserve_username_hash_response::Response::UsernameNotAvailable(
                 libsignal_net_grpc::proto::chat::account::UsernameNotAvailable {},
             ) => Err(RequestError::Other(UsernameNotAvailable)),
+        }
+    }
+
+    /// Sets the account's username to a previously-reserved value (see
+    /// [`Auth::reserve_username_hash`]), along with the encrypted username for the account's
+    /// username link.
+    ///
+    /// The zero-knowledge proof that must accompany the username hash is generated internally.
+    /// Returns the server-generated username link handle for the newly-confirmed username.
+    ///
+    /// `username_ciphertext` must be between 1 and 128 bytes.
+    pub async fn confirm_username(
+        &self,
+        username: &usernames::Username,
+        username_ciphertext: Vec<u8>,
+        rng: &mut (dyn rand::CryptoRng + Send),
+    ) -> Result<UsernameLinkHandle, RequestError<ConfirmUsernameError>> {
+        let mut randomness = [0; 32];
+        rng.fill_bytes(&mut randomness);
+        let zk_proof = username
+            .proof(&randomness)
+            // usernames actually panics rather than returning errors anyway, so
+            // our hands are tied
+            .expect("proof generation should never fail for a valid username");
+
+        let mut client = AccountsClient::new(self.0.service());
+        let request = ConfirmUsernameHashRequest {
+            username_hash: username.hash().to_vec(),
+            zk_proof,
+            username_ciphertext,
+        };
+        let desc = Redact(&request).to_string();
+        let response = log_and_send("auth", &desc, || client.confirm_username_hash(request))
+            .await?
+            .into_inner()
+            .response
+            .ok_or_else(|| RequestError::Unexpected {
+                log_safe: "missing response".to_string(),
+            })?;
+
+        match response {
+            ConfirmUsernameResponse::ReservationNotFound(errors::FailedPrecondition {
+                description,
+            }) => {
+                log::warn!("username reservation not found: {description}");
+                Err(RequestError::Other(
+                    ConfirmUsernameError::ReservationNotFound,
+                ))
+            }
+            ConfirmUsernameResponse::UsernameNotAvailable(
+                libsignal_net_grpc::proto::chat::account::UsernameNotAvailable {},
+            ) => Err(RequestError::Other(
+                ConfirmUsernameError::UsernameNotAvailable,
+            )),
+            ConfirmUsernameResponse::ConfirmedUsernameHash(ConfirmedUsernameHash {
+                username_link_handle,
+            }) => {
+                // If the returned username_link_handle does not parse as a UUID, we assume that is
+                // a bad enough sign to invalidate the response and treat it as Unexpected.
+                Uuid::from_slice(&username_link_handle).map_err(|_| RequestError::Unexpected {
+                    log_safe: "invalid uuid".to_string(),
+                })
+            }
         }
     }
 
@@ -275,7 +365,6 @@ pub mod test_cases {
     use super::*;
     use crate::grpc::GrpcTestCase;
 
-    pub(super) const EXPECTED_USERNAME: &str = "moxie.01";
     pub(super) const ENCRYPTED_USERNAME: &[u8] = &base64url_nopad!(
         "kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w"
     );
@@ -321,7 +410,7 @@ pub mod test_cases {
                         ENCRYPTED_USERNAME.to_vec(),
                     )),
                 },
-                response: LookUpUsernameLinkOut::Success(EXPECTED_USERNAME.to_owned()),
+                response: LookUpUsernameLinkOut::Success(TEST_USERNAME.to_owned()),
             },
             GrpcTestCase {
                 name: "not found".to_string(),
@@ -427,6 +516,88 @@ pub mod test_cases {
             },
         ]
     }
+    /// The username used in [`confirm_username_test_cases`], and the plaintext of
+    /// `ENCRYPTED_USERNAME` in [`look_up_username_link_test_cases`].
+    pub const TEST_USERNAME: &str = "moxie.01";
+
+    /// A test ACI, matching the value used in the gRPC profiles tests.
+    pub const ACI_UUID: Uuid = uuid::uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
+
+    /// A placeholder encrypted username used in the confirm/set-link test cases.
+    pub const TEST_USERNAME_CIPHERTEXT: &[u8] = b"fun encrypted username";
+
+    /// The gRPC method path for `ConfirmUsernameHash`.
+    pub const CONFIRM_USERNAME_HASH_METHOD: &str =
+        "/org.signal.chat.account.Accounts/ConfirmUsernameHash";
+
+    /// The expected proof for [`TEST_USERNAME`], generated with 32 bytes of randomness taken from
+    /// crate::api::testutil::fixed_seed_test_rng (i.e. a deterministic RNG with seed 0).
+    pub(crate) const EXPECTED_TEST_PROOF: &[u8] = &data_encoding_macro::base64!(
+        "gpplBfu0UNhHs9/BSYIf1/y9G4EEEg8D02nw79nt/gTcUj1isL6KJlydRYI9+CdDcMS2+jl7f2KqPvRyy6mxAktWpipDNJcwyhng+hdeEIfVfE4ziksMYhApMkQbo6kBi+fNCVSy6BA3SlCC1GVHtOdggnLy3u1ffojmupc3rgk="
+    );
+
+    pub struct ConfirmUsernameArgs {
+        pub username: String,
+        pub username_ciphertext: Vec<u8>,
+    }
+    pub enum ConfirmUsernameOut {
+        Success(UsernameLinkHandle),
+        ReservationNotFound,
+        UsernameNotAvailable,
+    }
+    pub fn confirm_username_test_cases() -> Vec<
+        GrpcTestCase<
+            ConfirmUsernameArgs,
+            ConfirmUsernameHashRequest,
+            ConfirmUsernameHashResponse,
+            ConfirmUsernameOut,
+        >,
+    > {
+        let username_hash = usernames::Username::new(TEST_USERNAME)
+            .expect("valid username")
+            .hash();
+        let username_link_handle = uuid::uuid!("61c101a5-04d8-4217-a6b9-a3f5c6e25b29");
+
+        let case = |name: &str,
+                    grpc_response: ConfirmUsernameResponse,
+                    expected_ret: ConfirmUsernameOut| GrpcTestCase {
+            name: name.to_string(),
+            method: CONFIRM_USERNAME_HASH_METHOD.to_string(),
+            request: ConfirmUsernameArgs {
+                username: TEST_USERNAME.to_string(),
+                username_ciphertext: TEST_USERNAME_CIPHERTEXT.to_vec(),
+            },
+            request_grpc: ConfirmUsernameHashRequest {
+                username_hash: username_hash.to_vec(),
+                zk_proof: EXPECTED_TEST_PROOF.to_vec(),
+                username_ciphertext: TEST_USERNAME_CIPHERTEXT.to_vec(),
+            },
+            response_grpc: ConfirmUsernameHashResponse {
+                response: Some(grpc_response),
+            },
+            response: expected_ret,
+        };
+
+        vec![
+            case(
+                "success",
+                ConfirmUsernameResponse::ConfirmedUsernameHash(ConfirmedUsernameHash {
+                    username_link_handle: username_link_handle.into(),
+                }),
+                ConfirmUsernameOut::Success(username_link_handle),
+            ),
+            case(
+                "reservation not found",
+                ConfirmUsernameResponse::ReservationNotFound(Default::default()),
+                ConfirmUsernameOut::ReservationNotFound,
+            ),
+            case(
+                "username not available",
+                ConfirmUsernameResponse::UsernameNotAvailable(Default::default()),
+                ConfirmUsernameOut::UsernameNotAvailable,
+            ),
+        ]
+    }
     pub struct SetUsernameLinkArgs {
         pub username_ciphertext: Vec<u8>,
         pub keep_link_handle: bool,
@@ -444,7 +615,7 @@ pub mod test_cases {
         >,
     > {
         let method = "/org.signal.chat.account.Accounts/SetUsernameLink";
-        let username_ciphertext = b"fun encrypted username".to_vec();
+        let username_ciphertext = TEST_USERNAME_CIPHERTEXT.to_vec();
         let username_link_handle = uuid::uuid!("C525F4F7-AF58-47CC-936E-D1B717F3C50A");
         vec![
             GrpcTestCase {
@@ -552,16 +723,18 @@ mod test {
     use libsignal_net::chat::fake::BodyWithTrailers;
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
     use libsignal_net_grpc::proto::chat::services;
+    use rand::RngCore as _;
     use test_case::test_case;
-    use uuid::{Uuid, uuid};
+    use uuid::Uuid;
 
+    use super::test_cases::ACI_UUID;
     use super::*;
+    use crate::api::testutil::fixed_seed_test_rng;
     use crate::api::usernames::UnauthenticatedChatApi;
     use crate::grpc::testutil::{
         GrpcOverrideRequestValidator, RequestValidator, err, ok, req, run_tests,
+        run_tests_with_generic_responses,
     };
-
-    const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
 
     #[test_case(ok(LookupUsernameHashResponse {
         response: Some(lookup_username_hash_response::Response::ServiceIdentifier(ServiceIdentifier {
@@ -663,6 +836,111 @@ mod test {
                     assert_matches!(result, Err(RequestError::Other(UsernameNotAvailable)))
                 }
             },
+        );
+    }
+
+    #[test]
+    fn expected_test_proof_matches_fixed_seed_rng() {
+        let mut randomness = [0; 32];
+        fixed_seed_test_rng().fill_bytes(&mut randomness);
+        let proof = usernames::Username::new(test_cases::TEST_USERNAME)
+            .expect("valid username")
+            .proof(&randomness)
+            .expect("can generate proof");
+        assert_eq!(
+            proof,
+            test_cases::EXPECTED_TEST_PROOF,
+            "expected (hex) {}",
+            hex::encode(&proof)
+        );
+    }
+
+    #[test]
+    fn test_confirm_username() {
+        use test_cases::*;
+        run_tests(
+            confirm_username_test_cases(),
+            |chat: Auth<_>,
+             ConfirmUsernameArgs {
+                 username,
+                 username_ciphertext,
+             }| async move {
+                chat.confirm_username(
+                    &usernames::Username::new(&username).expect("valid username"),
+                    username_ciphertext,
+                    &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |resp, result| match resp {
+                ConfirmUsernameOut::Success(handle) => {
+                    assert_matches!(result, Ok(x) if x == handle)
+                }
+                ConfirmUsernameOut::ReservationNotFound => {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Other(
+                            ConfirmUsernameError::ReservationNotFound
+                        ))
+                    )
+                }
+                ConfirmUsernameOut::UsernameNotAvailable => {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Other(
+                            ConfirmUsernameError::UsernameNotAvailable
+                        ))
+                    )
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_confirm_username_invalid_responses() {
+        use test_cases::TEST_USERNAME;
+        let username = usernames::Username::new(TEST_USERNAME).expect("valid username");
+        let method = test_cases::CONFIRM_USERNAME_HASH_METHOD;
+        let request_grpc = || ConfirmUsernameHashRequest {
+            username_hash: username.hash().to_vec(),
+            zk_proof: test_cases::EXPECTED_TEST_PROOF.to_vec(),
+            username_ciphertext: test_cases::TEST_USERNAME_CIPHERTEXT.to_vec(),
+        };
+        let case = |name: &str, response_grpc| crate::grpc::GrpcTestCase {
+            name: name.to_string(),
+            method: method.to_string(),
+            request: (),
+            request_grpc: request_grpc(),
+            response_grpc,
+            response: (),
+        };
+        run_tests_with_generic_responses(
+            [
+                case(
+                    "missing response",
+                    ok(ConfirmUsernameHashResponse { response: None }),
+                ),
+                case(
+                    "link handle is not a uuid",
+                    ok(ConfirmUsernameHashResponse {
+                        response: Some(ConfirmUsernameResponse::ConfirmedUsernameHash(
+                            ConfirmedUsernameHash {
+                                username_link_handle: vec![1, 2, 3],
+                            },
+                        )),
+                    }),
+                ),
+                case("grpc error", err(tonic::Code::Internal)),
+            ],
+            |chat: Auth<_>, ()| async move {
+                chat.confirm_username(
+                    &usernames::Username::new(TEST_USERNAME).expect("valid username"),
+                    test_cases::TEST_USERNAME_CIPHERTEXT.to_vec(),
+                    &mut fixed_seed_test_rng(),
+                )
+                .await
+            },
+            |(), result| assert_matches!(result, Err(RequestError::Unexpected { .. })),
         );
     }
 

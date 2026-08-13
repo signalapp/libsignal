@@ -223,6 +223,23 @@ export type ReturnFfiCallQualitySurveyInternal = {
   call_id_hash: Uint8Array<ArrayBuffer> | null;
 };
 
+export type ReturnFfiConfirmUsernameArgs = {
+  username: string;
+  username_ciphertext: Uint8Array<ArrayBuffer>;
+};
+
+export type ReturnFfiConfirmUsernameOut =
+  | {
+      __type: 0;
+      _0: Uint8Array<ArrayBuffer>;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
 export type ReturnFfiCopyBackupMediaNextChunk = {
   chunk: Array<ReturnFfiBridgeCopyBackupMediaOutcome>;
   termination: ('finished' | Error) | null;
@@ -678,6 +695,13 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_confirm_username: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    username: string,
+    username_ciphertext: Uint8Array<ArrayBuffer>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<Uuid>;
   AuthenticatedChatConnection_connect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -2565,6 +2589,9 @@ type NativeFunctions = {
   TESTING_ChatSendErrorConvert: (error_description: string) => void;
   TESTING_ClearPushTokenTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_ClearRegistrationLockTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_ConfirmUsernameTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiConfirmUsernameArgs, ReturnFfiConfirmUsernameOut>
+  >;
   TESTING_ConnectionManager_isUsingProxy: (
     manager: Wrapper<ConnectionManager>
   ) => number;
@@ -3345,6 +3372,7 @@ const {
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_clear_registration_lock,
+  AuthenticatedChatConnection_confirm_username,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
@@ -3849,6 +3877,7 @@ const {
   TESTING_ChatSendErrorConvert,
   TESTING_ClearPushTokenTests,
   TESTING_ClearRegistrationLockTests,
+  TESTING_ConfirmUsernameTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
@@ -4104,6 +4133,7 @@ export {
   AuthCredentialWithPni_CheckValidContents,
   AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_clear_registration_lock,
+  AuthenticatedChatConnection_confirm_username,
   AuthenticatedChatConnection_connect,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
@@ -4608,6 +4638,7 @@ export {
   TESTING_ChatSendErrorConvert,
   TESTING_ClearPushTokenTests,
   TESTING_ClearRegistrationLockTests,
+  TESTING_ConfirmUsernameTests,
   TESTING_ConnectionManager_isUsingProxy,
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,

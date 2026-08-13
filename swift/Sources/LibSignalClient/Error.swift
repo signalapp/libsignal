@@ -83,6 +83,7 @@ public enum SignalError: Error {
     case uploadTooLarge(String)
     case usernameNotAvailable(String)
     case usernameNotSet(String)
+    case usernameReservationNotFound(String)
 
     case unknown(UInt32, String)
 }
@@ -356,6 +357,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.usernameNotAvailable(errStr)
     case SignalErrorCodeUsernameNotSet:
         throw SignalError.usernameNotSet(errStr)
+    case SignalErrorCodeUsernameReservationNotFound:
+        throw SignalError.usernameReservationNotFound(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

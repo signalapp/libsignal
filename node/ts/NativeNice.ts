@@ -25,6 +25,8 @@ import type {
   ReturnFfiBridgeMediaBackupInfo,
   ReturnFfiBridgeMessageBackupInfo,
   ReturnFfiCallQualitySurveyInternal,
+  ReturnFfiConfirmUsernameArgs,
+  ReturnFfiConfirmUsernameOut,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
   ReturnFfiDeleteBackupMediaNextChunk,
@@ -141,6 +143,18 @@ export type CallQualitySurveyInternal = {
   callTelemetry: Uint8Array<ArrayBuffer> | null;
   callIdHash: Uint8Array<ArrayBuffer> | null;
 };
+
+export type ConfirmUsernameArgs = {
+  username: string;
+  usernameCiphertext: Uint8Array<ArrayBuffer>;
+};
+
+export type ConfirmUsernameOut =
+  | {
+      success: uuid.Uuid;
+    }
+  | 'reservationNotFound'
+  | 'usernameNotAvailable';
 
 export type CopyBackupMediaNextChunk = {
   chunk: Array<BridgeCopyBackupMediaOutcome>;
@@ -460,6 +474,34 @@ export function returnConverterCallQualitySurveyInternal(
     callTelemetry: liftNull(identity)(ffiInput.call_telemetry),
     callIdHash: liftNull(identity)(ffiInput.call_id_hash),
   };
+}
+
+export function returnConverterConfirmUsernameArgs(
+  ffiInput: Native.ReturnFfiConfirmUsernameArgs
+): ConfirmUsernameArgs {
+  return {
+    username: identity(ffiInput.username),
+    usernameCiphertext: identity(ffiInput.username_ciphertext),
+  };
+}
+
+export function returnConverterConfirmUsernameOut(
+  ffiInput: Native.ReturnFfiConfirmUsernameOut
+): ConfirmUsernameOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: uuid.stringify(ffiInput._0),
+      };
+    case 1:
+      return 'reservationNotFound';
+    case 2:
+      return 'usernameNotAvailable';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for ConfirmUsernameOut');
+  }
 }
 
 export function returnConverterCopyBackupMediaNextChunk(
@@ -1177,6 +1219,34 @@ export async function AuthenticatedChatConnection_clear_registration_lock({
     )
   );
 }
+export async function AuthenticatedChatConnection_confirm_username({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  username: username,
+  usernameCiphertext: username_ciphertext,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  username: string;
+  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  rng: Rng | undefined;
+}): Promise<uuid.Uuid> {
+  return uuid.stringify(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_confirm_username(
+        asyncContext,
+        identity(chat),
+        identity(username),
+        identity(username_ciphertext),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_delete_username_hash({
   asyncContext,
   abortSignal,
@@ -1514,6 +1584,15 @@ export function TESTING_ClearRegistrationLockTests(): Array<
     identity,
     identity
   )(Native.TESTING_ClearRegistrationLockTests());
+}
+
+export function TESTING_ConfirmUsernameTests(): Array<
+  GrpcTestCase<ConfirmUsernameArgs, ConfirmUsernameOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterConfirmUsernameArgs,
+    returnConverterConfirmUsernameOut
+  )(Native.TESTING_ConfirmUsernameTests());
 }
 
 export function TESTING_CopyBackupMediaTests(): Array<

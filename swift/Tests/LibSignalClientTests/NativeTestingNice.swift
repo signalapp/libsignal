@@ -568,6 +568,18 @@ internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
     }
 }
 
+internal struct ConfirmUsernameArgs {
+    var username: String
+    var usernameCiphertext: Data
+
+}
+
+internal enum ConfirmUsernameOut {
+    case success(UUID)
+    case reservationNotFound
+    case usernameNotAvailable
+}
+
 internal enum CopyBackupMediaOut {
     case item(BridgeCopyBackupMediaOutcome)
     case invalidDataInStream
@@ -913,6 +925,47 @@ internal enum DerivedReturnConverterCallQualitySurveyInternal: NiceReturnConvert
             callTelemetry: try call_telemetry.get(),
             callIdHash: try call_id_hash.get()
         )
+    }
+}
+
+internal enum DerivedReturnConverterConfirmUsernameArgs: NiceReturnConverter {
+    typealias NiceReturn = ConfirmUsernameArgs
+    typealias FfiReturn = SignalConfirmUsernameArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalConfirmUsernameArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let username = Result { try StringConverter.convertReturn(consuming: ffiValue.username) }
+        let username_ciphertext = Result { try DataConverter.convertReturn(consuming: ffiValue.username_ciphertext) }
+
+        return ConfirmUsernameArgs(username: try username.get(), usernameCiphertext: try username_ciphertext.get())
+    }
+}
+
+internal enum DerivedReturnConverterConfirmUsernameOut: NiceReturnConverter {
+    typealias NiceReturn = ConfirmUsernameOut
+    typealias FfiReturn = SignalConfirmUsernameOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalConfirmUsernameOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalConfirmUsernameOutFfiResultSuccess:
+            let _0 = Result {
+                try UuidNiceConverter.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return ConfirmUsernameOut.success(try _0.get())
+        case SignalConfirmUsernameOutFfiResultReservationNotFound:
+            return ConfirmUsernameOut.reservationNotFound
+        case SignalConfirmUsernameOutFfiResultUsernameNotAvailable:
+            return ConfirmUsernameOut.usernameNotAvailable
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ConfirmUsernameOut: \(ffiTag)")
+        }
     }
 }
 
@@ -2486,6 +2539,22 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_ConfirmUsernameTests() throws -> [GrpcTestCase<
+        ConfirmUsernameArgs, ConfirmUsernameOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterConfirmUsernameArgs, DerivedReturnConverterConfirmUsernameOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_confirm_username_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterConfirmUsernameArgs, DerivedReturnConverterConfirmUsernameOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_CopyBackupMediaTests() throws -> [GrpcTestCase<

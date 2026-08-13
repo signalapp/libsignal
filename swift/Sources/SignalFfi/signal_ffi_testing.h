@@ -723,6 +723,30 @@ static_assert_64bit(alignof(SignalBridgeCopyBackupMediaItemFfiResult) == 8);
 typedef SignalBridgeCopyBackupMediaItemFfiResult* SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult) == 8);
+typedef struct {
+  const int8_t* username;
+  SignalOwnedBuffer username_ciphertext;
+} SignalConfirmUsernameArgsFfiResult;
+static_assert_64bit(offsetof(SignalConfirmUsernameArgsFfiResult, username) == 0);
+static_assert_64bit(offsetof(SignalConfirmUsernameArgsFfiResult, username_ciphertext) == 8);
+static_assert_64bit(sizeof(SignalConfirmUsernameArgsFfiResult) == 24);
+static_assert_64bit(alignof(SignalConfirmUsernameArgsFfiResult) == 8);
+typedef enum {
+  SignalConfirmUsernameOutFfiResultSuccess,
+  SignalConfirmUsernameOutFfiResultReservationNotFound,
+  SignalConfirmUsernameOutFfiResultUsernameNotAvailable,
+} SignalConfirmUsernameOutFfiResult_Tag;
+typedef struct {
+  SignalUuid _0;
+} SignalConfirmUsernameOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalConfirmUsernameOutFfiResult_Tag tag;
+  union {
+    SignalConfirmUsernameOutFfiResultSignalSuccess_Body success;
+  };
+} SignalConfirmUsernameOutFfiResult;
+static_assert_64bit(sizeof(SignalConfirmUsernameOutFfiResult) == 20);
+static_assert_64bit(alignof(SignalConfirmUsernameOutFfiResult) == 4);
 typedef enum {
   SignalGetCdnCredentialsOutFfiResultSuccess,
   SignalGetCdnCredentialsOutFfiResultCredentialRejected,
@@ -1327,6 +1351,9 @@ SignalFfiError* signal_testing_clear_push_token_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_clear_registration_lock_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_confirm_username_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_connection_manager_is_using_proxy(

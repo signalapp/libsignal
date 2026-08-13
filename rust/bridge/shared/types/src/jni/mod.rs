@@ -1987,3 +1987,21 @@ impl JniError for libsignal_net_chat::grpc::usernames::UsernameNotSet {
         )
     }
 }
+
+impl JniError for libsignal_net_chat::grpc::usernames::ConfirmUsernameError {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        let class_name = match self {
+            Self::ReservationNotFound => {
+                ClassName("org.signal.libsignal.net.UsernameReservationNotFoundException")
+            }
+            Self::UsernameNotAvailable => {
+                ClassName("org.signal.libsignal.net.UsernameNotAvailableException")
+            }
+        };
+        make_single_message_throwable(env, message, class_name)
+    }
+}

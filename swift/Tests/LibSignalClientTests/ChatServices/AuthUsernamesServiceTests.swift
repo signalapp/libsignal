@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import SignalFfi
 import XCTest
 
 @testable import LibSignalClient
@@ -76,6 +77,42 @@ class AuthUsernamesServiceTests: AuthChatServiceTestBase<any AuthUsernamesServic
             },
             check: { _, actual in
                 try actual.get()
+            }
+        )
+    }
+}
+
+// Uses the internal Impl protocol so the test can pin the RNG seed; the public
+// confirmUsername(_:usernameCiphertext:) simply forwards with an OS-random RNG.
+class AuthUsernamesServiceImplTests: AuthChatServiceTestBase<any AuthUsernamesServiceImpl> {
+    override class var selector: SelectorCheck { .usernamesImpl }
+
+    func testConfirmUsername() async throws {
+        signal_testing_enable_deterministic_rng_for_testing()
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_ConfirmUsernameTests(),
+            invoke: { api, args in
+                try await api.confirmUsername(
+                    try Username(args.username),
+                    usernameCiphertext: args.usernameCiphertext,
+                    rngForTesting: 0,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let linkHandle):
+                    XCTAssertEqual(try actual.get(), linkHandle)
+                case .reservationNotFound:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.usernameReservationNotFound(_) {}
+                case .usernameNotAvailable:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.usernameNotAvailable(_) {}
+                }
             }
         )
     }

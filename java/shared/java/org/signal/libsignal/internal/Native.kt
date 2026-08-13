@@ -282,6 +282,15 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_confirm_username(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    username: String,
+    usernameCiphertext: ByteArray,
+    rng: Long,
+  ): CompletableFuture<UUID>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_connect(
     asyncRuntime: ObjectHandle,
     connectionManager: ObjectHandle,

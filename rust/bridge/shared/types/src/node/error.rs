@@ -1167,3 +1167,21 @@ impl SignalNodeError for libsignal_net_chat::grpc::usernames::UsernameNotSet {
         )
     }
 }
+
+impl SignalNodeError for libsignal_net_chat::grpc::usernames::ConfirmUsernameError {
+    fn into_throwable<'cx>(self, cx: &mut Cx<'cx>, operation_name: &str) -> Handle<'cx, JsError> {
+        use libsignal_net_chat::grpc::usernames::ConfirmUsernameError;
+        let message = self.to_string();
+        let name = match self {
+            ConfirmUsernameError::ReservationNotFound => "UsernameReservationNotFound",
+            ConfirmUsernameError::UsernameNotAvailable => "UsernameNotAvailable",
+        };
+        new_js_error(
+            cx,
+            Some(name),
+            &message,
+            operation_name,
+            no_extra_properties,
+        )
+    }
+}

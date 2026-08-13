@@ -9,11 +9,11 @@ import org.signal.libsignal.internal.CalledFromNative
 import java.io.IOException
 
 /**
- * The requested username (or every requested candidate) was not available.
+ * The username hash was not reserved for this account.
  *
  * See the specific request docs for more information.
  */
-public class UsernameNotAvailableException :
+public class UsernameReservationNotFoundException :
   IOException,
   ConfirmUsernameError {
   @CalledFromNative

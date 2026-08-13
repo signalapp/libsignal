@@ -23,6 +23,21 @@ import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 
+public data class ConfirmUsernameArgs(
+  public val username: String,
+  public val usernameCiphertext: ByteArray,
+)
+
+public sealed class ConfirmUsernameOut {
+  public data class Success(
+    public val _0: java.util.UUID,
+  ) : ConfirmUsernameOut()
+
+  public data object ReservationNotFound : ConfirmUsernameOut()
+
+  public data object UsernameNotAvailable : ConfirmUsernameOut()
+}
+
 public sealed class CopyBackupMediaOut {
   public data class Item(
     public val _0: org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome,
@@ -356,6 +371,47 @@ public object CallQualitySurveyInternal_ReturnConverter {
       callIdHash =
         identity(call_id_hash as ByteArray?),
     )
+}
+
+public object ConfirmUsernameArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    username: Any?,
+    username_ciphertext: Any?,
+  ): Any? =
+    ConfirmUsernameArgs(
+      username =
+        identity(username as String),
+      usernameCiphertext =
+        identity(username_ciphertext as ByteArray),
+    )
+}
+
+public object ConfirmUsernameOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    ConfirmUsernameOut.Success(
+      _0 =
+        identity(_0 as java.util.UUID),
+    )
+}
+
+public object ConfirmUsernameOut_ReservationNotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ConfirmUsernameOut.ReservationNotFound
+}
+
+public object ConfirmUsernameOut_UsernameNotAvailable_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ConfirmUsernameOut.UsernameNotAvailable
 }
 
 public object CopyBackupMediaOut_Item_ReturnConverter {
@@ -1264,6 +1320,16 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
       identity(it)
     }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_ConfirmUsernameTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.ConfirmUsernameArgs, org.signal.libsignal.internal.ConfirmUsernameOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_ConfirmUsernameTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.ConfirmUsernameArgs, org.signal.libsignal.internal.ConfirmUsernameOut>({
+        downcastFromObject<org.signal.libsignal.internal.ConfirmUsernameArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.ConfirmUsernameOut>(it) })(ffiOut)
   }
 
   public fun TESTING_CopyBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>> {

@@ -33,6 +33,25 @@ public protocol AuthUsernamesService: Sendable {
     ///   - the standard Signal network errors
     func reserveUsernameHashes(_ hashes: [UsernameHash]) async throws -> UsernameHash
 
+    /// Sets the account's username to a previously-reserved value (see
+    /// ``reserveUsernameHashes(_:)``), along with the encrypted username for the account's
+    /// username link.
+    ///
+    /// The zero-knowledge proof that must accompany the username hash is generated internally.
+    ///
+    /// - Parameters:
+    ///   - username: The username whose previously-reserved hash should be claimed
+    ///   - usernameCiphertext: The encrypted username for the account's username link; must be between 1 and 128 bytes
+    /// - Returns: The server-generated username link handle for the newly-confirmed username
+    /// - Throws:
+    ///   - ``SignalError/usernameReservationNotFound(_:)`` if the username's hash was not reserved for this account
+    ///   - ``SignalError/usernameNotAvailable(_:)`` if the reservation lapsed and the username was claimed by another account
+    ///   - the standard Signal network errors
+    func confirmUsername(
+        _ username: Username,
+        usernameCiphertext: Data,
+    ) async throws -> UUID
+
     /// Clears the current username hash, ciphertext, and link for the authenticated account.
     ///
     /// This also succeeds if the account has no username set, so a caller retrying a deletion
@@ -73,6 +92,17 @@ extension AuthenticatedChatConnection: AuthUsernamesService {
         )
     }
 
+    public func confirmUsername(
+        _ username: Username,
+        usernameCiphertext: Data,
+    ) async throws -> UUID {
+        return try await self.confirmUsername(
+            username,
+            usernameCiphertext: usernameCiphertext,
+            rngForTesting: -1,
+        )
+    }
+
     public func deleteUsernameHash() async throws {
         return try await NativeNice.AuthenticatedChatConnection_delete_username_hash(
             asyncContext: self.tokioAsyncContext,
@@ -90,4 +120,32 @@ extension AuthenticatedChatConnection: AuthUsernamesService {
 
 extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthUsernamesService> {
     public static var usernames: Self { .init() }
+}
+
+internal protocol AuthUsernamesServiceImpl: Sendable {
+    func confirmUsername(
+        _ username: Username,
+        usernameCiphertext: Data,
+        rngForTesting: Int64,
+    ) async throws -> UUID
+}
+
+extension AuthenticatedChatConnection: AuthUsernamesServiceImpl {
+    func confirmUsername(
+        _ username: Username,
+        usernameCiphertext: Data,
+        rngForTesting: Int64,
+    ) async throws -> UUID {
+        return try await NativeNice.AuthenticatedChatConnection_confirm_username(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            username: username.value,
+            usernameCiphertext: usernameCiphertext,
+            rng: rngForTesting,
+        )
+    }
+}
+
+extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthUsernamesServiceImpl> {
+    internal static var usernamesImpl: Self { .init() }
 }

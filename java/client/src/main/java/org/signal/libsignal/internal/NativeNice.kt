@@ -588,6 +588,33 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_confirm_username(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    username: String,
+    usernameCiphertext: ByteArray,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<java.util.UUID> {
+    val ffi_chat = identity(chat)
+    val ffi_username = identity(username)
+    val ffi_username_ciphertext = identity(usernameCiphertext)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_confirm_username(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_username,
+          ffi_username_ciphertext,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_delete_username_hash(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

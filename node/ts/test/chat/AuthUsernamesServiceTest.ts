@@ -6,6 +6,7 @@
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
+import * as Native from '../../Native.js';
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthUsernamesService } from '../../net.js';
@@ -31,6 +32,40 @@ describe('AuthUsernamesService', () => {
           usernameHashes: usernames,
         });
         if (resp === 'usernameNotAvailable') {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.UsernameNotAvailable,
+            });
+        } else {
+          expect(await out).to.deep.equal(resp.success);
+        }
+      }
+    );
+  });
+
+  describe('confirmUsername', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_ConfirmUsernameTests(),
+      connectAuth<AuthUsernamesService>,
+      async (
+        chat: AuthUsernamesService,
+        { username, usernameCiphertext }: NativeNice.ConfirmUsernameArgs,
+        resp: NativeNice.ConfirmUsernameOut
+      ) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const out = chat.confirmUsername({
+          username,
+          usernameCiphertext,
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (resp === 'reservationNotFound') {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.UsernameReservationNotFound,
+            });
+        } else if (resp === 'usernameNotAvailable') {
           await expect(out)
             .to.eventually.be.rejectedWith(LibSignalErrorBase)
             .and.deep.include({

@@ -39,7 +39,7 @@ use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
-use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
+use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
 use libsignal_protocol::{CiphertextMessage, Timestamp};
@@ -833,6 +833,24 @@ async fn AuthenticatedChatConnection_reserve_username_hash(
     chat.require_grpc()
         .await
         .reserve_username_hash(&username_hashes)
+        .await
+}
+
+// We bridge the username as a String, but we expect it to have been produced by the `usernames`
+// crate.
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_confirm_username(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    username: String,
+    username_ciphertext: Vec<u8>,
+    rng: RandomNumberGenerator,
+) -> Result<Uuid, RequestError<ConfirmUsernameError>> {
+    let username = ::usernames::Username::new(&username)
+        .expect("should only be called with an already-validated username");
+    let mut rng = rng.create();
+    chat.require_grpc()
+        .await
+        .confirm_username(&username, username_ciphertext, &mut rng)
         .await
 }
 

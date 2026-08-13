@@ -8,12 +8,19 @@ package org.signal.libsignal.net
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
+import org.signal.libsignal.usernames.Username
 import java.util.UUID
 
 /**
  * A 32-byte hash of a username
  */
 public typealias UsernameHash = ByteArray
+
+/**
+ * Errors that [AuthUsernamesService.confirmUsername] can produce, in addition to the generic
+ * request errors.
+ */
+public sealed interface ConfirmUsernameError : BadRequestError
 
 public class AuthUsernamesService(
   private val connection: AuthenticatedChatConnection,
@@ -41,6 +48,43 @@ public class AuthUsernamesService(
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult<UsernameNotAvailableException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Sets the account's username to a previously-reserved value (see [reserveUsernameHash]),
+   * along with the encrypted username for the account's username link.
+   *
+   * The zero-knowledge proof that must accompany the username hash is generated internally.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [UsernameReservationNotFoundException] indicates that the
+   * username's hash was not reserved for this account; a [UsernameNotAvailableException]
+   * indicates that the reservation lapsed and the username was claimed by another account.
+   *
+   * @param username The username whose previously-reserved hash should be claimed
+   * @param usernameCiphertext The encrypted username for the account's username link; must be
+   * between 1 and 128 bytes
+   * @return The server-generated username link handle for the newly-confirmed username
+   */
+  public fun confirmUsername(
+    username: Username,
+    usernameCiphertext: ByteArray,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<UUID, ConfirmUsernameError>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_confirm_username(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          username = username.username,
+          usernameCiphertext = usernameCiphertext,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult<ConfirmUsernameError>() },
         )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
