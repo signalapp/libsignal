@@ -422,18 +422,29 @@ impl AvatarUploadCredentialRequest {
             zk_credential_key_pub.point(),
         )?;
 
+        // The format change between V0 and V1 doesn't affect AvatarUploadCredentials, so we allow
+        // issuing with whatever credentials are provided.
+        let issue_credential: &dyn Fn(
+            zkcredential::issuance::blind::BlindedIssuanceProofBuilder,
+        ) -> _ = match params {
+            GenericServerSecretParams::V0(params) => {
+                &|builder| builder.issue(&params.credential_key, &self.public_key, randomness)
+            }
+            GenericServerSecretParams::V1(params) => {
+                &|builder| builder.issue(&params.credential_key, &self.public_key, randomness)
+            }
+        };
+
         // Issue the blind credential over (timestamp, Cm). The blinded point already commits to the
         // full Cm (including [rotation_id]*H2), so no server-side adjustment is needed.
-        let blinded_credential =
-            zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
-                .add_public_attribute(&redemption_time)
-                .add_blinded_revealed_attribute(&self.blinded_cm)
-                .issue(&params.credential_key, &self.public_key, randomness);
+        let builder = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
+            .add_public_attribute(&redemption_time)
+            .add_blinded_revealed_attribute(&self.blinded_cm);
 
         Ok(AvatarUploadCredentialResponse {
             reserved: Default::default(),
             redemption_time,
-            blinded_credential,
+            blinded_credential: issue_credential(builder),
         })
     }
 }
@@ -467,6 +478,12 @@ impl AvatarUploadCredentialRequestContext {
         params: &GenericServerPublicParams,
         current_time: Timestamp,
     ) -> Result<AvatarUploadCredential, ZkGroupVerificationFailure> {
+        // The format change between V0 and V1 doesn't affect AvatarUploadCredentials.
+        let credential_key = match params {
+            GenericServerPublicParams::V0(params) => &params.credential_key,
+            GenericServerPublicParams::V1(params) => &params.credential_key,
+        };
+
         if !response.redemption_time.is_day_aligned() {
             return Err(ZkGroupVerificationFailure);
         }
@@ -477,11 +494,7 @@ impl AvatarUploadCredentialRequestContext {
         let credential = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
             .add_public_attribute(&response.redemption_time)
             .add_blinded_revealed_attribute(&self.blinded_cm)
-            .verify(
-                &params.credential_key,
-                &self.key_pair,
-                response.blinded_credential,
-            )
+            .verify(credential_key, &self.key_pair, response.blinded_credential)
             .map_err(|_| ZkGroupVerificationFailure)?;
 
         Ok(AvatarUploadCredential {
@@ -511,13 +524,23 @@ impl AvatarUploadCredential {
         server_params: &GenericServerPublicParams,
         randomness: RandomnessBytes,
     ) -> AvatarUploadCredentialPresentation {
+        // The format change between V0 and V1 doesn't affect AvatarUploadCredentials.
+        let credential_key = match server_params {
+            GenericServerPublicParams::V0(params) => &params.credential_key,
+            GenericServerPublicParams::V1(params) => &params.credential_key,
+        };
+
         AvatarUploadCredentialPresentation {
             version: Default::default(),
             redemption_time: self.redemption_time,
             cm: self.cm,
             proof: zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
                 .add_revealed_attribute(&self.cm)
-                .present(&server_params.credential_key, &self.credential, randomness),
+                .present::<zkcredential::credentials::StandardMode>(
+                    credential_key,
+                    &self.credential,
+                    randomness,
+                ),
         }
     }
 
@@ -555,14 +578,26 @@ impl AvatarUploadCredentialPresentation {
         current_time: Timestamp,
         server_params: &GenericServerSecretParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
+        // The format change between V0 and V1 doesn't affect BackupAuthCredentials.
+        let verify_proof: &dyn Fn(zkcredential::presentation::PresentationProofVerifier) -> _ =
+            match server_params {
+                GenericServerSecretParams::V0(params) => {
+                    &|builder| builder.verify(&params.credential_key, &self.proof)
+                }
+                GenericServerSecretParams::V1(params) => {
+                    &|builder| builder.verify(&params.credential_key, &self.proof)
+                }
+            };
+
         // Check timestamp window: [-1 day, +2 days]
         check_avatar_upload_credential_redemption_time(self.redemption_time, current_time)?;
 
-        zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
-            .add_public_attribute(&self.redemption_time)
-            .add_revealed_attribute(&self.cm)
-            .verify(&server_params.credential_key, &self.proof)
-            .map_err(|_| ZkGroupVerificationFailure)
+        verify_proof(
+            zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
+                .add_public_attribute(&self.redemption_time)
+                .add_revealed_attribute(&self.cm),
+        )
+        .map_err(|_| ZkGroupVerificationFailure)
     }
 
     /// The Pedersen commitment `cm`, used as a stable unlinkable identifier.
@@ -586,7 +621,12 @@ impl AvatarUploadCredentialPresentation {
 
 #[cfg(test)]
 mod tests {
+    use test_case::test_case;
+
     use super::*;
+    use crate::generic_server_params::{
+        GenericServerSecretParamsLegacy, GenericServerSecretParamsStandard,
+    };
     use crate::{SECONDS_PER_DAY, Timestamp};
 
     const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
@@ -612,14 +652,18 @@ mod tests {
     }
 
     fn server_secret_params() -> GenericServerSecretParams {
-        GenericServerSecretParams::generate(SERVER_SECRET_RAND)
+        GenericServerSecretParamsLegacy::generate(SERVER_SECRET_RAND).into()
     }
 
-    fn generate_credential(redemption_time: Timestamp) -> AvatarUploadCredential {
-        generate_credential_with_rotation_id(redemption_time, ROTATION_ID)
+    fn generate_credential(
+        server_params: &GenericServerSecretParams,
+        redemption_time: Timestamp,
+    ) -> AvatarUploadCredential {
+        generate_credential_with_rotation_id(server_params, redemption_time, ROTATION_ID)
     }
 
     fn generate_credential_with_rotation_id(
+        server_params: &GenericServerSecretParams,
         redemption_time: Timestamp,
         rotation_id: u64,
     ) -> AvatarUploadCredential {
@@ -638,12 +682,12 @@ mod tests {
                 &zk_credential_key_pub(),
                 rotation_id,
                 redemption_time,
-                &server_secret_params(),
+                server_params,
                 ISSUE_RAND,
             )
             .expect("issuance should succeed");
 
-        let server_public_params = server_secret_params().get_public_params();
+        let server_public_params = server_params.get_public_params();
         request_context
             .receive(response, &server_public_params, redemption_time)
             .expect("credential should be valid")
@@ -652,6 +696,7 @@ mod tests {
     /// Builds an in-flight request/response pair without consuming the request context, so tests
     /// can exercise `receive` with adversarial `current_time` values.
     fn issue_for_receive_test(
+        server_params: &GenericServerSecretParams,
         redemption_time: Timestamp,
     ) -> (
         AvatarUploadCredentialRequestContext,
@@ -671,21 +716,26 @@ mod tests {
                 &zk_credential_key_pub(),
                 ROTATION_ID,
                 redemption_time,
-                &server_secret_params(),
+                server_params,
                 ISSUE_RAND,
             )
             .expect("issuance should succeed");
         (request_context, response)
     }
 
-    #[test]
-    fn test_happy_path() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+    #[test_case(GenericServerSecretParamsLegacy::generate)]
+    #[test_case(GenericServerSecretParamsStandard::generate)]
+    fn test_happy_path<T>(generate_server_params: fn([u8; RANDOMNESS_LEN]) -> T)
+    where
+        T: Into<GenericServerSecretParams>,
+    {
+        let server_secret_params = generate_server_params(SERVER_SECRET_RAND).into();
+        let credential = generate_credential(&server_secret_params, DAY_ALIGNED_TIMESTAMP);
         let presentation =
-            credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
+            credential.present(&server_secret_params.get_public_params(), PRESENT_RAND);
 
         presentation
-            .verify(DAY_ALIGNED_TIMESTAMP, &server_secret_params())
+            .verify(DAY_ALIGNED_TIMESTAMP, &server_secret_params)
             .expect("presentation should be valid");
     }
 
@@ -713,7 +763,7 @@ mod tests {
 
     #[test]
     fn test_server_verify_expiration() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         let presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
 
@@ -734,7 +784,7 @@ mod tests {
 
     #[test]
     fn test_server_verify_wrong_cm() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
 
@@ -751,7 +801,7 @@ mod tests {
 
     #[test]
     fn test_server_verify_wrong_redemption_time() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
 
@@ -836,7 +886,8 @@ mod tests {
             DAY_ALIGNED_TIMESTAMP.add_seconds(2 * SECONDS_PER_DAY),
         ];
         for current_time in current_times {
-            let (ctx, response) = issue_for_receive_test(DAY_ALIGNED_TIMESTAMP);
+            let (ctx, response) =
+                issue_for_receive_test(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
             ctx.receive(response, &server_public_params, current_time)
                 .expect("receive should succeed inside the redemption window");
         }
@@ -849,7 +900,8 @@ mod tests {
         let server_public_params = server_secret_params().get_public_params();
 
         // current_time more than 1 day before redemption_time => not yet usable.
-        let (ctx, response) = issue_for_receive_test(DAY_ALIGNED_TIMESTAMP);
+        let (ctx, response) =
+            issue_for_receive_test(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         assert!(
             ctx.receive(
                 response,
@@ -861,7 +913,8 @@ mod tests {
         );
 
         // current_time more than 2 days after redemption_time => already expired.
-        let (ctx, response) = issue_for_receive_test(DAY_ALIGNED_TIMESTAMP);
+        let (ctx, response) =
+            issue_for_receive_test(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         assert!(
             ctx.receive(
                 response,
@@ -887,7 +940,9 @@ mod tests {
         );
 
         let request = request_context.get_request();
-        let server_params = server_secret_params();
+        let GenericServerSecretParams::V0(server_params) = server_secret_params() else {
+            panic!("test should be using V0 params for now");
+        };
         let malicious = AvatarUploadCredentialResponse {
             reserved: Default::default(),
             redemption_time: DAY_ALIGNED_TIMESTAMP.add_seconds(3600),
@@ -914,7 +969,7 @@ mod tests {
 
     #[test]
     fn test_credential_exposes_redemption_time() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         assert_eq!(credential.redemption_time(), DAY_ALIGNED_TIMESTAMP);
     }
 
@@ -1052,8 +1107,10 @@ mod tests {
 
     #[test]
     fn test_different_rotation_id_produces_different_presentation_cm() {
-        let cred_v1 = generate_credential_with_rotation_id(DAY_ALIGNED_TIMESTAMP, 1);
-        let cred_v2 = generate_credential_with_rotation_id(DAY_ALIGNED_TIMESTAMP, 2);
+        let cred_v1 =
+            generate_credential_with_rotation_id(&server_secret_params(), DAY_ALIGNED_TIMESTAMP, 1);
+        let cred_v2 =
+            generate_credential_with_rotation_id(&server_secret_params(), DAY_ALIGNED_TIMESTAMP, 2);
         assert_ne!(cred_v1.cm(), cred_v2.cm());
 
         // Both should present and verify successfully.

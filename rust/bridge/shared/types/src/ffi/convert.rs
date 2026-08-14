@@ -739,16 +739,15 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
 }
 
 macro_rules! zkgroup_serialize_type {
-    ($ty:ty, $swift_ty:expr) => {
+    ($ty:ty, $deser:expr, $swift_ty:expr) => {
         impl SimpleArgTypeInfo for $ty {
             type ArgType = BorrowedSliceOf<c_uchar>;
 
             fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
                 let slice = unsafe { foreign.as_slice()? };
-                let token =
-                    zkgroup::deserialize(slice).map_err(|_: ZkGroupDeserializationFailure| {
-                        IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
-                    })?;
+                let token = ($deser)(slice).map_err(|_: ZkGroupDeserializationFailure| {
+                    IllegalArgumentError::new(concat!("bad ", stringify!($ty)))
+                })?;
                 Ok(token)
             }
         }
@@ -762,6 +761,9 @@ macro_rules! zkgroup_serialize_type {
             }
         }
     };
+    ($ty:ty, $swift_ty:expr) => {
+        zkgroup_serialize_type!($ty, zkgroup::deserialize, $swift_ty);
+    };
 }
 zkgroup_serialize_type!(GroupSendFullToken, "GroupSendFullToken");
 zkgroup_serialize_type!(
@@ -770,6 +772,7 @@ zkgroup_serialize_type!(
 );
 zkgroup_serialize_type!(
     zkgroup::generic_server_params::GenericServerPublicParams,
+    TryFrom::try_from,
     "GenericServerPublicParams"
 );
 

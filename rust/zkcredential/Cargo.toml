@@ -34,6 +34,7 @@ rayon = { workspace = true, optional = true }
 bincode = { workspace = true }
 const-str = { workspace = true }
 hex = { workspace = true }
+test-case = { workspace = true }
 
 # For benchmarking
 criterion = { workspace = true }

@@ -34,7 +34,8 @@ fn test_backup_auth_request_response() {
 
     // server generated materials; issuance request -> issuance response
     let server_secret_params =
-        zkgroup::generic_server_params::GenericServerSecretParams::generate(randomness1);
+        zkgroup::generic_server_params::GenericServerSecretParamsLegacy::generate(randomness1)
+            .into();
     let blinded_credential = request.issue(
         redemption_time,
         backup_level,

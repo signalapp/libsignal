@@ -42,6 +42,25 @@ impl zkcredential::attributes::RevealedAttribute for CallLinkRoomIdPoint {
 
 const CREDENTIAL_LABEL: &[u8] = b"20230413_Signal_CreateCallLinkCredential";
 
+/// Since the structure of each version is the same, we use a dynamic version field instead of the
+/// ADT-based approach of e.g. `AnyProfileKeyCredentialPresentation`. If we ever need a new version
+/// that changes the representation, we should switch to that model.
+#[derive(Clone, Copy, Debug, PartialDefault, Serialize, Deserialize, derive_more::TryFrom)]
+#[repr(u8)]
+#[try_from(repr)]
+#[serde(try_from = "u8", into = "u8")]
+enum CreateCredentialVersion {
+    #[partial_default]
+    WithLegacyParams = 0,
+    WithStandardParams = 1,
+}
+
+impl From<CreateCredentialVersion> for u8 {
+    fn from(value: CreateCredentialVersion) -> Self {
+        value as u8
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialRequestContext {
     reserved: ReservedByte,
@@ -100,21 +119,37 @@ impl CreateCallLinkCredentialRequest {
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
     ) -> CreateCallLinkCredentialResponse {
-        CreateCallLinkCredentialResponse {
-            reserved: Default::default(),
-            timestamp,
-            blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
-                .add_public_attribute(&timestamp)
-                .add_attribute(&UidStruct::from_service_id(user_id.into()))
-                .add_blinded_revealed_attribute(&self.blinded_room_id)
-                .issue(&params.credential_key, &self.public_key, randomness),
+        let builder = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
+            .add_public_attribute(&timestamp)
+            .add_attribute(&UidStruct::from_service_id(user_id.into()))
+            .add_blinded_revealed_attribute(&self.blinded_room_id);
+
+        match params {
+            GenericServerSecretParams::V0(params) => CreateCallLinkCredentialResponse {
+                version: CreateCredentialVersion::WithLegacyParams,
+                timestamp,
+                blinded_credential: builder.issue(
+                    &params.credential_key,
+                    &self.public_key,
+                    randomness,
+                ),
+            },
+            GenericServerSecretParams::V1(params) => CreateCallLinkCredentialResponse {
+                version: CreateCredentialVersion::WithStandardParams,
+                timestamp,
+                blinded_credential: builder.issue(
+                    &params.credential_key,
+                    &self.public_key,
+                    randomness,
+                ),
+            },
         }
     }
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialResponse {
-    reserved: ReservedByte,
+    version: CreateCredentialVersion,
     // Does not include the room ID or the user ID, because the client already knows those.
     timestamp: Timestamp,
     blinded_credential: zkcredential::issuance::blind::BlindedIssuanceProof,
@@ -127,22 +162,31 @@ impl CreateCallLinkCredentialRequestContext {
         user_id: libsignal_core::Aci,
         params: &GenericServerPublicParams,
     ) -> Result<CreateCallLinkCredential, ZkGroupVerificationFailure> {
+        let credential_key = match (response.version, params) {
+            (CreateCredentialVersion::WithLegacyParams, GenericServerPublicParams::V0(params)) => {
+                &params.credential_key
+            }
+            (
+                CreateCredentialVersion::WithStandardParams,
+                GenericServerPublicParams::V1(params),
+            ) => &params.credential_key,
+            (_, _) => {
+                return Err(ZkGroupVerificationFailure);
+            }
+        };
+
         if !response.timestamp.is_day_aligned() {
             return Err(ZkGroupVerificationFailure);
         }
 
         Ok(CreateCallLinkCredential {
-            reserved: Default::default(),
+            version: response.version,
             timestamp: response.timestamp,
             credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
                 .add_public_attribute(&response.timestamp)
                 .add_attribute(&UidStruct::from_service_id(user_id.into()))
                 .add_blinded_revealed_attribute(&self.blinded_room_id)
-                .verify(
-                    &params.credential_key,
-                    &self.key_pair,
-                    response.blinded_credential,
-                )
+                .verify(credential_key, &self.key_pair, response.blinded_credential)
                 .map_err(|_| ZkGroupVerificationFailure)?,
         })
     }
@@ -150,7 +194,7 @@ impl CreateCallLinkCredentialRequestContext {
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredential {
-    reserved: ReservedByte,
+    version: CreateCredentialVersion,
     // We could avoid having to pass in the room ID or user ID again if we saved them here, but
     // that's readily available information in the apps, so we may as well keep the credential
     // small.
@@ -167,23 +211,51 @@ impl CreateCallLinkCredential {
         call_link_params: &CallLinkSecretParams,
         randomness: RandomnessBytes,
     ) -> CreateCallLinkCredentialPresentation {
+        let present_proof: &dyn Fn(zkcredential::presentation::PresentationProofBuilder) -> _ =
+            match (self.version, server_params) {
+                (
+                    CreateCredentialVersion::WithLegacyParams,
+                    GenericServerPublicParams::V0(params),
+                ) => &|builder| {
+                    builder.present::<zkcredential::credentials::LegacyMode>(
+                        &params.credential_key,
+                        &self.credential,
+                        randomness,
+                    )
+                },
+                (
+                    CreateCredentialVersion::WithStandardParams,
+                    GenericServerPublicParams::V1(params),
+                ) => &|builder| {
+                    builder.present::<zkcredential::credentials::StandardMode>(
+                        &params.credential_key,
+                        &self.credential,
+                        randomness,
+                    )
+                },
+                (_, _) => {
+                    panic!("these params are not the ones used to receive the credential");
+                }
+            };
+
         let user_id = UidStruct::from_service_id(user_id.into());
         let encrypted_user_id = call_link_params.uid_enc_key_pair.encrypt(&user_id);
+        let builder = zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
+            .add_attribute(&user_id, &call_link_params.uid_enc_key_pair)
+            .add_revealed_attribute(&CallLinkRoomIdPoint::new(room_id));
+
         CreateCallLinkCredentialPresentation {
-            reserved: Default::default(),
+            version: self.version,
             timestamp: self.timestamp,
             user_id: encrypted_user_id,
-            proof: zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
-                .add_attribute(&user_id, &call_link_params.uid_enc_key_pair)
-                .add_revealed_attribute(&CallLinkRoomIdPoint::new(room_id))
-                .present(&server_params.credential_key, &self.credential, randomness),
+            proof: present_proof(builder),
         }
     }
 }
 
 #[derive(Clone, Serialize, Deserialize, PartialDefault)]
 pub struct CreateCallLinkCredentialPresentation {
-    reserved: ReservedByte,
+    version: CreateCredentialVersion,
     // The room ID is provided externally as part of the request.
     user_id: zkcredential::attributes::Ciphertext<uid_encryption::UidEncryptionDomain>,
     timestamp: Timestamp,
@@ -207,12 +279,57 @@ impl CreateCallLinkCredentialPresentation {
             return Err(ZkGroupVerificationFailure);
         }
 
-        zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
-            .add_public_attribute(&self.timestamp)
-            .add_attribute(&self.user_id, &call_link_params.uid_enc_public_key)
-            .add_revealed_attribute(&CallLinkRoomIdPoint::new(room_id))
-            .verify(&server_params.credential_key, &self.proof)
-            .map_err(|_| ZkGroupVerificationFailure)
+        let verify_proof: &dyn Fn(zkcredential::presentation::PresentationProofVerifier) -> _ =
+            match (self.version, server_params) {
+                (
+                    CreateCredentialVersion::WithLegacyParams,
+                    GenericServerSecretParams::V0(params),
+                ) => &|builder| builder.verify(&params.credential_key, &self.proof),
+                (
+                    CreateCredentialVersion::WithStandardParams,
+                    GenericServerSecretParams::V1(params),
+                ) => &|builder| builder.verify(&params.credential_key, &self.proof),
+                (_, _) => {
+                    return Err(ZkGroupVerificationFailure);
+                }
+            };
+
+        verify_proof(
+            zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
+                .add_public_attribute(&self.timestamp)
+                .add_attribute(&self.user_id, &call_link_params.uid_enc_public_key)
+                .add_revealed_attribute(&CallLinkRoomIdPoint::new(room_id)),
+        )
+        .map_err(|_| ZkGroupVerificationFailure)
+    }
+
+    /// A temporary helper for matching legacy credentials with legacy params and standard
+    /// credentials with standard params.
+    ///
+    /// This method will be removed when all uses of the legacy params are gone.
+    pub fn verify_against_appropriate_params(
+        &self,
+        room_id: &[u8],
+        current_time: Timestamp,
+        old_server_params: &GenericServerSecretParams,
+        new_server_params: &GenericServerSecretParams,
+        call_link_params: &CallLinkPublicParams,
+    ) -> Result<(), ZkGroupVerificationFailure> {
+        // We could enforce these checks in the type system, but that makes it harder for callers
+        // that are otherwise not thinking about the two kinds of params.
+        assert!(
+            matches!(old_server_params, GenericServerSecretParams::V0(_)),
+            "old params should always use legacy keys (did you reverse the arguments to verify_against_appropriate_params?)"
+        );
+        assert!(
+            matches!(new_server_params, GenericServerSecretParams::V1(_)),
+            "new params should always use standard keys (did you pass the same params to both arguments?)"
+        );
+        let server_params = match self.version {
+            CreateCredentialVersion::WithLegacyParams => old_server_params,
+            CreateCredentialVersion::WithStandardParams => new_server_params,
+        };
+        self.verify(room_id, current_time, server_params, call_link_params)
     }
 
     pub fn get_user_id(&self) -> UuidCiphertext {

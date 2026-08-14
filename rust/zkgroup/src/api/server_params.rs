@@ -37,7 +37,8 @@ pub struct ServerSecretParams {
     auth_credentials_with_pni_key_pair:
         crypto::credentials::KeyPair<crypto::credentials::AuthCredentialWithPni>,
 
-    pub(crate) generic_credential_key_pair: zkcredential::credentials::CredentialKeyPair,
+    pub(crate) generic_credential_key_pair:
+        zkcredential::credentials::CredentialKeyPair<zkcredential::credentials::LegacyMode>,
     pub(crate) endorsement_key_pair: zkcredential::endorsements::ServerRootKeyPair,
 }
 

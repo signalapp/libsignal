@@ -3,13 +3,35 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::marker::PhantomData;
+
+use test_case::test_case;
 use zkgroup::call_links::CallLinkAuthCredentialResponse;
+use zkgroup::generic_server_params::{
+    GenericServerSecretParams, GenericServerSecretParamsLegacy, GenericServerSecretParamsStandard,
+};
 use zkgroup::{RANDOMNESS_LEN, RandomnessBytes, SECONDS_PER_DAY, Timestamp, UUID_LEN};
 
 const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
 
-#[test]
-fn test_create_call_link_request_response() {
+fn choose_params<'a, T: 'static>(
+    legacy_params: &'a GenericServerSecretParams,
+    standard_params: &'a GenericServerSecretParams,
+) -> (&'a GenericServerSecretParams, &'a GenericServerSecretParams) {
+    match std::any::TypeId::of::<T>() {
+        x if x == std::any::TypeId::of::<GenericServerSecretParamsLegacy>() => {
+            (legacy_params, standard_params)
+        }
+        x if x == std::any::TypeId::of::<GenericServerSecretParamsStandard>() => {
+            (standard_params, legacy_params)
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test_case(PhantomData::<GenericServerSecretParamsLegacy>)]
+#[test_case(PhantomData::<GenericServerSecretParamsStandard>)]
+fn test_create_call_link_request_response<T: 'static>(_: PhantomData<T>) {
     let randomness0: RandomnessBytes = [0x42u8; RANDOMNESS_LEN];
     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
@@ -29,17 +51,20 @@ fn test_create_call_link_request_response() {
     let request = request_context.get_request();
 
     // server generated materials; issuance request -> issuance response
-    let server_secret_params =
-        zkgroup::generic_server_params::GenericServerSecretParams::generate(randomness1);
+    let legacy_server_secret_params = GenericServerSecretParamsLegacy::generate(randomness1).into();
+    let standard_server_secret_params =
+        GenericServerSecretParamsStandard::generate(randomness1).into();
+    let (chosen_server_secret_params, other_server_secret_params) =
+        choose_params::<T>(&legacy_server_secret_params, &standard_server_secret_params);
     let blinded_credential = request.issue(
         client_user_id,
         timestamp,
-        &server_secret_params,
+        chosen_server_secret_params,
         randomness2,
     );
 
     // client generated materials; issuance response -> redemption request
-    let server_public_params = server_secret_params.get_public_params();
+    let server_public_params = chosen_server_secret_params.get_public_params();
     let credential = request_context
         .receive(blinded_credential, client_user_id, &server_public_params)
         .expect("credential should be valid");
@@ -61,17 +86,26 @@ fn test_create_call_link_request_response() {
         .verify(
             room_id,
             timestamp,
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect("presentation should be valid");
+    presentation
+        .verify_against_appropriate_params(
+            room_id,
+            timestamp,
+            &legacy_server_secret_params,
+            &standard_server_secret_params,
+            &client_public_params,
+        )
+        .expect("right params should be chosen");
 
     // Check some obvious failure cases.
     presentation
         .verify(
             room_id,
             timestamp.sub_seconds(1),
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect_err("credential should not be valid before its timestamp");
@@ -79,7 +113,7 @@ fn test_create_call_link_request_response() {
         .verify(
             room_id,
             timestamp.add_seconds(30 * 60 * 60),
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect_err("credential should not be valid after expiration (30 hours later)");
@@ -88,10 +122,19 @@ fn test_create_call_link_request_response() {
         .verify(
             b"a much more boring room",
             timestamp,
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect_err("credential should not be valid for a different room");
+
+    presentation
+        .verify(
+            room_id,
+            timestamp,
+            other_server_secret_params,
+            &client_public_params,
+        )
+        .expect_err("credential should not be valid with the wrong params");
 
     // And if the server made this information available to the client...
     assert_eq!(
@@ -121,8 +164,7 @@ fn test_create_call_link_enforces_timestamp_granularity() {
     let request = request_context.get_request();
 
     // server generated materials; issuance request -> issuance response
-    let server_secret_params =
-        zkgroup::generic_server_params::GenericServerSecretParams::generate(randomness1);
+    let server_secret_params = GenericServerSecretParamsLegacy::generate(randomness1).into();
     let blinded_credential = request.issue(
         client_user_id,
         timestamp,
@@ -143,8 +185,9 @@ fn test_create_call_link_enforces_timestamp_granularity() {
     );
 }
 
-#[test]
-fn test_auth_credential() {
+#[test_case(PhantomData::<GenericServerSecretParamsLegacy>)]
+#[test_case(PhantomData::<GenericServerSecretParamsStandard>)]
+fn test_auth_credential<T: 'static>(_: PhantomData<T>) {
     let randomness1: RandomnessBytes = [0x43u8; RANDOMNESS_LEN];
     let randomness2: RandomnessBytes = [0x44u8; RANDOMNESS_LEN];
     let randomness3: RandomnessBytes = [0x45u8; RANDOMNESS_LEN];
@@ -155,17 +198,20 @@ fn test_auth_credential() {
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP;
 
     // server generated materials; issuance request -> issuance response
-    let server_secret_params =
-        zkgroup::generic_server_params::GenericServerSecretParams::generate(randomness1);
+    let legacy_server_secret_params = GenericServerSecretParamsLegacy::generate(randomness1).into();
+    let standard_server_secret_params =
+        GenericServerSecretParamsStandard::generate(randomness1).into();
+    let (chosen_server_secret_params, other_server_secret_params) =
+        choose_params::<T>(&legacy_server_secret_params, &standard_server_secret_params);
     let credential_response = CallLinkAuthCredentialResponse::issue_credential(
         client_user_id,
         timestamp,
-        &server_secret_params,
+        chosen_server_secret_params,
         randomness2,
     );
 
     // client generated materials; issuance response -> redemption request
-    let server_public_params = server_secret_params.get_public_params();
+    let server_public_params = chosen_server_secret_params.get_public_params();
     let credential = credential_response
         .receive(client_user_id, timestamp, &server_public_params)
         .expect("issued credential should be valid");
@@ -184,31 +230,46 @@ fn test_auth_credential() {
     // server verification of the credential presentation
     let client_public_params = client_secret_params.get_public_params();
     presentation
-        .verify(timestamp, &server_secret_params, &client_public_params)
+        .verify(
+            timestamp,
+            chosen_server_secret_params,
+            &client_public_params,
+        )
         .expect("credential should be valid for the timestamp given");
     presentation
         .verify(
             timestamp.add_seconds(SECONDS_PER_DAY),
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect("credential should be valid even an entire day later");
+    presentation
+        .verify_against_appropriate_params(
+            timestamp,
+            &legacy_server_secret_params,
+            &standard_server_secret_params,
+            &client_public_params,
+        )
+        .expect("right params should be chosen");
 
     // Check some error cases.
     presentation
         .verify(
             timestamp.add_seconds(2 * SECONDS_PER_DAY + 1),
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect_err("credential should expire more than two days later");
     presentation
         .verify(
             timestamp.sub_seconds(SECONDS_PER_DAY + 1),
-            &server_secret_params,
+            chosen_server_secret_params,
             &client_public_params,
         )
         .expect_err("credential should not be valid more than a day early");
+    presentation
+        .verify(timestamp, other_server_secret_params, &client_public_params)
+        .expect_err("credential should not be valid with the wrong params");
 
     // Check the user ID ciphertext.
     assert_eq!(
@@ -229,8 +290,7 @@ fn test_auth_credential_enforces_timestamp_granularity() {
     let timestamp: Timestamp = DAY_ALIGNED_TIMESTAMP.add_seconds(60 * 60); // not on a day boundary!
 
     // server generated materials; issuance request -> issuance response
-    let server_secret_params =
-        zkgroup::generic_server_params::GenericServerSecretParams::generate(randomness1);
+    let server_secret_params = GenericServerSecretParamsLegacy::generate(randomness1).into();
     let credential_response = CallLinkAuthCredentialResponse::issue_credential(
         client_user_id,
         timestamp,

@@ -119,8 +119,11 @@ pub(crate) mod testutil {
             credential_type: zkgroup::backups::BackupCredentialType,
             rng: &mut dyn rand::CryptoRng,
         ) -> Self {
-            let server_keys =
-                zkgroup::generic_server_params::GenericServerSecretParams::generate(rng.random());
+            let server_keys: zkgroup::generic_server_params::GenericServerSecretParams =
+                zkgroup::generic_server_params::GenericServerSecretParamsLegacy::generate(
+                    rng.random(),
+                )
+                .into();
             let server_public = server_keys.get_public_params();
 
             let aep = libsignal_account_keys::AccountEntropyPool::generate(rng);

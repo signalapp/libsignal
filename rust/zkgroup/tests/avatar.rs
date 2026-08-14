@@ -4,7 +4,7 @@
 //
 
 use zkgroup::avatars::AvatarUploadCredentialRequestContext;
-use zkgroup::generic_server_params::GenericServerSecretParams;
+use zkgroup::generic_server_params::{GenericServerSecretParams, GenericServerSecretParamsLegacy};
 use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use zkgroup::{RANDOMNESS_LEN, RandomnessBytes, Timestamp};
 
@@ -25,7 +25,8 @@ fn avatar_upload_flow_with_holder_issuer_and_verifier() {
     let holder_zk_credential_key_pair = ZkCredentialKeyPair::generate(HOLDER_ZK_CRED_KEY_RAND);
     let holder_zk_credential_key_pub = holder_zk_credential_key_pair.public_key();
 
-    let issuer_secret_params = GenericServerSecretParams::generate(SERVER_SECRET_RAND);
+    let issuer_secret_params: GenericServerSecretParams =
+        GenericServerSecretParamsLegacy::generate(SERVER_SECRET_RAND).into();
     let issuer_public_params = issuer_secret_params.get_public_params();
 
     // Holder: prepare a full issuance request for Cm derived from the account ACI, ZK credential

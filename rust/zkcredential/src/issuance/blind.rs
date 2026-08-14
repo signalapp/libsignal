@@ -60,7 +60,10 @@ use poksho::{ShoApi, ShoHmacSha256};
 use serde::{Deserialize, Serialize};
 
 use crate::attributes::{Attribute, RevealedAttribute};
-use crate::credentials::{Credential, CredentialKeyPair, CredentialPublicKey, NUM_SUPPORTED_ATTRS};
+use crate::credentials::{
+    CompatibilityMode, CompatibilityModeAsValue, Credential, CredentialKeyPair,
+    CredentialPrivateKey, CredentialPublicKey, NUM_SUPPORTED_ATTRS,
+};
 #[cfg(doc)]
 use crate::issuance::IssuanceProof;
 use crate::issuance::IssuanceProofBuilder;
@@ -375,12 +378,14 @@ impl BlindedIssuanceProofBuilder<'_> {
 
     fn prepare_scalar_args(
         &self,
-        key_pair: &CredentialKeyPair,
+        private_key: &CredentialPrivateKey,
+        compatibility_mode: CompatibilityModeAsValue,
         rprime: Scalar,
     ) -> poksho::ScalarArgs {
         let mut scalar_args = self.inner.prepare_scalar_args(
-            key_pair,
+            private_key,
             self.inner.attr_points.len() + self.blinded_attr_points.len(),
+            compatibility_mode,
         );
         scalar_args.add("rprime", rprime);
         scalar_args
@@ -438,9 +443,9 @@ impl BlindedIssuanceProofBuilder<'_> {
     ///
     /// It is critical that different randomness is used each time a credential is issued. Failing
     /// to do so effectively reveals the server's private key.
-    pub fn issue(
+    pub fn issue<Mode: CompatibilityMode>(
         mut self,
-        key_pair: &CredentialKeyPair,
+        key_pair: &CredentialKeyPair<Mode>,
         blinding_key: &BlindingPublicKey,
         randomness: [u8; RANDOMNESS_LEN],
     ) -> BlindedIssuanceProof {
@@ -460,9 +465,12 @@ impl BlindedIssuanceProofBuilder<'_> {
                 .map(|(yn, Dn)| yn * Dn.D1)
                 .sum::<RistrettoPoint>();
 
-        let base_credential = key_pair
-            .private_key()
-            .credential_core(&self.inner.attr_points, &mut sho);
+        let base_credential = key_pair.private_key().credential_core(
+            &self.inner.attr_points,
+            self.inner.attr_points.len() + self.blinded_attr_points.len(),
+            Mode::ENUM,
+            &mut sho,
+        );
         let S2 = rprime * blinding_key.Y
             + base_credential.V
             + key_pair
@@ -480,7 +488,7 @@ impl BlindedIssuanceProofBuilder<'_> {
             S2,
         };
 
-        let scalar_args = self.prepare_scalar_args(key_pair, rprime);
+        let scalar_args = self.prepare_scalar_args(key_pair.private_key(), Mode::ENUM, rprime);
         let point_args = self.prepare_point_args(key_pair.public_key(), blinding_key, &credential);
 
         let poksho_proof = self

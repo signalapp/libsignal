@@ -166,17 +166,31 @@ impl BackupAuthCredentialRequest {
         params: &GenericServerSecretParams,
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialResponse {
+        // The format change between V0 and V1 doesn't affect BackupAuthCredentials, so we allow
+        // issuing with whatever credentials are provided.
+        let issue_credential: &dyn Fn(
+            zkcredential::issuance::blind::BlindedIssuanceProofBuilder,
+        ) -> _ = match params {
+            GenericServerSecretParams::V0(params) => {
+                &|builder| builder.issue(&params.credential_key, &self.public_key, randomness)
+            }
+            GenericServerSecretParams::V1(params) => {
+                &|builder| builder.issue(&params.credential_key, &self.public_key, randomness)
+            }
+        };
+
+        let builder = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
+            .add_public_attribute(&redemption_time)
+            .add_public_attribute(&u64::from(backup_level))
+            .add_public_attribute(&u64::from(credential_type))
+            .add_blinded_revealed_attribute(&self.blinded_backup_id);
+
         BackupAuthCredentialResponse {
             reserved: Default::default(),
             redemption_time,
             backup_level,
             credential_type,
-            blinded_credential: zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
-                .add_public_attribute(&redemption_time)
-                .add_public_attribute(&u64::from(backup_level))
-                .add_public_attribute(&u64::from(credential_type))
-                .add_blinded_revealed_attribute(&self.blinded_backup_id)
-                .issue(&params.credential_key, &self.public_key, randomness),
+            blinded_credential: issue_credential(builder),
         }
     }
 }
@@ -200,6 +214,12 @@ impl BackupAuthCredentialRequestContext {
         params: &GenericServerPublicParams,
         expected_redemption_time: Timestamp,
     ) -> Result<BackupAuthCredential, ZkGroupVerificationFailure> {
+        // The format change between V0 and V1 doesn't affect BackupAuthCredentials.
+        let credential_key = match params {
+            GenericServerPublicParams::V0(params) => &params.credential_key,
+            GenericServerPublicParams::V1(params) => &params.credential_key,
+        };
+
         if response.redemption_time != expected_redemption_time
             || !response.redemption_time.is_day_aligned()
         {
@@ -216,11 +236,7 @@ impl BackupAuthCredentialRequestContext {
                 .add_public_attribute(&u64::from(response.backup_level))
                 .add_public_attribute(&u64::from(response.credential_type))
                 .add_blinded_revealed_attribute(&self.blinded_backup_id)
-                .verify(
-                    &params.credential_key,
-                    &self.key_pair,
-                    response.blinded_credential,
-                )
+                .verify(credential_key, &self.key_pair, response.blinded_credential)
                 .map_err(|_| ZkGroupVerificationFailure)?,
             backup_id: self.backup_id,
         })
@@ -243,6 +259,12 @@ impl BackupAuthCredential {
         server_params: &GenericServerPublicParams,
         randomness: RandomnessBytes,
     ) -> BackupAuthCredentialPresentation {
+        // The format change between V0 and V1 doesn't affect BackupAuthCredentials.
+        let credential_key = match server_params {
+            GenericServerPublicParams::V0(params) => &params.credential_key,
+            GenericServerPublicParams::V1(params) => &params.credential_key,
+        };
+
         BackupAuthCredentialPresentation {
             version: Default::default(),
             redemption_time: self.redemption_time,
@@ -251,7 +273,11 @@ impl BackupAuthCredential {
             backup_id: self.backup_id,
             proof: zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
                 .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id))
-                .present(&server_params.credential_key, &self.credential, randomness),
+                .present::<zkcredential::credentials::StandardMode>(
+                    credential_key,
+                    &self.credential,
+                    randomness,
+                ),
         }
     }
 
@@ -284,18 +310,30 @@ impl BackupAuthCredentialPresentation {
         current_time: Timestamp,
         server_params: &GenericServerSecretParams,
     ) -> Result<(), ZkGroupVerificationFailure> {
+        // The format change between V0 and V1 doesn't affect BackupAuthCredentials.
+        let verify_proof: &dyn Fn(zkcredential::presentation::PresentationProofVerifier) -> _ =
+            match server_params {
+                GenericServerSecretParams::V0(params) => {
+                    &|builder| builder.verify(&params.credential_key, &self.proof)
+                }
+                GenericServerSecretParams::V1(params) => {
+                    &|builder| builder.verify(&params.credential_key, &self.proof)
+                }
+            };
+
         crate::ServerSecretParams::check_auth_credential_redemption_time(
             self.redemption_time,
             current_time,
         )?;
 
-        zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
-            .add_public_attribute(&self.redemption_time)
-            .add_public_attribute(&u64::from(self.backup_level))
-            .add_public_attribute(&u64::from(self.credential_type))
-            .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id))
-            .verify(&server_params.credential_key, &self.proof)
-            .map_err(|_| ZkGroupVerificationFailure)
+        verify_proof(
+            zkcredential::presentation::PresentationProofVerifier::new(CREDENTIAL_LABEL)
+                .add_public_attribute(&self.redemption_time)
+                .add_public_attribute(&u64::from(self.backup_level))
+                .add_public_attribute(&u64::from(self.credential_type))
+                .add_revealed_attribute(&BackupIdPoint::new(&self.backup_id)),
+        )
+        .map_err(|_| ZkGroupVerificationFailure)
     }
 
     pub fn backup_level(&self) -> BackupLevel {
@@ -314,8 +352,12 @@ impl BackupAuthCredentialPresentation {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
+    use test_case::test_case;
 
     use super::*;
+    use crate::generic_server_params::{
+        GenericServerSecretParamsLegacy, GenericServerSecretParamsStandard,
+    };
     use crate::{RANDOMNESS_LEN, RandomnessBytes, SECONDS_PER_DAY, Timestamp, common};
 
     const DAY_ALIGNED_TIMESTAMP: Timestamp = Timestamp::from_epoch_seconds(1681344000); // 2023-04-13 00:00:00 UTC
@@ -326,10 +368,13 @@ mod tests {
     const PRESENT_RAND: RandomnessBytes = [0xA2; RANDOMNESS_LEN];
 
     fn server_secret_params() -> GenericServerSecretParams {
-        GenericServerSecretParams::generate(SERVER_SECRET_RAND)
+        GenericServerSecretParamsLegacy::generate(SERVER_SECRET_RAND).into()
     }
 
-    fn generate_credential(redemption_time: Timestamp) -> BackupAuthCredential {
+    fn generate_credential(
+        params: &GenericServerSecretParams,
+        redemption_time: Timestamp,
+    ) -> BackupAuthCredential {
         // client generated materials; issuance request
         let request_context = BackupAuthCredentialRequestContext::new(&KEY, ACI.into());
         let request = request_context.get_request();
@@ -339,44 +384,49 @@ mod tests {
             redemption_time,
             BackupLevel::Free,
             BackupCredentialType::Messages,
-            &server_secret_params(),
+            params,
             ISSUE_RAND,
         );
 
         // client generated materials; issuance response -> redemption request
-        let server_public_params = server_secret_params().get_public_params();
+        let server_public_params = params.get_public_params();
         request_context
             .receive(blinded_credential, &server_public_params, redemption_time)
             .expect("credential should be valid")
     }
 
-    #[test]
-    fn test_server_verify_expiration() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+    #[test_case(GenericServerSecretParamsLegacy::generate)]
+    #[test_case(GenericServerSecretParamsStandard::generate)]
+    fn test_server_verify_expiration<T>(generate_server_params: fn([u8; RANDOMNESS_LEN]) -> T)
+    where
+        T: Into<GenericServerSecretParams>,
+    {
+        let server_secret_params = generate_server_params(SERVER_SECRET_RAND).into();
+        let credential = generate_credential(&server_secret_params, DAY_ALIGNED_TIMESTAMP);
         let presentation =
-            credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
+            credential.present(&server_secret_params.get_public_params(), PRESENT_RAND);
 
         presentation
-            .verify(DAY_ALIGNED_TIMESTAMP, &server_secret_params())
+            .verify(DAY_ALIGNED_TIMESTAMP, &server_secret_params)
             .expect("presentation should be valid");
 
         presentation
             .verify(
                 DAY_ALIGNED_TIMESTAMP.sub_seconds(SECONDS_PER_DAY + 1),
-                &server_secret_params(),
+                &server_secret_params,
             )
             .expect_err("credential should not be valid 24h before redemption time");
         presentation
             .verify(
                 DAY_ALIGNED_TIMESTAMP.add_seconds(2 * SECONDS_PER_DAY + 1),
-                &server_secret_params(),
+                &server_secret_params,
             )
             .expect_err("credential should not be valid after expiration (2 days later)");
     }
 
     #[test]
     fn test_server_verify_wrong_backup_id() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
@@ -390,7 +440,7 @@ mod tests {
 
     #[test]
     fn test_server_verify_wrong_redemption() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {
@@ -404,7 +454,7 @@ mod tests {
 
     #[test]
     fn test_server_verify_wrong_receipt_level() {
-        let credential = generate_credential(DAY_ALIGNED_TIMESTAMP);
+        let credential = generate_credential(&server_secret_params(), DAY_ALIGNED_TIMESTAMP);
         let valid_presentation =
             credential.present(&server_secret_params().get_public_params(), PRESENT_RAND);
         let invalid_presentation = BackupAuthCredentialPresentation {

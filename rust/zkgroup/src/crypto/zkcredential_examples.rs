@@ -7,12 +7,15 @@
 //!
 //! Has to live in zkgroup because they implement zkcredential traits on zkgroup types.
 
+use std::marker::PhantomData;
+
 use curve25519_dalek::ristretto::RistrettoPoint;
 use poksho::shoapi::ShoApiExt as _;
 use poksho::{ShoApi, ShoSha256};
 use serde::{Deserialize, Serialize};
+use test_case::test_case;
 use zkcredential::attributes::{Attribute, Domain, RevealedAttribute};
-use zkcredential::credentials::CredentialKeyPair;
+use zkcredential::credentials::{CompatibilityMode, CredentialKeyPair, LegacyMode, StandardMode};
 use zkcredential::issuance::IssuanceProofBuilder;
 use zkcredential::issuance::blind::{
     BlindedAttribute, BlindedPoint, BlindingKeyPair, BlindingPublicKey, WithoutNonce,
@@ -28,10 +31,11 @@ use crate::crypto::uid_struct::UidStruct;
 use crate::crypto::{profile_key_encryption, uid_encryption};
 use crate::{RANDOMNESS_LEN, TEST_ARRAY_16, TEST_ARRAY_32};
 
-#[test]
-fn test_mac_generic() {
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+fn test_mac_generic<T: CompatibilityMode>(_: PhantomData<T>) {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
 
     let label = b"20221221_AuthCredentialLike";
 
@@ -55,7 +59,7 @@ fn test_mac_generic() {
 
     let proof = PresentationProofBuilder::new(label)
         .add_attribute(&uid, &uid_encryption_key)
-        .present(
+        .present::<T>(
             keypair.public_key(),
             &credential,
             sho.squeeze_and_ratchet_as_array(),
@@ -71,10 +75,11 @@ fn test_mac_generic() {
         .unwrap()
 }
 
-#[test]
-fn test_mac_generic_without_verifying_encryption_key() {
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+fn test_mac_generic_without_verifying_encryption_key<T: CompatibilityMode>(_: PhantomData<T>) {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
 
     let label = b"20221221_AuthCredentialLike";
 
@@ -97,7 +102,7 @@ fn test_mac_generic_without_verifying_encryption_key() {
 
     let proof = PresentationProofBuilder::new(label)
         .add_attribute_without_verified_key(&uid, &uid_encryption_key)
-        .present(
+        .present::<T>(
             keypair.public_key(),
             &credential,
             sho.squeeze_and_ratchet_as_array(),
@@ -113,10 +118,11 @@ fn test_mac_generic_without_verifying_encryption_key() {
         .unwrap()
 }
 
-#[test]
-fn test_profile_key_credential() {
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+fn test_profile_key_credential<T: CompatibilityMode>(_: PhantomData<T>) {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
     let blinding_keypair = BlindingKeyPair::generate(&mut sho);
 
     let label = b"20221221_ProfileKeyCredentialLike";
@@ -174,7 +180,7 @@ fn test_profile_key_credential() {
     let proof = PresentationProofBuilder::with_authenticated_message(label, b"v1")
         .add_attribute(&uid, &uid_encryption_key)
         .add_attribute(&profile_key, &profile_key_encryption_key)
-        .present(
+        .present::<T>(
             keypair.public_key(),
             &credential,
             sho.squeeze_and_ratchet_as_array(),
@@ -213,10 +219,13 @@ fn test_profile_key_credential() {
         .unwrap();
 }
 
-#[test]
-fn test_profile_key_credential_only_verifying_one_encryption_key() {
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+fn test_profile_key_credential_only_verifying_one_encryption_key<T: CompatibilityMode>(
+    _: PhantomData<T>,
+) {
     let mut sho = ShoSha256::new(b"Test_Credentials");
-    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
     let blinding_keypair = BlindingKeyPair::generate(&mut sho);
 
     let label = b"20221221_ProfileKeyCredentialLike";
@@ -274,7 +283,7 @@ fn test_profile_key_credential_only_verifying_one_encryption_key() {
     let proof = PresentationProofBuilder::with_authenticated_message(label, b"v1")
         .add_attribute_without_verified_key(&uid, &uid_encryption_key)
         .add_attribute(&profile_key, &profile_key_encryption_key)
-        .present(
+        .present::<T>(
             keypair.public_key(),
             &credential,
             sho.squeeze_and_ratchet_as_array(),
@@ -313,10 +322,11 @@ fn test_profile_key_credential_only_verifying_one_encryption_key() {
         .unwrap();
 }
 
-#[test]
-fn test_room_credential() {
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+fn test_room_credential<T: CompatibilityMode>(_: PhantomData<T>) {
     let mut sho = ShoSha256::new(b"RoomCredential");
-    let keypair = CredentialKeyPair::generate(sho.squeeze_and_ratchet_as_array());
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
     let blinding_keypair = BlindingKeyPair::generate(&mut sho);
 
     let label = b"20230330_RoomCredential";
@@ -410,7 +420,7 @@ fn test_room_credential() {
 
     let proof = PresentationProofBuilder::new(label)
         .add_revealed_attribute(&room_id)
-        .present(
+        .present::<T>(
             keypair.public_key(),
             &credential,
             sho.squeeze_and_ratchet_as_array(),
@@ -469,4 +479,184 @@ fn test_inverse_key() {
 
     assert_eq!(uid.M1, E_A1_prime);
     assert_eq!(uid.M2, E_A2_prime);
+}
+
+#[test]
+fn legacy_mode_and_standard_mode_have_the_same_behavior_for_exactly_two_attributes() {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let entropy = sho.squeeze_and_ratchet_as_array();
+    let standard_keypair = CredentialKeyPair::<StandardMode>::generate(entropy);
+    let legacy_keypair = CredentialKeyPair::<LegacyMode>::generate(entropy);
+
+    let label = b"20260807_BackupAuthLike";
+
+    let blinding_keypair = BlindingKeyPair::generate(&mut sho);
+
+    #[derive(Serialize, Deserialize)]
+    struct BackupId {
+        opaque_id: RistrettoPoint,
+    }
+    impl RevealedAttribute for BackupId {
+        fn as_point(&self) -> RistrettoPoint {
+            self.opaque_id
+        }
+    }
+    let backup_id = BackupId {
+        opaque_id: sho.get_point(),
+    };
+    let blinded_backup_id = blinding_keypair.blind(&backup_id, &mut sho);
+
+    let standard_issuance = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .issue(
+            &standard_keypair,
+            blinding_keypair.public_key(),
+            sho.squeeze_and_ratchet_as_array(),
+        );
+
+    let standard_credential = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            standard_keypair.public_key(),
+            &blinding_keypair,
+            standard_issuance.clone(),
+        )
+        .unwrap();
+    let standard_credential_via_legacy = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            legacy_keypair.public_key(),
+            &blinding_keypair,
+            standard_issuance,
+        )
+        .unwrap();
+    assert_eq!(
+        crate::serialize(&standard_credential),
+        crate::serialize(&standard_credential_via_legacy),
+    );
+
+    let legacy_issuance = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .issue(
+            &legacy_keypair,
+            blinding_keypair.public_key(),
+            sho.squeeze_and_ratchet_as_array(),
+        );
+
+    let legacy_credential = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            legacy_keypair.public_key(),
+            &blinding_keypair,
+            legacy_issuance.clone(),
+        )
+        .unwrap();
+    let legacy_credential_via_standard = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            standard_keypair.public_key(),
+            &blinding_keypair,
+            legacy_issuance,
+        )
+        .unwrap();
+    assert_eq!(
+        crate::serialize(&legacy_credential),
+        crate::serialize(&legacy_credential_via_standard),
+    );
+}
+
+#[test]
+fn legacy_mode_and_standard_mode_have_different_behavior_for_more_than_two_attributes() {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let entropy = sho.squeeze_and_ratchet_as_array();
+    let standard_keypair = CredentialKeyPair::<StandardMode>::generate(entropy);
+    let legacy_keypair = CredentialKeyPair::<LegacyMode>::generate(entropy);
+
+    let label = b"20260807_BackupAuthLike";
+
+    let blinding_keypair = BlindingKeyPair::generate(&mut sho);
+
+    #[derive(Serialize, Deserialize)]
+    struct BackupId {
+        opaque_id: RistrettoPoint,
+    }
+    impl RevealedAttribute for BackupId {
+        fn as_point(&self) -> RistrettoPoint {
+            self.opaque_id
+        }
+    }
+    let backup_id = BackupId {
+        opaque_id: sho.get_point(),
+    };
+    let blinded_backup_id = blinding_keypair.blind(&backup_id, &mut sho);
+
+    let standard_issuance = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .add_blinded_revealed_attribute(&blinded_backup_id.into()) // just get us past 2 attrs
+        .issue(
+            &standard_keypair,
+            blinding_keypair.public_key(),
+            sho.squeeze_and_ratchet_as_array(),
+        );
+
+    _ = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            standard_keypair.public_key(),
+            &blinding_keypair,
+            standard_issuance.clone(),
+        )
+        .expect("std->std works");
+    _ = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            legacy_keypair.public_key(),
+            &blinding_keypair,
+            standard_issuance,
+        )
+        .map(|_| ())
+        .expect_err("std->legacy should have failed to verify");
+
+    let legacy_issuance = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .issue(
+            &legacy_keypair,
+            blinding_keypair.public_key(),
+            sho.squeeze_and_ratchet_as_array(),
+        );
+
+    _ = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            legacy_keypair.public_key(),
+            &blinding_keypair,
+            legacy_issuance.clone(),
+        )
+        .expect("legacy->legacy works");
+    _ = IssuanceProofBuilder::new(label)
+        .add_public_attribute(&[1, 2, 3])
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .add_blinded_revealed_attribute(&blinded_backup_id.into())
+        .verify(
+            standard_keypair.public_key(),
+            &blinding_keypair,
+            legacy_issuance,
+        )
+        .map(|_| ())
+        .expect_err("legacy->std should have failed to verify");
 }

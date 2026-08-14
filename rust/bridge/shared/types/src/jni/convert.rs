@@ -662,7 +662,7 @@ impl<'a> SimpleArgTypeInfo<'a>
 }
 
 macro_rules! zkgroup_serialize_type {
-    ($ty:ty, $cls:expr) => {
+    ($ty:ty, $deser:expr, $cls:expr) => {
         impl<'a> SimpleArgTypeInfo<'a> for $ty {
             type ArgType = JByteArray<'a>;
             fn convert_from(
@@ -671,10 +671,9 @@ macro_rules! zkgroup_serialize_type {
             ) -> Result<Self, BridgeLayerError> {
                 let mut elements_guard = <&[u8]>::borrow(env, foreign)?;
                 let bytes = <&[u8]>::load_from(&mut elements_guard);
-                let token =
-                    zkgroup::deserialize(bytes).map_err(|_: ZkGroupDeserializationFailure| {
-                        BridgeLayerError::bad_argument(concat!("bad ", stringify!($ty)).into())
-                    })?;
+                let token = ($deser)(bytes).map_err(|_: ZkGroupDeserializationFailure| {
+                    BridgeLayerError::bad_argument(concat!("bad ", stringify!($ty)).into())
+                })?;
                 Ok(token)
             }
         }
@@ -691,6 +690,9 @@ macro_rules! zkgroup_serialize_type {
             }
         }
     };
+    ($ty:ty, $cls:expr) => {
+        zkgroup_serialize_type!($ty, zkgroup::deserialize, $cls);
+    };
 }
 zkgroup_serialize_type!(
     GroupSendFullToken,
@@ -702,6 +704,7 @@ zkgroup_serialize_type!(
 );
 zkgroup_serialize_type!(
     zkgroup::generic_server_params::GenericServerPublicParams,
+    TryFrom::try_from,
     "org.signal.libsignal.zkgroup.GenericServerPublicParams"
 );
 

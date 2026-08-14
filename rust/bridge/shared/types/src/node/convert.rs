@@ -805,7 +805,7 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
 }
 
 macro_rules! zkgroup_serialize_type {
-    ($ty:ty, $cls:expr) => {
+    ($ty:ty, $deser:expr, $cls:expr) => {
         impl SimpleArgTypeInfo for $ty {
             type ArgType = JsUint8Array;
 
@@ -815,7 +815,7 @@ macro_rules! zkgroup_serialize_type {
             ) -> NeonResult<Self> {
                 let elements = foreign.downcast_or_throw::<JsUint8Array, _>(cx)?;
                 let bytes = elements.as_slice(cx);
-                zkgroup::deserialize(bytes).or_else(|_: ZkGroupDeserializationFailure| {
+                ($deser)(bytes).or_else(|_: ZkGroupDeserializationFailure| {
                     cx.throw_type_error(concat!("bad ", stringify!($ty)))
                 })
             }
@@ -833,6 +833,9 @@ macro_rules! zkgroup_serialize_type {
             }
         }
     };
+    ($ty:ty, $cls:expr) => {
+        zkgroup_serialize_type!($ty, zkgroup::deserialize, $cls);
+    };
 }
 zkgroup_serialize_type!(GroupSendFullToken, "GroupSendFullToken");
 zkgroup_serialize_type!(
@@ -841,6 +844,7 @@ zkgroup_serialize_type!(
 );
 zkgroup_serialize_type!(
     zkgroup::generic_server_params::GenericServerPublicParams,
+    TryFrom::try_from,
     "GenericServerPublicParams"
 );
 

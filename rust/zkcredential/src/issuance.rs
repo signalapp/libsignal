@@ -24,7 +24,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::attributes::{Attribute, PublicAttribute};
 use crate::credentials::{
-    Credential, CredentialKeyPair, CredentialPublicKey, NUM_SUPPORTED_ATTRS, SystemParams,
+    CompatibilityMode, CompatibilityModeAsValue, Credential, CredentialKeyPair,
+    CredentialPrivateKey, CredentialPublicKey, NUM_SUPPORTED_ATTRS, SystemParams,
 };
 use crate::sho::ShoExt;
 use crate::{RANDOMNESS_LEN, VerificationFailure};
@@ -142,8 +143,9 @@ impl<'a> IssuanceProofBuilder<'a> {
     /// which case the caller may provide additional attributes.
     fn prepare_scalar_args(
         &self,
-        key_pair: &CredentialKeyPair,
+        private_key: &CredentialPrivateKey,
         total_attr_count: usize,
+        compatibility_mode: CompatibilityModeAsValue,
     ) -> poksho::ScalarArgs {
         assert!(
             total_attr_count <= NUM_SUPPORTED_ATTRS,
@@ -151,18 +153,22 @@ impl<'a> IssuanceProofBuilder<'a> {
         );
 
         let mut scalar_args = poksho::ScalarArgs::new();
-        scalar_args.add("w", key_pair.private_key().w);
-        scalar_args.add("wprime", key_pair.private_key().wprime);
-        scalar_args.add("x0", key_pair.private_key().x0);
-        scalar_args.add("x1", key_pair.private_key().x1);
+        scalar_args.add("w", private_key.w);
+        scalar_args.add("wprime", private_key.wprime);
+        scalar_args.add("x0", private_key.x0);
+        scalar_args.add("x1", private_key.x1);
 
+        // Slot 0's coefficient is domain-separated by the total attribute count; every other slot
+        // uses the raw key material. See `CredentialPrivateKey::y0`.
+        let y0 = private_key.y0(compatibility_mode, total_attr_count);
         let y_names: [_; NUM_SUPPORTED_ATTRS] = ["y0", "y1", "y2", "y3", "y4", "y5", "y6"];
-        for (name, value) in y_names
+        for (i, (name, value)) in y_names
             .into_iter()
             .take(total_attr_count)
-            .zip(key_pair.private_key().y.iter())
+            .zip(private_key.y.iter())
+            .enumerate()
         {
-            scalar_args.add(name, *value);
+            scalar_args.add(name, if i == 0 { y0 } else { *value });
         }
         scalar_args
     }
@@ -223,20 +229,24 @@ impl<'a> IssuanceProofBuilder<'a> {
     ///
     /// It is critical that different randomness is used each time a credential is issued. Failing
     /// to do so effectively reveals the server's private key.
-    pub fn issue(
+    pub fn issue<Mode: CompatibilityMode>(
         mut self,
-        key_pair: &CredentialKeyPair,
+        key_pair: &CredentialKeyPair<Mode>,
         randomness: [u8; RANDOMNESS_LEN],
     ) -> IssuanceProof {
         self.finalize_public_attrs();
 
         let mut sho = ShoHmacSha256::new(b"Signal_ZKCredential_Issuance_20230410");
         sho.absorb_and_ratchet(&randomness);
-        let credential = key_pair
-            .private_key()
-            .credential_core(&self.attr_points, &mut sho);
+        let credential = key_pair.private_key().credential_core(
+            &self.attr_points,
+            self.attr_points.len(),
+            Mode::ENUM,
+            &mut sho,
+        );
 
-        let scalar_args = self.prepare_scalar_args(key_pair, self.attr_points.len());
+        let scalar_args =
+            self.prepare_scalar_args(key_pair.private_key(), self.attr_points.len(), Mode::ENUM);
 
         let point_args = self.prepare_point_args(
             key_pair.public_key(),

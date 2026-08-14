@@ -6,7 +6,7 @@
 use libsignal_core::{Aci, Pni};
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
-use zkcredential::credentials::{CredentialKeyPair, CredentialPublicKey};
+use zkcredential::credentials::{CredentialKeyPair, CredentialPublicKey, LegacyMode};
 
 use crate::api::auth::auth_credential_with_pni::AuthCredentialWithPniVersion;
 use crate::common::constants::PRESENTATION_VERSION_4;
@@ -114,7 +114,7 @@ impl AuthCredentialWithPniZkcResponse {
         aci: Aci,
         pni_points: UidStruct,
         redemption_time: Timestamp,
-        credential_key: &CredentialKeyPair,
+        credential_key: &CredentialKeyPair<LegacyMode>,
         randomness: RandomnessBytes,
     ) -> Self {
         let proof = zkcredential::issuance::IssuanceProofBuilder::new(CREDENTIAL_LABEL)
@@ -189,7 +189,7 @@ impl AuthCredentialWithPniZkc {
         let proof = zkcredential::presentation::PresentationProofBuilder::new(CREDENTIAL_LABEL)
             .add_attribute(aci, &group_secret_params.uid_enc_key_pair)
             .add_attribute(pni, &group_secret_params.uid_enc_key_pair)
-            .present(public_key, credential, randomness);
+            .present::<zkcredential::credentials::LegacyMode>(public_key, credential, randomness);
 
         AuthCredentialWithPniZkcPresentation {
             aci_ciphertext: group_secret_params.uid_enc_key_pair.encrypt(&self.aci),
@@ -217,7 +217,7 @@ impl AuthCredentialWithPniZkcPresentation {
 
     pub(crate) fn verify_for_key(
         &self,
-        credential_key: &CredentialKeyPair,
+        credential_key: &CredentialKeyPair<LegacyMode>,
         group_public_params: &GroupPublicParams,
         redemption_time: Timestamp,
     ) -> Result<(), ZkGroupVerificationFailure> {
