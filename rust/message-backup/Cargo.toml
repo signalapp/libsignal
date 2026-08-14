@@ -23,7 +23,12 @@ json = [
     "dep:serde_json",
 ]
 scramble = ["dep:rand"]
-cli = ["dep:clap", "dep:clap-stdin", "dep:env_logger"]
+cli = [
+    "dep:clap",
+    "dep:clap-stdin",
+    "dep:env_logger",
+    "dep:libsignal-cli-utils",
+]
 test-util = []
 
 [[bin]]
@@ -51,6 +56,7 @@ required-features = ["test-util"]
 libsignal-message-backup-macros = { path = "macros" }
 
 libsignal-account-keys = { workspace = true }
+libsignal-cli-utils = { workspace = true, optional = true }
 libsignal-core = { workspace = true }
 libsignal-protocol = { workspace = true }
 libsignal-svrb = { workspace = true }
@@ -100,7 +106,6 @@ visibility = { workspace = true }
 [dev-dependencies]
 libsignal-message-backup = { path = "./", features = ["cli", "json", "scramble", "test-util"] }
 
-libsignal-cli-utils = { workspace = true }
 signal-crypto = { workspace = true }
 
 assert_cmd = { workspace = true }

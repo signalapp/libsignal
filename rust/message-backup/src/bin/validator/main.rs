@@ -168,7 +168,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             key_args: KeyArgs {
-                derive_key: DeriveKey { account_entropy: None, aci: None, forward_secrecy_token: None },
+                derive_key: DeriveKey { account_entropy: None, aci: None, metadata_file: None, forward_secrecy_token: None },
                 key_parts: KeyParts { hmac_key: None, aes_key: None }
             },
         }) => file);
@@ -199,14 +199,59 @@ mod test {
             },
         }) => (file, derive_key));
         assert_eq!(file.filename(), "filename");
+        let DeriveKey {
+            account_entropy,
+            aci,
+            metadata_file,
+            forward_secrecy_token,
+        } = derive_key;
         assert_eq!(
-            derive_key,
-            DeriveKey {
-                account_entropy: Some(std::str::from_utf8(&[b'a'; 64]).expect("ascii").to_owned()),
-                aci: Some(Aci::from_uuid_bytes([0x55; 16])),
-                forward_secrecy_token: Some([0xab; 32]),
-            }
+            account_entropy,
+            Some(std::str::from_utf8(&[b'a'; 64]).expect("ascii").to_owned())
         );
+        assert_eq!(aci, Some(Aci::from_uuid_bytes([0x55; 16])),);
+        assert!(metadata_file.is_none());
+        assert_eq!(forward_secrecy_token, Some([0xab; 32]),);
+    }
+
+    #[test]
+    fn cli_parse_derive_keys_with_metadata() {
+        const INPUT: &[&str] = &[
+            EXECUTABLE_NAME,
+            "filename",
+            "--account-entropy",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "--metadata",
+            "path/to/metadata",
+        ];
+
+        let (file, derive_key) = assert_matches!(Cli::try_parse_from(INPUT), Ok(Cli {
+            file,
+            verbose: 0,
+            print: false,
+            purpose: Purpose::RemoteBackup,
+            key_args: KeyArgs {
+                derive_key,
+                key_parts: KeyParts { hmac_key: None, aes_key: None }
+            },
+        }) => (file, derive_key));
+        assert_eq!(file.filename(), "filename");
+        let DeriveKey {
+            account_entropy,
+            aci,
+            metadata_file,
+            forward_secrecy_token,
+        } = derive_key;
+        assert_eq!(
+            account_entropy,
+            Some(std::str::from_utf8(&[b'a'; 64]).expect("ascii").to_owned())
+        );
+        assert_eq!(aci, None);
+        assert_eq!(
+            metadata_file.as_ref().map(|x| x.filename()),
+            Some("path/to/metadata")
+        );
+        assert_eq!(forward_secrecy_token, None);
     }
 
     #[test]
@@ -226,7 +271,7 @@ mod test {
             print: false,
             purpose: Purpose::RemoteBackup,
             key_args: KeyArgs {
-                derive_key: DeriveKey { account_entropy: None, aci: None, forward_secrecy_token: None },
+                derive_key: DeriveKey { account_entropy: None, aci: None, metadata_file: None, forward_secrecy_token: None },
                 key_parts,
             }
         }) => (file, key_parts));
@@ -238,20 +283,6 @@ mod test {
                 hmac_key: Some([0xbb; 32]),
             }
         );
-    }
-
-    #[test]
-    fn cli_parse_account_entropy_requires_aci() {
-        const INPUT: &[&str] = &[
-            EXECUTABLE_NAME,
-            "filename",
-            "--account-entropy",
-            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        ];
-        let e = assert_matches!(Cli::try_parse_from(INPUT), Err(e) => e);
-        assert_eq!(e.kind(), clap::error::ErrorKind::MissingRequiredArgument);
-
-        assert!(e.to_string().contains("--aci <ACI>"), "{e}");
     }
 
     #[test]

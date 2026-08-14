@@ -13,12 +13,18 @@ use std::io::Read as _;
 use std::str::FromStr as _;
 
 use clap::Args;
-use libsignal_account_keys::{AccountEntropyPool, BackupForwardSecrecyToken, BackupKey};
+use clap_stdin::FileOrStdin;
+use libsignal_account_keys::{AccountEntropyPool, BackupForwardSecrecyToken, BackupId, BackupKey};
+use libsignal_cli_utils::read_file;
 use libsignal_core::Aci;
 use libsignal_message_backup::args::{parse_aci, parse_hex_bytes};
 use libsignal_message_backup::frame::{CursorFactory, FileReaderFactory, ReaderFactory};
 use libsignal_message_backup::key::MessageBackupKey;
+use libsignal_message_backup::proto::LocalBackup::Metadata as LocalBackupMetadata;
+use libsignal_message_backup::proto::LocalBackup::metadata::EncryptedBackupId;
 use mediasan_common::SeekSkipAdapter;
+use protobuf::Message as _;
+use signal_crypto::Aes256Ctr32;
 
 // Only used for encrypt_backup/decrypt_backup, which need a default.
 const DEFAULT_ACI: Aci = Aci::from_uuid_bytes([0x11; 16]);
@@ -27,7 +33,7 @@ const DEFAULT_ACCOUNT_ENTROPY: &str =
 const DEFAULT_BACKUP_FORWARD_SECRECY_TOKEN: BackupForwardSecrecyToken =
     BackupForwardSecrecyToken([0xAB; 32]);
 
-#[derive(Debug, Args, PartialEq)]
+#[derive(Debug, Args)]
 pub struct KeyArgs {
     // TODO once https://github.com/clap-rs/clap/issues/5092 is resolved, make
     // this `derive_key` and `key_parts` Optional at the top level.
@@ -37,15 +43,22 @@ pub struct KeyArgs {
     pub key_parts: KeyParts,
 }
 
-#[derive(Debug, Args, PartialEq)]
+#[derive(Debug, Args)]
 #[group(conflicts_with = "KeyParts")]
 pub struct DeriveKey {
-    /// account entropy pool, used with the ACI to derive the message backup key
-    #[arg(long, requires = "aci")]
+    /// account entropy pool, used with the ACI or metadata file to derive the message backup key
+    #[arg(long)]
     pub account_entropy: Option<String>,
     /// ACI for the backup creator
-    #[arg(long, value_parser=parse_aci)]
+    #[arg(long, value_parser=parse_aci, requires = "account_entropy")]
     pub aci: Option<Aci>,
+    /// backup metadata file
+    #[arg(
+        long = "metadata",
+        requires = "account_entropy",
+        conflicts_with = "aci"
+    )]
+    pub metadata_file: Option<FileOrStdin>,
     /// Backup forward secrecy token, used to derive the message backup key. May be absent.
     #[arg(long, value_parser=parse_hex_bytes::<32>)]
     pub forward_secrecy_token: Option<[u8; 32]>,
@@ -73,9 +86,10 @@ impl KeyArgs {
             let DeriveKey {
                 account_entropy,
                 aci,
+                metadata_file,
                 forward_secrecy_token,
             } = derive_key;
-            aci.map(|aci| (aci, account_entropy, forward_secrecy_token))
+            account_entropy.map(|aep| (aep, aci, metadata_file, forward_secrecy_token))
         };
         let key_parts = {
             let KeyParts { hmac_key, aes_key } = key_parts;
@@ -85,17 +99,33 @@ impl KeyArgs {
         match (derive_key, key_parts) {
             (None, None) => None,
             (None, Some((hmac_key, aes_key))) => Some(MessageBackupKey { aes_key, hmac_key }),
-            (Some((_aci, None, _)), None) => {
-                panic!("ACI provided, but no account-entropy")
-            }
-            (Some((aci, Some(account_entropy), forward_secrecy_token)), None) => Some({
+            (Some((account_entropy, Some(aci), None, forward_secrecy_token)), None) => Some({
                 let account_entropy =
-                    AccountEntropyPool::from_str(&account_entropy).expect("valid account-entropy");
+                    parse_non_canonical_aep(&account_entropy).expect("valid account-entropy");
                 let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
                 let backup_id = backup_key.derive_backup_id(&aci);
                 let forward_secrecy_token = forward_secrecy_token.map(BackupForwardSecrecyToken);
                 MessageBackupKey::derive(&backup_key, &backup_id, forward_secrecy_token.as_ref())
             }),
+            (Some((account_entropy, None, Some(metadata_path), forward_secrecy_token)), None) => {
+                Some({
+                    let account_entropy =
+                        parse_non_canonical_aep(&account_entropy).expect("valid account-entropy");
+                    let backup_key = BackupKey::derive_from_account_entropy_pool(&account_entropy);
+                    let local_backup_key = backup_key.derive_local_backup_metadata_key();
+                    let metadata = read_file(metadata_path);
+                    let backup_id = decode_metadata(&metadata, local_backup_key);
+                    let forward_secrecy_token =
+                        forward_secrecy_token.map(BackupForwardSecrecyToken);
+                    MessageBackupKey::derive(
+                        &backup_key,
+                        &backup_id,
+                        forward_secrecy_token.as_ref(),
+                    )
+                })
+            }
+            (Some((_, None, None, _)), None) => panic!("need ACI or metadata file to use AEP"),
+            (Some((_, Some(_), Some(_), _)), None) => unreachable!("disallowed by clap arg parser"),
             (Some(_), Some(_)) => unreachable!("disallowed by clap arg parser"),
         }
     }
@@ -113,6 +143,27 @@ impl KeyArgs {
             )
         })
     }
+}
+
+fn parse_non_canonical_aep(
+    input: &str,
+) -> Result<AccountEntropyPool, libsignal_account_keys::InvalidAccountEntropyPool> {
+    let mut input = input.replace(' ', "").replace('#', "o").replace('=', "0");
+    input.make_ascii_lowercase();
+    AccountEntropyPool::from_str(&input)
+}
+
+fn decode_metadata(file: &[u8], key: [u8; 32]) -> BackupId {
+    let file_contents = LocalBackupMetadata::parse_from_bytes(file).expect("valid metadata file");
+    let EncryptedBackupId {
+        iv,
+        encryptedId: mut raw_backup_id,
+        special_fields: _,
+    } = file_contents.backupId.unwrap_or_default();
+    Aes256Ctr32::from_key(&key, &iv, 0)
+        .expect("valid IV")
+        .process(&mut raw_backup_id);
+    BackupId(raw_backup_id.try_into().expect("valid backup ID"))
 }
 
 /// Filename or in-memory buffer of contents.

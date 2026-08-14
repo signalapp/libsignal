@@ -60,7 +60,7 @@ fn main() {
         .customize(Customize::default().lite_runtime(false))
         .run_from_script();
 
-    const PROTOS: &[&str] = &["src/proto/backup.proto"];
+    const PROTOS: &[&str] = &["src/proto/backup.proto", "src/proto/LocalBackup.proto"];
     make_codegen().inputs(PROTOS).run_from_script();
 
     // Add the test.proto module to mod.rs as test-only.
