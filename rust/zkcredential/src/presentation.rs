@@ -81,6 +81,13 @@ impl<D: attributes::Domain> From<attributes::PublicKey<D>> for AnyPublicKey {
     }
 }
 
+impl PartialEq for AnyPublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && (self.G_a)() == (other.G_a)() && self.A == other.A
+    }
+}
+impl Eq for AnyPublicKey {}
+
 enum PublicKeyOrId {
     PublicKey(AnyPublicKey),
     Id(&'static str),
@@ -204,7 +211,13 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
                 .iter()
                 .position(|key| key.id() == key_id)
             {
-                Some(idx) => idx,
+                Some(idx) => {
+                    assert!(
+                        key.public_key() == self.encryption_keys[idx].public_key(),
+                        "key '{key_id}' is not used in a consistent way"
+                    );
+                    idx
+                }
                 None => {
                     let idx = self.encryption_keys.len();
                     self.encryption_keys.push(key);

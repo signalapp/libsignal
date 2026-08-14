@@ -120,6 +120,116 @@ fn test_mac_generic_without_verifying_encryption_key<T: CompatibilityMode>(_: Ph
 
 #[test_case(PhantomData::<StandardMode>)]
 #[test_case(PhantomData::<LegacyMode>)]
+#[should_panic = "key 'Signal_ZKGroup_20230419_UidEncryption' is not used in a consistent way"]
+fn test_mac_with_and_without_verifying_encryption_key<T: CompatibilityMode>(_: PhantomData<T>) {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
+
+    let label = b"20221221_AuthCredentialLike";
+
+    let uid_bytes = TEST_ARRAY_16;
+    let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
+    let uid = UidStruct::from_service_id(aci.into());
+
+    let proof = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_attribute(&uid)
+        .issue(&keypair, sho.squeeze_and_ratchet_as_array());
+
+    let credential = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_attribute(&uid)
+        .verify(keypair.public_key(), proof)
+        .unwrap();
+
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(Sho::new(b"test", b"").as_mut());
+
+    _ = PresentationProofBuilder::new(label)
+        .add_attribute(&uid, &uid_encryption_key)
+        .add_attribute_without_verified_key(&uid, &uid_encryption_key)
+        .present::<T>(
+            keypair.public_key(),
+            &credential,
+            sho.squeeze_and_ratchet_as_array(),
+        );
+}
+
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+#[should_panic = "key 'Signal_ZKGroup_20230419_UidEncryption' is not used in a consistent way"]
+fn test_mac_without_and_with_verifying_encryption_key<T: CompatibilityMode>(_: PhantomData<T>) {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
+
+    let label = b"20221221_AuthCredentialLike";
+
+    let uid_bytes = TEST_ARRAY_16;
+    let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
+    let uid = UidStruct::from_service_id(aci.into());
+
+    let proof = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_attribute(&uid)
+        .issue(&keypair, sho.squeeze_and_ratchet_as_array());
+
+    let credential = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_attribute(&uid)
+        .verify(keypair.public_key(), proof)
+        .unwrap();
+
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(Sho::new(b"test", b"").as_mut());
+
+    _ = PresentationProofBuilder::new(label)
+        .add_attribute_without_verified_key(&uid, &uid_encryption_key)
+        .add_attribute(&uid, &uid_encryption_key)
+        .present::<T>(
+            keypair.public_key(),
+            &credential,
+            sho.squeeze_and_ratchet_as_array(),
+        );
+}
+
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
+#[should_panic = "key 'Signal_ZKGroup_20230419_UidEncryption' is not used in a consistent way"]
+fn test_mac_with_conflicting_encryption_key<T: CompatibilityMode>(_: PhantomData<T>) {
+    let mut sho = ShoSha256::new(b"Test_Credentials");
+    let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
+
+    let label = b"20221221_AuthCredentialLike";
+
+    let uid_bytes = TEST_ARRAY_16;
+    let aci = libsignal_core::Aci::from_uuid_bytes(uid_bytes);
+    let uid = UidStruct::from_service_id(aci.into());
+
+    let proof = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_attribute(&uid)
+        .issue(&keypair, sho.squeeze_and_ratchet_as_array());
+
+    let credential = IssuanceProofBuilder::new(label)
+        .add_attribute(&uid)
+        .add_attribute(&uid)
+        .verify(keypair.public_key(), proof)
+        .unwrap();
+
+    let uid_encryption_key = uid_encryption::KeyPair::derive_from(Sho::new(b"test", b"").as_mut());
+    let wrong_encryption_key =
+        uid_encryption::KeyPair::derive_from(Sho::new(b"test", b"wrong").as_mut());
+
+    _ = PresentationProofBuilder::new(label)
+        .add_attribute(&uid, &uid_encryption_key)
+        .add_attribute(&uid, &wrong_encryption_key)
+        .present::<T>(
+            keypair.public_key(),
+            &credential,
+            sho.squeeze_and_ratchet_as_array(),
+        );
+}
+
+#[test_case(PhantomData::<StandardMode>)]
+#[test_case(PhantomData::<LegacyMode>)]
 fn test_profile_key_credential<T: CompatibilityMode>(_: PhantomData<T>) {
     let mut sho = ShoSha256::new(b"Test_Credentials");
     let keypair = CredentialKeyPair::<T>::generate(sho.squeeze_and_ratchet_as_array());
