@@ -229,14 +229,8 @@ jobs:
           script: |
             adb logcat -c
             adb logcat > logcat.log &
-            LOGCAT_PID="$!"
-            echo "LOGCAT_PID=$LOGCAT_PID" >> "$GITHUB_ENV"
             ./gradlew android:connectedCheck android:packaging-test:connectedCheck -x makeJniLibrariesDesktop -x android:makeJniLibraries
           working-directory: java
-
-      - name: Stop logcat
-        if: always()
-        run: kill ${{ env.LOGCAT_PID}} || true
 
       - name: Upload logcat logs
         if: always()
