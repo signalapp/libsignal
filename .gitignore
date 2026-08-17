@@ -6,6 +6,7 @@
 /node/dist
 /node/node_modules
 /node/build
+/node/tsconfig.tsbuildinfo
 
 /rust/bridge/node/futures/tests/node-tests/node_modules
 

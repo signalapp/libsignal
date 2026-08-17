@@ -1064,7 +1064,7 @@ function bridgeIdentityKeyStore(
       return store.isTrustedIdentity(
         ProtocolAddress._fromNativeHandle(name),
         PublicKey._fromNativeHandle(key),
-        direction as Direction
+        direction
       );
     },
     async getIdentityKey(

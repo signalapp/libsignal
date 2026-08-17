@@ -82,10 +82,10 @@ export abstract class ServiceId extends Object {
   ): InstanceType<T> {
     let result: ServiceId;
     switch (serviceIdFixedWidthBinary[0]) {
-      case ServiceIdKind.Aci as number:
+      case +ServiceIdKind.Aci:
         result = new Aci(serviceIdFixedWidthBinary);
         break;
-      case ServiceIdKind.Pni as number:
+      case +ServiceIdKind.Pni:
         result = new Pni(serviceIdFixedWidthBinary);
         break;
       default:

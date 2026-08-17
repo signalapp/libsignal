@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
-    "target": "es2024",
+    "target": "es2025",
     "module": "es2022",
     "moduleResolution": "bundler",
     "declaration": true,
     "outDir": "./dist",
+    "rootDir": "./ts",
     "strict": true,
     "skipLibCheck": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["mocha"]
   },
   "include": ["ts/**/*.ts"]
 }
