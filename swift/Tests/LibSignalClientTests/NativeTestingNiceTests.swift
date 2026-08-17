@@ -186,7 +186,7 @@ struct NativeTestingNiceTests {
     func testBridgeVecData32() throws {
         try ArrayArgConverter<
             FixedByteArrayConverter<FixedByteArrayHelper32>,
-            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32
+            SignalBorrowedSliceOfc_uchar32
         >.testConversion(
             items: (0..<8).map { count in
                 (0..<count).map { _ in Data((0..<32).map { _ in UInt8.random(in: 0...255) }) }
@@ -226,7 +226,7 @@ struct NativeTestingNiceTests {
     func testMySimpleTestEnumBridgeVec() throws {
         try ArrayArgConverter<
             DerivedArgConverterMySimpleTestEnum,
-            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfMySimpleTestEnumFfiArg_DerivedArgConverterMySimpleTestEnum
+            SignalFfi.SignalBorrowedSliceOfMySimpleTestEnumFfiArg,
         >
         .testConversion(
             items: [[], [.a], [.b], [.a, .b], [.a, .a, .b], [.b, .b]],
@@ -261,7 +261,7 @@ struct NativeTestingNiceTests {
     @Test
     func testBridgeVecString() throws {
         try ArrayArgConverter<
-            StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
+            StringConverter, SignalBorrowedSliceOfCStringPtr
         >
         .testConversion(
             items: [[], ["one"], ["one", "two"], ["one", "two", "three"]],

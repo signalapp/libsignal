@@ -273,14 +273,6 @@ fn main() -> anyhow::Result<()> {
         &mut testing_ctx.derived_return_converters,
         &non_testing_ctx.derived_return_converters,
     );
-    remove_all_checked(
-        &mut testing_ctx.ffi_borrowed_slice_cons,
-        &non_testing_ctx.ffi_borrowed_slice_cons,
-    );
-    remove_all_checked(
-        &mut testing_ctx.ffi_owned_buffer_of_max_aligned_project,
-        &non_testing_ctx.ffi_owned_buffer_of_max_aligned_project,
-    );
     for (name, g_test) in testing_ctx.c_structs_generic.iter_mut() {
         if let Some(g_normal) = non_testing_ctx.c_structs_generic.get(name) {
             assert_eq!(g_test.generic_id, g_normal.generic_id);

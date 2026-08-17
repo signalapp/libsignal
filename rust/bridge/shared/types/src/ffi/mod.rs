@@ -46,9 +46,9 @@ pub struct NullPointerError;
 
 #[repr(C)]
 #[derive(IsCType)]
-#[capi(export_name_override = borrowed_slice_of_name_override)]
-pub struct BorrowedSliceOf<T> {
-    base: *const T,
+#[capi(export_name_override = borrowed_slice_of_name_override, swift_protocol)]
+pub struct BorrowedSliceOf<Element> {
+    base: *const Element,
     length: usize,
 }
 #[cfg(feature = "metadata")]
@@ -129,8 +129,17 @@ impl<T> BorrowedMutableSliceOf<T> {
 /// function for each type).
 #[repr(C)]
 #[derive(IsCType)]
-pub struct OwnedBufferOfMaxAligned<T> {
-    pub base: *mut T,
+#[capi(swift_protocol)]
+pub struct OwnedBufferOfMaxAligned<Element> {
+    pub base: *mut Element,
+    pub length: usize,
+    pub size_bytes: usize,
+}
+
+#[repr(C)]
+#[derive(IsCType)]
+pub struct OwnedBufferOfMaxAlignedErased {
+    pub base: *mut std::ffi::c_void,
     pub length: usize,
     pub size_bytes: usize,
 }

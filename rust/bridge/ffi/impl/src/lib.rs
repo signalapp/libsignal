@@ -54,7 +54,7 @@ pub unsafe extern "C" fn signal_free_buffer(buf: *const c_uchar, buf_len: usize)
 #[unsafe(no_mangle)]
 #[c_export]
 pub unsafe extern "C" fn signal_free_owned_buffer_of_max_aligned(
-    buffer: OwnedBufferOfMaxAligned<std::ffi::c_void>,
+    buffer: OwnedBufferOfMaxAlignedErased,
 ) {
     if buffer.base.is_null() || buffer.size_bytes == 0 {
         return;

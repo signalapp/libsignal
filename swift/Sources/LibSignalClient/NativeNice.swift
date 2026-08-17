@@ -17,6 +17,330 @@
 import Foundation
 import SignalFfi
 
+extension SignalBorrowedSliceOfc_uchar32: SignalBorrowedSliceOf {
+
+    typealias Element = SignalType_ConstPointer_SignalType_FixedArray32_uint8_t?
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalType_ConstPointer_SignalType_FixedArray32_uint8_t? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfCStringPtr: SignalBorrowedSliceOf {
+
+    typealias Element = SignalCStringPtr?
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalCStringPtr?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalCStringPtr? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfBuffers: SignalBorrowedSliceOf {
+
+    typealias Element = SignalBorrowedBuffer
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalBorrowedBuffer?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalBorrowedBuffer? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfConstPointerProtocolAddress: SignalBorrowedSliceOf {
+
+    typealias Element = SignalConstPointerProtocolAddress
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalConstPointerProtocolAddress?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalConstPointerProtocolAddress? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfConstPointerPublicKey: SignalBorrowedSliceOf {
+
+    typealias Element = SignalConstPointerPublicKey
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalConstPointerPublicKey?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalConstPointerPublicKey? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfConstPointerCiphertextMessage: SignalBorrowedSliceOf {
+
+    typealias Element = SignalConstPointerCiphertextMessage
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalConstPointerCiphertextMessage?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalConstPointerCiphertextMessage? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfConstPointerSessionRecord: SignalBorrowedSliceOf {
+
+    typealias Element = SignalConstPointerSessionRecord
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalConstPointerSessionRecord?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalConstPointerSessionRecord? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg: SignalBorrowedSliceOf {
+
+    typealias Element = SignalBridgeCopyBackupMediaItemFfiArg
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalBridgeCopyBackupMediaItemFfiArg?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalBridgeCopyBackupMediaItemFfiArg? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg: SignalBorrowedSliceOf {
+
+    typealias Element = SignalBridgeDeleteBackupMediaItemFfiArg
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalBridgeDeleteBackupMediaItemFfiArg?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalBridgeDeleteBackupMediaItemFfiArg? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfu32: SignalBorrowedSliceOf {
+
+    typealias Element = UInt32
+
+    init(
+        generic_base: SignalType_ConstPointer_uint32_t?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_uint32_t? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedBuffer: SignalBorrowedSliceOf {
+
+    typealias Element = UInt8
+
+    init(
+        generic_base: SignalType_ConstPointer_uint8_t?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_uint8_t? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfusize: SignalBorrowedSliceOf {
+
+    typealias Element = size_t
+
+    init(
+        generic_base: SignalType_ConstPointer_size_t?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_size_t? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
 extension SignalCPromisec_uchar32: SignalCPromise {
 
     typealias Result = SignalType_FixedArray32_uint8_t
@@ -1144,6 +1468,142 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalBridgeCopyBackupMediaOutcomeFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalBridgeCopyBackupMediaOutcomeFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalBridgeCopyBackupMediaOutcomeFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalBridgeDeleteBackupMediaItemFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalLinkedDeviceInternalFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalLinkedDeviceInternalFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalLinkedDeviceInternalFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalListMediaItemFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalListMediaItemFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalListMediaItemFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
 
     typealias First = SignalCStringPtr?
@@ -1403,154 +1863,6 @@ extension SignalPairOfPairOfCStringPtrOwnedBufferi64: SignalPairOf {
         set { second = newValue }
     }
 
-}
-
-enum
-    FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg_DerivedArgConverterBridgeCopyBackupMediaItem:
-        FfiBorrowedSliceConstructor
-{
-    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg
-    typealias Element = DerivedArgConverterBridgeCopyBackupMediaItem.FfiArg
-    static func construct(
-        _ buffer: UnsafeBufferPointer<Element>,
-    ) -> BorrowedSlice {
-        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
-    }
-}
-
-enum
-    FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg_DerivedArgConverterBridgeDeleteBackupMediaItem:
-        FfiBorrowedSliceConstructor
-{
-    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg
-    typealias Element = DerivedArgConverterBridgeDeleteBackupMediaItem.FfiArg
-    static func construct(
-        _ buffer: UnsafeBufferPointer<Element>,
-    ) -> BorrowedSlice {
-        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
-    }
-}
-
-enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter: FfiBorrowedSliceConstructor {
-    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfCStringPtr
-    typealias Element = StringConverter.FfiArg
-    static func construct(
-        _ buffer: UnsafeBufferPointer<Element>,
-    ) -> BorrowedSlice {
-        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
-    }
-}
-
-enum FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32:
-    FfiBorrowedSliceConstructor
-{
-    typealias BorrowedSlice = SignalFfi.SignalBorrowedSliceOfc_uchar32
-    typealias Element = FixedByteArrayConverter<FixedByteArrayHelper32>.FfiArg
-    static func construct(
-        _ buffer: UnsafeBufferPointer<Element>,
-    ) -> BorrowedSlice {
-        BorrowedSlice(base: buffer.baseAddress, length: buffer.count)
-    }
-}
-
-enum
-    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult_DerivedReturnConverterBridgeCopyBackupMediaOutcome:
-        FfiOwnedBufferOfMaxAlignedProject
-{
-    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult
-    typealias Element = DerivedReturnConverterBridgeCopyBackupMediaOutcome.FfiReturn
-    static func empty() -> Buffer {
-        Buffer()
-    }
-    static func project(
-        _ buffer: Buffer
-    ) -> UnsafeBufferPointer<Element> {
-        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
-    }
-    static func typeErased(
-        _ buffer: Buffer
-    ) -> SignalOwnedBufferOfMaxAlignedc_void {
-        SignalOwnedBufferOfMaxAlignedc_void(
-            base: UnsafeMutableRawPointer(buffer.base),
-            length: buffer.length,
-            size_bytes: buffer.size_bytes,
-        )
-    }
-}
-
-enum
-    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult_DerivedReturnConverterBridgeDeleteBackupMediaItem:
-        FfiOwnedBufferOfMaxAlignedProject
-{
-    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult
-    typealias Element = DerivedReturnConverterBridgeDeleteBackupMediaItem.FfiReturn
-    static func empty() -> Buffer {
-        Buffer()
-    }
-    static func project(
-        _ buffer: Buffer
-    ) -> UnsafeBufferPointer<Element> {
-        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
-    }
-    static func typeErased(
-        _ buffer: Buffer
-    ) -> SignalOwnedBufferOfMaxAlignedc_void {
-        SignalOwnedBufferOfMaxAlignedc_void(
-            base: UnsafeMutableRawPointer(buffer.base),
-            length: buffer.length,
-            size_bytes: buffer.size_bytes,
-        )
-    }
-}
-
-enum
-    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal:
-        FfiOwnedBufferOfMaxAlignedProject
-{
-    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
-    typealias Element = DerivedReturnConverterLinkedDeviceInternal.FfiReturn
-    static func empty() -> Buffer {
-        Buffer()
-    }
-    static func project(
-        _ buffer: Buffer
-    ) -> UnsafeBufferPointer<Element> {
-        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
-    }
-    static func typeErased(
-        _ buffer: Buffer
-    ) -> SignalOwnedBufferOfMaxAlignedc_void {
-        SignalOwnedBufferOfMaxAlignedc_void(
-            base: UnsafeMutableRawPointer(buffer.base),
-            length: buffer.length,
-            size_bytes: buffer.size_bytes,
-        )
-    }
-}
-
-enum
-    FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult_DerivedReturnConverterListMediaItem:
-        FfiOwnedBufferOfMaxAlignedProject
-{
-    typealias Buffer = SignalFfi.SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult
-    typealias Element = DerivedReturnConverterListMediaItem.FfiReturn
-    static func empty() -> Buffer {
-        Buffer()
-    }
-    static func project(
-        _ buffer: Buffer
-    ) -> UnsafeBufferPointer<Element> {
-        UnsafeBufferPointer(start: buffer.base, count: buffer.length)
-    }
-    static func typeErased(
-        _ buffer: Buffer
-    ) -> SignalOwnedBufferOfMaxAlignedc_void {
-        SignalOwnedBufferOfMaxAlignedc_void(
-            base: UnsafeMutableRawPointer(buffer.base),
-            length: buffer.length,
-            size_bytes: buffer.size_bytes,
-        )
-    }
 }
 
 internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
@@ -1825,7 +2137,7 @@ internal enum DerivedReturnConverterCopyBackupMediaNextChunk: NiceReturnConverte
         let chunk = Result {
             try ArrayReturnConverter<
                 DerivedReturnConverterBridgeCopyBackupMediaOutcome,
-                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult_DerivedReturnConverterBridgeCopyBackupMediaOutcome
+                SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult
             >.convertReturn(consuming: ffiValue.chunk)
         }
         let termination = Result {
@@ -1847,7 +2159,7 @@ internal enum DerivedReturnConverterDeleteBackupMediaNextChunk: NiceReturnConver
         let chunk = Result {
             try ArrayReturnConverter<
                 DerivedReturnConverterBridgeDeleteBackupMediaItem,
-                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult_DerivedReturnConverterBridgeDeleteBackupMediaItem
+                SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult
             >.convertReturn(consuming: ffiValue.chunk)
         }
         let termination = Result {
@@ -1914,8 +2226,7 @@ internal enum DerivedReturnConverterListMediaResponse: NiceReturnConverter {
 
         let items = Result {
             try ArrayReturnConverter<
-                DerivedReturnConverterListMediaItem,
-                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult_DerivedReturnConverterListMediaItem
+                DerivedReturnConverterListMediaItem, SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult
             >.convertReturn(consuming: ffiValue.items)
         }
         let backup_dir = Result { try StringConverter.convertReturn(consuming: ffiValue.backup_dir) }
@@ -2098,11 +2409,10 @@ internal enum DerivedArgConverterCallQualitySurveyInternal: NiceArgConverter {
 
     typealias KeepAlive = (
         IdentityConverter<Bool>.KeepAlive?,
-        ArrayArgConverter<StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter>
-            .KeepAlive?, OptionalStringConverter.KeepAlive?, OptionalStringConverter.KeepAlive?,
-        TimestampConverter.KeepAlive?, TimestampConverter.KeepAlive?, StringConverter.KeepAlive?,
-        IdentityConverter<Bool>.KeepAlive?, StringConverter.KeepAlive?,
-        OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
+        ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+        OptionalStringConverter.KeepAlive?, OptionalStringConverter.KeepAlive?, TimestampConverter.KeepAlive?,
+        TimestampConverter.KeepAlive?, StringConverter.KeepAlive?, IdentityConverter<Bool>.KeepAlive?,
+        StringConverter.KeepAlive?, OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
         OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
         OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
         OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
@@ -2147,15 +2457,9 @@ internal enum DerivedArgConverterCallQualitySurveyInternal: NiceArgConverter {
             ) = IdentityConverter<Bool>.convertArg(user_satisfied)
         let (call_quality_issues_ffi, call_quality_issues_keepalive):
             (
-                ArrayArgConverter<
-                    StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
-                >.FfiArg,
-                ArrayArgConverter<
-                    StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
-                >.KeepAlive?,
-            ) = ArrayArgConverter<
-                StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
-            >.convertArg(call_quality_issues)
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.FfiArg,
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+            ) = ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.convertArg(call_quality_issues)
         let (additional_issues_description_ffi, additional_issues_description_keepalive):
             (
                 OptionalStringConverter.FfiArg,
@@ -2292,11 +2596,10 @@ internal enum DerivedArgConverterCallQualitySurveyInternal: NiceArgConverter {
         let ffiStructKeepAlive:
             (
                 IdentityConverter<Bool>.KeepAlive?,
-                ArrayArgConverter<
-                    StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
-                >.KeepAlive?, OptionalStringConverter.KeepAlive?, OptionalStringConverter.KeepAlive?,
-                TimestampConverter.KeepAlive?, TimestampConverter.KeepAlive?, StringConverter.KeepAlive?,
-                IdentityConverter<Bool>.KeepAlive?, StringConverter.KeepAlive?,
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+                OptionalStringConverter.KeepAlive?, OptionalStringConverter.KeepAlive?, TimestampConverter.KeepAlive?,
+                TimestampConverter.KeepAlive?, StringConverter.KeepAlive?, IdentityConverter<Bool>.KeepAlive?,
+                StringConverter.KeepAlive?,
                 OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
                 OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
                 OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>.KeepAlive?,
@@ -2366,9 +2669,9 @@ internal enum DerivedArgConverterCallQualitySurveyInternal: NiceArgConverter {
 
         return try IdentityConverter<Bool>.convertArgBorrowed(user_satisfied) {
             ffi_user_satisfied in
-            return try ArrayArgConverter<
-                StringConverter, FfiBorrowedSliceConstructor_SignalBorrowedSliceOfCStringPtr_StringConverter
-            >.convertArgBorrowed(call_quality_issues) {
+            return try ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.convertArgBorrowed(
+                call_quality_issues
+            ) {
                 ffi_call_quality_issues in
                 return try OptionalStringConverter.convertArgBorrowed(additional_issues_description) {
                     ffi_additional_issues_description in
@@ -2653,8 +2956,7 @@ internal enum NativeNice {
     ) async throws -> [LinkedDevice] {
         let rawOutput:
             ArrayReturnConverter<
-                DerivedReturnConverterLinkedDeviceInternal,
-                FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal
+                DerivedReturnConverterLinkedDeviceInternal, SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
             >.FfiReturn =
                 try await asyncContext.invokeAsyncFunction {
                     promiseFfi,
@@ -2669,8 +2971,7 @@ internal enum NativeNice {
                         }
                 }
         return try ArrayReturnConverter<
-            DerivedReturnConverterLinkedDeviceInternal,
-            FfiOwnedBufferOfMaxAlignedProject_SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult_DerivedReturnConverterLinkedDeviceInternal
+            DerivedReturnConverterLinkedDeviceInternal, SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
         >.convertReturn(consuming: rawOutput)
 
     }
@@ -2710,8 +3011,7 @@ internal enum NativeNice {
                 BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
                     .convertArgBorrowed(chat) { chatFfi in
                         ArrayArgConverter<
-                            FixedByteArrayConverter<FixedByteArrayHelper32>,
-                            FfiBorrowedSliceConstructor_SignalBorrowedSliceOfc_uchar32_FixedByteArrayConverterFixedByteArrayHelper32
+                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32
                         >.convertArgBorrowed(username_hashes) { username_hashesFfi in
                             SignalFfi.signal_authenticated_chat_connection_reserve_username_hash(
                                 promiseFfi,
@@ -3019,7 +3319,7 @@ internal enum NativeNice {
                         ) { signing_keyFfi in
                             try ArrayArgConverter<
                                 DerivedArgConverterBridgeCopyBackupMediaItem,
-                                FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg_DerivedArgConverterBridgeCopyBackupMediaItem
+                                SignalBorrowedSliceOfBridgeCopyBackupMediaItemFfiArg
                             >.convertArgBorrowed(items) { itemsFfi in
                                 try IdentityConverter.convertArgBorrowed(rng) { rngFfi in
                                     var rawOutput = BridgeHandleConverter<
@@ -3104,7 +3404,7 @@ internal enum NativeNice {
                         ) { signing_keyFfi in
                             try ArrayArgConverter<
                                 DerivedArgConverterBridgeDeleteBackupMediaItem,
-                                FfiBorrowedSliceConstructor_SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg_DerivedArgConverterBridgeDeleteBackupMediaItem
+                                SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg
                             >.convertArgBorrowed(items) { itemsFfi in
                                 try IdentityConverter.convertArgBorrowed(rng) { rngFfi in
                                     var rawOutput = BridgeHandleConverter<

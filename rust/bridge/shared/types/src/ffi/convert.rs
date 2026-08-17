@@ -378,27 +378,12 @@ impl<T: NiceArgConverter + ArgTypeInfo<'static>> NiceArgConverter for BridgeVec<
     fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
         let t = T::register_swift_arg_converter(ctx);
         let borrowed_slice = <BorrowedSliceOf<T::ArgType> as IsCType>::register_c_type(ctx);
-        let borrowed_slice = &borrowed_slice.type_name;
-        let borrowed_slice_cons = format!(
-            "FfiBorrowedSliceConstructor_{borrowed_slice}_{}",
-            t.converter_type
-                .chars()
-                .filter(|x| x.is_alphanumeric() || *x == '_')
-                .join("")
-        );
-        crate::metadata::insert_checked(
-            &mut ctx.ffi_borrowed_slice_cons,
-            borrowed_slice_cons.clone(),
-            FfiBorrowedSliceConstructor {
-                converter_type: t.converter_type.clone(),
-                borrowed_slice: borrowed_slice.clone(),
-            },
-        );
         SwiftArgConverter {
             nice_type: format!("[{}]", t.nice_type),
             converter_type: format!(
-                "ArrayArgConverter<{}, {borrowed_slice_cons}>",
-                t.converter_type
+                "ArrayArgConverter<{}, {}>",
+                t.converter_type,
+                borrowed_slice.swift_name(),
             ),
         }
     }
@@ -462,26 +447,14 @@ impl<T: ResultTypeInfo> ResultTypeInfo for BridgeVec<T> {
 impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for BridgeVec<T> {
     fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
         let t = T::register_swift_result_converter(ctx);
-        let mangled = <OwnedBufferOfMaxAligned<T::ResultType> as IsCType>::register_c_type(ctx);
-        let mangled = &mangled.type_name;
-        let proj = format!(
-            "FfiOwnedBufferOfMaxAlignedProject_{mangled}_{}",
-            t.converter_type
-                .chars()
-                .filter(|x| x.is_alphanumeric() || *x == '_')
-                .join("")
-        );
-        crate::metadata::insert_checked(
-            &mut ctx.ffi_owned_buffer_of_max_aligned_project,
-            proj.clone(),
-            FfiOwnedBufferOfMaxAlignedProject {
-                converter_type: t.converter_type.clone(),
-                buffer_type: mangled.clone(),
-            },
-        );
+        let buffer = <OwnedBufferOfMaxAligned<T::ResultType> as IsCType>::register_c_type(ctx);
         SwiftReturnConverter {
             nice_type: format!("[{}]", t.nice_type),
-            converter_type: format!("ArrayReturnConverter<{}, {proj}>", t.converter_type),
+            converter_type: format!(
+                "ArrayReturnConverter<{}, {}>",
+                t.converter_type,
+                buffer.swift_name()
+            ),
         }
     }
 }

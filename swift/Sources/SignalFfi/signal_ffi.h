@@ -2967,12 +2967,12 @@ typedef struct {
   void* base;
   size_t length;
   size_t size_bytes;
-} SignalOwnedBufferOfMaxAlignedc_void;
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedc_void, base) == 0);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedc_void, length) == 8);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedc_void, size_bytes) == 16);
-static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedc_void) == 24);
-static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedc_void) == 8);
+} SignalOwnedBufferOfMaxAlignedErased;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedErased, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedErased, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedErased, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedErased) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedErased) == 8);
 typedef enum {
   SignalErrorCodeUnknownError = 1,
   SignalErrorCodeInvalidState = 2,
@@ -4171,7 +4171,7 @@ void signal_free_outer_buffer_list_of_prekey_bundles(
   SignalOwnedBufferOfMutPointerPreKeyBundle buffer
 );
 void signal_free_owned_buffer_of_max_aligned(
-  SignalOwnedBufferOfMaxAlignedc_void buffer
+  SignalOwnedBufferOfMaxAlignedErased buffer
 );
 void signal_free_string(
   const int8_t* buf

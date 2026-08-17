@@ -309,12 +309,6 @@ internal struct BulkPolledStreamTerminationConverter: NiceReturnConverter {
     }
 }
 
-protocol FfiBorrowedSliceConstructor {
-    associatedtype BorrowedSlice
-    associatedtype Element
-    static func construct(_ buffer: UnsafeBufferPointer<Element>) -> BorrowedSlice
-}
-
 internal class StablePointerArray<Element> {
     internal let buffer: UnsafeMutableBufferPointer<Element>
     internal init(fromContentsOf elements: [Element]) {
@@ -328,10 +322,27 @@ internal class StablePointerArray<Element> {
     }
 }
 
-internal enum ArrayArgConverter<Converter: NiceArgConverter, SliceCons: FfiBorrowedSliceConstructor>: NiceArgConverter
-where SliceCons.Element == Converter.FfiArg {
+internal protocol SignalBorrowedSliceOf {
+    associatedtype Element
+    init()
+    init(
+        generic_base: UnsafePointer<Element>?,
+        generic_length: Int
+    )
+    var generic_base: UnsafePointer<Element>? { get set }
+    var generic_length: Int { get set }
+}
+
+extension SignalBorrowedSliceOf {
+    init(unsafeBufferPointer: UnsafeBufferPointer<Element>) {
+        self.init(generic_base: unsafeBufferPointer.baseAddress, generic_length: unsafeBufferPointer.count)
+    }
+}
+
+internal enum ArrayArgConverter<Converter: NiceArgConverter, BorrowedSlice: SignalBorrowedSliceOf>: NiceArgConverter
+where BorrowedSlice.Element == Converter.FfiArg {
     typealias NiceArg = [Converter.NiceArg]
-    typealias FfiArg = SliceCons.BorrowedSlice
+    typealias FfiArg = BorrowedSlice
     typealias KeepAlive = (StablePointerArray<Converter.FfiArg>, [Converter.KeepAlive])
 
     private static func convertArgCore(_ arg: [Converter.NiceArg]) -> ([Converter.FfiArg], [Converter.KeepAlive]) {
@@ -356,7 +367,7 @@ where SliceCons.Element == Converter.FfiArg {
         let (contents, keepAlives) = convertArgCore(arg)
         return try withExtendedLifetime(keepAlives) {
             try contents.withUnsafeBufferPointer { buf in
-                try thunk(SliceCons.construct(buf))
+                try thunk(BorrowedSlice(unsafeBufferPointer: buf))
             }
         }
     }
@@ -364,33 +375,54 @@ where SliceCons.Element == Converter.FfiArg {
     static func convertArg(_ arg: NiceArg) -> (FfiArg, KeepAlive?) {
         let (contents, keepAlives) = convertArgCore(arg)
         let contentsStable = StablePointerArray(fromContentsOf: contents)
-        return (SliceCons.construct(UnsafeBufferPointer(contentsStable.buffer)), (contentsStable, keepAlives))
+        return (
+            BorrowedSlice(unsafeBufferPointer: UnsafeBufferPointer(contentsStable.buffer)),
+            (contentsStable, keepAlives)
+        )
     }
 }
 
-internal protocol FfiOwnedBufferOfMaxAlignedProject {
-    associatedtype Buffer
+internal protocol SignalOwnedBufferOfMaxAligned {
     associatedtype Element
-    static func empty() -> Buffer
-    static func project(_ buffer: Buffer) -> UnsafeBufferPointer<Element>
-    static func typeErased(_ buffer: Buffer) -> SignalOwnedBufferOfMaxAlignedc_void
+    init()
+    init(
+        generic_base: UnsafeMutablePointer<Element>?,
+        generic_length: Int,
+        generic_size_bytes: Int,
+    )
+    var generic_base: UnsafeMutablePointer<Element>? { get set }
+    var generic_length: Int { get set }
+    var generic_size_bytes: Int { get set }
 }
 
-internal enum ArrayReturnConverter<Converter: NiceReturnConverter, BufferProj: FfiOwnedBufferOfMaxAlignedProject>:
+extension SignalOwnedBufferOfMaxAligned {
+    func typeErased() -> SignalOwnedBufferOfMaxAlignedErased {
+        SignalOwnedBufferOfMaxAlignedErased(
+            base: UnsafeMutableRawPointer(self.generic_base),
+            length: self.generic_length,
+            size_bytes: self.generic_size_bytes,
+        )
+    }
+    func buffer() -> UnsafeBufferPointer<Element> {
+        UnsafeBufferPointer(start: self.generic_base, count: self.generic_length)
+    }
+}
+
+internal enum ArrayReturnConverter<Converter: NiceReturnConverter, Buffer: SignalOwnedBufferOfMaxAligned>:
     NiceReturnConverter
-where BufferProj.Element == Converter.FfiReturn {
+where Buffer.Element == Converter.FfiReturn {
     typealias NiceReturn = [Converter.NiceReturn]
-    typealias FfiReturn = BufferProj.Buffer
+    typealias FfiReturn = Buffer
 
     static func emptyFfiReturn() -> FfiReturn {
-        BufferProj.empty()
+        Buffer()
     }
 
     static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
         defer {
-            SignalFfi.signal_free_owned_buffer_of_max_aligned(BufferProj.typeErased(value))
+            SignalFfi.signal_free_owned_buffer_of_max_aligned(value.typeErased())
         }
-        let buffer = BufferProj.project(value)
+        let buffer = value.buffer()
         var out: NiceReturn = []
         out.reserveCapacity(buffer.count)
         var err: (any Error)? = nil

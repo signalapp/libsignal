@@ -29,18 +29,6 @@ pub struct NiceFunction {
     pub return_type: SwiftReturnConverter,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct FfiBorrowedSliceConstructor {
-    pub converter_type: String,
-    pub borrowed_slice: String,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct FfiOwnedBufferOfMaxAlignedProject {
-    pub converter_type: String,
-    pub buffer_type: String,
-}
-
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CStructGenericInstance<Type = capi::RustType> {
     pub monomorph: Type,
@@ -84,12 +72,6 @@ pub struct SwiftMetadataContext {
     pub derived_types: BTreeMap<String, DerivedType<NiceType>>,
     pub derived_return_converters: BTreeMap<String, DerivedType<SwiftReturnConverter>>,
     pub derived_arg_converters: BTreeMap<String, DerivedType<SwiftArgConverter>>,
-
-    /// Map from the name of a `FfiBorrowedSliceConstructor` to information about the constructor
-    pub ffi_borrowed_slice_cons: BTreeMap<String, FfiBorrowedSliceConstructor>,
-    /// Map from the name of a `FfiOwnedBufferOfMaxAlignedProject` to information about the constructor
-    pub ffi_owned_buffer_of_max_aligned_project:
-        BTreeMap<String, FfiOwnedBufferOfMaxAlignedProject>,
 
     pub c_types: BTreeMap<capi::RustType, Arc<capi::CType>>,
     pub c_struct_offsets: BTreeMap<capi::RustType, BTreeMap<String, usize>>,
