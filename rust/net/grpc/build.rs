@@ -19,6 +19,7 @@ fn main() {
         "proto/org/signal/chat/device.proto",
         "proto/org/signal/chat/donations.proto",
         "proto/org/signal/chat/keys.proto",
+        "proto/org/signal/chat/login_purchase.proto",
         "proto/org/signal/chat/messages.proto",
         "proto/org/signal/chat/one_time_donations.proto",
         "proto/org/signal/chat/payments.proto",
