@@ -20,7 +20,7 @@ libsignal-debug = { workspace = true }
 signal-crypto = { workspace = true }
 
 aes = { workspace = true, features = ["zeroize"] }
-aes-gcm-siv = { workspace = true }
+aes-gcm-siv = { workspace = true, features = ["zeroize"] }
 assert_matches = { workspace = true }
 async-trait = { workspace = true }
 bitflags = { workspace = true }

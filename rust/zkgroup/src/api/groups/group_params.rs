@@ -4,7 +4,6 @@
 //
 
 use aes_gcm_siv::aead::Aead;
-use aes_gcm_siv::aead::generic_array::GenericArray;
 use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
 use partial_default::PartialDefault;
 use serde::{Deserialize, Serialize};
@@ -230,29 +229,30 @@ impl GroupSecretParams {
         Ok(decrypted)
     }
 
-    fn encrypt_blob_aesgcmsiv(&self, key: &[u8], nonce: &[u8], plaintext: &[u8]) -> Vec<u8> {
-        let key = GenericArray::from_slice(key);
-        let aead_cipher = Aes256GcmSiv::new(key);
-        let nonce = GenericArray::from_slice(nonce);
+    fn encrypt_blob_aesgcmsiv(
+        &self,
+        key: &[u8; AES_KEY_LEN],
+        nonce: &[u8; AESGCM_NONCE_LEN],
+        plaintext: &[u8],
+    ) -> Vec<u8> {
+        let aead_cipher = Aes256GcmSiv::new(key.into());
         aead_cipher
-            .encrypt(nonce, plaintext)
+            .encrypt(nonce.into(), plaintext)
             .expect("aead encrypt failure")
     }
 
     fn decrypt_blob_aesgcmsiv(
         &self,
-        key: &[u8],
-        nonce: &[u8],
+        key: &[u8; AES_KEY_LEN],
+        nonce: &[u8; AESGCM_NONCE_LEN],
         ciphertext: &[u8],
     ) -> Result<Vec<u8>, ZkGroupVerificationFailure> {
         if ciphertext.len() < AESGCM_TAG_LEN {
             // AESGCM_TAG_LEN = 16 bytes for tag
             return Err(ZkGroupVerificationFailure);
         }
-        let key = GenericArray::from_slice(key);
-        let aead_cipher = Aes256GcmSiv::new(key);
-        let nonce = GenericArray::from_slice(nonce);
-        match aead_cipher.decrypt(nonce, ciphertext) {
+        let aead_cipher = Aes256GcmSiv::new(key.into());
+        match aead_cipher.decrypt(nonce.into(), ciphertext) {
             Ok(plaintext_vec) => Ok(plaintext_vec),
             Err(_) => Err(ZkGroupVerificationFailure),
         }

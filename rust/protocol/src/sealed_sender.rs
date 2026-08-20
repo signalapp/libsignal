@@ -8,8 +8,9 @@ use std::ops::Range;
 use std::sync::LazyLock;
 use std::time::SystemTime;
 
-use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
-use aes_gcm_siv::{AeadInPlace, Aes256GcmSiv, KeyInit};
+use aes_gcm_siv::aead::AeadInOut as _;
+use aes_gcm_siv::aead::array::typenum::Unsigned;
+use aes_gcm_siv::{Aes256GcmSiv, KeyInit};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use prost::Message;
@@ -1416,12 +1417,12 @@ where
     let ciphertext = {
         let mut ciphertext = usmc.serialized()?.to_vec();
         let symmetric_authentication_tag = Aes256GcmSiv::new(&keys.derive_k().into())
-            .encrypt_in_place_detached(
+            .encrypt_inout_detached(
                 // There's no nonce because the key is already one-use.
                 &aes_gcm_siv::Nonce::default(),
                 // And there's no associated data.
                 &[],
-                &mut ciphertext,
+                (&mut ciphertext[..]).into(),
             )
             .expect("AES-GCM-SIV encryption should not fail with a just-computed key");
         // AES-GCM-SIV expects the authentication tag to be at the end of the ciphertext

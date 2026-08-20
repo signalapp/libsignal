@@ -4,8 +4,8 @@
 //
 
 use ::signal_crypto;
-use aes_gcm_siv::aead::generic_array::typenum::Unsigned;
-use aes_gcm_siv::{AeadCore, AeadInPlace, KeyInit};
+use aes_gcm_siv::aead::array::typenum::Unsigned;
+use aes_gcm_siv::{AeadCore, AeadInOut as _, KeyInit};
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::crypto::{Aes256GcmDecryption, Aes256GcmEncryption, Aes256GcmSiv};
 use libsignal_core::curve::{PrivateKey, PublicKey};
@@ -102,10 +102,7 @@ fn Aes256GcmSiv_Encrypt(
     nonce: &[u8],
     associated_data: &[u8],
 ) -> Result<Vec<u8>> {
-    if nonce.len() != <aes_gcm_siv::Aes256GcmSiv as AeadCore>::NonceSize::USIZE {
-        return Err(Error::InvalidNonceSize);
-    }
-    let nonce: &aes_gcm_siv::Nonce = nonce.into();
+    let nonce: &aes_gcm_siv::Nonce = nonce.try_into().map_err(|_| Error::InvalidNonceSize)?;
 
     let mut buf =
         Vec::with_capacity(ptext.len() + <aes_gcm_siv::Aes256GcmSiv as AeadCore>::TagSize::USIZE);
@@ -126,10 +123,7 @@ fn Aes256GcmSiv_Decrypt(
     nonce: &[u8],
     associated_data: &[u8],
 ) -> Result<Vec<u8>> {
-    if nonce.len() != <aes_gcm_siv::Aes256GcmSiv as AeadCore>::NonceSize::USIZE {
-        return Err(Error::InvalidNonceSize);
-    }
-    let nonce: &aes_gcm_siv::Nonce = nonce.into();
+    let nonce: &aes_gcm_siv::Nonce = nonce.try_into().map_err(|_| Error::InvalidNonceSize)?;
 
     let mut buf = ctext.to_vec();
     aes_gcm_siv
