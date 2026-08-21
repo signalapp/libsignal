@@ -364,6 +364,23 @@ pub trait ResultTypeInfo<'a>: Sized {
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError>;
 }
 
+/// A helper to abstract over [`ResultTypeInfo`] implementers and also top-level `Result`s.
+///
+/// Used by the `bridge_fn` macro. Not intended to be used directly in most cases.
+pub trait ResultTypeDeclInfo<'a>: Sized {
+    type ResultType;
+}
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeDeclInfo<'a> for T {
+    type ResultType = T::ResultType;
+}
+impl<'a, T, E> ResultTypeDeclInfo<'a> for Result<T, E>
+where
+    T: ResultTypeInfo<'a>,
+    E: Into<crate::jni::SignalJniError>,
+{
+    type ResultType = T::ResultType;
+}
+
 /// Supports values `0..=Integer.MAX_VALUE`.
 ///
 /// Negative `int` values are *not* reinterpreted as large `u32` values.
@@ -3609,239 +3626,4 @@ macro_rules! jni_arg_type {
         $crate::jni::JavaPair<'local, $crate::jni_arg_type!($a), $crate::jni_arg_type!($b)>
     };
     ($typ:ty) => (::jni::objects::JObject<'local>);
-}
-
-/// Syntactically translates `bridge_fn` result types to JNI types for `cbindgen` and
-/// `gen_java_decl.py`.
-///
-/// This is a syntactic transformation (because that's how Rust macros work), so new result types
-/// will need to be added here directly even if they already implement [`ResultTypeInfo`]. The
-/// default behavior is to assume we're returning an opaque handle to a Rust value.
-///
-/// The `'local` lifetime represents the lifetime of the JNI context.
-#[macro_export]
-macro_rules! jni_result_type {
-    // These rules only match a single token for a Result's success type, or
-    // Option's inner type.  We can't use `:ty` because we need the resulting
-    // tokens to be matched recursively rather than treated as a single unit,
-    // and we can't match multiple tokens because Rust's macros match eagerly.
-    // Therefore, if you need to return a more complicated Result or Option
-    // type, you'll have to add another rule for its form.
-    (std::result::Result<$($rest:tt)+) => {
-        jni_result_type!(Result<$($rest)+)
-    };
-    (Result<Vec<Vec<u8> > $(, $_:ty)?>) => {
-        $crate::jni::Throwing<::jni::objects::JObjectArray<'local>>
-    };
-    (Result<$typ:tt $(, $_:ty)?>) => {
-        $crate::jni::Throwing<jni_result_type!($typ)>
-    };
-    (Result<&$typ:tt $(, $_:ty)?>) => {
-        $crate::jni::Throwing<jni_result_type!(&$typ)>
-    };
-    (Result<Option<&$typ:tt> $(, $_:ty)?>) => {
-        $crate::jni::Throwing<jni_result_type!(Option<&$typ>)>
-    };
-    (Result<Option<$typ:tt<$($args:tt),+> > $(, $_:ty)?>) => {
-        $crate::jni::Throwing<jni_result_type!(Option<$typ<$($args),+> >)>
-    };
-    (Result<$typ:tt<$($args:tt),+> $(, $_:ty)?>) => {
-        $crate::jni::Throwing<jni_result_type!($typ<$($args),+>)>
-    };
-    (Result<($a:tt, $b:tt>)) => {
-        $crate::jni::Throwing<jni_result_type!(($a, $b))>
-    };
-    (Result<($a:tt<$($aargs:tt),+>, $b:tt<$($bargs:tt),+>) $(, $_:ty)?>) => {
-        $crate::jni::Throwing<jni_result_type!(($a<$($aargs),+>, $b<$($bargs),+>))>
-    };
-    (Option<u32>) => {
-        ::jni::sys::jint
-    };
-    (Option<u64>) => {
-        ::jni::sys::jlong
-    };
-    (Option<Vec<u8>>) => {
-        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
-    };
-    (f32) => {
-        ::jni::sys::jfloat
-    };
-    (Option<f32>) => {
-        $crate::jni::JavaOptionalFloat<'local>
-    };
-    (Option<$typ:tt>) => {
-        $crate::jni::Nullable<$crate::jni_result_type!($typ)>
-    };
-    (Option<&$typ:tt>) => {
-        $crate::jni::Nullable<$crate::jni_result_type!(&$typ)>
-    };
-    (Option<$typ:tt<$($args:tt),+> >) => {
-        $crate::jni::Nullable<$crate::jni_result_type!($typ<$($args),+>)>
-    };
-    (()) => {
-        ()
-    };
-    (($a:tt, $b:tt)) => {
-        $crate::jni::JavaPair<'local, $crate::jni_result_type!($a), $crate::jni_result_type!($b)>
-    };
-    (($a:tt<$($aargs:tt),+>, $b:tt<$($bargs:tt),+>)) => {
-        $crate::jni::JavaPair<'local, $crate::jni_result_type!($a<$($aargs),+>), $crate::jni_result_type!($b<$($bargs),+>)>
-    };
-    (bool) => {
-        ::jni::sys::jboolean
-    };
-    (u8) => {
-        // Note: not a jbyte. It's better to preserve the signedness here.
-        ::jni::sys::jint
-    };
-    (u16) => {
-        // Note: not a jshort. It's better to preserve the signedness here.
-        ::jni::sys::jint
-    };
-    (i32) => {
-        ::jni::sys::jint
-    };
-    (u32) => {
-        ::jni::sys::jint
-    };
-    (u64) => {
-        ::jni::sys::jlong
-    };
-    (DeviceId) => {
-        ::jni::sys::jint
-    };
-    (&str) => {
-        ::jni::objects::JString<'local>
-    };
-    (String) => {
-        ::jni::objects::JString<'local>
-    };
-    (Uuid) => {
-        $crate::jni::JavaUUID<'local>
-    };
-    (Timestamp) => {
-        ::jni::sys::jlong
-    };
-    (&[u8]) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Vec<u8>) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Vec<Vec<u8> >) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (bytes::Bytes) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (&[String]) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (Box<[String]>) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (Box<[Vec<u8>]>) => {
-        $crate::jni::JavaArrayOfByteArray<'local>
-    };
-    (Cds2Metrics) => {
-        $crate::jni::JavaMap<'local>
-    };
-    ([u8; $len:expr]) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (ServiceId) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Aci) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Pni) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (MessageBackupValidationOutcome) => {
-        ::jni::objects::JObject<'local>
-    };
-    (MessageBackupReadOutcome) => {
-        ::jni::objects::JObject<'local>
-    };
-    (LookupResponse) => {
-        ::jni::objects::JObject<'local>
-    };
-    (ChatResponse) => {
-        ::jni::objects::JObject<'local>
-    };
-    (CiphertextMessage) => {
-        jni::JavaCiphertextMessage<'local>
-    };
-    (Vec<ServiceId>) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (Box<[ChallengeOption] >) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (Box<[RegisterResponseBadge] >) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (CheckSvr2CredentialsResponse) => {
-        $crate::jni::JavaMap<'local>
-    };
-    (PreKeysResponse) => {
-        ::jni::objects::JObject<'local>
-    };
-    (Serialized<$typ:ident>) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Ignored<$typ:ty>) => {
-        ::jni::objects::JObject<'local>
-    };
-    (Vec<JsonFrameExportResult>) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (UploadForm) => {
-        ::jni::objects::JObject<'local>
-    };
-    (CdnCredentials) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (BridgeVec<$ty:ty>) => {
-        $crate::jni::JavaArrayStar<'local>
-    };
-    (BridgedError<$typ:ty>) => {
-        ::jni::objects::JThrowable<'local>
-    };
-    (Option<BridgedError<$typ:ty> >) => {
-        $crate::jni::Nullable<::jni::objects::JThrowable<'local>>
-    };
-    (Option<BulkPolledStreamTerminationReason<$typ:ty> >) => {
-        $crate::jni::Nullable<::jni::objects::JObject<'local>>
-    };
-
-    (GrpcTestCases<$a:ty, $b:ty $(,)?>) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-
-    // Derived types
-    (BridgeCopyBackupMediaItem) => {::jni::objects::JObject<'local>};
-    (BridgeCopyBackupMediaOutcome) => {::jni::objects::JObject<'local>};
-    (BridgeCopyBackupMediaResult) => {::jni::objects::JObject<'local>};
-    (BridgeDeleteBackupMediaItem) => {::jni::objects::JObject<'local>};
-    (BridgeMediaBackupInfo) => {::jni::objects::JObject<'local>};
-    (BridgeMessageBackupInfo) => {::jni::objects::JObject<'local>};
-    (CopyBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
-    (DeleteBackupMediaNextChunk) => {::jni::objects::JObject<'local>};
-    (ListMediaResponse) => {::jni::objects::JObject<'local>};
-
-    // Testing derived types
-    (MySimpleTestEnum) => {::jni::objects::JObject<'local>};
-    (MyTestEnum) => {::jni::objects::JObject<'local>};
-    (MyTestPoint) => {::jni::objects::JObject<'local>};
-    (MyTestStruct) => {::jni::objects::JObject<'local>};
-    (TestStreamChunk) => {::jni::objects::JObject<'local>};
-    (MyNiceTypeStructNot) => {::jni::objects::JObject<'local>};
-    (MyNiceTypeEnumNot) => {::jni::objects::JObject<'local>};
-    (MyNiceTypeSimpleEnumNot) => {::jni::objects::JObject<'local>};
-
-    ( $handle:ty ) => {
-        $crate::jni::ObjectHandle
-    };
 }

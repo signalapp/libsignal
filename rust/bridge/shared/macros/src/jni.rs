@@ -7,6 +7,7 @@ use heck::ToLowerCamelCase;
 use itertools::Itertools;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::*;
+use syn::fold::Fold as _;
 use syn::spanned::Spanned as _;
 use syn::*;
 use syn_mid::Signature;
@@ -65,12 +66,16 @@ pub(crate) fn bridge_fn(
     };
 
     let output = result_type(&sig.output);
+    let explicitly_local_lifetime_output =
+        ApplyLocalLifetime(syn::parse_quote!('local)).fold_type(syn::parse2(output.clone())?);
     let mut is_throwing = ResultInfo::from(&sig.output).failable;
     let result_ty = match bridging_kind {
-        BridgingKind::Regular => quote!(jni_result_type!(#output)),
+        BridgingKind::Regular => {
+            quote!(<#explicitly_local_lifetime_output as jni::ResultTypeDeclInfo<'local>>::ResultType)
+        }
         BridgingKind::Io { .. } => {
             is_throwing = false;
-            quote!(jni::JavaCompletableFuture<'local, jni_result_type!(#output)>)
+            quote!(jni::JavaCompletableFuture<'local, <#explicitly_local_lifetime_output as jni::ResultTypeDeclInfo<'local>>::ResultType>)
         }
     };
 
@@ -135,6 +140,25 @@ pub(crate) fn bridge_fn(
                 },
             };
     })
+}
+
+struct ApplyLocalLifetime(syn::Lifetime);
+
+impl syn::fold::Fold for ApplyLocalLifetime {
+    fn fold_type_reference(&mut self, i: syn::TypeReference) -> syn::TypeReference {
+        if i.lifetime.is_none() {
+            syn::TypeReference {
+                lifetime: Some(self.0.clone()),
+                ..i
+            }
+        } else {
+            i
+        }
+    }
+
+    fn fold_lifetime(&mut self, i: syn::Lifetime) -> syn::Lifetime {
+        if i.ident == "_" { self.0.clone() } else { i }
+    }
 }
 
 fn generate_code_to_load_input(name: impl IdentFragment, ty: impl ToTokens) -> TokenStream2 {
