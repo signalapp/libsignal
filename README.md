@@ -66,7 +66,7 @@ $ bin/mac_setup.sh
 
 ### First Build and Test
 
-The build currently uses a specific version of the Rust nightly compiler, which
+The build currently uses a specific version of the Rust stable compiler, which
 will be downloaded automatically by cargo. To build and test the basic protocol
 libraries:
 

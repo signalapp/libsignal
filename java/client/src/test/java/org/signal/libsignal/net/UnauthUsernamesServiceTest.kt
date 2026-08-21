@@ -387,7 +387,7 @@ class UnauthUsernamesServiceGrpcTest {
             is LookUpUsernameLinkOut.Success ->
               assertEquals(
                 expected._0,
-                assertIs<RequestResult.Success<Username?>>(actual).result?.username,
+                assertIs<RequestResult.Success<Username?>>(actual, actual.toString()).result?.username,
               )
             LookUpUsernameLinkOut.NotFound ->
               assertNull(assertIs<RequestResult.Success<Username?>>(actual).result)
