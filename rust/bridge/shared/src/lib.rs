@@ -17,7 +17,7 @@ pub use libsignal_bridge_types::{
     bridge_handle_fns, bridge_serializable_handle_fns, describe_panic, io,
 };
 #[cfg(feature = "jni")]
-pub use libsignal_bridge_types::{jni, jni_arg_type, jni_args};
+pub use libsignal_bridge_types::{jni, jni_args};
 #[cfg(feature = "node")]
 pub use libsignal_bridge_types::{node, node_register};
 

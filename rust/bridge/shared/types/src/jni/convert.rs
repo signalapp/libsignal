@@ -312,6 +312,23 @@ pub trait CallbackResultTypeInfo<'a>: Sized {
         foreign: Self::ResultType,
     ) -> Result<Self, BridgeLayerError>;
 }
+impl<'a, T: CallbackResultTypeInfo<'a>> CallbackResultTypeDeclInfo<'a> for T {
+    type ResultType = T::ResultType;
+}
+impl<'a, T, E> CallbackResultTypeDeclInfo<'a> for Result<T, E>
+where
+    T: CallbackResultTypeInfo<'a>,
+    E: Into<crate::jni::SignalJniError>,
+{
+    type ResultType = T::ResultType;
+}
+
+/// A helper to abstract over [`CallbackResultTypeInfo`] implementers and also top-level `Result`s.
+///
+/// Used by the `bridge_fn` macro. Not intended to be used directly in most cases.
+pub trait CallbackResultTypeDeclInfo<'a>: Sized {
+    type ResultType;
+}
 
 impl<'a, T: SimpleArgTypeInfo<'a> + ResultTypeInfo<'a>> CallbackResultTypeInfo<'a> for T {
     type ResultType = <T as SimpleArgTypeInfo<'a>>::ArgType;
@@ -3405,225 +3422,3 @@ impl ResultTypeInfo<'_> for i64 {
 }
 nice_identity_result_converter!(i64, "Long");
 nice_identity_arg_converter!(i64, "Long");
-
-/// Syntactically translates `bridge_fn` argument types to JNI types for `cbindgen` and
-/// `gen_java_decl.py`.
-///
-/// This is a syntactic transformation (because that's how Rust macros work), so new argument types
-/// will need to be added here directly even if they already implement [`ArgTypeInfo`]. The default
-/// behavior for references is to assume they're opaque handles to Rust values; the default
-/// behavior for `&mut dyn Foo` is to assume there's a type called `jni::JavaFoo`.
-///
-/// The `'local` lifetime represents the lifetime of the JNI context.
-#[macro_export]
-macro_rules! jni_arg_type {
-    (u8) => {
-        // Note: not a jbyte. It's better to preserve the signedness here.
-        ::jni::sys::jint
-    };
-    (u16) => {
-        ::jni::sys::jint
-    };
-    (i32) => {
-        ::jni::sys::jint
-    };
-    (u32) => {
-        ::jni::sys::jint
-    };
-    (Option<u32>) => {
-        ::jni::sys::jint
-    };
-    (f32) => {
-        ::jni::sys::jfloat
-    };
-    (Option<f32>) => {
-        $crate::jni::JavaOptionalFloat<'local>
-    };
-    (u64) => {
-        ::jni::sys::jlong
-    };
-    (f64) => {
-        ::jni::sys::jdouble
-    };
-    (bool) => {
-        ::jni::sys::jboolean
-    };
-    (String) => {
-        ::jni::objects::JString<'local>
-    };
-    (Option<String>) => {
-        $crate::jni::Nullable<::jni::objects::JString<'local>>
-    };
-    (&[u8]) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Option<&[u8]>) => {
-        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
-    };
-    (Option<Box<dyn ChatListener> >) =>{
-        $crate::jni::Nullable<jni::JavaBridgeChatListener<'local>>
-    };
-    (Box<dyn ChatListener >) =>{
-        jni::JavaBridgeChatListener<'local>
-    };
-    (Box<dyn ProvisioningListener >) =>{
-        jni::JavaBridgeProvisioningListener<'local>
-    };
-    (Box<dyn ConnectChatBridge >) =>{
-        $crate::jni::JavaConnectChatBridge<'local>
-    };
-    (RegistrationCreateSessionRequest) => {
-        ::jni::objects::JObject<'local>
-    };
-    (RegistrationPushToken) => {
-        ::jni::objects::JString<'local>
-    };
-    (SignedPublicPreKey) => {
-        jni::JavaSignedPublicPreKey<'local>
-    };
-    (DeviceId) => {
-        ::jni::sys::jint
-    };
-    (&mut [u8]) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (&[u8; $len:expr]) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    ([u8; $len:expr]) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Box<[u8]>) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Box<[u32]>) => {
-        ::jni::objects::JIntArray<'local>
-    };
-    (Box<[String]>) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (LanguageList) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (&BackupKey) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Option<Box<[u8]> >) => {
-        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
-    };
-    (Option<&[u8; $len:expr] >) => {
-        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
-    };
-    (ServiceId) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Aci) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Pni) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (AccountEntropyPool) => {
-        ::jni::objects::JString<'local>
-    };
-    (MultiRecipientSendAuthorization) => {
-        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
-    };
-    (ServiceIdSequence<'_>) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (::zkgroup::backups::BackupAuthCredential) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (::zkgroup::generic_server_params::GenericServerPublicParams) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Vec<u8>) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (Option<Vec<u8> >) => {
-        $crate::jni::Nullable<::jni::objects::JByteArray<'local>>
-    };
-    (Vec<&[u8]>) => {
-        jni::JavaByteBufferArray<'local>
-    };
-    (Vec<Vec<u8> >) => {
-        jni::JavaArrayOfByteArray<'local>
-    };
-    (Timestamp) => {
-        ::jni::sys::jlong
-    };
-    (RandomNumberGenerator) => {
-        ::jni::sys::jlong
-    };
-    (Uuid) => {
-        $crate::jni::JavaUUID<'local>
-    };
-    (E164) => {
-        ::jni::objects::JString<'local>
-    };
-    (Option<E164>) => {
-        $crate::jni::Nullable<::jni::objects::JString<'local>>
-    };
-    (GroupSendFullToken) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (jni::CiphertextMessageRef) => {
-        $crate::jni::JavaCiphertextMessage<'local>
-    };
-    (&[jni::CiphertextMessageRef<'_>]) => {
-        ::jni::objects::JObjectArray<'local>
-    };
-    (& [& $typ:ty]) => {
-        ::jni::objects::JLongArray<'local>
-    };
-    (&mut dyn $typ:ty) => {
-        ::paste::paste!(jni::[<Java $typ>]<'local>)
-    };
-    (Option<&dyn $typ:ty>) => {
-        ::paste::paste!($crate::jni::Nullable<jni::[<Java $typ>]<'local>>)
-    };
-    (BridgeHandleRef<$lt:lifetime, $typ:ty>) => {
-        $crate::jni::JavaSimpleOwner<'local>
-    };
-    (ObjectHandle) => {
-        $crate::jni::ObjectHandle
-    };
-    (& $typ:ty) => {
-        $crate::jni::ObjectHandle
-    };
-    (&mut $typ:ty) => {
-        $crate::jni::ObjectHandle
-    };
-    (Option<& $typ:ty>) => {
-        $crate::jni::ObjectHandle
-    };
-    (Serialized<$typ:ident>) => {
-        ::jni::objects::JByteArray<'local>
-    };
-    (AsType<$typ:ident, $bridged:ident>) => {
-        $crate::jni_arg_type!($bridged)
-    };
-    (CreateSession) => {
-        $crate::jni::JObject<'local>
-    };
-    (TestingFutureCancellationGuard) => { $crate::jni::ObjectHandle };
-    (DeviceSpecifier) => {
-        ::jni::sys::jint
-    };
-    (BridgeVec<$ty:ty>) => {
-        $crate::jni::JavaArrayStar<'local>
-    };
-
-    (Ignored<$typ:ty>) => (::jni::objects::JObject<'local>);
-
-    // For use in callbacks.
-    (Result<$typ:tt $(, $ignored:ty)?>) => (jni_arg_type!($typ));
-    (Result<$typ:tt<$($args:tt),+> $(, $ignored:ty)?>) => (jni_arg_type!($typ<$($args),+>));
-    (Option<$typ:ty>) => ($crate::jni::Nullable<jni_arg_type!($typ)>);
-    (()) => (());
-    (($a:tt, $b:tt)) => {
-        $crate::jni::JavaPair<'local, $crate::jni_arg_type!($a), $crate::jni_arg_type!($b)>
-    };
-    ($typ:ty) => (::jni::objects::JObject<'local>);
-}

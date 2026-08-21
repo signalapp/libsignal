@@ -887,7 +887,7 @@ fn UnidentifiedSenderMessageContentNew(
     node = false
 )]
 fn UnidentifiedSenderMessageContent_New_Java(
-    message: jni::CiphertextMessageRef,
+    message: jni::CiphertextMessageRef<'_>,
     sender: &SenderCertificate,
     content_hint: u32,
     group_id: Option<&[u8]>,
