@@ -137,29 +137,26 @@
 //!
 //! # Adding new argument and result types
 //!
-//! If your argument or result type is a Rust value being wrapped in an opaque box, declare it using
-//! the `bridge_as_handle` macro alongside other such types. Otherwise, there are two steps:
+//! - If your argument or result type is a Rust value being wrapped in an opaque box, declare it using
+//!   the `bridge_as_handle` macro alongside other such types.
 //!
-//! 1. Argument and result types for FFI and JNI are determined by macros `ffi_arg_type`,
-//!    `ffi_result_type`, `jni_arg_type`, and `jni_result_type`. You may need to add your new type
-//!    there. JNI types also undergo some additional transformation in the scripts
-//!    `gen_java_decl.py`, which you may need to tweak as well. Node types are generated as Strings
-//!    via the `gen_ts_ffi()` methods on `node::{AsyncArg, Arg, Result}TypeInfo`.
+//! - If your argument or result type is a Rust composite type (struct or enum) that should be passed
+//!   by its fields to a corresponding client-language type, use the [`BridgedAsValue`] derive macro.
 //!
-//! 2. Argument types conform to one or more of the following bridge-specific traits:
+//! - For custom bridging, arguments should implement one or more of the following bridge-specific traits:
 //!
-//!     - `ffi::ArgTypeInfo`
-//!     - `jni::ArgTypeInfo`
-//!     - `node::ArgTypeInfo` and/or `node::AsyncArgTypeInfo`
+//!   - `ffi::ArgTypeInfo`
+//!   - `jni::ArgTypeInfo`
+//!   - `node::ArgTypeInfo` and/or `node::AsyncArgTypeInfo`
 //!
-//!     Similarly, result types conform to one or more of the following:
+//!   Similarly, result types conform to one or more of the following:
 //!
-//!     - `ffi::ResultTypeInfo`
-//!     - `jni::ResultTypeInfo`
-//!     - `node::ResultTypeInfo`
+//!   - `ffi::ResultTypeInfo`
+//!   - `jni::ResultTypeInfo`
+//!   - `node::ResultTypeInfo`
 //!
-//!    These traits define how to convert between the bridge type and the Rust type used in the
-//!    function as written. See each individual trait for more info on how to add a new type.
+//!   These traits define how to convert between the bridge type and the Rust type used in the
+//!   function as written. See each individual trait for more info on how to add a new type.
 //!
 //! # Callbacks
 //!

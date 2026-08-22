@@ -28,16 +28,8 @@ pub use error::*;
 mod futures;
 pub use futures::*;
 
-// TODO: These re-exports are because of the ffi_arg_type macro expecting all bridging structs to be
-// under the ffi module; eventually we should be able to remove it.
-pub use crate::io::FfiSyncInputStreamStruct;
-pub use crate::protocol::storage::{
-    FfiIdentityKeyStoreStruct, FfiKyberPreKeyStoreStruct, FfiPreKeyStoreStruct,
-    FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
-};
-
 #[c_export]
-pub type FfiInputStreamStruct = FfiSyncInputStreamStruct;
+pub type FfiInputStreamStruct = crate::io::FfiSyncInputStreamStruct;
 #[c_export]
 type ConstPointerFfiInputStreamStruct = ConstPointer<FfiInputStreamStruct>;
 
@@ -662,21 +654,21 @@ mod type_aliases {
     #[c_export]
     type ServiceIdFixedWidthBinaryBytes = libsignal_core::ServiceIdFixedWidthBinaryBytes;
     #[c_export]
-    type IdentityKeyStore = super::FfiIdentityKeyStoreStruct;
+    type IdentityKeyStore = crate::protocol::storage::FfiIdentityKeyStoreStruct;
     #[c_export]
-    type KyberPreKeyStore = super::FfiKyberPreKeyStoreStruct;
+    type KyberPreKeyStore = crate::protocol::storage::FfiKyberPreKeyStoreStruct;
     #[c_export]
-    type PreKeyStore = super::FfiPreKeyStoreStruct;
+    type PreKeyStore = crate::protocol::storage::FfiPreKeyStoreStruct;
     #[c_export]
-    type SenderKeyStore = super::FfiSenderKeyStoreStruct;
+    type SenderKeyStore = crate::protocol::storage::FfiSenderKeyStoreStruct;
     #[c_export]
-    type SessionStore = super::FfiSessionStoreStruct;
+    type SessionStore = crate::protocol::storage::FfiSessionStoreStruct;
     #[c_export]
-    type SignedPreKeyStore = super::FfiSignedPreKeyStoreStruct;
+    type SignedPreKeyStore = crate::protocol::storage::FfiSignedPreKeyStoreStruct;
     #[c_export]
     type InputStream = super::FfiInputStreamStruct;
     #[c_export]
-    type SyncInputStream = super::FfiSyncInputStreamStruct;
+    type SyncInputStream = crate::io::FfiSyncInputStreamStruct;
 
     // Shim exports to support cbindgen's name mangling
     #[c_export]

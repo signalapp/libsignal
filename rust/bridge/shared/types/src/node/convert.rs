@@ -407,8 +407,6 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [SessionRecord] {
 /// #     Ok(())
 /// # }
 /// ```
-///
-/// Implementers should also see the `jni_result_type` macro in `convert.rs`.
 pub trait ResultTypeInfo<'a>: Sized {
     /// The JavaScript form of the result (e.g. `JsNumber`).
     type ResultType: neon::types::Value;

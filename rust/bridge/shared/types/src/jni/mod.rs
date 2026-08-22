@@ -68,9 +68,6 @@ pub use futures::*;
 mod io;
 pub use io::*;
 
-mod storage;
-pub use storage::*;
-
 #[derive(Clone, Copy, Debug, Default)]
 #[repr(transparent)]
 // TODO: get rid of this in favor of operating on java native holders, directly.

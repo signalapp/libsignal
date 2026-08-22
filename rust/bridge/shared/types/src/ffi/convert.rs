@@ -22,7 +22,8 @@ use zkgroup::groups::GroupSendFullToken;
 use super::*;
 use crate::crypto::RandomNumberGenerator;
 use crate::ffi;
-use crate::io::{InputStream, SyncInputStream};
+use crate::ffi::FfiInputStreamStruct;
+use crate::io::{FfiSyncInputStreamStruct, InputStream, SyncInputStream};
 use crate::net::chat::{
     ChatListener, FfiChatListenerStruct, FfiProvisioningListenerStruct, PreKeysResponse,
     ProvisioningListener,
@@ -219,8 +220,6 @@ impl CallbackResultTypeInfo for () {
 /// #     Ok(())
 /// # }
 /// ```
-///
-/// Implementers should also see the `ffi_result_type` macro in `convert.rs`.
 pub trait ResultTypeInfo: Sized {
     /// The FFI form of the result (e.g. `std::ffi::c_uchar`).
     type ResultType: IsCType;
