@@ -35,3 +35,15 @@ EOF
     flake8-deprecated \
     flake8-import-order \
     flake8-quotes
+
+PATH="$(brew --prefix rustup)/bin:$PATH"
+export PATH
+
+repo_root="$(dirname "$0")/.."
+
+just --justfile "$repo_root/justfile" install-stable \
+    --target armv7-linux-androideabi,aarch64-linux-android,i686-linux-android,x86_64-linux-android \
+    --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim
+
+# Nightly is used for `just format-rust` and the minimal-versions check in `just check-pre-commit`.
+just --justfile "$repo_root/justfile" install-nightly
