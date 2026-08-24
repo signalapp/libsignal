@@ -68,7 +68,15 @@
       "calls_use_less_data_setting": "MobileDataOnly",
       "allow_sealed_sender_from_anyone": false,
       "allow_automatic_key_verification": false,
-      "has_seen_admin_delete_education_dialog": false
+      "has_seen_admin_delete_education_dialog": false,
+      "unread_badge_type": "UnreadMessages",
+      "include_muted_chats_in_badge": null,
+      "reaction_notifications": null,
+      "notify_for_calls_if_muted": null,
+      "notify_for_mentions_if_muted": null,
+      "notify_for_replies_if_muted": null,
+      "show_unread_reminders": null,
+      "notify_when_contact_joins": null
     },
     "avatar_url_path": "",
     "donation_subscription": null,

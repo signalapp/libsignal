@@ -118,6 +118,7 @@ pub enum IapSubscriptionId {
     M::Value<Option<Duration>>: PartialEq,
     M::Value<AppTheme>: PartialEq,
     M::Value<CallsUseLessDataSetting>: PartialEq,
+    M::Value<UnreadBadgeType>: PartialEq,
 ))]
 pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub phone_number_sharing: M::Value<PhoneSharing>,
@@ -150,6 +151,14 @@ pub struct AccountSettings<M: Method + ReferencedTypes> {
     pub allow_sealed_sender_from_anyone: M::Value<bool>,
     pub allow_automatic_key_verification: M::Value<bool>,
     pub has_seen_admin_delete_education_dialog: M::Value<bool>,
+    pub unread_badge_type: M::Value<UnreadBadgeType>,
+    pub include_muted_chats_in_badge: M::Value<Option<bool>>,
+    pub reaction_notifications: M::Value<Option<bool>>,
+    pub notify_for_calls_if_muted: M::Value<Option<bool>>,
+    pub notify_for_mentions_if_muted: M::Value<Option<bool>>,
+    pub notify_for_replies_if_muted: M::Value<Option<bool>>,
+    pub show_unread_reminders: M::Value<Option<bool>>,
+    pub notify_when_contact_joins: M::Value<Option<bool>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
@@ -215,6 +224,12 @@ pub enum CallsUseLessDataSetting {
     WifiAndMobileData,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, serde::Serialize)]
+pub enum UnreadBadgeType {
+    UnreadMessages,
+    UnreadChats,
+}
+
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum AccountDataError {
@@ -254,6 +269,8 @@ pub enum AccountDataError {
     UnknownAppTheme,
     /// calls use less data setting is UNKNOWN
     UnknownCallsUseLessDataSetting,
+    /// unread badge type is UNKNOWN
+    UnknownUnreadBadgeType,
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -485,6 +502,14 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             allowSealedSenderFromAnyone,
             allowAutomaticKeyVerification,
             hasSeenAdminDeleteEducationDialog,
+            unreadBadgeType,
+            includeMutedChatsInBadge,
+            reactionNotifications,
+            notifyForCallsIfMuted,
+            notifyForMentionsIfMuted,
+            notifyForRepliesIfMuted,
+            showUnreadReminders,
+            notifyWhenContactJoins,
             special_fields: _,
         } = self;
 
@@ -556,6 +581,15 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             CallDataProto::WIFI_AND_MOBILE_DATA => CallsUseLessDataSetting::WifiAndMobileData,
         };
 
+        use proto::account_data::account_settings::UnreadBadgeType as UnreadBadgeTypeProto;
+        let unread_badge_type = match unreadBadgeType.enum_value_or_default() {
+            UnreadBadgeTypeProto::UNKNOWN_BADGE_TYPE => {
+                return Err(AccountDataError::UnknownUnreadBadgeType);
+            }
+            UnreadBadgeTypeProto::UNREAD_MESSAGES => UnreadBadgeType::UnreadMessages,
+            UnreadBadgeTypeProto::UNREAD_CHATS => UnreadBadgeType::UnreadChats,
+        };
+
         Ok(AccountSettings {
             phone_number_sharing: M::value(phone_number_sharing),
             default_chat_style: M::value(default_chat_style),
@@ -587,6 +621,14 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
             allow_sealed_sender_from_anyone: M::value(allowSealedSenderFromAnyone),
             allow_automatic_key_verification: M::value(allowAutomaticKeyVerification),
             has_seen_admin_delete_education_dialog: M::value(hasSeenAdminDeleteEducationDialog),
+            unread_badge_type: M::value(unread_badge_type),
+            include_muted_chats_in_badge: M::value(includeMutedChatsInBadge),
+            reaction_notifications: M::value(reactionNotifications),
+            notify_for_calls_if_muted: M::value(notifyForCallsIfMuted),
+            notify_for_mentions_if_muted: M::value(notifyForMentionsIfMuted),
+            notify_for_replies_if_muted: M::value(notifyForRepliesIfMuted),
+            show_unread_reminders: M::value(showUnreadReminders),
+            notify_when_contact_joins: M::value(notifyWhenContactJoins),
         })
     }
 }
@@ -735,6 +777,8 @@ mod test {
                 appTheme: proto::account_data::AppTheme::SYSTEM.into(),
                 callsUseLessDataSetting:
                     proto::account_data::CallsUseLessDataSetting::MOBILE_DATA_ONLY.into(),
+                unreadBadgeType:
+                    proto::account_data::account_settings::UnreadBadgeType::UNREAD_MESSAGES.into(),
                 ..Default::default()
             }
         }
@@ -878,6 +922,14 @@ mod test {
                     allow_sealed_sender_from_anyone: false,
                     allow_automatic_key_verification: false,
                     has_seen_admin_delete_education_dialog: false,
+                    unread_badge_type: UnreadBadgeType::UnreadMessages,
+                    include_muted_chats_in_badge: None,
+                    reaction_notifications: None,
+                    notify_for_calls_if_muted: None,
+                    notify_for_mentions_if_muted: None,
+                    notify_for_replies_if_muted: None,
+                    show_unread_reminders: None,
+                    notify_when_contact_joins: None,
                 },
                 avatar_url_path: "".to_string(),
                 backup_subscription: Some(IapSubscriberData {
@@ -999,6 +1051,21 @@ mod test {
         } =>
         Ok(());
         "optimize_storage_with_paid_tier"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().unreadBadgeType =
+                proto::account_data::account_settings::UnreadBadgeType::UNREAD_CHATS.into();
+        } =>
+        Ok(());
+        "unread_badge_type_unread_chats"
+    )]
+    #[test_case(
+        |x| {
+            x.accountSettings.as_mut().unwrap().unreadBadgeType = Default::default();
+        } =>
+        Err(AccountDataError::UnknownUnreadBadgeType);
+        "unknown_unread_badge_type"
     )]
     #[test_case(
         |x| {

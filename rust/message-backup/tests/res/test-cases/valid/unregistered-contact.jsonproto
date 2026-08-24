@@ -30,7 +30,8 @@
         "phoneNumberSharingMode": "NOBODY",
         "defaultSentMediaQuality": "STANDARD",
         "appTheme": "SYSTEM",
-        "callsUseLessDataSetting": "MOBILE_DATA_ONLY"
+        "callsUseLessDataSetting": "MOBILE_DATA_ONLY",
+        "unreadBadgeType": "UNREAD_MESSAGES"
       },
       "androidSpecificSettings": {
         "useSystemEmoji": true,

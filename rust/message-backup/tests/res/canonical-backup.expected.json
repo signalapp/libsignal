@@ -49,7 +49,15 @@
       "calls_use_less_data_setting": "MobileDataOnly",
       "allow_sealed_sender_from_anyone": false,
       "allow_automatic_key_verification": false,
-      "has_seen_admin_delete_education_dialog": false
+      "has_seen_admin_delete_education_dialog": false,
+      "unread_badge_type": "UnreadChats",
+      "include_muted_chats_in_badge": true,
+      "reaction_notifications": false,
+      "notify_for_calls_if_muted": true,
+      "notify_for_mentions_if_muted": false,
+      "notify_for_replies_if_muted": false,
+      "show_unread_reminders": false,
+      "notify_when_contact_joins": true
     },
     "avatar_url_path": "",
     "donation_subscription": {

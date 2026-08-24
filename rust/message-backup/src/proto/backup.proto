@@ -103,6 +103,12 @@ message AccountData {
   }
 
   message AccountSettings {
+    enum UnreadBadgeType {
+      UNKNOWN_BADGE_TYPE = 0; // Interpret as "Unread messages"
+      UNREAD_MESSAGES = 1;
+      UNREAD_CHATS = 2;
+    }
+
     bool readReceipts = 1;
     bool sealedSenderIndicators = 2;
     bool typingIndicators = 3;
@@ -136,6 +142,14 @@ message AccountData {
     bool allowSealedSenderFromAnyone = 30;
     bool allowAutomaticKeyVerification = 31;
     bool hasSeenAdminDeleteEducationDialog = 32;
+    UnreadBadgeType unreadBadgeType = 33;
+    optional bool includeMutedChatsInBadge = 34; // If unset, consider this disabled
+    optional bool reactionNotifications = 35; // If unset, consider this enabled
+    optional bool notifyForCallsIfMuted = 36; // If unset, consider this disabled
+    optional bool notifyForMentionsIfMuted = 37; // If unset, consider this enabled
+    optional bool notifyForRepliesIfMuted = 38; // If unset, consider this enabled
+    optional bool showUnreadReminders = 39; // If unset, consider this enabled
+    optional bool notifyWhenContactJoins = 40; // If unset, consider this disabled
   }
 
   message SubscriberData {
@@ -393,9 +407,13 @@ message Chat {
   optional uint64 expirationTimerMs = 5;
   optional uint64 muteUntilMs = 6; // INT64_MAX (2^63 - 1) = "always muted".
   bool markedUnread = 7;
-  bool dontNotifyForMentionsIfMuted = 8;
+  bool dontNotifyForMentionsIfMuted = 8; // will be deprecated in favor of [notifyForMentionsIfMuted]
   ChatStyle style = 9;
   uint32 expireTimerVersion = 10;
+  optional bool notifyForCallsIfMuted = 11; // If unset, use default global settings
+  optional bool notifyForMentionsIfMuted = 12; // If unset, use default global settings. Only for groups. If [dontNotifyForMentionsIfMuted] is true, this should be initialized to false.
+  optional bool notifyForRepliesIfMuted = 13; // If unset, use default global settings. Only for groups.
+  optional bool showUnreadReminders = 14; // If unset, use default global settings
 }
 
 /**

@@ -105,6 +105,8 @@ pub fn generate_frames(
             appTheme: proto::account_data::AppTheme::SYSTEM.into(),
             callsUseLessDataSetting: proto::account_data::CallsUseLessDataSetting::MOBILE_DATA_ONLY
                 .into(),
+            unreadBadgeType:
+                proto::account_data::account_settings::UnreadBadgeType::UNREAD_MESSAGES.into(),
             ..Default::default()
         })
         .into(),

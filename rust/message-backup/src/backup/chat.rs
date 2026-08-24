@@ -101,6 +101,10 @@ pub enum ChatError {
     Style(#[from] ChatStyleError),
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
+    /// chat with {0:?} is not a group but sets {1}
+    GroupOnlyNotifySetting(RecipientId, &'static str),
+    /// conflicting dontNotifyForMentionsIfMuted and notifyForMentionsIfMuted in chat with {0:?}
+    MentionsIfMutedConflict(RecipientId),
 }
 
 #[derive(Debug, displaydoc::Display, thiserror::Error)]
@@ -345,6 +349,10 @@ pub struct ChatData<M: Method + ReferencedTypes> {
     pub style: Option<ChatStyle<M>>,
     pub pinned_order: Option<PinOrder>,
     pub dont_notify_for_mentions_if_muted: bool,
+    pub notify_for_calls_if_muted: Option<bool>,
+    pub notify_for_mentions_if_muted: Option<bool>,
+    pub notify_for_replies_if_muted: Option<bool>,
+    pub show_unread_reminders: Option<bool>,
     pub marked_unread: bool,
     pub archived: bool,
 }
@@ -514,6 +522,10 @@ impl<
             markedUnread,
             dontNotifyForMentionsIfMuted,
             style,
+            notifyForCallsIfMuted,
+            notifyForMentionsIfMuted,
+            notifyForRepliesIfMuted,
+            showUnreadReminders,
             special_fields: _,
         } = self;
 
@@ -523,6 +535,26 @@ impl<
         };
         let cached_recipient_info = ChatRecipientKind::try_from(recipient_data)
             .map_err(|kind| ChatError::InvalidRecipient(recipient_id, kind))?;
+
+        if cached_recipient_info.is_group() {
+            // if notifyForMentionsIfMuted is unset - the client may not know about it yet, so don't check for conflicts
+            if dontNotifyForMentionsIfMuted && notifyForMentionsIfMuted == Some(true) {
+                return Err(ChatError::MentionsIfMutedConflict(recipient_id));
+            }
+        } else {
+            if notifyForMentionsIfMuted.is_some() {
+                return Err(ChatError::GroupOnlyNotifySetting(
+                    recipient_id,
+                    "notifyForMentionsIfMuted",
+                ));
+            }
+            if notifyForRepliesIfMuted.is_some() {
+                return Err(ChatError::GroupOnlyNotifySetting(
+                    recipient_id,
+                    "notifyForRepliesIfMuted",
+                ));
+            }
+        }
 
         let pinned_order = pinnedOrder.map(PinOrder);
         if let Some(pinned_order) = pinned_order {
@@ -559,6 +591,10 @@ impl<
             archived,
             marked_unread: markedUnread,
             dont_notify_for_mentions_if_muted: dontNotifyForMentionsIfMuted,
+            notify_for_calls_if_muted: notifyForCallsIfMuted,
+            notify_for_mentions_if_muted: notifyForMentionsIfMuted,
+            notify_for_replies_if_muted: notifyForRepliesIfMuted,
+            show_unread_reminders: showUnreadReminders,
         })
     }
 }
@@ -1220,8 +1256,43 @@ mod test {
                 archived: false,
                 marked_unread: false,
                 dont_notify_for_mentions_if_muted: false,
+                notify_for_calls_if_muted: None,
+                notify_for_mentions_if_muted: None,
+                notify_for_replies_if_muted: None,
+                show_unread_reminders: None,
             })
         );
+    }
+
+    #[test]
+    fn chat_notify_settings() {
+        const VALUES: [Option<bool>; 3] = [None, Some(true), Some(false)];
+
+        for (calls, mentions, replies, reminders) in
+            itertools::iproduct!(VALUES, VALUES, VALUES, VALUES)
+        {
+            let mut chat = proto::Chat::test_data();
+            // The mention and reply settings are only allowed on group chats.
+            chat.recipientId = TestContext::GROUP_ID.0;
+            chat.notifyForCallsIfMuted = calls;
+            chat.notifyForMentionsIfMuted = mentions;
+            chat.notifyForRepliesIfMuted = replies;
+            chat.showUnreadReminders = reminders;
+
+            let chat: ChatData<Store> = chat
+                .try_into_with(&TestContext::default())
+                .expect("valid chat");
+
+            assert_eq!(
+                (
+                    chat.notify_for_calls_if_muted,
+                    chat.notify_for_mentions_if_muted,
+                    chat.notify_for_replies_if_muted,
+                    chat.show_unread_reminders,
+                ),
+                (calls, mentions, replies, reminders)
+            );
+        }
     }
 
     #[test_case(|x| {
@@ -1247,6 +1318,33 @@ mod test {
     #[test_case(|x| {
         x.recipientId = 0;
     } => Err(ChatError::NoRecipient(RecipientId(0))); "unknown recipient")]
+    #[test_case(|x| {
+        x.notifyForMentionsIfMuted = Some(true);
+    } => Err(ChatError::GroupOnlyNotifySetting(TestContext::CONTACT_ID, "notifyForMentionsIfMuted"));
+    "notify for mentions outside a group")]
+    #[test_case(|x| {
+        x.notifyForRepliesIfMuted = Some(true);
+    } => Err(ChatError::GroupOnlyNotifySetting(TestContext::CONTACT_ID, "notifyForRepliesIfMuted"));
+    "notify for replies outside a group")]
+    #[test_case(|x| {
+        x.recipientId = TestContext::GROUP_ID.0;
+        x.dontNotifyForMentionsIfMuted = true;
+        x.notifyForMentionsIfMuted = Some(false);
+    } => Ok(()); "dont notify agrees with notify for mentions")]
+    #[test_case(|x| {
+        x.recipientId = TestContext::GROUP_ID.0;
+        x.dontNotifyForMentionsIfMuted = true;
+        x.notifyForMentionsIfMuted = Some(true);
+    } => Err(ChatError::MentionsIfMutedConflict(TestContext::GROUP_ID));
+    "dont notify conflicts with notify for mentions")]
+    #[test_case(|x| {
+        x.recipientId = TestContext::GROUP_ID.0;
+        x.dontNotifyForMentionsIfMuted = true;
+        x.notifyForMentionsIfMuted = None;
+    } => Ok(()); "dont notify without notify for mentions")]
+    #[test_case(|x| {
+        x.dontNotifyForMentionsIfMuted = true;
+    } => Ok(()); "dont notify alone outside a group")]
     fn chat(modifier: fn(&mut proto::Chat)) -> Result<(), ChatError> {
         let mut chat = proto::Chat::test_data();
         modifier(&mut chat);
