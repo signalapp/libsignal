@@ -729,6 +729,7 @@ mod test {
 
     use super::test_cases::ACI_UUID;
     use super::*;
+    use crate::api::DisconnectedError;
     use crate::api::testutil::fixed_seed_test_rng;
     use crate::api::usernames::UnauthenticatedChatApi;
     use crate::grpc::testutil::{
@@ -766,7 +767,7 @@ mod test {
     #[test_case(ok(LookupUsernameHashResponse {
         response: Some(lookup_username_hash_response::Response::NotFound(Default::default())),
     }) => matches Ok(None))]
-    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Disconnected(DisconnectedError::Transport { .. })))]
     fn test_hash_lookup(
         response: http::Response<BodyWithTrailers>,
     ) -> Result<Option<Aci>, RequestError<Infallible>> {
@@ -906,19 +907,20 @@ mod test {
             zk_proof: test_cases::EXPECTED_TEST_PROOF.to_vec(),
             username_ciphertext: test_cases::TEST_USERNAME_CIPHERTEXT.to_vec(),
         };
-        let case = |name: &str, response_grpc| crate::grpc::GrpcTestCase {
+        let case = |name: &str, response_grpc, response| crate::grpc::GrpcTestCase {
             name: name.to_string(),
             method: method.to_string(),
             request: (),
             request_grpc: request_grpc(),
             response_grpc,
-            response: (),
+            response,
         };
         run_tests_with_generic_responses(
             [
                 case(
                     "missing response",
                     ok(ConfirmUsernameHashResponse { response: None }),
+                    false,
                 ),
                 case(
                     "link handle is not a uuid",
@@ -929,8 +931,9 @@ mod test {
                             },
                         )),
                     }),
+                    false,
                 ),
-                case("grpc error", err(tonic::Code::Internal)),
+                case("grpc error", err(tonic::Code::Internal), true),
             ],
             |chat: Auth<_>, ()| async move {
                 chat.confirm_username(
@@ -940,7 +943,18 @@ mod test {
                 )
                 .await
             },
-            |(), result| assert_matches!(result, Err(RequestError::Unexpected { .. })),
+            |is_disconnect, result| {
+                if is_disconnect {
+                    assert_matches!(
+                        result,
+                        Err(RequestError::Disconnected(
+                            DisconnectedError::Transport { .. }
+                        ))
+                    )
+                } else {
+                    assert_matches!(result, Err(RequestError::Unexpected { .. }))
+                }
+            },
         );
     }
 

@@ -598,7 +598,7 @@ mod test {
     use super::*;
     use crate::api::messages::{AuthenticatedChatApi, UnauthenticatedChatApi as _};
     use crate::api::testutil::{SERIALIZED_GROUP_SEND_TOKEN, structurally_valid_group_send_token};
-    use crate::api::{ChallengeOption, RateLimitChallenge};
+    use crate::api::{ChallengeOption, DisconnectedError, RateLimitChallenge};
     use crate::grpc::testutil::{
         GrpcOverrideRequestValidator, RequestValidator, TypedRequestValidator,
         UnreachableValidator, err, ok, req, req_typed,
@@ -743,7 +743,7 @@ mod test {
             },
         )),
     }) => matches Err(RequestError::Unexpected { .. }))]
-    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Disconnected(DisconnectedError::Transport { .. })))]
     fn test_story(
         response: http::Response<BodyWithTrailers>,
     ) -> Result<MultiRecipientMessageResponse, RequestError<MultiRecipientSendFailure>> {

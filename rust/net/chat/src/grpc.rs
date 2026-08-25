@@ -494,11 +494,16 @@ impl<E> RequestError<E> {
             | tonic::Code::DataLoss
             | tonic::Code::Unauthenticated => {}
         }
+
+        // We treat gRPC errors as "disconnect"-level events, because we can't guarantee that the
+        // gRPC library on our end (tonic) or on the Server's end hasn't (a) reported a transport
+        // error using an opaque gRPC status, or (b) decided to end the connection over a gRPC-level
+        // error.
         // Use the Debug implementation to get the name of the code, which is easier to identify than
         // the human-readable description.
-        RequestError::Unexpected {
-            log_safe: format!("unexpected error: {:?}", status.code()),
-        }
+        RequestError::Disconnected(DisconnectedError::Transport {
+            log_safe: format!("unexpected gRPC status: {:?}", status.code()),
+        })
     }
 }
 
@@ -1668,7 +1673,7 @@ mod test {
         let contents: Vec<_> = stream.collect().now_or_never().expect("ready");
         assert_matches!(
             &contents[..],
-            [Err(RequestError::Unexpected { log_safe })]
+            [Err(RequestError::Disconnected(DisconnectedError::Transport { log_safe }))]
             if log_safe.contains("PermissionDenied") && !log_safe.contains("user data")
         );
     }
@@ -1760,7 +1765,7 @@ mod test {
                 Ok(2),
                 Ok(3),
                 Ok(4),
-                Err(RequestError::Unexpected { log_safe }),
+                Err(RequestError::Disconnected(DisconnectedError::Transport { log_safe })),
             ]
             if log_safe.contains("PermissionDenied") && !log_safe.contains("user data")
         );

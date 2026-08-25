@@ -1987,6 +1987,7 @@ mod test {
 
     use super::test_cases::backup_stream_unauthorized;
     use super::*;
+    use crate::api::DisconnectedError;
     use crate::api::backups::UnauthenticatedChatApi;
     use crate::api::testutil::fixed_seed_test_rng;
     use crate::grpc::test_case_util::stream;
@@ -2046,7 +2047,7 @@ mod test {
     #[test_case(ok(GetUploadFormResponse {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
-    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Disconnected(DisconnectedError::Transport { .. })))]
     fn test_get_upload_form(
         response: http::Response<BodyWithTrailers>,
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
@@ -2110,7 +2111,7 @@ mod test {
     #[test_case(ok(GetUploadFormResponse {
         response: None,
     }) => matches Err(RequestError::Unexpected { .. }))]
-    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Unexpected { .. }))]
+    #[test_case(err(tonic::Code::Internal) => matches Err(RequestError::Disconnected(DisconnectedError::Transport { .. })))]
     fn test_get_media_upload_form(
         response: http::Response<BodyWithTrailers>,
     ) -> Result<UploadForm, RequestError<GetUploadFormFailure>> {
