@@ -428,11 +428,11 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         submodules: recursive
-    - run: cargo install cargo-audit
-    - run: cargo audit -D warnings
+    - run: cargo +stable install cargo-audit
+    - run: cargo +stable audit -D warnings
 
   rust-stable-testing:
-    name: Rust tests (using pinned stable)
+    name: Rust tests (using latest stable)
     runs-on: ubuntu-latest-4-cores
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
@@ -447,36 +447,51 @@ jobs:
 
     - run: sudo apt-get install -U gcc-multilib g++-multilib protobuf-compiler
 
-    - run: rustup target add i686-unknown-linux-gnu
+    - run: rustup +stable target add i686-unknown-linux-gnu
 
-    - name: Fetch all deps before the hermetic test
-      run: cargo fetch --verbose
-
-    - name: Fetch all node deps before the hermetic test
-      run: npm install
-      working-directory: rust/bridge/node/futures/tests/node-tests/
+    - name: Run tests
+      run: cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored
+      env:
+        RUST_LOG: debug
 
     - name: Run hermetic tests without network access
       run: |
         TEST_CMD='unset LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS LIBSIGNAL_TESTING_CDSI_ENCLAVE_SECRET LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET && \
-                  cargo test --workspace --all-features --verbose --no-fail-fast -- --include-ignored'
+                  cargo +stable test --workspace --all-features --verbose --no-fail-fast -- --include-ignored'
         ./bin/run_with_network_isolation.sh "${TEST_CMD}"
       env:
         RUST_LOG: debug
 
-    - name: Run libsignal-net smoke tests
-      run: cargo run --example chat_smoke_test -p libsignal-net --features="test-util" -- --try-all-routes staging
+    - name: Test run benches
+      # Run with a match-all regex to select all the benchmarks, which (confusingly) causes other tests to be skipped.
+      run: cargo +stable test --workspace --benches --all-features --no-fail-fast --verbose '.*'
       env:
         RUST_LOG: debug
 
+    - name: Build bins and examples
+      run: cargo +stable build --workspace  --bins --examples --all-features --verbose --keep-going
+
+    - name: Run libsignal-net smoke tests
+      run: cargo +stable run --example chat_smoke_test -p libsignal-net --features="test-util" -- --try-all-routes staging
+      env:
+        RUST_LOG: debug
+
+    - name: Run tests (32-bit)
+      # Exclude signal-neon-futures because those tests run Node
+      run: cargo +stable test --workspace --all-features --verbose --target i686-unknown-linux-gnu --exclude signal-neon-futures --no-fail-fast -- --include-ignored
+      env:
+        RUST_LOG: debug
+        CFLAGS: "-msse2" # for BoringSSL
+        CXXFLAGS: "-msse2" # for BoringSSL
+
     - name: Run libsignal-protocol cross-version tests
-      run: cargo test --no-fail-fast
+      run: cargo +stable test --no-fail-fast
       working-directory: rust/protocol/cross-version-testing
       env:
         RUST_LOG: debug
 
     - name: Run libsignal-protocol cross-version tests (32-bit)
-      run: cargo test --target i686-unknown-linux-gnu --no-fail-fast
+      run: cargo +stable test --target i686-unknown-linux-gnu --no-fail-fast
       working-directory: rust/protocol/cross-version-testing
       env:
         RUST_LOG: debug
@@ -501,8 +516,6 @@ jobs:
         submodules: recursive
 
     - run: sudo apt-get install -U protobuf-compiler
-
-    - run: cp .nightly-rust-version rust-toolchain
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
@@ -539,7 +552,7 @@ jobs:
 
     # This isn't fuzzing, but we have to do it with a nightly compiler, so we're going to tack it on to this job.
     - name: Build everything with no lockfile and -Zdirect-minimal-versions
-      run: mkdir minimal-versions && env CARGO_RESOLVER_LOCKFILE_PATH=minimal-versions/Cargo.lock bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zlockfile-path
+      run: mkdir minimal-versions && CARGO_RESOLVER_LOCKFILE_PATH=minimal-versions/Cargo.lock bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --verbose --keep-going -Zdirect-minimal-versions -Zlockfile-path
 
   report-failures:
     name: Report Failures

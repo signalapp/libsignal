@@ -127,11 +127,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [pinned, msrv]
+        version: [nightly, stable]
         include:
-        - version: pinned
+        - version: nightly
           toolchain: "$(cat rust-toolchain)"
-        - version: msrv
+        - version: stable
           # Extract 'rust-version' value from Cargo.toml.
           toolchain: "$(yq '.workspace.package.rust-version' $(git rev-parse --show-toplevel)/Cargo.toml)"
 
@@ -178,11 +178,11 @@ jobs:
 
     - name: Clippy
       run: cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
-      if: matrix.version == 'pinned'
+      if: matrix.version == 'nightly'
 
     - name: Rust docs
       run: cargo +${{ matrix.toolchain }} doc --workspace --all-features --no-deps --document-private-items --keep-going
-      if: matrix.version == 'pinned'
+      if: matrix.version == 'stable'
       env:
         RUSTDOCFLAGS: -D warnings
 
@@ -210,11 +210,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [pinned, msrv]
+        version: [nightly, stable]
         include:
-        - version: pinned
+        - version: nightly
           toolchain: "$(cat rust-toolchain)"
-        - version: msrv
+        - version: stable
           # Extract 'rust-version' value from Cargo.toml.
           toolchain: "$(yq '.workspace.package.rust-version' $(git rev-parse --show-toplevel)/Cargo.toml)"
 
@@ -355,12 +355,12 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Resolve pinned toolchain
+    - name: Resolve pinned nightly toolchain
       id: rust-fmt-toolchain
-      run: echo "pinned-toolchain=$(cat rust-toolchain)" >> "$GITHUB_OUTPUT"
+      run: echo "pinned-nightly-toolchain=$(cat rust-toolchain)" >> "$GITHUB_OUTPUT"
 
-    - name: Install pinned toolchain
-      run: rustup toolchain install "${{ steps.rust-fmt-toolchain.outputs.pinned-toolchain }}" --profile minimal --component rustfmt
+    - name: Install pinned nightly toolchain
+      run: rustup toolchain install "${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }}" --profile minimal --component rustfmt
 
     - name: Cache locally-built tools
       uses: runs-on/cache@575425708ccb521bfce731e8d8a67f7f337b8954 # main as of 2026-04-10
@@ -383,10 +383,10 @@ jobs:
       run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
 
     - name: Rustfmt check
-      run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-toolchain }} fmt --all -- --check
+      run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }} fmt --all -- --check
 
     - name: Rustfmt check for cross-version-testing
-      run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-toolchain }} fmt --all -- --check
+      run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-nightly-toolchain }} fmt --all -- --check
       working-directory: rust/protocol/cross-version-testing
 
     - name: Check acknowledgments

@@ -272,8 +272,6 @@ target_for_abi() {
 
 for abi in "${android_abis[@]}"; do
     rust_target=$(target_for_abi "$abi")
-    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing ${RUST_RELEASE:+--release} ${FEATURES:+--features "${FEATURES[*]}"} --target "$rust_target" --timings
-    copy_built_library "target/$rust_target/${RUST_RELEASE:-debug}" signal_jni "${ANDROID_LIB_DIR}/$abi/" "signal_jni"
-    copy_built_library "target/$rust_target/${RUST_RELEASE:-debug}" signal_jni_testing "${ANDROID_LIB_DIR}/$abi/" "signal_jni_testing"
+    echo_then_run cargo build -p libsignal-jni -p libsignal-jni-testing ${RUST_RELEASE:+--release} ${FEATURES:+--features "${FEATURES[*]}"} -Z unstable-options --target "$rust_target" --artifact-dir "${ANDROID_LIB_DIR}/$abi" --timings
     check_for_debug_level_logs_if_needed "${ANDROID_LIB_DIR}/$abi"
 done
