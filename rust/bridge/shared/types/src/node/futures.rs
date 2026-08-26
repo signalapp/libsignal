@@ -157,7 +157,7 @@ where
 /// # impl std::fmt::Display for MyError {
 /// #   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { unimplemented!() }
 /// # }
-/// # impl DefaultSignalNodeError for MyError {}
+/// # impl SimpleNodeError for MyError {}
 /// # fn test(cx: &mut FunctionContext, async_runtime: &NoOpAsyncRuntime) -> NeonResult<()> {
 /// let js_promise = run_future_on_runtime(cx, async_runtime, "example", |_cancel| async {
 ///     let future = async {
