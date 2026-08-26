@@ -313,12 +313,6 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_STAGING: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q1_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q1_STAGING,
-    };
-
 pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q1_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q1_PROD),
@@ -329,12 +323,6 @@ pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_PROD: EndpointParams<'static, SvrSg
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q1_PROD),
         raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q1_PROD,
-    };
-
-pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q2_STAGING: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q2_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q2_STAGING,
     };
 
 pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_STAGING: EndpointParams<'static, SvrSgx> =
@@ -355,10 +343,36 @@ pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_PROD: EndpointParams<'static, SvrSg
         raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q2_PROD,
     };
 
+pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q3_STAGING_V1: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q3_STAGING_V1),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q3_STAGING_V1,
+    };
+
 pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q3_STAGING: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q3_STAGING),
         raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q3_STAGING,
+    };
+
+pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q3_STAGING: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q3_STAGING),
+        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q3_STAGING,
+    };
+
+#[expect(unused)]
+pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q3_PROD: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q3_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q3_PROD,
+    };
+
+#[expect(unused)]
+pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q3_PROD: EndpointParams<'static, SvrSgx> =
+    EndpointParams {
+        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q3_PROD),
+        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q3_PROD,
     };
 
 pub(crate) const ENDPOINT_PARAMS_CDSI_PROD: EndpointParams<'static, Cdsi> = EndpointParams {
@@ -849,7 +863,7 @@ pub const STAGING: Env<'static> = Env {
         previous: Some(EnclaveEndpoint {
             domain_config: DOMAIN_CONFIG_SVR2_STAGING,
             ws_config: RECOMMENDED_WS_CONFIG,
-            params: ENDPOINT_PARAMS_SVR2_2026Q2_STAGING,
+            params: ENDPOINT_PARAMS_SVR2_2026Q3_STAGING_V1,
         }),
     },
     svr_b: SvrBEnv {
@@ -857,20 +871,16 @@ pub const STAGING: Env<'static> = Env {
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2026Q2_STAGING,
+                params: ENDPOINT_PARAMS_SVRB_2026Q3_STAGING,
             }),
-            None,
-            None,
-        ],
-        previous: [
             Some(EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2026Q1_STAGING,
+                params: ENDPOINT_PARAMS_SVRB_2026Q2_STAGING,
             }),
             None,
-            None,
         ],
+        previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_STAGING,
     reflector_providers: || &*REFLECTOR_PROVIDERS_STAGING,
