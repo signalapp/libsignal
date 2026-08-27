@@ -584,7 +584,9 @@ impl<M: Method + ReferencedTypes, C: ReportUnusualTimestamp> TryIntoWith<Account
         use proto::account_data::account_settings::UnreadBadgeType as UnreadBadgeTypeProto;
         let unread_badge_type = match unreadBadgeType.enum_value_or_default() {
             UnreadBadgeTypeProto::UNKNOWN_BADGE_TYPE => {
-                return Err(AccountDataError::UnknownUnreadBadgeType);
+                // TODO: replace with an error when clients implement it
+                // return Err(AccountDataError::UnknownUnreadBadgeType);
+                UnreadBadgeType::UnreadMessages
             }
             UnreadBadgeTypeProto::UNREAD_MESSAGES => UnreadBadgeType::UnreadMessages,
             UnreadBadgeTypeProto::UNREAD_CHATS => UnreadBadgeType::UnreadChats,
@@ -1064,7 +1066,7 @@ mod test {
         |x| {
             x.accountSettings.as_mut().unwrap().unreadBadgeType = Default::default();
         } =>
-        Err(AccountDataError::UnknownUnreadBadgeType);
+        Ok(());
         "unknown_unread_badge_type"
     )]
     #[test_case(
