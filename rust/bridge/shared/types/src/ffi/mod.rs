@@ -491,10 +491,9 @@ impl std::fmt::Debug for UnexpectedPanic {
     }
 }
 
-// Wrapper for a `*mut T` that gets translated by cbindgen into a named struct
-// type in the generated C header file. This is useful because the consuming
-// Swift code considers all opaque pointers to be the same type, but
-// differentiates between the generated named struct types.
+// Wrapper for a `*mut T` that gets translated into a named struct type in the generated C header
+// file. This is useful because the consuming Swift code considers all opaque pointers to be the
+// same type, but differentiates between the generated named struct types.
 #[repr(C)]
 #[derive(derive_more::From, zerocopy::FromZeros, IsCType)]
 #[derive_where(Copy, Clone, Debug, PartialEq, Eq)]
@@ -625,7 +624,6 @@ mod type_aliases {
     use static_assertions::const_assert_eq;
 
     use crate::ffi::capi::IsCType;
-    use crate::ffi::{CPromise, FfiCdsiLookupResponseEntry, OptionalPairOf, OwnedBufferOf, PairOf};
 
     #[c_export]
     type AesKeyBytes = zkgroup::AesKeyBytes;
@@ -669,29 +667,6 @@ mod type_aliases {
     type InputStream = super::FfiInputStreamStruct;
     #[c_export]
     type SyncInputStream = crate::io::FfiSyncInputStreamStruct;
-
-    // Shim exports to support cbindgen's name mangling
-    #[c_export]
-    type CPromiseOwnedBufferOfServiceIdFixedWidthBinaryBytes =
-        CPromise<OwnedBufferOf<ServiceIdFixedWidthBinaryBytes>>;
-    #[c_export]
-    #[allow(non_camel_case_types)]
-    type CPromiseOwnedBufferOfc_uchar = CPromise<OwnedBufferOf<u8>>;
-    #[c_export]
-    #[allow(non_camel_case_types)]
-    type CPromisePairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar =
-        CPromise<PairOf<OwnedBufferOf<u8>, OwnedBufferOf<u8>>>;
-    #[c_export]
-    type OptionalPairOfCStringPtru832 = OptionalPairOf<*const std::ffi::c_char, [u8; 32]>;
-    #[c_export]
-    type OwnedBufferOfFfiCdsiLookupResponseEntry = OwnedBufferOf<FfiCdsiLookupResponseEntry>;
-    #[c_export]
-    #[allow(non_camel_case_types)]
-    type PairOfOwnedBufferOfc_ucharOwnedBufferOfc_uchar =
-        PairOf<OwnedBufferOf<u8>, OwnedBufferOf<u8>>;
-    #[c_export]
-    type CPromiseOptionalPairOfCStringPtru832 =
-        CPromise<OptionalPairOf<*const std::ffi::c_char, [u8; 32]>>;
 
     #[repr(C)]
     #[derive(IsCType)]

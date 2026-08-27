@@ -8,7 +8,6 @@
 
 pub mod api;
 pub mod common;
-/// cbindgen:ignore
 pub mod crypto;
 pub use api::*;
 pub use common::constants::*;

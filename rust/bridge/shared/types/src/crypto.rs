@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use ::signal_crypto;
+use aes_gcm_siv::Aes256GcmSiv;
 use rand::rand_core::UnwrapErr;
 use rand::rngs::OsRng;
 use rand::{CryptoRng, SeedableRng};
@@ -122,9 +123,6 @@ impl Aes256GcmDecryption {
         }
     }
 }
-
-// Explicit wrapper for cbindgen purposes.
-pub struct Aes256GcmSiv(pub aes_gcm_siv::Aes256GcmSiv);
 
 bridge_as_handle!(CryptographicHash, mut = true, ffi = false, node = false);
 bridge_as_handle!(CryptographicMac, mut = true, ffi = false, node = false);

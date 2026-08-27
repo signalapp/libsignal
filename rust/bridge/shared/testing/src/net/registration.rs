@@ -141,20 +141,13 @@ fn TESTING_RegisterAccountResponse_CreateTestValue() -> RegisterAccountResponse 
 
 // Use aliases so that places that refer to syntactic argument names (e.g.
 // jni::jni_arg and friends) aren't ambiguous.
-/// cbindgen:ignore
 type TestingCreateSessionRequestError = TestingRequestError<TestingCreateSessionError>;
-/// cbindgen:ignore
 type TestingResumeSessionRequestError = TestingRequestError<TestingResumeSessionError>;
-/// cbindgen:ignore
 type TestingUpdateSessionRequestError = TestingRequestError<TestingUpdateSessionError>;
-/// cbindgen:ignore
 type TestingRequestVerificationCodeRequestError =
     TestingRequestError<TestingRequestVerificationCodeError>;
-/// cbindgen:ignore
 type TestingSubmitVerificationRequestError = TestingRequestError<TestingSubmitVerificationError>;
-/// cbindgen:ignore
 type TestingRegisterAccountRequestError = TestingRequestError<TestingRegisterAccountError>;
-/// cbindgen:ignore
 type TestingCheckSvr2CredentialsRequestError =
     TestingRequestError<TestingCheckSvr2CredentialsError>;
 

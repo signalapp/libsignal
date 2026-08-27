@@ -5,9 +5,9 @@
 
 use ::signal_crypto;
 use aes_gcm_siv::aead::array::typenum::Unsigned;
-use aes_gcm_siv::{AeadCore, AeadInOut as _, KeyInit};
+use aes_gcm_siv::{AeadCore, AeadInOut as _, Aes256GcmSiv, KeyInit};
 use libsignal_bridge_macros::*;
-use libsignal_bridge_types::crypto::{Aes256GcmDecryption, Aes256GcmEncryption, Aes256GcmSiv};
+use libsignal_bridge_types::crypto::{Aes256GcmDecryption, Aes256GcmEncryption};
 use libsignal_core::curve::{PrivateKey, PublicKey};
 use signal_crypto::{
     Aes256Ctr32, CryptographicHash, CryptographicMac, Error, HpkeError, Result, SimpleHpkeReceiver,
@@ -90,9 +90,7 @@ fn Aes256GcmDecryption_VerifyTag(gcm: &mut Aes256GcmDecryption, tag: &[u8]) -> R
 
 #[bridge_fn]
 fn Aes256GcmSiv_New(key: &[u8]) -> Result<Aes256GcmSiv> {
-    Ok(Aes256GcmSiv(
-        aes_gcm_siv::Aes256GcmSiv::new_from_slice(key).map_err(|_| Error::InvalidKeySize)?,
-    ))
+    aes_gcm_siv::Aes256GcmSiv::new_from_slice(key).map_err(|_| Error::InvalidKeySize)
 }
 
 #[bridge_fn]
@@ -109,7 +107,6 @@ fn Aes256GcmSiv_Encrypt(
     buf.extend_from_slice(ptext);
 
     aes_gcm_siv_obj
-        .0
         .encrypt_in_place(nonce, associated_data, &mut buf)
         .expect("cannot run out of capacity in a Vec");
 
@@ -127,7 +124,6 @@ fn Aes256GcmSiv_Decrypt(
 
     let mut buf = ctext.to_vec();
     aes_gcm_siv
-        .0
         .decrypt_in_place(nonce, associated_data, &mut buf)
         .map_err(|_| Error::InvalidTag)?;
     Ok(buf)

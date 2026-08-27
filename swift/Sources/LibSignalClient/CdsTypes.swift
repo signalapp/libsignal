@@ -203,13 +203,13 @@ public struct CdsiLookupResponse {
 public class LookupResponseEntryList: Collection {
     private var owned: UnsafeMutableBufferPointer<CdsiLookupResponseEntry>
 
-    init(owned: SignalOwnedBufferOfFfiCdsiLookupResponseEntry) {
+    init(owned: SignalOwnedLookupResponseEntryList) {
         self.owned = UnsafeMutableBufferPointer(start: owned.base, count: Int(owned.length))
     }
 
     deinit {
         signal_free_lookup_response_entry_list(
-            SignalOwnedBufferOfFfiCdsiLookupResponseEntry(base: self.owned.baseAddress, length: self.owned.count)
+            SignalOwnedLookupResponseEntryList(base: self.owned.baseAddress, length: self.owned.count)
         )
     }
 

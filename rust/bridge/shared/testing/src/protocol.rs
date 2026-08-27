@@ -11,7 +11,6 @@ use crate::*;
 
 bridge_get!(SessionRecord::alice_base_key -> &[u8], ffi = false, node = false);
 
-/// cbindgen: ignore
 type SignedPublicPreKey = SignedPreKeyBody<Box<[u8]>>;
 
 #[bridge_fn]

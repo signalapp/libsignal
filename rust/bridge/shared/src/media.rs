@@ -4,7 +4,7 @@
 //
 
 use libsignal_bridge_macros::*;
-use libsignal_bridge_types::media::SanitizedMetadata;
+use signal_media::sanitize::mp4::SanitizedMetadata;
 use signal_media::sanitize::{mp4, webp};
 
 use crate::io::{AsyncInput, InputStream, SyncInput, SyncInputStream};
@@ -27,7 +27,7 @@ async fn Mp4Sanitizer_Sanitize(
 ) -> Result<SanitizedMetadata, mp4::Error> {
     let input = AsyncInput::new(input, len);
     let metadata = mp4::sanitize(input, None).await?;
-    Ok(SanitizedMetadata(metadata))
+    Ok(metadata)
 }
 
 #[bridge_fn(ffi = false, node = false)]
@@ -38,7 +38,7 @@ async fn Mp4Sanitizer_Sanitize_File_With_Compounded_MDAT_Boxes(
 ) -> Result<SanitizedMetadata, mp4::Error> {
     let input = AsyncInput::new(input, len);
     let metadata = mp4::sanitize(input, Some(cumulative_mdat_box_size)).await?;
-    Ok(SanitizedMetadata(metadata))
+    Ok(metadata)
 }
 
 #[bridge_fn]
@@ -50,15 +50,15 @@ fn WebpSanitizer_Sanitize(input: &mut dyn SyncInputStream) -> Result<(), webp::E
 
 #[bridge_fn]
 fn SanitizedMetadata_GetMetadata(sanitized: &SanitizedMetadata) -> &[u8] {
-    sanitized.0.metadata.as_deref().unwrap_or_default()
+    sanitized.metadata.as_deref().unwrap_or_default()
 }
 
 #[bridge_fn]
 fn SanitizedMetadata_GetDataOffset(sanitized: &SanitizedMetadata) -> u64 {
-    sanitized.0.data.offset
+    sanitized.data.offset
 }
 
 #[bridge_fn]
 fn SanitizedMetadata_GetDataLen(sanitized: &SanitizedMetadata) -> u64 {
-    sanitized.0.data.len
+    sanitized.data.len
 }

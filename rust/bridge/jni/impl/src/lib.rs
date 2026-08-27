@@ -231,8 +231,6 @@ pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_SealedSender_
 }
 
 /// An optimization barrier / guard against garbage collection.
-///
-/// cbindgen:ignore
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Java_org_signal_libsignal_internal_Native_keepAlive(
     _env: jni::EnvUnowned,

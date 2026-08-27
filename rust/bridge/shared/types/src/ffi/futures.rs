@@ -19,7 +19,7 @@ pub type RawCancellationId = u64;
 
 /// A C callback used to report the results of Rust futures.
 ///
-/// cbindgen will produce independent C types like `SignalCPromisei32` and
+/// The generated C header will use independent C types like `SignalCPromisei32` and
 /// `SignalCPromiseProtocolAddress`.
 ///
 /// This derives Copy because it behaves like a C type; nevertheless, a promise should still only be
