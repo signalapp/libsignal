@@ -1364,6 +1364,19 @@ impl MessageOnlyExceptionJniError for libsignal_net_chat::api::keys::GetPreKeysF
     }
 }
 
+impl MessageOnlyExceptionJniError
+    for libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure
+{
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            Self::InvalidOrExpiredReceipt => {
+                ClassName("org.signal.libsignal.net.InvalidReceiptException")
+            }
+            Self::MissingBackupId => ClassName("org.signal.libsignal.net.MissingBackupIdException"),
+        }
+    }
+}
+
 /// Translates errors into Java exceptions.
 ///
 /// Exceptions thrown in callbacks will be rethrown; all other errors will be mapped to an

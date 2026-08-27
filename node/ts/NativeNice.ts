@@ -49,6 +49,7 @@ import type {
   ReturnFfiMyTestEnum,
   ReturnFfiMyTestPoint,
   ReturnFfiMyTestStruct,
+  ReturnFfiRedeemBackupReceiptOut,
   ReturnFfiRemoveDeviceArgs,
   ReturnFfiRemoveDeviceOut,
   ReturnFfiReserveUsernameHashArgs,
@@ -309,6 +310,12 @@ export type MyTestStruct = {
   myNumericField: number;
   myStringField: string;
 };
+
+export type RedeemBackupReceiptOut =
+  | 'success'
+  | 'invalidReceipt'
+  | 'missingBackupId'
+  | 'missingResponse';
 
 export type RemoveDeviceArgs = {
   id: number;
@@ -845,6 +852,27 @@ export function returnConverterMyTestStruct(
   };
 }
 
+export function returnConverterRedeemBackupReceiptOut(
+  ffiInput: Native.ReturnFfiRedeemBackupReceiptOut
+): RedeemBackupReceiptOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+    case 1:
+      return 'invalidReceipt';
+    case 2:
+      return 'missingBackupId';
+    case 3:
+      return 'missingResponse';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for RedeemBackupReceiptOut'
+      );
+  }
+}
+
 export function returnConverterRemoveDeviceArgs(
   ffiInput: Native.ReturnFfiRemoveDeviceArgs
 ): RemoveDeviceArgs {
@@ -1301,6 +1329,28 @@ export async function AuthenticatedChatConnection_get_devices({
       Native.AuthenticatedChatConnection_get_devices(
         asyncContext,
         identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_redeem_backup_receipt({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  presentation: presentation,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  presentation: zkgroup.ReceiptCredentialPresentation;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_redeem_backup_receipt(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(presentation)
       )
     )
   );
@@ -1917,6 +1967,15 @@ export function TESTING_MyTestStruct_to_string({
   return identity(
     Native.TESTING_MyTestStruct_to_string(argConverterMyTestStruct(x))
   );
+}
+
+export function TESTING_RedeemBackupReceiptTests(): Array<
+  GrpcTestCase<Uint8Array<ArrayBuffer>, RedeemBackupReceiptOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterRedeemBackupReceiptOut
+  )(Native.TESTING_RedeemBackupReceiptTests());
 }
 
 export function TESTING_RemoveDeviceTests(): Array<

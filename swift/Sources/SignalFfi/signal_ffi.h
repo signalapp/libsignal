@@ -3060,6 +3060,8 @@ typedef enum {
   SignalErrorCodeUsernameNotAvailable = 225,
   SignalErrorCodeUsernameNotSet = 226,
   SignalErrorCodeUsernameReservationNotFound = 227,
+  SignalErrorCodeInvalidReceipt = 228,
+  SignalErrorCodeMissingBackupId = 229,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);
 static_assert_64bit(alignof(SignalErrorCode) == 4);
@@ -3363,6 +3365,12 @@ SignalFfiError* signal_authenticated_chat_connection_preconnect(
   SignalCPromisebool* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerConnectionManager connection_manager
+);
+SignalFfiError* signal_authenticated_chat_connection_redeem_backup_receipt(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const SignalType_FixedArray329_uint8_t* presentation
 );
 SignalFfiError* signal_authenticated_chat_connection_remove_device(
   SignalCPromisebool* promise,

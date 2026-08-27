@@ -84,6 +84,8 @@ public enum SignalError: Error {
     case usernameNotAvailable(String)
     case usernameNotSet(String)
     case usernameReservationNotFound(String)
+    case invalidReceipt(String)
+    case missingBackupId(String)
 
     case unknown(UInt32, String)
 }
@@ -359,6 +361,10 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.usernameNotSet(errStr)
     case SignalErrorCodeUsernameReservationNotFound:
         throw SignalError.usernameReservationNotFound(errStr)
+    case SignalErrorCodeInvalidReceipt:
+        throw SignalError.invalidReceipt(errStr)
+    case SignalErrorCodeMissingBackupId:
+        throw SignalError.missingBackupId(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

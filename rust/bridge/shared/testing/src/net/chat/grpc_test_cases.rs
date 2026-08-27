@@ -181,22 +181,18 @@ impl<Req, Resp> GrpcTestCases<Req, Resp> {
                 .collect(),
         )
     }
-}
 
-impl<
-    RequestInto: Into<Request>,
-    Request,
-    RequestGrpc: prost::Message,
-    ResponseGrpc: prost::Message,
-    ResponseInto: Into<Response>,
-    Response,
-> From<Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>>
-    for GrpcTestCases<Request, Response>
-{
-    fn from(
-        value: Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>,
+    pub fn from_iter(
+        input: impl IntoIterator<
+            Item = GrpcTestCase<
+                impl Into<Req>,
+                impl prost::Message,
+                impl prost::Message,
+                impl Into<Resp>,
+            >,
+        >,
     ) -> Self {
-        Self::from_generalized_test_cases(value.into_iter().map(
+        Self::from_generalized_test_cases(input.into_iter().map(
             |GrpcTestCase {
                  name,
                  method,
@@ -223,6 +219,23 @@ impl<
                 }
             },
         ))
+    }
+}
+
+impl<
+    RequestInto: Into<Request>,
+    Request,
+    RequestGrpc: prost::Message,
+    ResponseGrpc: prost::Message,
+    ResponseInto: Into<Response>,
+    Response,
+> From<Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>>
+    for GrpcTestCases<Request, Response>
+{
+    fn from(
+        value: Vec<GrpcTestCase<RequestInto, RequestGrpc, ResponseGrpc, ResponseInto>>,
+    ) -> Self {
+        Self::from_iter(value)
     }
 }
 

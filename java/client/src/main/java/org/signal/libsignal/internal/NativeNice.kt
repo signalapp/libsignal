@@ -668,6 +668,26 @@ public object NativeNice {
       }
   }
 
+  public fun AuthenticatedChatConnection_redeem_backup_receipt(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    presentation: org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_presentation =
+      (org.signal.libsignal.zkgroup.internal.ByteArray::getInternalContentsForJNI)(presentation)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_redeem_backup_receipt(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_presentation,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_remove_device(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

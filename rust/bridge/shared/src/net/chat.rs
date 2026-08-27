@@ -38,6 +38,7 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -1111,5 +1112,16 @@ async fn UnauthenticatedChatConnection_submit_call_quality_survey(
     chat.require_grpc()
         .await
         .submit_call_quality_survey(survey.into())
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_redeem_backup_receipt(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    presentation: Serialized<::zkgroup::receipts::ReceiptCredentialPresentation>,
+) -> Result<(), RequestError<RedeemBackupReceiptFailure>> {
+    chat.require_grpc()
+        .await
+        .redeem_backup_receipt(presentation.into_inner())
         .await
 }

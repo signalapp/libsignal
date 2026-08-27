@@ -344,6 +344,13 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_redeem_backup_receipt(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    presentation: ByteArray,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_remove_device(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

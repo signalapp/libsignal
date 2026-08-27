@@ -523,6 +523,9 @@ public object NativeTesting {
   public external fun TESTING_ProcessBytestringArray(input: Array<ByteBuffer>): Array<ByteArray>
 
   @JvmStatic
+  public external fun TESTING_RedeemBackupReceiptTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_RegisterAccountResponse_CreateTestValue(): ObjectHandle
 
   @JvmStatic

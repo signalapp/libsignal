@@ -680,6 +680,16 @@ mod remote_derives {
         CredentialRejected,
         MissingResponse,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::test_cases::RedeemBackupReceiptOut)]
+    #[bridge(arg = false)]
+    pub enum RedeemBackupReceiptOut {
+        Success,
+        InvalidReceipt,
+        MissingBackupId,
+        MissingResponse,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -825,4 +835,14 @@ fn TESTING_BackupListMediaTests()
 fn TESTING_SubmitCallQualitySurveyTests() -> GrpcTestCases<CallQualitySurveyInternal, ()> {
     libsignal_net_chat::grpc::call_quality::test_cases::submit_call_quality_survey_test_cases()
         .into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_RedeemBackupReceiptTests()
+-> GrpcTestCases<Vec<u8>, remote_derives::RedeemBackupReceiptOut> {
+    GrpcTestCases::from_iter(
+        libsignal_net_chat::grpc::backups::test_cases::redeem_receipt_test_cases()
+            .into_iter()
+            .map(|next| next.map_request(|presentation| ::zkgroup::serialize(&presentation))),
+    )
 }

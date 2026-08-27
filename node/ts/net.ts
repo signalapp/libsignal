@@ -27,16 +27,17 @@ export * from './net/CDSI.js';
 export * from './net/Chat.js';
 
 export * from './net/chat/AuthAccountsService.js';
+export * from './net/chat/AuthBackupsService.js';
 export * from './net/chat/AuthDevicesService.js';
 export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthUsernamesService.js';
 export * from './net/chat/UnauthBackupsService.js';
 export * from './net/chat/UnauthCallQualityService.js';
-
 export * from './net/chat/UnauthKeysService.js';
 export * from './net/chat/UnauthMessagesService.js';
 export * from './net/chat/UnauthProfilesService.js';
 export * from './net/chat/UnauthUsernamesService.js';
+
 export * from './net/Registration.js';
 export * from './net/Svr2.js';
 export * from './net/SvrB.js';

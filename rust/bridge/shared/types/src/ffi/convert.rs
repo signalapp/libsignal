@@ -36,7 +36,7 @@ use crate::protocol::storage::{
     FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
 };
 use crate::support::{
-    AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
+    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
     IllegalArgumentError, Serialized, extend_lifetime,
 };
 
@@ -1575,6 +1575,24 @@ where
             )
         });
         Ok(Serialized::from(result))
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable,
+{
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        ctx.fixed_byte_array_lengths.insert(T::Array::LEN);
+        let name = T::name();
+        SwiftArgConverter {
+            converter_type: format!(
+                "FixedLengthSerializedConverter<{name}, {}>",
+                names::fixed_byte_array_helper(T::Array::LEN)
+            ),
+            nice_type: name,
+        }
     }
 }
 

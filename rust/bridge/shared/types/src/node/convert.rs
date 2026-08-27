@@ -2394,6 +2394,22 @@ where
     }
 }
 
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable,
+{
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            // If we ever want to use FixedLengthBincodeSerializable for non-zkgroup types,
+            // we can add a module name as a trait requirement.
+            nice_type: format!("zkgroup.{}", T::name()),
+            ffi_type: "Uint8Array<ArrayBuffer>".to_owned(),
+            converter_function: "ByteArray.prototype.getContents.call".to_owned(),
+        }
+    }
+}
+
 impl<'a, T> crate::node::ResultTypeInfo<'a> for Serialized<T>
 where
     T: FixedLengthBincodeSerializable + serde::Serialize,

@@ -215,6 +215,16 @@ public data class MyTestStruct(
   public val myStringField: String,
 )
 
+public sealed class RedeemBackupReceiptOut {
+  public data object Success : RedeemBackupReceiptOut()
+
+  public data object InvalidReceipt : RedeemBackupReceiptOut()
+
+  public data object MissingBackupId : RedeemBackupReceiptOut()
+
+  public data object MissingResponse : RedeemBackupReceiptOut()
+}
+
 public data class RemoveDeviceArgs(
   public val id: Int,
 )
@@ -852,6 +862,34 @@ public object MyTestStruct_ReturnConverter {
       myStringField =
         identity(my_string_field as String),
     )
+}
+
+public object RedeemBackupReceiptOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemBackupReceiptOut.Success
+}
+
+public object RedeemBackupReceiptOut_InvalidReceipt_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemBackupReceiptOut.InvalidReceipt
+}
+
+public object RedeemBackupReceiptOut_MissingBackupId_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemBackupReceiptOut.MissingBackupId
+}
+
+public object RedeemBackupReceiptOut_MissingResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemBackupReceiptOut.MissingResponse
 }
 
 public object RemoveDeviceArgs_ReturnConverter {
@@ -1626,6 +1664,16 @@ public object NativeTestingNice {
       )
 
     return identity(ffiOut)
+  }
+
+  public fun TESTING_RedeemBackupReceiptTests(): List<org.signal.libsignal.net.GrpcTestCase<ByteArray, org.signal.libsignal.internal.RedeemBackupReceiptOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_RedeemBackupReceiptTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<ByteArray, Object, ByteArray, org.signal.libsignal.internal.RedeemBackupReceiptOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.RedeemBackupReceiptOut>(it) })(ffiOut)
   }
 
   public fun TESTING_RemoveDeviceTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.RemoveDeviceArgs, org.signal.libsignal.internal.RemoveDeviceOut>> {

@@ -737,6 +737,15 @@ impl SignalNodeError for libsignal_net_chat::api::messages::UnsealedSendFailure 
     }
 }
 
+impl SimpleNodeError for libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure {
+    fn js_error_name(&self) -> Option<&'static str> {
+        match self {
+            Self::InvalidOrExpiredReceipt => Some("InvalidReceipt"),
+            Self::MissingBackupId => Some("MissingBackupId"),
+        }
+    }
+}
+
 mod registration {
     use libsignal_net::auth::Auth;
     use libsignal_net_chat::api::registration::{

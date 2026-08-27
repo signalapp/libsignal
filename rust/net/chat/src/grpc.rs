@@ -731,6 +731,56 @@ pub struct GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response> {
     pub response: Response,
 }
 
+impl<Request, RequestGrpc, ResponseGrpc, Response>
+    GrpcTestCase<Request, RequestGrpc, ResponseGrpc, Response>
+{
+    #[inline]
+    pub fn map_request<NewReq>(
+        self,
+        f: impl FnOnce(Request) -> NewReq,
+    ) -> GrpcTestCase<NewReq, RequestGrpc, ResponseGrpc, Response> {
+        let GrpcTestCase {
+            name,
+            method,
+            request,
+            request_grpc,
+            response_grpc,
+            response,
+        } = self;
+        GrpcTestCase {
+            name,
+            method,
+            request: f(request),
+            request_grpc,
+            response_grpc,
+            response,
+        }
+    }
+
+    #[inline]
+    pub fn map_response<NewResp>(
+        self,
+        f: impl FnOnce(Response) -> NewResp,
+    ) -> GrpcTestCase<Request, RequestGrpc, ResponseGrpc, NewResp> {
+        let GrpcTestCase {
+            name,
+            method,
+            request,
+            request_grpc,
+            response_grpc,
+            response,
+        } = self;
+        GrpcTestCase {
+            name,
+            method,
+            request,
+            request_grpc,
+            response_grpc,
+            response: f(response),
+        }
+    }
+}
+
 // Utilities used by exported test cases (and thus not `cfg(test)`).
 pub mod test_case_util {
     use base64::Engine as _;

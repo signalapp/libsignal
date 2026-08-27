@@ -147,6 +147,8 @@ pub enum SignalErrorCode {
     UsernameNotAvailable = 225,
     UsernameNotSet = 226,
     UsernameReservationNotFound = 227,
+    InvalidReceipt = 228,
+    MissingBackupId = 229,
 }
 
 pub trait UpcastAsAny {
@@ -863,6 +865,16 @@ impl IntoFfiError for DeviceIdNotFoundInAccount {
 impl IntoFfiError for UsernameNotAvailable {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         SimpleError::new(SignalErrorCode::UsernameNotAvailable, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            Self::InvalidOrExpiredReceipt => SignalErrorCode::InvalidReceipt,
+            Self::MissingBackupId => SignalErrorCode::MissingBackupId,
+        };
+        SimpleError::new(code, self.to_string())
     }
 }
 

@@ -2737,6 +2737,7 @@ dependencies = [
  "tonic",
  "usernames",
  "uuid",
+ "zkgroup",
 ]
 
 [[package]]

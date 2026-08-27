@@ -868,6 +868,14 @@ typedef struct {
 } SignalLookUpUsernameLinkOutFfiResult;
 static_assert_64bit(sizeof(SignalLookUpUsernameLinkOutFfiResult) == 16);
 static_assert_64bit(alignof(SignalLookUpUsernameLinkOutFfiResult) == 8);
+typedef enum {
+  SignalRedeemBackupReceiptOutFfiResultSuccess,
+  SignalRedeemBackupReceiptOutFfiResultInvalidReceipt,
+  SignalRedeemBackupReceiptOutFfiResultMissingBackupId,
+  SignalRedeemBackupReceiptOutFfiResultMissingResponse,
+} SignalRedeemBackupReceiptOutFfiResult;
+static_assert_64bit(sizeof(SignalRedeemBackupReceiptOutFfiResult) == 4);
+static_assert_64bit(alignof(SignalRedeemBackupReceiptOutFfiResult) == 4);
 typedef struct {
   uint8_t id;
 } SignalRemoveDeviceArgsFfiResult;
@@ -1856,6 +1864,9 @@ SignalFfiError* signal_testing_panic_on_return_sync(
 SignalFfiError* signal_testing_process_bytestring_array(
   SignalBytestringArray* out,
   SignalBorrowedSliceOfBuffers input
+);
+SignalFfiError* signal_testing_redeem_backup_receipt_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_register_account_response_create_test_value(
   SignalMutPointerRegisterAccountResponse* out

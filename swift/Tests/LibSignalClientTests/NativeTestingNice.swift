@@ -798,6 +798,13 @@ internal struct MyTestStruct {
 
 }
 
+internal enum RedeemBackupReceiptOut {
+    case success
+    case invalidReceipt
+    case missingBackupId
+    case missingResponse
+}
+
 internal struct RemoveDeviceArgs {
     var id: UInt8
 
@@ -1541,6 +1548,29 @@ internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
         let my_string_field = Result { try StringConverter.convertReturn(consuming: ffiValue.my_string_field) }
 
         return MyTestStruct(myNumericField: try my_numeric_field.get(), myStringField: try my_string_field.get())
+    }
+}
+
+internal enum DerivedReturnConverterRedeemBackupReceiptOut: NiceReturnConverter {
+    typealias NiceReturn = RedeemBackupReceiptOut
+    typealias FfiReturn = SignalRedeemBackupReceiptOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRedeemBackupReceiptOutFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalRedeemBackupReceiptOutFfiResultSuccess:
+            return RedeemBackupReceiptOut.success
+        case SignalRedeemBackupReceiptOutFfiResultInvalidReceipt:
+            return RedeemBackupReceiptOut.invalidReceipt
+        case SignalRedeemBackupReceiptOutFfiResultMissingBackupId:
+            return RedeemBackupReceiptOut.missingBackupId
+        case SignalRedeemBackupReceiptOutFfiResultMissingResponse:
+            return RedeemBackupReceiptOut.missingResponse
+        default:
+            throw SignalError.internalError("Unexpected enum tag for RedeemBackupReceiptOut: \(ffiTag)")
+        }
     }
 }
 
@@ -3052,6 +3082,19 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func TESTING_RedeemBackupReceiptTests() throws -> [GrpcTestCase<Data, RedeemBackupReceiptOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<DataConverter, DerivedReturnConverterRedeemBackupReceiptOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_redeem_backup_receipt_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DataConverter, DerivedReturnConverterRedeemBackupReceiptOut>.convertReturn(
+            consuming: rawOutput
+        )
 
     }
     internal static func TESTING_RemoveDeviceTests() throws -> [GrpcTestCase<RemoveDeviceArgs, RemoveDeviceOut>] {

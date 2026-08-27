@@ -457,6 +457,20 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiRedeemBackupReceiptOut =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
 export type ReturnFfiRemoveDeviceArgs = {
   id: number;
 };
@@ -741,6 +755,11 @@ type NativeFunctions = {
   AuthenticatedChatConnection_preconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_redeem_backup_receipt: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    presentation: Serialized<ReceiptCredentialPresentation>
   ) => CancellablePromise<void>;
   AuthenticatedChatConnection_remove_device: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -2853,6 +2872,9 @@ type NativeFunctions = {
   TESTING_ProcessBytestringArray: (
     input: Array<Uint8Array<ArrayBuffer>>
   ) => Array<Uint8Array<ArrayBuffer>>;
+  TESTING_RedeemBackupReceiptTests: () => Array<
+    GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, ReturnFfiRedeemBackupReceiptOut>
+  >;
   TESTING_RegisterAccountResponse_CreateTestValue: () => RegisterAccountResponse;
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert: (
     error_description: string
@@ -3382,6 +3404,7 @@ const {
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_redeem_backup_receipt,
   AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
@@ -3965,6 +3988,7 @@ const {
   TESTING_PanicOnReturnIo,
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
+  TESTING_RedeemBackupReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
   TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert,
@@ -4143,6 +4167,7 @@ export {
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
   AuthenticatedChatConnection_preconnect,
+  AuthenticatedChatConnection_redeem_backup_receipt,
   AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_reserve_username_hash,
   AuthenticatedChatConnection_send,
@@ -4726,6 +4751,7 @@ export {
   TESTING_PanicOnReturnIo,
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
+  TESTING_RedeemBackupReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
   TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert,

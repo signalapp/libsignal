@@ -30,10 +30,11 @@ pub fn validate_serialization<'a, T: Deserialize<'a> + PartialDefault>(
 ///
 /// To be used with [`bridge_fixed_length_serializable_fns`].
 macro_rules! bridge_as_fixed_length_serializable {
-    ($typ:ident) => {
+    ($typ:ident, jni_class = $jni_class:expr$(,)?) => {
         ::paste::paste! {
             impl FixedLengthBincodeSerializable for $typ {
                 type Array = [u8; [<$typ:snake:upper _LEN>]];
+                const JNI_CLASS: &'static str = $jni_class;
                 #[cfg(feature = "metadata")]
                 fn name() -> String {
                     let name = stringify!($typ);
@@ -41,6 +42,9 @@ macro_rules! bridge_as_fixed_length_serializable {
                 }
             }
         }
+    };
+    ($typ:ident) => {
+        bridge_as_fixed_length_serializable!($typ, jni_class = "");
     };
 }
 
@@ -102,7 +106,10 @@ bridge_as_fixed_length_serializable!(ProfileKeyCommitment);
 bridge_as_fixed_length_serializable!(ProfileKeyCredentialRequest);
 bridge_as_fixed_length_serializable!(ProfileKeyCredentialRequestContext);
 bridge_as_fixed_length_serializable!(ReceiptCredential);
-bridge_as_fixed_length_serializable!(ReceiptCredentialPresentation);
+bridge_as_fixed_length_serializable!(
+    ReceiptCredentialPresentation,
+    jni_class = "org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation",
+);
 bridge_as_fixed_length_serializable!(ReceiptCredentialRequest);
 bridge_as_fixed_length_serializable!(ReceiptCredentialRequestContext);
 bridge_as_fixed_length_serializable!(ReceiptCredentialResponse);

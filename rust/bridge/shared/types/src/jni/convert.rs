@@ -2344,6 +2344,29 @@ where
     }
 }
 
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for Serialized<T>
+where
+    T: FixedLengthBincodeSerializable,
+    for<'a> Serialized<T>: SimpleArgTypeInfo<'a>,
+{
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        assert!(
+            !T::JNI_CLASS.is_empty(),
+            "need to specify JNI_CLASS for {} to use it with nice bridging",
+            std::any::type_name::<T>()
+        );
+        KtArgConverter {
+            nice_type: T::JNI_CLASS.to_owned(),
+            ffi_type: "ByteArray".to_owned(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function:
+                "(org.signal.libsignal.zkgroup.internal.ByteArray::getInternalContentsForJNI)"
+                    .to_owned(),
+        }
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for ObjectHandle {
     type ArgType = ObjectHandle;
 
