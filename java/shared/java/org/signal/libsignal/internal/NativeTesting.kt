@@ -146,6 +146,9 @@ public object NativeTesting {
   public external fun TESTING_ChatSendErrorConvert(errorDescription: String): Unit
 
   @JvmStatic
+  public external fun TESTING_CheckSvrCredentialsTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_ClearPushTokenTests(): Array<Object>
 
   @JvmStatic

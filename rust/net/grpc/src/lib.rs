@@ -29,6 +29,9 @@ pub mod proto {
                 pub mod call_quality {
                     tonic::include_proto!("org.signal.chat.calling.quality");
                 }
+                pub mod credentials {
+                    tonic::include_proto!("org.signal.chat.credentials");
+                }
                 pub mod device {
                     tonic::include_proto!("org.signal.chat.device");
                 }

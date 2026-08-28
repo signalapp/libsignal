@@ -33,6 +33,7 @@ export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthUsernamesService.js';
 export * from './net/chat/UnauthBackupsService.js';
 export * from './net/chat/UnauthCallQualityService.js';
+export * from './net/chat/UnauthCredentialsService.js';
 export * from './net/chat/UnauthKeysService.js';
 export * from './net/chat/UnauthMessagesService.js';
 export * from './net/chat/UnauthProfilesService.js';

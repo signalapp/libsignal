@@ -39,6 +39,7 @@ use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
+use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -1124,4 +1125,17 @@ async fn AuthenticatedChatConnection_redeem_backup_receipt(
         .await
         .redeem_backup_receipt(presentation.into_inner())
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_check_svr_credentials(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    number: String,
+    credentials: BridgeVec<String>,
+) -> Result<BridgeVec<(String, AuthCheckResult)>, RequestError<core::convert::Infallible>> {
+    chat.require_grpc()
+        .await
+        .check_svr_credentials(number, credentials.0)
+        .await
+        .map(|entries| BridgeVec(entries.into_iter().collect()))
 }

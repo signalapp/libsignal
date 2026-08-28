@@ -153,6 +153,17 @@ export const enum LogLevel {
   Trace,
 }
 
+export type ReturnFfiAuthCheckResult =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
 export type ReturnFfiBridgeCopyBackupMediaItem = {
   source_attachment_cdn: number;
   source_key: string;
@@ -221,6 +232,11 @@ export type ReturnFfiCallQualitySurveyInternal = {
   video_send_packet_loss_fraction: number | null;
   call_telemetry: Uint8Array<ArrayBuffer> | null;
   call_id_hash: Uint8Array<ArrayBuffer> | null;
+};
+
+export type ReturnFfiCheckSvrCredentialsArgs = {
+  number: string;
+  passwords: Array<string>;
 };
 
 export type ReturnFfiConfirmUsernameArgs = {
@@ -2606,6 +2622,12 @@ type NativeFunctions = {
   TESTING_ChatRequestGetPath: (request: Wrapper<HttpRequest>) => string;
   TESTING_ChatResponseConvert: (body_present: boolean) => ChatResponse;
   TESTING_ChatSendErrorConvert: (error_description: string) => void;
+  TESTING_CheckSvrCredentialsTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiCheckSvrCredentialsArgs,
+      Array<[string, ReturnFfiAuthCheckResult]>
+    >
+  >;
   TESTING_ClearPushTokenTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_ClearRegistrationLockTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_ConfirmUsernameTests: () => Array<
@@ -3201,6 +3223,12 @@ type NativeFunctions = {
     signing_key: Wrapper<PrivateKey>,
     rng: RandomNumberGenerator
   ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_check_svr_credentials: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    number: string,
+    credentials: Array<string>
+  ) => CancellablePromise<Array<[string, ReturnFfiAuthCheckResult]>>;
   UnauthenticatedChatConnection_connect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connection_manager: Wrapper<ConnectionManager>,
@@ -3898,6 +3926,7 @@ const {
   TESTING_ChatRequestGetPath,
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
+  TESTING_CheckSvrCredentialsTests,
   TESTING_ClearPushTokenTests,
   TESTING_ClearRegistrationLockTests,
   TESTING_ConfirmUsernameTests,
@@ -4095,6 +4124,7 @@ const {
   UnauthenticatedChatConnection_backup_list_media,
   UnauthenticatedChatConnection_backup_refresh,
   UnauthenticatedChatConnection_backup_set_public_key,
+  UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
@@ -4661,6 +4691,7 @@ export {
   TESTING_ChatRequestGetPath,
   TESTING_ChatResponseConvert,
   TESTING_ChatSendErrorConvert,
+  TESTING_CheckSvrCredentialsTests,
   TESTING_ClearPushTokenTests,
   TESTING_ClearRegistrationLockTests,
   TESTING_ConfirmUsernameTests,
@@ -4858,6 +4889,7 @@ export {
   UnauthenticatedChatConnection_backup_list_media,
   UnauthenticatedChatConnection_backup_refresh,
   UnauthenticatedChatConnection_backup_set_public_key,
+  UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,

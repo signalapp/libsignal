@@ -1044,6 +1044,43 @@ extension SignalCPromiseOwnedBuffer: SignalCPromise {
 
 }
 
+extension SignalCPromiseOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult: SignalCPromise {
+
+    typealias Result = SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: SignalCPromise {
 
     typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
@@ -1468,6 +1505,40 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalPairOfCStringPtrAuthCheckResultFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalPairOfCStringPtrAuthCheckResultFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalPairOfCStringPtrAuthCheckResultFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaOutcomeFfiResult: SignalOwnedBufferOfMaxAligned {
 
     typealias Element = SignalBridgeCopyBackupMediaOutcomeFfiResult
@@ -1685,6 +1756,35 @@ extension SignalPairOfCStringPtrOwnedBuffer: SignalPairOf {
     }
 
     var generic_second: SignalOwnedBuffer {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrAuthCheckResultFfiResult: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalAuthCheckResultFfiResult
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalAuthCheckResultFfiResult,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalAuthCheckResultFfiResult {
         get { self.second }
         set { second = newValue }
     }
@@ -1951,6 +2051,17 @@ internal enum FixedByteArrayHelper329: FixedByteArrayHelper {
     }
 }
 
+/*
+// AuthCheckResult
+
+internal enum AuthCheckResult {
+    case match
+    case noMatch
+    case invalid
+}
+
+*/
+
 internal struct BridgeCopyBackupMediaItem {
     var sourceAttachmentCdn: Int32
     var sourceKey: String
@@ -2063,6 +2174,27 @@ internal struct ListMediaResponse {
     var mediaDir: String
     var cursor: String?
 
+}
+
+internal enum DerivedReturnConverterAuthCheckResult: NiceReturnConverter {
+    typealias NiceReturn = AuthCheckResult
+    typealias FfiReturn = SignalAuthCheckResultFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalAuthCheckResultFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalAuthCheckResultFfiResultMatch:
+            return AuthCheckResult.match
+        case SignalAuthCheckResultFfiResultNoMatch:
+            return AuthCheckResult.noMatch
+        case SignalAuthCheckResultFfiResultInvalid:
+            return AuthCheckResult.invalid
+        default:
+            throw SignalError.internalError("Unexpected enum tag for AuthCheckResult: \(ffiTag)")
+        }
+    }
 }
 
 internal enum DerivedReturnConverterBridgeCopyBackupMediaOutcome: NiceReturnConverter {
@@ -3786,6 +3918,47 @@ internal enum NativeNice {
                     }
             }
         return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_check_svr_credentials(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        number: String,
+        credentials: [String],
+    ) async throws -> [(String, AuthCheckResult)] {
+        let rawOutput:
+            ArrayReturnConverter<
+                PairOfResultConverter<
+                    StringConverter, DerivedReturnConverterAuthCheckResult,
+                    SignalPairOfCStringPtrAuthCheckResultFfiResult
+                >, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<
+                        SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection
+                    >.convertArgBorrowed(chat) { chatFfi in
+                        StringConverter.convertArgBorrowed(number) { numberFfi in
+                            ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.convertArgBorrowed(
+                                credentials
+                            ) { credentialsFfi in
+                                SignalFfi.signal_unauthenticated_chat_connection_check_svr_credentials(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    numberFfi,
+                                    credentialsFfi,
+                                )
+                            }
+                        }
+                    }
+                }
+        return try ArrayReturnConverter<
+            PairOfResultConverter<
+                StringConverter, DerivedReturnConverterAuthCheckResult, SignalPairOfCStringPtrAuthCheckResultFfiResult
+            >, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_submit_call_quality_survey(

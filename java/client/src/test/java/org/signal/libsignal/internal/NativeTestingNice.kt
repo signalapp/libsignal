@@ -22,6 +22,12 @@ import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
+import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+
+public data class CheckSvrCredentialsArgs(
+  public val number: String,
+  public val passwords: List<String>,
+)
 
 public data class ConfirmUsernameArgs(
   public val username: String,
@@ -380,6 +386,22 @@ public object CallQualitySurveyInternal_ReturnConverter {
         identity(call_telemetry as ByteArray?),
       callIdHash =
         identity(call_id_hash as ByteArray?),
+    )
+}
+
+public object CheckSvrCredentialsArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    number: Any?,
+    passwords: Any?,
+  ): Any? =
+    CheckSvrCredentialsArgs(
+      number =
+        identity(number as String),
+      passwords =
+        mapBridgeVecReturn<String, String>({ identity(it) })(passwords as Array<*>),
     )
 }
 
@@ -1340,6 +1362,22 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.SimpleBackupTestOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SimpleBackupTestOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_CheckSvrCredentialsTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.CheckSvrCredentialsArgs, List<Pair<String, org.signal.libsignal.net.AuthCheckResult>>>> {
+    val ffiOut =
+      NativeTesting.TESTING_CheckSvrCredentialsTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Array<*>, org.signal.libsignal.internal.CheckSvrCredentialsArgs, List<Pair<String, org.signal.libsignal.net.AuthCheckResult>>>({
+        downcastFromObject<org.signal.libsignal.internal.CheckSvrCredentialsArgs>(it)
+      }, {
+        mapBridgeVecReturn<Pair<String, Object>, Pair<String, org.signal.libsignal.net.AuthCheckResult>>({
+          mapPair<String, Object, String, org.signal.libsignal.net.AuthCheckResult>({
+            identity(it)
+          }, { downcastFromObject<org.signal.libsignal.net.AuthCheckResult>(it) })(it)
+        })(it)
+      })(ffiOut)
   }
 
   public fun TESTING_ClearPushTokenTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {

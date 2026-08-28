@@ -638,6 +638,12 @@ internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
     }
 }
 
+internal struct CheckSvrCredentialsArgs {
+    var number: String
+    var passwords: [String]
+
+}
+
 internal struct ConfirmUsernameArgs {
     var username: String
     var usernameCiphertext: Data
@@ -1001,6 +1007,25 @@ internal enum DerivedReturnConverterCallQualitySurveyInternal: NiceReturnConvert
             callTelemetry: try call_telemetry.get(),
             callIdHash: try call_id_hash.get()
         )
+    }
+}
+
+internal enum DerivedReturnConverterCheckSvrCredentialsArgs: NiceReturnConverter {
+    typealias NiceReturn = CheckSvrCredentialsArgs
+    typealias FfiReturn = SignalCheckSvrCredentialsArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCheckSvrCredentialsArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let number = Result { try StringConverter.convertReturn(consuming: ffiValue.number) }
+        let passwords = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.passwords
+            )
+        }
+
+        return CheckSvrCredentialsArgs(number: try number.get(), passwords: try passwords.get())
     }
 }
 
@@ -2615,6 +2640,34 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_CheckSvrCredentialsTests() throws -> [GrpcTestCase<
+        CheckSvrCredentialsArgs, [(String, AuthCheckResult)]
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterCheckSvrCredentialsArgs,
+            ArrayReturnConverter<
+                PairOfResultConverter<
+                    StringConverter, DerivedReturnConverterAuthCheckResult,
+                    SignalPairOfCStringPtrAuthCheckResultFfiResult
+                >, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult
+            >
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_check_svr_credentials_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterCheckSvrCredentialsArgs,
+            ArrayReturnConverter<
+                PairOfResultConverter<
+                    StringConverter, DerivedReturnConverterAuthCheckResult,
+                    SignalPairOfCStringPtrAuthCheckResultFfiResult
+                >, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult
+            >
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_ClearPushTokenTests() throws -> [GrpcTestCase<Void, Void>] {

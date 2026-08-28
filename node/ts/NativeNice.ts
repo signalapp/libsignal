@@ -18,6 +18,7 @@ import type {
   ArgFfiMyTestEnum,
   ArgFfiMyTestPoint,
   ArgFfiMyTestStruct,
+  ReturnFfiAuthCheckResult,
   ReturnFfiBridgeCopyBackupMediaItem,
   ReturnFfiBridgeCopyBackupMediaOutcome,
   ReturnFfiBridgeCopyBackupMediaResult,
@@ -25,6 +26,7 @@ import type {
   ReturnFfiBridgeMediaBackupInfo,
   ReturnFfiBridgeMessageBackupInfo,
   ReturnFfiCallQualitySurveyInternal,
+  ReturnFfiCheckSvrCredentialsArgs,
   ReturnFfiConfirmUsernameArgs,
   ReturnFfiConfirmUsernameOut,
   ReturnFfiCopyBackupMediaNextChunk,
@@ -81,6 +83,8 @@ import {
   liftNull,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
+
+export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
 
 export type BridgeCopyBackupMediaItem = {
   sourceAttachmentCdn: number;
@@ -143,6 +147,11 @@ export type CallQualitySurveyInternal = {
   videoSendPacketLossFraction: number | null;
   callTelemetry: Uint8Array<ArrayBuffer> | null;
   callIdHash: Uint8Array<ArrayBuffer> | null;
+};
+
+export type CheckSvrCredentialsArgs = {
+  number: string;
+  passwords: Array<string>;
 };
 
 export type ConfirmUsernameArgs = {
@@ -361,6 +370,23 @@ export type TestStreamChunk = {
   termination: ('finished' | Error) | null;
 };
 
+export function returnConverterAuthCheckResult(
+  ffiInput: Native.ReturnFfiAuthCheckResult
+): AuthCheckResult {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'match';
+    case 1:
+      return 'noMatch';
+    case 2:
+      return 'invalid';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for AuthCheckResult');
+  }
+}
+
 export function returnConverterBridgeCopyBackupMediaItem(
   ffiInput: Native.ReturnFfiBridgeCopyBackupMediaItem
 ): BridgeCopyBackupMediaItem {
@@ -480,6 +506,15 @@ export function returnConverterCallQualitySurveyInternal(
     ),
     callTelemetry: liftNull(identity)(ffiInput.call_telemetry),
     callIdHash: liftNull(identity)(ffiInput.call_id_hash),
+  };
+}
+
+export function returnConverterCheckSvrCredentialsArgs(
+  ffiInput: Native.ReturnFfiCheckSvrCredentialsArgs
+): CheckSvrCredentialsArgs {
+  return {
+    number: identity(ffiInput.number),
+    passwords: ((arr: Array<string>) => arr.map(identity))(ffiInput.passwords),
   };
 }
 
@@ -1618,6 +1653,21 @@ export function TESTING_BackupSetPublicKeyTests(): Array<
     identity,
     returnConverterSimpleBackupTestOut
   )(Native.TESTING_BackupSetPublicKeyTests());
+}
+
+export function TESTING_CheckSvrCredentialsTests(): Array<
+  GrpcTestCase<CheckSvrCredentialsArgs, Array<[string, AuthCheckResult]>>
+> {
+  return grpcTestCaseConverter(
+    returnConverterCheckSvrCredentialsArgs,
+    (arr: Array<[string, ReturnFfiAuthCheckResult]>) =>
+      arr.map(
+        ([a, b]: [string, ReturnFfiAuthCheckResult]): [
+          string,
+          AuthCheckResult
+        ] => [identity(a), returnConverterAuthCheckResult(b)]
+      )
+  )(Native.TESTING_CheckSvrCredentialsTests());
 }
 
 export function TESTING_ClearPushTokenTests(): Array<GrpcTestCase<void, void>> {
@@ -2914,7 +2964,10 @@ export async function UnauthenticatedChatConnection_backup_get_svrb_credentials(
   signingKey: Native.Wrapper<Native.PrivateKey>;
   rng: Rng | undefined;
 }): Promise<[string, string]> {
-  return (([a, b]) => [identity(a), identity(b)])(
+  return (([a, b]: [string, string]): [string, string] => [
+    identity(a),
+    identity(b),
+  ])(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.UnauthenticatedChatConnection_backup_get_svrb_credentials(
@@ -3023,6 +3076,37 @@ export async function UnauthenticatedChatConnection_backup_set_public_key({
         ByteArray.prototype.getContents.call(server_keys),
         identity(signing_key),
         ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_check_svr_credentials({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  number: number,
+  credentials: credentials,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  number: string;
+  credentials: Array<string>;
+}): Promise<Array<[string, AuthCheckResult]>> {
+  return ((arr: Array<[string, ReturnFfiAuthCheckResult]>) =>
+    arr.map(
+      ([a, b]: [string, ReturnFfiAuthCheckResult]): [
+        string,
+        AuthCheckResult
+      ] => [identity(a), returnConverterAuthCheckResult(b)]
+    ))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_check_svr_credentials(
+        asyncContext,
+        identity(chat),
+        identity(number),
+        ((arr: Array<string>) => arr.map(identity))(credentials)
       )
     )
   );

@@ -5,6 +5,7 @@
 
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
+use itertools::Itertools;
 use libsignal_bridge_types::net::TokioAsyncContext;
 #[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
 use libsignal_bridge_types::net::chat::BridgeDeleteBackupMediaItem;
@@ -18,6 +19,7 @@ use libsignal_net::chat::{
     ConnectError, RequestProto, Response as ChatResponse, ResponseProto, SendError,
 };
 use libsignal_net::infra::errors::RetryLater;
+use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 
 use crate::net::make_error_testing_enum;
 use crate::*;
@@ -690,6 +692,12 @@ mod remote_derives {
         MissingBackupId,
         MissingResponse,
     }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::credentials::test_cases::CheckSvrCredentialsArgs)]
+    pub struct CheckSvrCredentialsArgs {
+        pub number: String,
+        pub passwords: BridgeVec<String>,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -845,4 +853,32 @@ fn TESTING_RedeemBackupReceiptTests()
             .into_iter()
             .map(|next| next.map_request(|presentation| ::zkgroup::serialize(&presentation))),
     )
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_CheckSvrCredentialsTests()
+-> GrpcTestCases<remote_derives::CheckSvrCredentialsArgs, BridgeVec<(String, AuthCheckResult)>> {
+    use libsignal_net_chat::grpc::GrpcTestCase;
+
+    libsignal_net_chat::grpc::credentials::test_cases::check_svr_credentials_test_cases()
+        .into_iter()
+        .map(
+            |GrpcTestCase {
+                 name,
+                 method,
+                 request,
+                 request_grpc,
+                 response_grpc,
+                 response,
+             }| GrpcTestCase {
+                name,
+                method,
+                request,
+                request_grpc,
+                response_grpc,
+                response: BridgeVec(response.into_iter().collect()),
+            },
+        )
+        .collect_vec()
+        .into()
 }

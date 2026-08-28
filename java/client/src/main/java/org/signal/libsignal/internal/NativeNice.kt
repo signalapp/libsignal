@@ -24,6 +24,19 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
 
+/*
+// org.signal.libsignal.net.AuthCheckResult
+
+public sealed class AuthCheckResult {
+  public data object Match : AuthCheckResult()
+
+  public data object NoMatch : AuthCheckResult()
+
+  public data object Invalid : AuthCheckResult()
+}
+
+*/
+
 public data class BridgeCopyBackupMediaItem(
   public val sourceAttachmentCdn: Int,
   public val sourceKey: String,
@@ -131,6 +144,27 @@ public data class ListMediaResponse(
   public val mediaDir: String,
   public val cursor: String?,
 )
+
+public object AuthCheckResult_Match_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.AuthCheckResult.Match
+}
+
+public object AuthCheckResult_NoMatch_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.AuthCheckResult.NoMatch
+}
+
+public object AuthCheckResult_Invalid_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.AuthCheckResult.Invalid
+}
 
 public object BridgeCopyBackupMediaOutcome_ReturnConverter {
   @CalledFromNative
@@ -1280,6 +1314,35 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun UnauthenticatedChatConnection_check_svr_credentials(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    number: String,
+    credentials: List<String>,
+  ): CompletableFuture<List<Pair<String, org.signal.libsignal.net.AuthCheckResult>>> {
+    val ffi_chat = identity(chat)
+    val ffi_number = identity(number)
+    val ffi_credentials = mapBridgeVecArg<String, String>({ identity(it) })(credentials)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_check_svr_credentials(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_number,
+          ffi_credentials,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapBridgeVecReturn<Pair<String, Object>, Pair<String, org.signal.libsignal.net.AuthCheckResult>>({
+          mapPair<String, Object, String, org.signal.libsignal.net.AuthCheckResult>({
+            identity(it)
+          }, { downcastFromObject<org.signal.libsignal.net.AuthCheckResult>(it) })(it)
+        })(it)
+      }
   }
 
   public fun UnauthenticatedChatConnection_submit_call_quality_survey(

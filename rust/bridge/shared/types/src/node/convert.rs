@@ -1907,8 +1907,13 @@ impl<A: NiceResultConverter, B: NiceResultConverter> NiceResultConverter for (A,
             nice_type: format!("[{}, {}]", a.nice_type, b.nice_type),
             ffi_type: format!("[{}, {}]", a.ffi_type, b.ffi_type),
             converter_function: format!(
-                "([a, b]) => [({})(a), ({})(b)]",
-                a.converter_function, b.converter_function
+                "([a, b]: [{}, {}]): [{}, {}] => [({})(a), ({})(b)]",
+                a.ffi_type,
+                b.ffi_type,
+                a.nice_type,
+                b.nice_type,
+                a.converter_function,
+                b.converter_function
             ),
         }
     }

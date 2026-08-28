@@ -724,6 +724,14 @@ typedef SignalBridgeCopyBackupMediaItemFfiResult* SignalType_MutPointer_SignalBr
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult) == 8);
 typedef struct {
+  const int8_t* number;
+  SignalOwnedBufferOfMaxAlignedCStringPtr passwords;
+} SignalCheckSvrCredentialsArgsFfiResult;
+static_assert_64bit(offsetof(SignalCheckSvrCredentialsArgsFfiResult, number) == 0);
+static_assert_64bit(offsetof(SignalCheckSvrCredentialsArgsFfiResult, passwords) == 8);
+static_assert_64bit(sizeof(SignalCheckSvrCredentialsArgsFfiResult) == 32);
+static_assert_64bit(alignof(SignalCheckSvrCredentialsArgsFfiResult) == 8);
+typedef struct {
   const int8_t* username;
   SignalOwnedBuffer username_ciphertext;
 } SignalConfirmUsernameArgsFfiResult;
@@ -1354,6 +1362,9 @@ SignalFfiError* signal_testing_chat_response_convert(
 );
 SignalFfiError* signal_testing_chat_send_error_convert(
   const int8_t* error_description
+);
+SignalFfiError* signal_testing_check_svr_credentials_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_clear_push_token_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out

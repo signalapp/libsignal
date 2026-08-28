@@ -3180,6 +3180,14 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_check_svr_credentials(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    number: String,
+    credentials: Array<*>,
+  ): CompletableFuture<Array<*>>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_connect(
     asyncRuntime: ObjectHandle,
     connectionManager: ObjectHandle,
