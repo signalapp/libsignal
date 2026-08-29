@@ -74,3 +74,8 @@ rust_remap_path_options() {
     echo -n "--remap-path-prefix ${prefix}= "
   done
 }
+
+cargo_target_directory() {
+  cargo metadata --format-version 1 --no-deps --offline |
+    python3 -c 'import json, sys; print(json.load(sys.stdin)["target_directory"])'
+}
