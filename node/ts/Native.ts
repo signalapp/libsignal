@@ -276,6 +276,16 @@ export type ReturnFfiCopyBackupMediaOut =
       __type: 3;
     };
 
+export type ReturnFfiCurrencyConversionsInternal = {
+  timestamp_ms: Timestamp;
+  currencies: Array<ReturnFfiCurrencyInternal>;
+};
+
+export type ReturnFfiCurrencyInternal = {
+  base: string;
+  conversions: Array<[string, string]>;
+};
+
 export type ReturnFfiDeleteBackupMediaNextChunk = {
   chunk: Array<ReturnFfiBridgeDeleteBackupMediaItem>;
   termination: ('finished' | Error) | null;
@@ -752,6 +762,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_get_currency_conversions: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiCurrencyConversionsInternal>;
   AuthenticatedChatConnection_get_devices: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -2792,6 +2806,9 @@ type NativeFunctions = {
   TESTING_GetBackupSvrBCredentialsTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetSvrBCredentialsOut>
   >;
+  TESTING_GetCurrencyConversionsTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiCurrencyConversionsInternal>
+  >;
   TESTING_GetDevicesTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetDevicesOut>
   >;
@@ -3427,6 +3444,7 @@ const {
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
@@ -3975,6 +3993,7 @@ const {
   TESTING_FutureSuccess,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
@@ -4192,6 +4211,7 @@ export {
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
@@ -4740,6 +4760,7 @@ export {
   TESTING_FutureSuccess,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,

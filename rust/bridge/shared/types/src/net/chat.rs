@@ -1107,8 +1107,31 @@ bridge_as_handle!(
 pub mod remote_derives {
     use libsignal_bridge_macros::StructuralFrom;
     use libsignal_core::DeviceId;
+    use libsignal_net_chat::grpc::payments::{Currency, CurrencyConversions};
 
     use super::*;
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub struct CurrencyInternal {
+        pub base: String,
+        pub conversions: BridgeVec<(String, String)>,
+    }
+    impl From<Currency> for CurrencyInternal {
+        fn from(Currency { base, conversions }: Currency) -> Self {
+            Self {
+                base,
+                conversions: BridgeVec(conversions.into_iter().collect()),
+            }
+        }
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[bridge(arg = false)]
+    #[structural_from(CurrencyConversions)]
+    pub struct CurrencyConversionsInternal {
+        pub timestamp_ms: Timestamp,
+        pub currencies: BridgeVec<CurrencyInternal>,
+    }
 
     #[derive(BridgedAsValue)]
     #[bridge(

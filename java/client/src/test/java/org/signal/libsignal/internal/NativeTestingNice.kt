@@ -1478,6 +1478,16 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.GetSvrBCredentialsOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_GetCurrencyConversionsTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.CurrencyConversionsInternal>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetCurrencyConversionsTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.CurrencyConversionsInternal>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.CurrencyConversionsInternal>(it) })(ffiOut)
+  }
+
   public fun TESTING_GetDevicesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetDevicesOut>> {
     val ffiOut =
       NativeTesting.TESTING_GetDevicesTests()

@@ -114,6 +114,16 @@ public data class CopyBackupMediaNextChunk(
   public val termination: Any?,
 )
 
+public data class CurrencyConversionsInternal(
+  public val timestampMs: java.time.Instant,
+  public val currencies: List<org.signal.libsignal.internal.CurrencyInternal>,
+)
+
+public data class CurrencyInternal(
+  public val base: String,
+  public val conversions: List<Pair<String, String>>,
+)
+
 public data class DeleteBackupMediaNextChunk(
   public val chunk: List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>,
   public val termination: Any?,
@@ -283,6 +293,42 @@ public object CopyBackupMediaNextChunk_ReturnConverter {
         })(chunk as Array<*>),
       termination =
         identity(termination as Object?),
+    )
+}
+
+public object CurrencyConversionsInternal_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    timestamp_ms: Any?,
+    currencies: Any?,
+  ): Any? =
+    CurrencyConversionsInternal(
+      timestampMs =
+        (java.time.Instant::ofEpochMilli)(timestamp_ms as Long),
+      currencies =
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.CurrencyInternal>({
+          downcastFromObject<org.signal.libsignal.internal.CurrencyInternal>(it)
+        })(currencies as Array<*>),
+    )
+}
+
+public object CurrencyInternal_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    base: Any?,
+    conversions: Any?,
+  ): Any? =
+    CurrencyInternal(
+      base =
+        identity(base as String),
+      conversions =
+        mapBridgeVecReturn<Pair<String, String>, Pair<String, String>>({
+          mapPair<String, String, String, String>({ identity(it) }, { identity(it) })(it)
+        })(conversions as Array<*>),
     )
 }
 
@@ -679,6 +725,23 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_get_currency_conversions(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.internal.CurrencyConversionsInternal> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_currency_conversions(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.CurrencyConversionsInternal>(it) }
   }
 
   public fun AuthenticatedChatConnection_get_devices(

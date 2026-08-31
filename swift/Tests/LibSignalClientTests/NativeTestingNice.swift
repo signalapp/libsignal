@@ -2807,6 +2807,20 @@ internal enum NativeTestingNice {
         )
 
     }
+    internal static func TESTING_GetCurrencyConversionsTests() throws -> [GrpcTestCase<
+        Void, CurrencyConversionsInternal
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterCurrencyConversionsInternal>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_currency_conversions_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterCurrencyConversionsInternal>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_GetDevicesTests() throws -> [GrpcTestCase<Void, GetDevicesOut>] {
         var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetDevicesOut>.emptyFfiReturn()
         try checkError(

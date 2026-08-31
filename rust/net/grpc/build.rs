@@ -30,6 +30,9 @@ fn main() {
         "proto/TextSecure.proto",
     ];
     println!("cargo:rerun-if-changed=proto/");
+    for proto in SERVICE_PROTOS {
+        println!("cargo:rerun-if-changed={proto}");
+    }
 
     let mut config = tonic_prost_build::Config::new();
     let fds = config

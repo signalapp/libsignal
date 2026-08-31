@@ -38,6 +38,9 @@ pub mod proto {
                 pub mod messages {
                     tonic::include_proto!("org.signal.chat.messages");
                 }
+                pub mod payments {
+                    tonic::include_proto!("org.signal.chat.payments");
+                }
 
                 // Not actually a proto, we just make sure to generate our helper file in the same place.
                 pub mod services {

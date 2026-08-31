@@ -319,6 +319,12 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_currency_conversions(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_devices(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

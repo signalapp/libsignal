@@ -12,6 +12,7 @@ pub mod call_quality;
 pub mod credentials;
 pub mod devices;
 mod messages;
+pub mod payments;
 mod profiles;
 pub mod usernames;
 

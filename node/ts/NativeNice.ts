@@ -31,6 +31,8 @@ import type {
   ReturnFfiConfirmUsernameOut,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
+  ReturnFfiCurrencyConversionsInternal,
+  ReturnFfiCurrencyInternal,
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiGetCdnCredentialsOut,
@@ -178,6 +180,16 @@ export type CopyBackupMediaOut =
   | 'invalidDataInStream'
   | 'credentialRejected'
   | 'credentialRejectedWithoutAppropriateServerInfo';
+
+export type CurrencyConversionsInternal = {
+  timestampMs: Timestamp;
+  currencies: Array<CurrencyInternal>;
+};
+
+export type CurrencyInternal = {
+  base: string;
+  conversions: Array<[string, string]>;
+};
 
 export type DeleteBackupMediaNextChunk = {
   chunk: Array<BridgeDeleteBackupMediaItem>;
@@ -575,6 +587,29 @@ export function returnConverterCopyBackupMediaOut(
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for CopyBackupMediaOut');
   }
+}
+
+export function returnConverterCurrencyConversionsInternal(
+  ffiInput: Native.ReturnFfiCurrencyConversionsInternal
+): CurrencyConversionsInternal {
+  return {
+    timestampMs: identity(ffiInput.timestamp_ms),
+    currencies: ((arr: Array<ReturnFfiCurrencyInternal>) =>
+      arr.map(returnConverterCurrencyInternal))(ffiInput.currencies),
+  };
+}
+
+export function returnConverterCurrencyInternal(
+  ffiInput: Native.ReturnFfiCurrencyInternal
+): CurrencyInternal {
+  return {
+    base: identity(ffiInput.base),
+    conversions: ((arr: Array<[string, string]>) =>
+      arr.map(([a, b]: [string, string]): [string, string] => [
+        identity(a),
+        identity(b),
+      ]))(ffiInput.conversions),
+  };
 }
 
 export function returnConverterDeleteBackupMediaNextChunk(
@@ -1348,6 +1383,25 @@ export async function AuthenticatedChatConnection_delete_username_link({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_currency_conversions({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<CurrencyConversionsInternal> {
+  return returnConverterCurrencyConversionsInternal(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_currency_conversions(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_devices({
   asyncContext,
   abortSignal,
@@ -1751,6 +1805,15 @@ export function TESTING_GetBackupSvrBCredentialsTests(): Array<
     identity,
     returnConverterGetSvrBCredentialsOut
   )(Native.TESTING_GetBackupSvrBCredentialsTests());
+}
+
+export function TESTING_GetCurrencyConversionsTests(): Array<
+  GrpcTestCase<void, CurrencyConversionsInternal>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterCurrencyConversionsInternal
+  )(Native.TESTING_GetCurrencyConversionsTests());
 }
 
 export function TESTING_GetDevicesTests(): Array<

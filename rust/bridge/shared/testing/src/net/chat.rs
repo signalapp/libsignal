@@ -9,7 +9,9 @@ use itertools::Itertools;
 use libsignal_bridge_types::net::TokioAsyncContext;
 #[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
 use libsignal_bridge_types::net::chat::BridgeDeleteBackupMediaItem;
-use libsignal_bridge_types::net::chat::remote_derives::CallQualitySurveyInternal;
+use libsignal_bridge_types::net::chat::remote_derives::{
+    CallQualitySurveyInternal, CurrencyConversionsInternal,
+};
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, BridgeCopyBackupMediaItem, ChatListener, HttpRequest,
     ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
@@ -853,6 +855,11 @@ fn TESTING_RedeemBackupReceiptTests()
             .into_iter()
             .map(|next| next.map_request(|presentation| ::zkgroup::serialize(&presentation))),
     )
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetCurrencyConversionsTests() -> GrpcTestCases<(), CurrencyConversionsInternal> {
+    libsignal_net_chat::grpc::payments::test_cases::get_currency_conversions_test_cases().into()
 }
 
 #[bridge_fn(nice = true)]

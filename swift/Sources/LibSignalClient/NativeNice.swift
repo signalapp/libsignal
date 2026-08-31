@@ -1414,6 +1414,43 @@ extension SignalCPromiseDeleteBackupMediaNextChunkFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseCurrencyConversionsInternalFfiResult: SignalCPromise {
+
+    typealias Result = SignalCurrencyConversionsInternalFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalCurrencyConversionsInternalFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalCurrencyConversionsInternalFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseListMediaResponseFfiResult: SignalCPromise {
 
     typealias Result = SignalListMediaResponseFfiResult
@@ -1505,6 +1542,40 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalPairOfCStringPtrCStringPtr
+
+    init(
+        generic_base: SignalType_MutPointer_SignalPairOfCStringPtrCStringPtr?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalPairOfCStringPtrCStringPtr? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult: SignalOwnedBufferOfMaxAligned {
 
     typealias Element = SignalPairOfCStringPtrAuthCheckResultFfiResult
@@ -1591,6 +1662,40 @@ extension SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult: Sig
     }
 
     var generic_base: SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedCurrencyInternalFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalCurrencyInternalFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalCurrencyInternalFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalCurrencyInternalFfiResult? {
         get { self.base }
         set { base = newValue }
     }
@@ -2141,6 +2246,18 @@ internal struct CopyBackupMediaNextChunk {
 
 }
 
+internal struct CurrencyConversionsInternal {
+    var timestampMs: Date
+    var currencies: [CurrencyInternal]
+
+}
+
+internal struct CurrencyInternal {
+    var base: String
+    var conversions: [(String, String)]
+
+}
+
 internal struct DeleteBackupMediaNextChunk {
     var chunk: [BridgeDeleteBackupMediaItem]
     var termination: BulkPolledStreamTermination?
@@ -2320,6 +2437,45 @@ internal enum DerivedReturnConverterCopyBackupMediaNextChunk: NiceReturnConverte
         }
 
         return CopyBackupMediaNextChunk(chunk: try chunk.get(), termination: try termination.get())
+    }
+}
+
+internal enum DerivedReturnConverterCurrencyConversionsInternal: NiceReturnConverter {
+    typealias NiceReturn = CurrencyConversionsInternal
+    typealias FfiReturn = SignalCurrencyConversionsInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCurrencyConversionsInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let timestamp_ms = Result { try TimestampConverter.convertReturn(consuming: ffiValue.timestamp_ms) }
+        let currencies = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterCurrencyInternal, SignalOwnedBufferOfMaxAlignedCurrencyInternalFfiResult
+            >.convertReturn(consuming: ffiValue.currencies)
+        }
+
+        return CurrencyConversionsInternal(timestampMs: try timestamp_ms.get(), currencies: try currencies.get())
+    }
+}
+
+internal enum DerivedReturnConverterCurrencyInternal: NiceReturnConverter {
+    typealias NiceReturn = CurrencyInternal
+    typealias FfiReturn = SignalCurrencyInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCurrencyInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let base = Result { try StringConverter.convertReturn(consuming: ffiValue.base) }
+        let conversions = Result {
+            try ArrayReturnConverter<
+                PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>,
+                SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr
+            >.convertReturn(consuming: ffiValue.conversions)
+        }
+
+        return CurrencyInternal(base: try base.get(), conversions: try conversions.get())
     }
 }
 
@@ -3123,6 +3279,26 @@ internal enum NativeNice {
                     }
             }
         return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_currency_conversions(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> CurrencyConversionsInternal {
+        let rawOutput: DerivedReturnConverterCurrencyConversionsInternal.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_get_currency_conversions(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterCurrencyConversionsInternal.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_devices(

@@ -1715,6 +1715,9 @@ SignalFfiError* signal_testing_get_backup_cdn_credentials_tests(
 SignalFfiError* signal_testing_get_backup_svr_b_credentials_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_get_currency_conversions_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_get_devices_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
