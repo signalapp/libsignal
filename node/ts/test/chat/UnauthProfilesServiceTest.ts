@@ -19,9 +19,14 @@ config.truncateThreshold = 0;
 
 describe('UnauthProfilesService', () => {
   describe('accountExists', () => {
+    const grpcOverrides = ['AccountsAnonymousCheckAccountExistence'];
+
     it('faithfully returns true or false', async () => {
       const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-      const [chat, fakeRemote] = connectUnauth<UnauthProfilesService>(tokio);
+      const [chat, fakeRemote] = connectUnauth<UnauthProfilesService>(
+        tokio,
+        grpcOverrides
+      );
 
       const aci = Aci.fromUuid('9d0652a3-dcc3-4d11-975f-74d61598733f');
       const pni = Pni.fromUuid('796abedb-ca4e-4f18-8803-1fde5b921f9f');

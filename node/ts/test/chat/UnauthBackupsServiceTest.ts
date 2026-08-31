@@ -51,9 +51,13 @@ describe('UnauthBackupsService', () => {
     ['getMediaUploadForm', '/v1/archives/media/upload/form'] as const,
   ]) {
     describe(name, () => {
+      const grpcOverrides = ['BackupsAnonymousGetUploadForm'];
       it('returns different values if RNG is not provided', async () => {
         const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-        const [chat, fakeRemote] = connectUnauth<UnauthBackupsService>(tokio);
+        const [chat, fakeRemote] = connectUnauth<UnauthBackupsService>(
+          tokio,
+          grpcOverrides
+        );
         const _ignoredFuture1 = chat[name]({
           auth: TEST_AUTH,
           uploadSize: 12345,
@@ -72,7 +76,10 @@ describe('UnauthBackupsService', () => {
       });
       it('should property return an upload form', async () => {
         const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-        const [chat, fakeRemote] = connectUnauth<UnauthBackupsService>(tokio);
+        const [chat, fakeRemote] = connectUnauth<UnauthBackupsService>(
+          tokio,
+          grpcOverrides
+        );
         Native.TESTING_EnableDeterministicRngForTesting();
         const responseFuture = chat[name]({
           auth: TEST_AUTH,
@@ -122,7 +129,10 @@ describe('UnauthBackupsService', () => {
           [413, ErrorCode.UploadTooLarge],
         ]) {
           const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
-          const [chat, fakeRemote] = connectUnauth<UnauthBackupsService>(tokio);
+          const [chat, fakeRemote] = connectUnauth<UnauthBackupsService>(
+            tokio,
+            grpcOverrides
+          );
           const responseFuture = chat[name]({
             auth: TEST_AUTH,
             uploadSize: 12345,

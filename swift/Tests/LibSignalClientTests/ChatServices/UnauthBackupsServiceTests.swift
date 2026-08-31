@@ -44,6 +44,10 @@ private let TEST_AUTH = BackupAuth(
 
 class UnauthBackupsServiceUploadTests: UnauthChatServiceTestBase<any UnauthBackupsServiceImpl> {
     override class var selector: SelectorCheck { .backupsImpl }
+    override var grpcOverrides: [String] {
+        ["BackupsAnonymousGetUploadForm"]
+    }
+
     struct Function: Sendable {
         let impl:
             @Sendable (

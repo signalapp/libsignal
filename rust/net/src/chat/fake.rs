@@ -148,7 +148,7 @@ impl ChatConnection {
             grpc_overrides: HashMap::from_iter(
                 grpc_overrides
                     .into_iter()
-                    .map(|api| (api, GrpcOverride::UseGrpc)),
+                    .map(|api| (api, GrpcOverride::UseWs)),
             ),
             // This isn't perfect, but without it we can't test APIs that rely on knowing the self
             // ACI, so it's better that we set it to *something*.

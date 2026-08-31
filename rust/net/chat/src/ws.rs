@@ -177,7 +177,7 @@ impl WsConnection for chat::ChatConnection {
         match self
             .grpc_overrides()
             .get(message)
-            .unwrap_or(&chat::GrpcOverride::UseWs)
+            .unwrap_or(&chat::GrpcOverride::UseGrpc)
         {
             chat::GrpcOverride::UseGrpc => self.shared_h2_connection(),
             chat::GrpcOverride::UseWs => None,

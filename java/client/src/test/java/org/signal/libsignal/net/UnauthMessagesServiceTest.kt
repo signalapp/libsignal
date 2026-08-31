@@ -19,6 +19,11 @@ import kotlin.io.encoding.Base64
 import kotlin.test.assertIs
 
 class UnauthMessagesServiceTest {
+  companion object {
+    val GRPC_OVERRIDES =
+      arrayOf("MessagesAnonymousSendMultiRecipientMessage", "MessagesAnonymousSendSingleRecipientMessage")
+  }
+
   private val recipientUuid = UUID.fromString("4FCFE887-A600-40CD-9AB7-FD2A695E9981")
 
   // From `SERIALIZED_GROUP_SEND_TOKEN` in Rust.
@@ -63,6 +68,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -97,6 +103,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -122,6 +129,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -171,6 +179,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -218,6 +227,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -302,6 +312,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -337,6 +348,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -362,6 +374,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -387,6 +400,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -431,6 +445,7 @@ class UnauthMessagesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 

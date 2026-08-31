@@ -30,6 +30,7 @@ class UnauthProfilesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        arrayOf("AccountsAnonymousCheckAccountExistence"),
         Network.Environment.STAGING,
       )
 

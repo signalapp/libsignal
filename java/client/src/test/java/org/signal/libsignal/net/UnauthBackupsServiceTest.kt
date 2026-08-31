@@ -63,6 +63,7 @@ val TEST_AUTH =
 
 class UnauthBackupsServiceUploadTest {
   companion object {
+    val GRPC_OVERRIDES = arrayOf("BackupsAnonymousGetUploadForm")
     val functions =
       listOf(
         "/v1/archives/upload/form" to UnauthBackupsService::getUploadForm,
@@ -78,6 +79,7 @@ class UnauthBackupsServiceUploadTest {
         UnauthenticatedChatConnection.fakeConnect(
           tokioAsyncContext,
           NoOpListener(),
+          GRPC_OVERRIDES,
           Network.Environment.STAGING,
         )
       val service = UnauthBackupsService(chat)
@@ -110,6 +112,7 @@ class UnauthBackupsServiceUploadTest {
         UnauthenticatedChatConnection.fakeConnect(
           tokioAsyncContext,
           NoOpListener(),
+          GRPC_OVERRIDES,
           Network.Environment.STAGING,
         )
       val service = UnauthBackupsService(chat)
@@ -166,6 +169,7 @@ class UnauthBackupsServiceUploadTest {
         UnauthenticatedChatConnection.fakeConnect(
           tokioAsyncContext,
           NoOpListener(),
+          GRPC_OVERRIDES,
           Network.Environment.STAGING,
         )
       val service = UnauthBackupsService(chat)

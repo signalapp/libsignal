@@ -13,6 +13,10 @@ import XCTest
 class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernamesService> {
     override class var selector: SelectorCheck { .usernames }
 
+    override var grpcOverrides: [String] {
+        ["AccountsAnonymousLookupUsernameHash", "AccountsAnonymousLookupUsernameLink"]
+    }
+
     static let EXPECTED_USERNAME = "moxie.01"
     static let ENCRYPTED_USERNAME =
         "kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w"
@@ -195,10 +199,6 @@ class UnauthUsernamesServiceTests: UnauthChatServiceTestBase<any UnauthUsernames
 
 class UnauthUsernamesServiceGrpcTests: UnauthChatServiceTestBase<any UnauthUsernamesService> {
     override class var selector: SelectorCheck { .usernames }
-
-    override var grpcOverrides: [String] {
-        ["AccountsAnonymousLookupUsernameLink"]
-    }
 
     func testUsernameLinkLookup() async throws {
         try await testGrpcCases(

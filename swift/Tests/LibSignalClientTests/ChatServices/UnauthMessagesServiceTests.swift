@@ -21,6 +21,10 @@ private let testGroupSendToken =
 class UnauthMessagesServiceTests: UnauthChatServiceTestBase<any UnauthMessagesService> {
     override class var selector: SelectorCheck { .messages }
 
+    override var grpcOverrides: [String] {
+        ["MessagesAnonymousSendSingleRecipientMessage", "MessagesAnonymousSendMultiRecipientMessage"]
+    }
+
     private func sendTestMultiRecipientMessage(response: ChatResponse) async throws -> MultiRecipientMessageResponse {
         let api = self.api
         let testPayload = Data([1, 2, 3, 4])

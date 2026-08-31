@@ -20,6 +20,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class AuthMessagesServiceTest {
+  companion object {
+    val GRPC_OVERRIDES = arrayOf("AttachmentsGetUploadForm", "MessagesSendMessage")
+  }
+
   private val recipientUuid = UUID.fromString("4FCFE887-A600-40CD-9AB7-FD2A695E9981")
 
   @Test
@@ -29,6 +33,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     val service = AuthMessagesService(chat)
@@ -72,6 +78,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     val service = AuthMessagesService(chat)
@@ -169,6 +177,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     listOf(
@@ -198,6 +208,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)
@@ -222,6 +234,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)
@@ -265,6 +279,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)
@@ -306,6 +322,8 @@ class AuthMessagesServiceTest {
       AuthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
+        arrayOf(),
       )
 
     val (responseFuture, requestId) = sendTestMessage(chat, syncMessage = false, fakeRemote)

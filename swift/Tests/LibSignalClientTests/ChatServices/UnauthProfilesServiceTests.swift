@@ -12,6 +12,9 @@ import XCTest
 
 class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesService> {
     override class var selector: SelectorCheck { .profiles }
+    override var grpcOverrides: [String] {
+        ["AccountsAnonymousCheckAccountExistence"]
+    }
 
     func testAccountExists() async throws {
         let ACI = Aci(fromUUID: UUID(uuidString: "9d0652a3-dcc3-4d11-975f-74d61598733f")!)

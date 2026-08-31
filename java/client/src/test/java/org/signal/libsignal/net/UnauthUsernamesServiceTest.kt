@@ -26,6 +26,7 @@ import kotlin.test.assertNull
 
 class UnauthUsernamesServiceTest {
   companion object {
+    val GRPC_OVERRIDES = arrayOf("AccountsAnonymousLookupUsernameHash", "AccountsAnonymousLookupUsernameLink")
     val EXPECTED_USERNAME = "moxie.01"
     val ENCRYPTED_USERNAME =
       "kj5ah-VbEgjpfJsNt-Wto2H626DRmJSVpYPy0yPOXA8kiSFkBCD8ysFlJ-Z3MhiAnt_R3Nm7ZY0W5fiRDLVbhaE2z-KO2xdf5NcVbkewCzhvveecS3hHskDp1aSfbvwTZNNGPmAuKWvJ1MPdHzsF0w"
@@ -42,6 +43,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -87,6 +89,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -124,6 +127,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -158,6 +162,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -192,6 +197,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -234,6 +240,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -268,6 +275,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -309,6 +317,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -343,6 +352,7 @@ class UnauthUsernamesServiceTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokioAsyncContext,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -371,7 +381,6 @@ class UnauthUsernamesServiceGrpcTest {
           UnauthenticatedChatConnection.fakeConnect(
             tokio,
             listener,
-            arrayOf("AccountsAnonymousLookupUsernameLink"),
             Network.Environment.STAGING,
           )
         },
