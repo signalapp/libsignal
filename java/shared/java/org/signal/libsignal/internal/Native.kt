@@ -301,6 +301,12 @@ internal object Native {
   ): CompletableFuture<ObjectHandle>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_delete_account(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_delete_username_hash(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

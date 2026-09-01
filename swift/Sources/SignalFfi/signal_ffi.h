@@ -3460,6 +3460,11 @@ SignalFfiError* signal_authenticated_chat_connection_connect(
   bool receive_stories,
   SignalBorrowedBytestringArray languages
 );
+SignalFfiError* signal_authenticated_chat_connection_delete_account(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat
+);
 SignalFfiError* signal_authenticated_chat_connection_delete_username_hash(
   SignalCPromisebool* promise,
   SignalConstPointerTokioAsyncContext async_runtime,

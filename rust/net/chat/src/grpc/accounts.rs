@@ -8,15 +8,22 @@ use std::convert::Infallible;
 use libsignal_account_keys::SvrKey;
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::{
-    ClearRegistrationLockRequest, ClearRegistrationLockResponse,
-    SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
-    SetRegistrationLockRequest, SetRegistrationLockResponse,
+    ClearRegistrationLockRequest, ClearRegistrationLockResponse, DeleteAccountRequest,
+    DeleteAccountResponse, SetDiscoverableByPhoneNumberRequest,
+    SetDiscoverableByPhoneNumberResponse, SetRegistrationLockRequest, SetRegistrationLockResponse,
     SetRegistrationRecoveryPasswordRequest, SetRegistrationRecoveryPasswordResponse,
 };
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::{GrpcServiceProvider, GrpcTestCase, log_and_send};
 use crate::logging::Redact;
+
+impl std::fmt::Display for Redact<DeleteAccountRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(DeleteAccountRequest {}) = self;
+        f.debug_struct("DeleteAccountRequest").finish()
+    }
+}
 
 impl std::fmt::Display for Redact<SetRegistrationLockRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,6 +67,29 @@ impl std::fmt::Display for Redact<SetDiscoverableByPhoneNumberRequest> {
 }
 
 impl<T: GrpcServiceProvider> Auth<T> {
+    /// Deletes the authenticated account, purging all associated data in the
+    /// process.
+    ///
+    /// Only the account's primary device may delete the account; the server
+    /// rejects calls from linked devices as a programmer error, surfaced as
+    /// [`RequestError::Unexpected`].
+    ///
+    /// Deleting the account also invalidates its connections, so the response
+    /// can race the resulting disconnect. If the connection is interrupted
+    /// before a response arrives, the deletion may nevertheless have taken
+    /// effect; callers should not treat a transport error as proof the account
+    /// still exists.
+    pub async fn delete_account(&self) -> Result<(), RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = DeleteAccountRequest {};
+        let desc = Redact(&request).to_string();
+        let DeleteAccountResponse {} =
+            log_and_send("auth", &desc, || client.delete_account(request))
+                .await?
+                .into_inner();
+        Ok(())
+    }
+
     /// Sets the registration lock for the authenticated account, given the account's SVR key.
     ///
     /// libsignal derives the registration lock token from the SVR key (see
@@ -172,6 +202,21 @@ impl<T: GrpcServiceProvider> Auth<T> {
 pub mod test_cases {
     use super::*;
 
+    // No invalid-response case: the response message is empty, so there is no
+    // error contract to prove beyond the shared transport mapping.
+    pub fn delete_account_test_cases()
+    -> Vec<GrpcTestCase<(), DeleteAccountRequest, DeleteAccountResponse, ()>> {
+        let method = "/org.signal.chat.account.Accounts/DeleteAccount";
+        vec![GrpcTestCase {
+            name: "success".to_string(),
+            method: method.to_string(),
+            request: (),
+            request_grpc: DeleteAccountRequest {},
+            response_grpc: DeleteAccountResponse {},
+            response: (),
+        }]
+    }
+
     // The request crosses the bridge as the raw 32-byte SVR key; libsignal derives the registration
     // lock token from it, so the expected gRPC request carries the derived token.
     pub fn set_registration_lock_test_cases()
@@ -270,6 +315,16 @@ mod test {
 
     use super::*;
     use crate::grpc::testutil::run_tests;
+
+    #[test]
+    fn test_delete_account() {
+        use test_cases::*;
+        run_tests(
+            delete_account_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.delete_account().await },
+            |(), result| assert_matches!(result, Ok(())),
+        );
+    }
 
     #[test]
     fn test_set_registration_lock() {

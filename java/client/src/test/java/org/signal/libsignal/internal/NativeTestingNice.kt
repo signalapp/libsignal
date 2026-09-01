@@ -1424,6 +1424,15 @@ public object NativeTestingNice {
       })(ffiOut)
   }
 
+  public fun TESTING_DeleteAccountTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_DeleteAccountTests()
+
+    return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
+      identity(it)
+    }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_DeleteBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>> {
     val ffiOut =
       NativeTesting.TESTING_DeleteBackupMediaTests()

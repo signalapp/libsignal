@@ -13,6 +13,33 @@ public class AuthAccountsService(
   private val connection: AuthenticatedChatConnection,
 ) {
   /**
+   * Deletes the authenticated account, purging all associated data in the process.
+   *
+   * Only the account's primary device may delete the account.
+   *
+   * Deleting the account also invalidates its connections, so the response can race the resulting
+   * disconnect. If the connection is interrupted before a response arrives, the deletion may
+   * nevertheless have taken effect; callers should not treat a transport error as proof the
+   * account still exists.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun deleteAccount(): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_delete_account(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
    * Sets the registration lock secret for the authenticated account, given the account's SVR key
    * (which Signal clients historically call the "master key").
    *

@@ -1536,6 +1536,9 @@ SignalFfiError* signal_testing_create_otp_from_base64(
   const int8_t* username,
   const int8_t* secret
 );
+SignalFfiError* signal_testing_delete_account_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_delete_backup_media_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );

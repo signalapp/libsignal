@@ -15,6 +15,20 @@ declare module '../Chat' {
 
 export interface AuthAccountsService {
   /**
+   * Deletes the authenticated account, purging all associated data in the process.
+   *
+   * Only the account's primary device may delete the account.
+   *
+   * Deleting the account also invalidates its connections, so the response can race the resulting
+   * disconnect. If the connection is interrupted before a response arrives, the deletion may
+   * nevertheless have taken effect; callers should not treat a transport error as proof the
+   * account still exists.
+   *
+   * @throws {StandardNetworkError}
+   */
+  deleteAccount: (options?: RequestOptions) => Promise<void>;
+
+  /**
    * Sets the registration lock for the authenticated account, given the account's SVR key (which
    * Signal clients historically call the "master key").
    *
@@ -87,6 +101,16 @@ export interface AuthAccountsService {
     options?: RequestOptions
   ) => Promise<void>;
 }
+
+AuthenticatedChatConnection.prototype.deleteAccount = async function (
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_delete_account({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+  });
+};
 
 AuthenticatedChatConnection.prototype.setRegistrationLock = async function (
   {

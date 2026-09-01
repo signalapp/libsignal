@@ -18,6 +18,16 @@ util.initLogger();
 config.truncateThreshold = 0;
 
 describe('AuthAccountsService', () => {
+  describe('deleteAccount', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_DeleteAccountTests(),
+      connectAuth<AuthAccountsService>,
+      async (chat: AuthAccountsService, _req: void, _resp: void) => {
+        await chat.deleteAccount();
+      }
+    );
+  });
+
   describe('setRegistrationLock', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetRegistrationLockTests(),

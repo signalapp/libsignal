@@ -6,6 +6,21 @@
 import Foundation
 
 public protocol AuthAccountsService: Sendable {
+    /// Deletes the authenticated account, purging all associated data in the
+    /// process.
+    ///
+    /// Only the account's primary device may delete the account.
+    ///
+    /// Deleting the account also invalidates its connections, so the response
+    /// can race the resulting disconnect. If the connection is interrupted
+    /// before a response arrives, the deletion may nevertheless have taken
+    /// effect; callers should not treat a transport error as proof the account
+    /// still exists.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func deleteAccount() async throws
+
     /// Sets the registration lock for the authenticated account, given the account's SVR key.
     ///
     /// libsignal derives the registration lock token from the SVR key
@@ -57,6 +72,13 @@ public protocol AuthAccountsService: Sendable {
 }
 
 extension AuthenticatedChatConnection: AuthAccountsService {
+    public func deleteAccount() async throws {
+        return try await NativeNice.AuthenticatedChatConnection_delete_account(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+        )
+    }
+
     public func setRegistrationLock(_ svrKey: SvrKey) async throws {
         return try await NativeNice.AuthenticatedChatConnection_set_registration_lock(
             asyncContext: self.tokioAsyncContext,

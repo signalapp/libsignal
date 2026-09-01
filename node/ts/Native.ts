@@ -757,6 +757,10 @@ type NativeFunctions = {
     receive_stories: boolean,
     languages: Array<string>
   ) => CancellablePromise<AuthenticatedChatConnection>;
+  AuthenticatedChatConnection_delete_account: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_delete_username_hash: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -2682,6 +2686,7 @@ type NativeFunctions = {
     secret: Uint8Array<ArrayBuffer>
   ) => string;
   TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
+  TESTING_DeleteAccountTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_DeleteBackupMediaTests: () => Array<
     GrpcTestCaseFfi<
       Array<ReturnFfiBridgeDeleteBackupMediaItem>,
@@ -3455,6 +3460,7 @@ const {
   AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_confirm_username,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_delete_account,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
@@ -3969,6 +3975,7 @@ const {
   TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteAccountTests,
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
@@ -4224,6 +4231,7 @@ export {
   AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_confirm_username,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_delete_account,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
@@ -4738,6 +4746,7 @@ export {
   TESTING_CopyBackupMediaTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
+  TESTING_DeleteAccountTests,
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,

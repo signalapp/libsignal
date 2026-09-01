@@ -2734,6 +2734,16 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_DeleteAccountTests() throws -> [GrpcTestCase<Void, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_delete_account_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_DeleteBackupMediaTests() throws -> [GrpcTestCase<
         [BridgeDeleteBackupMediaItem], [DeleteBackupMediaOut]
     >] {

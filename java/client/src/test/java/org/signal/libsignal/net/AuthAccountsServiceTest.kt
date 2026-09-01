@@ -12,6 +12,22 @@ import kotlin.test.assertIs
 
 class AuthAccountsServiceTest {
   @Test
+  fun testDeleteAccount() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_DeleteAccountTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, _ ->
+          chat.deleteAccount()
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
+
+  @Test
   fun testSetRegistrationLock() =
     runTest {
       GrpcTestCase.runTests(

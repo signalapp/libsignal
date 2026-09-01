@@ -1364,6 +1364,25 @@ export async function AuthenticatedChatConnection_confirm_username({
     )
   );
 }
+export async function AuthenticatedChatConnection_delete_account({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_delete_account(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_delete_username_hash({
   asyncContext,
   abortSignal,
@@ -1796,6 +1815,13 @@ export function TESTING_CopyBackupMediaTests(): Array<
     (arr: Array<ReturnFfiCopyBackupMediaOut>) =>
       arr.map(returnConverterCopyBackupMediaOut)
   )(Native.TESTING_CopyBackupMediaTests());
+}
+
+export function TESTING_DeleteAccountTests(): Array<GrpcTestCase<void, void>> {
+  return grpcTestCaseConverter(
+    identity,
+    identity
+  )(Native.TESTING_DeleteAccountTests());
 }
 
 export function TESTING_DeleteBackupMediaTests(): Array<

@@ -13,6 +13,18 @@ import XCTest
 class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService> {
     override class var selector: SelectorCheck { .accounts }
 
+    func testDeleteAccount() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_DeleteAccountTests(),
+            invoke: { api, _ in
+                try await api.deleteAccount()
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
+
     func testSetRegistrationLock() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_SetRegistrationLockTests(),

@@ -1004,6 +1004,14 @@ async fn AuthenticatedChatConnection_set_username_link(
         .await
 }
 
+// Only an account's primary device may delete the account.
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_delete_account(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc().await.delete_account().await
+}
+
 // Only an account's primary device may set a registration lock.
 //
 // Takes the account's raw 32-byte SVR key; libsignal derives the registration lock token from it
