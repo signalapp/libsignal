@@ -1340,6 +1340,43 @@ extension SignalCPromiseBridgeMessageBackupInfoFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseBridgePreKeyCountsFfiResult: SignalCPromise {
+
+    typealias Result = SignalBridgePreKeyCountsFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalBridgePreKeyCountsFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalBridgePreKeyCountsFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: SignalCPromise {
 
     typealias Result = SignalCopyBackupMediaNextChunkFfiResult
@@ -2209,6 +2246,14 @@ internal struct BridgeMessageBackupInfo {
 
 }
 
+internal struct BridgePreKeyCounts {
+    var aciEcPreKeyCount: Int32
+    var aciKemPreKeyCount: Int32
+    var pniEcPreKeyCount: Int32
+    var pniKemPreKeyCount: Int32
+
+}
+
 /*
 // CallQualitySurvey
 
@@ -2414,6 +2459,36 @@ internal enum DerivedReturnConverterBridgeMessageBackupInfo: NiceReturnConverter
             backupDir: try backup_dir.get(),
             cdn: try cdn.get(),
             backupName: try backup_name.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterBridgePreKeyCounts: NiceReturnConverter {
+    typealias NiceReturn = BridgePreKeyCounts
+    typealias FfiReturn = SignalBridgePreKeyCountsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgePreKeyCountsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let aci_ec_pre_key_count = Result {
+            try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.aci_ec_pre_key_count)
+        }
+        let aci_kem_pre_key_count = Result {
+            try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.aci_kem_pre_key_count)
+        }
+        let pni_ec_pre_key_count = Result {
+            try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.pni_ec_pre_key_count)
+        }
+        let pni_kem_pre_key_count = Result {
+            try IdentityConverter<Int32>.convertReturn(consuming: ffiValue.pni_kem_pre_key_count)
+        }
+
+        return BridgePreKeyCounts(
+            aciEcPreKeyCount: try aci_ec_pre_key_count.get(),
+            aciKemPreKeyCount: try aci_kem_pre_key_count.get(),
+            pniEcPreKeyCount: try pni_ec_pre_key_count.get(),
+            pniKemPreKeyCount: try pni_kem_pre_key_count.get()
         )
     }
 }
@@ -3324,6 +3399,26 @@ internal enum NativeNice {
         return try ArrayReturnConverter<
             DerivedReturnConverterLinkedDeviceInternal, SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
         >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_pre_key_count(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> BridgePreKeyCounts {
+        let rawOutput: DerivedReturnConverterBridgePreKeyCounts.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_get_pre_key_count(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterBridgePreKeyCounts.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_redeem_backup_receipt(

@@ -331,6 +331,12 @@ internal object Native {
   ): CompletableFuture<Array<*>>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_pre_key_count(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_upload_form(
     asyncRuntime: ObjectHandle,
     chat: ObjectHandle,

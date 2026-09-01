@@ -414,6 +414,7 @@ impl SimpleArgTypeInfo<'_> for u32 {
         Ok(*foreign as u32)
     }
 }
+nice_identity_arg_converter!(u32, "Int");
 
 /// Supports values `0..=Integer.MAX_VALUE`. Negative values are considered `None`.
 ///

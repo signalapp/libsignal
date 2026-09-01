@@ -1106,6 +1106,17 @@ async fn AuthenticatedChatConnection_clear_push_token(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_pre_key_count(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgePreKeyCounts, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_pre_key_count()
+        .await
+        .map(BridgePreKeyCounts::from)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_submit_call_quality_survey(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
     survey: CallQualitySurveyInternal,

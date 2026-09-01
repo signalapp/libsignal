@@ -2859,6 +2859,19 @@ internal enum NativeTestingNice {
         )
 
     }
+    internal static func TESTING_GetPreKeyCountTests() throws -> [GrpcTestCase<Void, BridgePreKeyCounts>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterBridgePreKeyCounts>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_pre_key_count_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterBridgePreKeyCounts>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
     internal static func TESTING_LookUpUsernameLinkTests() throws -> [GrpcTestCase<
         LookUpUsernameLinkArgs, LookUpUsernameLinkOut
     >] {

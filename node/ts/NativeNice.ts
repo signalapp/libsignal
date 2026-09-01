@@ -25,6 +25,7 @@ import type {
   ReturnFfiBridgeDeleteBackupMediaItem,
   ReturnFfiBridgeMediaBackupInfo,
   ReturnFfiBridgeMessageBackupInfo,
+  ReturnFfiBridgePreKeyCounts,
   ReturnFfiCallQualitySurveyInternal,
   ReturnFfiCheckSvrCredentialsArgs,
   ReturnFfiConfirmUsernameArgs,
@@ -124,6 +125,13 @@ export type BridgeMessageBackupInfo = {
   backupDir: string;
   cdn: number;
   backupName: string;
+};
+
+export type BridgePreKeyCounts = {
+  aciEcPreKeyCount: number;
+  aciKemPreKeyCount: number;
+  pniEcPreKeyCount: number;
+  pniKemPreKeyCount: number;
 };
 
 export type CallQualitySurveyInternal = {
@@ -469,6 +477,17 @@ export function returnConverterBridgeMessageBackupInfo(
     backupDir: identity(ffiInput.backup_dir),
     cdn: identity(ffiInput.cdn),
     backupName: identity(ffiInput.backup_name),
+  };
+}
+
+export function returnConverterBridgePreKeyCounts(
+  ffiInput: Native.ReturnFfiBridgePreKeyCounts
+): BridgePreKeyCounts {
+  return {
+    aciEcPreKeyCount: identity(ffiInput.aci_ec_pre_key_count),
+    aciKemPreKeyCount: identity(ffiInput.aci_kem_pre_key_count),
+    pniEcPreKeyCount: identity(ffiInput.pni_ec_pre_key_count),
+    pniKemPreKeyCount: identity(ffiInput.pni_kem_pre_key_count),
   };
 }
 
@@ -1422,6 +1441,25 @@ export async function AuthenticatedChatConnection_get_devices({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_pre_key_count({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<BridgePreKeyCounts> {
+  return returnConverterBridgePreKeyCounts(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_pre_key_count(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_redeem_backup_receipt({
   asyncContext,
   abortSignal,
@@ -1841,6 +1879,15 @@ export function TESTING_GetMessageBackupInfoTests(): Array<
     identity,
     returnConverterGetMessageBackupInfoOut
   )(Native.TESTING_GetMessageBackupInfoTests());
+}
+
+export function TESTING_GetPreKeyCountTests(): Array<
+  GrpcTestCase<void, BridgePreKeyCounts>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterBridgePreKeyCounts
+  )(Native.TESTING_GetPreKeyCountTests());
 }
 
 export function TESTING_LookUpUsernameLinkTests(): Array<

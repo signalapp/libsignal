@@ -79,6 +79,13 @@ public data class BridgeMessageBackupInfo(
   public val backupName: String,
 )
 
+public data class BridgePreKeyCounts(
+  public val aciEcPreKeyCount: Int,
+  public val aciKemPreKeyCount: Int,
+  public val pniEcPreKeyCount: Int,
+  public val pniKemPreKeyCount: Int,
+)
+
 /*
 // org.signal.libsignal.net.CallQualitySurvey
 
@@ -275,6 +282,28 @@ public object BridgeMessageBackupInfo_ReturnConverter {
         identity(cdn as Int),
       backupName =
         identity(backup_name as String),
+    )
+}
+
+public object BridgePreKeyCounts_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    aci_ec_pre_key_count: Any?,
+    aci_kem_pre_key_count: Any?,
+    pni_ec_pre_key_count: Any?,
+    pni_kem_pre_key_count: Any?,
+  ): Any? =
+    BridgePreKeyCounts(
+      aciEcPreKeyCount =
+        identity(aci_ec_pre_key_count as Int),
+      aciKemPreKeyCount =
+        identity(aci_kem_pre_key_count as Int),
+      pniEcPreKeyCount =
+        identity(pni_ec_pre_key_count as Int),
+      pniKemPreKeyCount =
+        identity(pni_kem_pre_key_count as Int),
     )
 }
 
@@ -763,6 +792,23 @@ public object NativeNice {
           downcastFromObject<org.signal.libsignal.net.LinkedDevice>(it)
         })(it)
       }
+  }
+
+  public fun AuthenticatedChatConnection_get_pre_key_count(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.internal.BridgePreKeyCounts> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_pre_key_count(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgePreKeyCounts>(it) }
   }
 
   public fun AuthenticatedChatConnection_redeem_backup_receipt(

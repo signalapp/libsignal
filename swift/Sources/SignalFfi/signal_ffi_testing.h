@@ -1727,6 +1727,9 @@ SignalFfiError* signal_testing_get_media_backup_info_tests(
 SignalFfiError* signal_testing_get_message_backup_info_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_get_pre_key_count_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_handle_type_clone(
   SignalMutPointerTestingHandleType* new_obj,
   SignalConstPointerTestingHandleType obj

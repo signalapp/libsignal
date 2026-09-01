@@ -41,6 +41,7 @@ use libsignal_net_chat::grpc::backups::{
     CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
     MediaBackupInfo, MessageBackupInfo,
 };
+use libsignal_net_chat::grpc::keys::PreKeyCounts;
 use libsignal_net_chat::stream_util::{
     BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
 };
@@ -909,6 +910,41 @@ impl From<MediaBackupInfo> for BridgeMediaBackupInfo {
                 .used_space
                 .try_into()
                 .expect("space measurements fit in i64"),
+        }
+    }
+}
+
+// TODO: When u32 Nice bridging to Kotlin is implemented, this becomes a remote derive on
+// libsignal_net_chat::grpc::keys::PreKeyCounts (and gets renamed PreKeyCountsInternal to match),
+// dropping this manual `From` impl.
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgePreKeyCounts {
+    pub aci_ec_pre_key_count: i32,
+    pub aci_kem_pre_key_count: i32,
+    pub pni_ec_pre_key_count: i32,
+    pub pni_kem_pre_key_count: i32,
+}
+
+impl From<PreKeyCounts> for BridgePreKeyCounts {
+    fn from(value: PreKeyCounts) -> Self {
+        Self {
+            aci_ec_pre_key_count: value
+                .aci_ec_pre_key_count
+                .try_into()
+                .expect("pre-key counts are small"),
+            aci_kem_pre_key_count: value
+                .aci_kem_pre_key_count
+                .try_into()
+                .expect("pre-key counts are small"),
+            pni_ec_pre_key_count: value
+                .pni_ec_pre_key_count
+                .try_into()
+                .expect("pre-key counts are small"),
+            pni_kem_pre_key_count: value
+                .pni_kem_pre_key_count
+                .try_into()
+                .expect("pre-key counts are small"),
         }
     }
 }

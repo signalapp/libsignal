@@ -29,6 +29,7 @@ export * from './net/Chat.js';
 export * from './net/chat/AuthAccountsService.js';
 export * from './net/chat/AuthBackupsService.js';
 export * from './net/chat/AuthDevicesService.js';
+export * from './net/chat/AuthKeysService.js';
 export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthPaymentsService.js';
 

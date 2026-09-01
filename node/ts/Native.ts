@@ -209,6 +209,13 @@ export type ReturnFfiBridgeMessageBackupInfo = {
   backup_name: string;
 };
 
+export type ReturnFfiBridgePreKeyCounts = {
+  aci_ec_pre_key_count: number;
+  aci_kem_pre_key_count: number;
+  pni_ec_pre_key_count: number;
+  pni_kem_pre_key_count: number;
+};
+
 export type ReturnFfiCallQualitySurveyInternal = {
   user_satisfied: boolean;
   call_quality_issues: Array<string>;
@@ -770,6 +777,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<Array<ReturnFfiLinkedDeviceInternal>>;
+  AuthenticatedChatConnection_get_pre_key_count: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiBridgePreKeyCounts>;
   AuthenticatedChatConnection_get_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -2818,6 +2829,9 @@ type NativeFunctions = {
   TESTING_GetMessageBackupInfoTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetMessageBackupInfoOut>
   >;
+  TESTING_GetPreKeyCountTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiBridgePreKeyCounts>
+  >;
   TESTING_InputStreamReadIntoZeroLengthSlice: (
     caps_alphabet_input: InputStream
   ) => Promise<Uint8Array<ArrayBuffer>>;
@@ -3446,6 +3460,7 @@ const {
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
+  AuthenticatedChatConnection_get_pre_key_count,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
@@ -3997,6 +4012,7 @@ const {
   TESTING_GetDevicesTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
+  TESTING_GetPreKeyCountTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -4213,6 +4229,7 @@ export {
   AuthenticatedChatConnection_disconnect,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
+  AuthenticatedChatConnection_get_pre_key_count,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
@@ -4764,6 +4781,7 @@ export {
   TESTING_GetDevicesTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
+  TESTING_GetPreKeyCountTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,

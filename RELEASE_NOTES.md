@@ -4,3 +4,4 @@ v0.101.3
 - New typed APIs:
   - `checkSVRCredentials()`
   - `getCurrencyConversions()`
+  - `AuthKeysService.getPreKeyCount()`

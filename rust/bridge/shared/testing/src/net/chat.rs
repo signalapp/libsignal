@@ -13,8 +13,8 @@ use libsignal_bridge_types::net::chat::remote_derives::{
     CallQualitySurveyInternal, CurrencyConversionsInternal,
 };
 use libsignal_bridge_types::net::chat::{
-    AuthenticatedChatConnection, BridgeCopyBackupMediaItem, ChatListener, HttpRequest,
-    ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
+    AuthenticatedChatConnection, BridgeCopyBackupMediaItem, BridgePreKeyCounts, ChatListener,
+    HttpRequest, ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
 };
 use libsignal_net::chat::fake::{BodyWithTrailers, FakeChatRemote};
 use libsignal_net::chat::{
@@ -888,4 +888,9 @@ fn TESTING_CheckSvrCredentialsTests()
         )
         .collect_vec()
         .into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetPreKeyCountTests() -> GrpcTestCases<(), BridgePreKeyCounts> {
+    libsignal_net_chat::grpc::keys::test_cases::get_pre_key_count_test_cases().into()
 }

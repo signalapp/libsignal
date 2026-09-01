@@ -1518,6 +1518,16 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.GetMessageBackupInfoOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_GetPreKeyCountTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.BridgePreKeyCounts>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetPreKeyCountTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.BridgePreKeyCounts>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.BridgePreKeyCounts>(it) })(ffiOut)
+  }
+
   public fun TESTING_LookUpUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.LookUpUsernameLinkArgs, org.signal.libsignal.internal.LookUpUsernameLinkOut>> {
     val ffiOut =
       NativeTesting.TESTING_LookUpUsernameLinkTests()
