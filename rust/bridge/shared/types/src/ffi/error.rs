@@ -133,6 +133,11 @@ pub enum SignalErrorCode {
     RegistrationDeviceTransferPossible = 199,
     RegistrationRecoveryVerificationFailed = 200,
     RegistrationLock = 201,
+    RegisterAccountRequestRejected = 202,
+    RegistrationRecoveryPasswordRequired = 203,
+    RegistrationOneTimePasswordRequired = 204,
+    RegistrationInvalidSession = 205,
+    RegistrationInvalidReceipt = 206,
 
     KeyTransparencyError = 210,
     KeyTransparencyVerificationFailed = 211,
@@ -1068,6 +1073,15 @@ mod registration {
                 }
                 Self::RegistrationRecoveryVerificationFailed => {
                     SignalErrorCode::RegistrationRecoveryVerificationFailed
+                }
+                Self::RequestRejected => SignalErrorCode::RegisterAccountRequestRejected,
+                Self::InvalidSession => SignalErrorCode::RegistrationInvalidSession,
+                Self::InvalidReceipt => SignalErrorCode::RegistrationInvalidReceipt,
+                Self::RecoveryPasswordRequired => {
+                    SignalErrorCode::RegistrationRecoveryPasswordRequired
+                }
+                Self::OneTimePasswordRequired => {
+                    SignalErrorCode::RegistrationOneTimePasswordRequired
                 }
                 Self::RegistrationLock(_) => {
                     // Re-match as owned.

@@ -1,3 +1,9 @@
+//
+// Copyright 2025 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+use std::borrow::Cow;
+
 use bytes::Bytes;
 use http::uri::PathAndQuery;
 use http::{HeaderMap, HeaderName, HeaderValue, Method};
@@ -8,9 +14,9 @@ use libsignal_protocol::PublicKey;
 use serde_with::{FromInto, serde_as, skip_serializing_none};
 
 use crate::api::registration::{
-    AccountKeys, CreateSession, ForServiceIds, InvalidSessionId, NewMessageNotification,
-    ProvidedAccountAttributes, PushToken, RegistrationSession, SessionId, SignedPreKeyBody,
-    SkipDeviceTransfer, VerificationTransport,
+    AccountKeys, CreateSession, InvalidSessionId, NewMessageNotification, PniAccountMaterial,
+    ProvidedAccountAttributes, PushToken, RegisterAccountMethod, RegistrationSession, SessionId,
+    SignedPreKeyBody, SkipDeviceTransfer, VerificationTransport,
 };
 use crate::ws::CONTENT_TYPE_JSON;
 
@@ -66,16 +72,19 @@ pub(super) struct CheckSvr2CredentialsRequest<'s> {
 #[serde(rename_all = "camelCase")]
 struct AccountAttributes<'a> {
     fetches_messages: bool,
+    /// `None` for account with no phone number.
+    pni_registration_id: Option<u16>,
     #[serde(flatten)]
     account_attributes: ProvidedAccountAttributes<'a>,
 }
 
 #[serde_as]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, serde::Serialize, strum::EnumTryAs)]
+#[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, strum::EnumTryAs)]
 #[serde(rename_all = "camelCase")]
 enum SessionValidation<'a> {
     SessionId(&'a SessionId),
     RecoveryPassword(#[serde_as(as = "Base64Padded")] &'a [u8]),
+    ReceiptCredentialPresentation(#[serde_as(as = "Base64Padded")] Vec<u8>),
 }
 
 #[derive(Debug, Default, PartialEq, serde::Deserialize)]
@@ -216,26 +225,35 @@ impl From<CheckSvr2CredentialsRequest<'_>> for ChatRequest {
     }
 }
 
+/// Basic-auth username sent when registering an account with no phone number.
+///
+/// Server documents that it ignores the username for this flow, but that
+/// one must still be present and parse as neither an e164 nor a UUID. This is
+/// the value it recommends.
+const NO_NUMBER_AUTH_USERNAME: &str = "__no_number__";
+
 pub(super) trait RegisterChatRequest {
     fn register_account(
-        number: &str,
-        session_id: Option<&SessionId>,
+        method: RegisterAccountMethod<'_>,
         message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
-        keys: ForServiceIds<AccountKeys<'_>>,
+        one_time_password: Option<u32>,
+        aci_keys: AccountKeys<'_>,
+        pni_material: Option<PniAccountMaterial<'_>>,
         account_password: &str,
     ) -> Self;
 }
 
 impl RegisterChatRequest for ChatRequest {
     fn register_account(
-        number: &str,
-        session_id: Option<&SessionId>,
+        method: RegisterAccountMethod<'_>,
         message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
-        keys: ForServiceIds<AccountKeys<'_>>,
+        one_time_password: Option<u32>,
+        aci_keys: AccountKeys<'_>,
+        pni_material: Option<PniAccountMaterial<'_>>,
         account_password: &str,
     ) -> Self {
         #[serde_as]
@@ -245,16 +263,17 @@ impl RegisterChatRequest for ChatRequest {
         struct RegisterAccount<'a> {
             #[serde(flatten)]
             session_validation: SessionValidation<'a>,
+            totp: Option<u32>,
             account_attributes: AccountAttributes<'a>,
             skip_device_transfer: bool,
             #[serde_as(as = "FromInto<PublicKeyBytes>")]
             aci_identity_key: &'a PublicKey,
-            #[serde_as(as = "FromInto<PublicKeyBytes>")]
-            pni_identity_key: &'a PublicKey,
+            #[serde_as(as = "Option<FromInto<PublicKeyBytes>>")]
+            pni_identity_key: Option<&'a PublicKey>,
             aci_signed_pre_key: SignedPreKeyBody<&'a [u8]>,
-            pni_signed_pre_key: SignedPreKeyBody<&'a [u8]>,
+            pni_signed_pre_key: Option<SignedPreKeyBody<&'a [u8]>>,
             aci_pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
-            pni_pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
+            pni_pq_last_resort_pre_key: Option<SignedPreKeyBody<&'a [u8]>>,
             // Intentionally not #[serde(flatten)]-ed
             push_token: Option<PushToken<'a>>,
         }
@@ -272,23 +291,44 @@ impl RegisterChatRequest for ChatRequest {
             NewMessageNotification::WillFetchMessages => (true, None),
         };
 
-        let session_validation = session_id.map(SessionValidation::SessionId).unwrap_or(
-            SessionValidation::RecoveryPassword(account_attributes.recovery_password),
-        );
+        let (auth_username, session_validation) = match method {
+            RegisterAccountMethod::SessionId { number, session_id } => (
+                Cow::Borrowed(number),
+                SessionValidation::SessionId(session_id),
+            ),
+            RegisterAccountMethod::PhoneNumberRecoveryPassword { number } => (
+                Cow::Borrowed(number),
+                SessionValidation::RecoveryPassword(account_attributes.recovery_password),
+            ),
+            RegisterAccountMethod::ReceiptCredential { presentation } => (
+                Cow::Borrowed(NO_NUMBER_AUTH_USERNAME),
+                SessionValidation::ReceiptCredentialPresentation(zkgroup::serialize(presentation)),
+            ),
+            RegisterAccountMethod::AccountRecoveryPassword { aci } => (
+                Cow::Owned(aci.service_id_string()),
+                SessionValidation::RecoveryPassword(account_attributes.recovery_password),
+            ),
+        };
+
+        let (pni_registration_id, pni_keys) = pni_material
+            .map(|pni| (pni.registration_id, pni.keys))
+            .unzip();
 
         let register_account = RegisterAccount {
             session_validation,
+            totp: one_time_password,
             account_attributes: AccountAttributes {
                 account_attributes,
                 fetches_messages,
+                pni_registration_id,
             },
             skip_device_transfer: device_transfer.is_some_and(|SkipDeviceTransfer| true),
-            aci_identity_key: keys.aci.identity_key,
-            pni_identity_key: keys.pni.identity_key,
-            aci_signed_pre_key: keys.aci.signed_pre_key,
-            pni_signed_pre_key: keys.pni.signed_pre_key,
-            aci_pq_last_resort_pre_key: keys.aci.pq_last_resort_pre_key,
-            pni_pq_last_resort_pre_key: keys.pni.pq_last_resort_pre_key,
+            aci_identity_key: aci_keys.identity_key,
+            pni_identity_key: pni_keys.as_ref().map(|keys| keys.identity_key),
+            aci_signed_pre_key: aci_keys.signed_pre_key,
+            pni_signed_pre_key: pni_keys.as_ref().map(|keys| keys.signed_pre_key),
+            aci_pq_last_resort_pre_key: aci_keys.pq_last_resort_pre_key,
+            pni_pq_last_resort_pre_key: pni_keys.as_ref().map(|keys| keys.pq_last_resort_pre_key),
             push_token,
         };
 
@@ -303,7 +343,7 @@ impl RegisterChatRequest for ChatRequest {
             headers: HeaderMap::from_iter([
                 CONTENT_TYPE_JSON,
                 Auth {
-                    username: number,
+                    username: &*auth_username,
                     password: account_password,
                 }
                 .as_header(),
@@ -392,17 +432,21 @@ mod test {
     use http::StatusCode;
     use libsignal_core::{Aci, Pni};
     use libsignal_net::chat::Response as ChatResponse;
+    use libsignal_net::infra::utils::basic_authorization;
     use libsignal_protocol::{GenericSignedPreKey as _, KeyPair, KyberPreKeyRecord};
     use rand::SeedableRng as _;
     use serde_json::json;
+    use test_case::test_case;
     use uuid::uuid;
 
     use super::*;
     use crate::api::ChallengeOption;
     use crate::api::registration::{
-        CheckSvr2CredentialsResponse, PushToken, RegisterAccountResponse, RegisterResponseBackup,
-        RegisterResponseBadge, RegisterResponseEntitlements, Svr2CredentialsResult,
+        CheckSvr2CredentialsResponse, ForServiceIds, PushToken, RegisterAccountResponse,
+        RegisterResponseBackup, RegisterResponseBadge, RegisterResponseEntitlements,
+        Svr2CredentialsResult,
     };
+    use crate::api::testutil::valid_receipt_credential_presentation;
     use crate::ws::TryIntoResponse as _;
 
     #[test]
@@ -618,7 +662,6 @@ mod test {
         LazyLock::new(|| ProvidedAccountAttributes {
             recovery_password: b"recovery",
             registration_id: 123,
-            pni_registration_id: 456,
             name: Some(b"device name proto"),
             registration_lock: Some("reg lock"),
             unidentified_access_key: b"unidentified key",
@@ -645,6 +688,17 @@ mod test {
                 signed_pre_key: signed_pre_key.as_deref(),
                 pq_last_resort_pre_key: pq_last_resort_pre_key.as_deref(),
             }
+        }
+    }
+
+    fn aci_keys() -> AccountKeys<'static> {
+        REGISTER_KEYS.aci.as_borrowed()
+    }
+
+    fn pni_material() -> PniAccountMaterial<'static> {
+        PniAccountMaterial {
+            registration_id: 456,
+            keys: REGISTER_KEYS.pni.as_borrowed(),
         }
     }
 
@@ -693,13 +747,18 @@ mod test {
     /// up producing the JSON we expect.
     #[test]
     fn register_account_request() {
+        let session_id = "abc".parse().unwrap();
         let request = ChatRequest::register_account(
-            "+18005550101",
-            Some(&"abc".parse().unwrap()),
+            RegisterAccountMethod::SessionId {
+                number: "+18005550101",
+                session_id: &session_id,
+            },
             NewMessageNotification::Apn("appleId"),
             ACCOUNT_ATTRIBUTES.clone(),
             Some(SkipDeviceTransfer),
-            ForServiceIds::generate(|kind| REGISTER_KEYS.get(kind).as_borrowed()),
+            None,
+            aci_keys(),
+            Some(pni_material()),
             "encoded account password",
         );
 
@@ -791,13 +850,18 @@ mod test {
 
     #[test]
     fn register_account_request_fetches_messages_no_push_tokens() {
+        let session_id = "abc".parse().unwrap();
         let request = ChatRequest::register_account(
-            "+18005550101",
-            Some(&"abc".parse().unwrap()),
+            RegisterAccountMethod::SessionId {
+                number: "+18005550101",
+                session_id: &session_id,
+            },
             NewMessageNotification::WillFetchMessages,
             ACCOUNT_ATTRIBUTES.clone(),
             Some(SkipDeviceTransfer),
-            ForServiceIds::generate(|kind| REGISTER_KEYS.get(kind).as_borrowed()),
+            None,
+            aci_keys(),
+            Some(pni_material()),
             "encoded account password",
         );
 
@@ -809,6 +873,171 @@ mod test {
             Some(&serde_json::Value::Bool(true))
         );
         assert_eq!(body.get("pushToken"), None);
+    }
+
+    #[test]
+    fn register_account_request_without_pni() {
+        let session_id = "abc".parse().unwrap();
+        let request = ChatRequest::register_account(
+            RegisterAccountMethod::SessionId {
+                number: "+18005550101",
+                session_id: &session_id,
+            },
+            NewMessageNotification::WillFetchMessages,
+            ACCOUNT_ATTRIBUTES.clone(),
+            Some(SkipDeviceTransfer),
+            None,
+            aci_keys(),
+            None,
+            "encoded account password",
+        );
+
+        let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();
+
+        // Left out entirely, as opposed to being sent as null's, which the server would reject.
+        for field in ["pniIdentityKey", "pniSignedPreKey", "pniPqLastResortPreKey"] {
+            assert_eq!(body.get(field), None, "{field}");
+        }
+        assert_eq!(body["accountAttributes"].get("pniRegistrationId"), None);
+        assert!(body.get("aciIdentityKey").is_some());
+    }
+
+    #[test]
+    fn register_account_request_with_recovery_password() {
+        const E164: &str = "+18005550101";
+        const PASSWORD: &str = "encoded account password";
+        let request = ChatRequest::register_account(
+            RegisterAccountMethod::PhoneNumberRecoveryPassword { number: E164 },
+            NewMessageNotification::WillFetchMessages,
+            ACCOUNT_ATTRIBUTES.clone(),
+            Some(SkipDeviceTransfer),
+            None,
+            aci_keys(),
+            Some(pni_material()),
+            PASSWORD,
+        );
+
+        assert_eq!(
+            request.headers.get("authorization").unwrap(),
+            basic_authorization(E164, PASSWORD)
+        );
+
+        let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();
+
+        assert_eq!(
+            body.get("recoveryPassword"),
+            Some(&serde_json::Value::String(
+                BASE64_STANDARD.encode(b"recovery")
+            ))
+        );
+        assert_eq!(body.get("sessionId"), None);
+    }
+
+    #[test]
+    fn register_account_request_with_one_time_password() {
+        let request = ChatRequest::register_account(
+            RegisterAccountMethod::AccountRecoveryPassword {
+                aci: Aci::from_uuid_bytes([0x11; 16]),
+            },
+            NewMessageNotification::WillFetchMessages,
+            ACCOUNT_ATTRIBUTES.clone(),
+            Some(SkipDeviceTransfer),
+            Some(90210),
+            aci_keys(),
+            Some(pni_material()),
+            "encoded account password",
+        );
+
+        let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();
+
+        assert_eq!(body.get("totp"), Some(&json!(90210)));
+    }
+
+    #[test]
+    fn register_account_request_without_number() {
+        let presentation = valid_receipt_credential_presentation();
+
+        let request = ChatRequest::register_account(
+            RegisterAccountMethod::ReceiptCredential {
+                presentation: &presentation,
+            },
+            NewMessageNotification::WillFetchMessages,
+            ACCOUNT_ATTRIBUTES.clone(),
+            Some(SkipDeviceTransfer),
+            None,
+            aci_keys(),
+            None,
+            "encoded account password",
+        );
+
+        let encoded_basic_auth = BASE64_STANDARD.encode(b"__no_number__:encoded account password");
+        assert_eq!(
+            request.headers.get("authorization").unwrap(),
+            &format!("Basic {encoded_basic_auth}")
+        );
+
+        let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();
+
+        assert_eq!(
+            body.get("receiptCredentialPresentation"),
+            Some(&serde_json::Value::String(
+                BASE64_STANDARD.encode(zkgroup::serialize(&presentation))
+            ))
+        );
+        // Required for this flow, unlike the phone number ones.
+        assert!(body["accountAttributes"]["recoveryPassword"].is_string());
+        // None of these fields should be present.
+        for field in [
+            "sessionId",
+            "recoveryPassword",
+            "pniIdentityKey",
+            "pniSignedPreKey",
+            "pniPqLastResortPreKey",
+        ] {
+            assert_eq!(body.get(field), None, "{field}");
+        }
+        assert_eq!(body["accountAttributes"].get("pniRegistrationId"), None);
+    }
+
+    #[test]
+    fn reregister_account_without_number_request() {
+        let aci = Aci::from(uuid::uuid!("095be615-a8ad-4c33-8e9c-c7612fbf6c9f"));
+        let request = ChatRequest::register_account(
+            RegisterAccountMethod::AccountRecoveryPassword { aci },
+            NewMessageNotification::WillFetchMessages,
+            ACCOUNT_ATTRIBUTES.clone(),
+            Some(SkipDeviceTransfer),
+            None,
+            aci_keys(),
+            Some(pni_material()),
+            "encoded account password",
+        );
+
+        let username = aci.service_id_string();
+        let encoded_basic_auth =
+            BASE64_STANDARD.encode(format!("{username}:encoded account password"));
+        assert_eq!(
+            request.headers.get("authorization").unwrap(),
+            &format!("Basic {encoded_basic_auth}")
+        );
+
+        let body = serde_json::from_slice::<'_, serde_json::Value>(&request.body.unwrap()).unwrap();
+
+        let recovery_password =
+            serde_json::Value::String(BASE64_STANDARD.encode(ACCOUNT_ATTRIBUTES.recovery_password));
+        assert_eq!(body.get("recoveryPassword"), Some(&recovery_password));
+        assert_eq!(
+            body["accountAttributes"].get("recoveryPassword"),
+            Some(&recovery_password)
+        );
+        assert_eq!(
+            body["accountAttributes"]["pniRegistrationId"],
+            pni_material().registration_id
+        );
+        assert!(body.get("pniIdentityKey").is_some());
+        for field in ["sessionId", "receiptCredentialPresentation"] {
+            assert_eq!(body.get(field), None, "{field}");
+        }
     }
 
     #[test]
@@ -843,8 +1072,8 @@ mod test {
             response,
             RegisterAccountResponse {
                 aci: Aci::from(uuid!("095be615-a8ad-4c33-8e9c-c7612fbf6c9f")),
-                number: "+18005550123".to_owned(),
-                pni: Pni::from(uuid!("06d9ee19-7126-49ad-b4cb-de1a4d42305a")),
+                number: Some("+18005550123".to_owned()),
+                pni: Some(Pni::from(uuid!("06d9ee19-7126-49ad-b4cb-de1a4d42305a"))),
                 username_hash: Some((*b"abcdefghi").into()),
                 username_link_handle: Some(uuid!("431ca581-2806-466f-a4a3-4492d3c9a64b")),
                 storage_capable: true,
@@ -861,6 +1090,41 @@ mod test {
                     })
                 },
                 reregistration: true,
+                auth_credential_salt: None,
+            }
+        )
+    }
+
+    #[test_case(r#"{
+        "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+        "number": null,
+        "pni": null,
+        "usernameHash": null,
+        "usernameLinkHandle": null,
+        "authCredentialSalt": "c2FsdA==",
+        "storageCapable": false,
+        "entitlements": { "badges": [] },
+        "reregistration": false
+    }"#; "explicit nulls")]
+    #[test_case(r#"{
+        "uuid": "095be615-a8ad-4c33-8e9c-c7612fbf6c9f",
+        "authCredentialSalt": "c2FsdA=="
+    }"#; "keys omitted")]
+    fn register_account_response_parse_without_phone_number(response_json: &str) {
+        let response: RegisterAccountResponse = serde_json::from_str(response_json).unwrap();
+
+        assert_eq!(
+            response,
+            RegisterAccountResponse {
+                aci: Aci::from(uuid!("095be615-a8ad-4c33-8e9c-c7612fbf6c9f")),
+                number: None,
+                pni: None,
+                username_hash: None,
+                username_link_handle: None,
+                storage_capable: false,
+                entitlements: RegisterResponseEntitlements::default(),
+                reregistration: false,
+                auth_credential_salt: Some((*b"salt").into()),
             }
         )
     }

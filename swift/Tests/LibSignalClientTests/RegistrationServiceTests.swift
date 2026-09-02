@@ -60,6 +60,18 @@ class RegistrationServiceConversionTests {
         )
         #expect(response.entitlements.1 == BackupEntitlement(expiration: 888_888, level: 123))
         #expect(response.reregistration == true)
+        #expect(response.authCredentialSalt == nil)
+    }
+
+    @Test
+    func registerAccountResponseConversionWithoutPhoneNumber() throws {
+        let response: RegisterAccountResponse = try invokeFnReturningNativeHandle {
+            signal_testing_register_account_response_create_test_value_without_phone_number($0)
+        }
+        #expect(response.number == nil)
+        #expect(response.pni == nil)
+        #expect(try Aci.parseFrom(serviceIdString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") == response.aci)
+        #expect(response.authCredentialSalt == Data("auth-credential-salt".utf8))
     }
 
     // swift-format-ignore
@@ -156,6 +168,11 @@ class RegistrationServiceConversionTests {
                     ("DeviceTransferIsPossibleButNotSkipped", { if case RegistrationError.deviceTransferPossible("a device transfer is possible and was not explicitly skipped.") = $0 { true } else { false }}),
                     ("RegistrationRecoveryVerificationFailed", { if case RegistrationError.recoveryVerificationFailed("registration recovery password verification failed") = $0 { true } else { false }}),
                     ("RegistrationLockFor50Seconds", { if case RegistrationError.registrationLock(timeRemaining: 50, svr2Username: "user", svr2Password: "pass") = $0 { true } else { false }}),
+                    ("RequestRejected", { if case RegistrationError.registerAccountRequestRejected("the server rejected the request") = $0 { true } else { false }}),
+                    ("InvalidSession", { if case RegistrationError.invalidSession("the verification session is unverified or no longer exists") = $0 { true } else { false }}),
+                    ("InvalidReceipt", { if case RegistrationError.invalidReceipt("the receipt credential presentation was not accepted") = $0 { true } else { false }}),
+                    ("RecoveryPasswordRequired", { if case RegistrationError.recoveryPasswordRequired("a recovery password is required") = $0 { true } else { false }}),
+                    ("OneTimePasswordRequired", { if case RegistrationError.oneTimePasswordRequired("a valid one-time password is required") = $0 { true } else { false }}),
                     retryLaterCase,
                     unknownCase,
                     timeoutCase,
@@ -640,7 +657,7 @@ class RegistrationServiceFakeChatTests {
         // We only perform a cursory check here because there is a already a dedicated test for bridging
         // the response.
         #expect(response.aci.serviceIdString == "aabbaabb-5555-6666-8888-111111111111")
-        #expect(response.pni.serviceIdString == "PNI:ddeeddee-5555-6666-8888-111111111111")
+        #expect(response.pni?.serviceIdString == "PNI:ddeeddee-5555-6666-8888-111111111111")
         #expect(response.number == "+18005550123")
     }
 

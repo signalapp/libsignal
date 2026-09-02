@@ -18,6 +18,7 @@ import org.signal.libsignal.protocol.ServiceId;
 import org.signal.libsignal.protocol.SignedPublicPreKey;
 import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.kem.KEMPublicKey;
+import org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation;
 
 /**
  * A client for the the registration service.
@@ -38,6 +39,32 @@ import org.signal.libsignal.protocol.kem.KEMPublicKey;
  *   <li>{@link RegistrationSessionIdInvalidException} if the session ID is invalid,
  *   <li>{@link RegistrationException} for other unexpected error responses
  * </ul>
+ *
+ * <p>There are four ways to register, along two axes: whether the account has a phone number, and
+ * whether it already exists. Only {@link #registerAccount} needs a session, since proving control
+ * of a phone number is an interactive process. {@link #reregisterAccount}, {@link
+ * #registerAccountWithoutNumber}, and {@link #reregisterAccountWithoutNumber} each authenticate
+ * with something the caller already holds, so they need no session and are static functions.
+ *
+ * <h2>Example</h2>
+ *
+ * <pre>
+ * RegistrationService service =
+ *     RegistrationService.createSession(network, new CreateSession(e164, fcmPushToken, mcc, mnc))
+ *         .get();
+ *
+ * // Answer whatever getSessionState().getRequestedInformation() asks for, using
+ * // requestPushChallenge()/submitPushChallenge() or submitCaptcha(), until
+ * // getAllowedToRequestCode() is true.
+ *
+ * service.requestVerificationCode(VerificationTransport.SMS, "android", Locale.getDefault()).get();
+ *
+ * // A wrong code is not an error: the request succeeds and the session stays
+ * // unverified, so check getSessionState().getVerified() before calling registerAccount.
+ * service.submitVerificationCode(codeFromUser).get();
+ *
+ * RegisterAccountResponse response = service.registerAccount(accountPassword, ...).get();
+ * </pre>
  */
 public class RegistrationService extends NativeHandleGuard.SimpleOwner {
   /** Values passed to the server by {@link #createSession}. */
@@ -319,6 +346,9 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
    *   <li>{@link RegistrationLockException}
    *   <li>{@link DeviceTransferPossibleException}
    *   <li>{@link RegistrationRecoveryFailedException}
+   *   <li>{@link RegisterAccountRequestRejectedException}
+   *   <li>{@link RegistrationInvalidSessionException} if the session is unverified or no longer
+   *       exists
    * </ul>
    *
    * in addition to the list of common exception types.
@@ -377,6 +407,7 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
    *   <li>{@link RegistrationLockException}
    *   <li>{@link DeviceTransferPossibleException}
    *   <li>{@link RegistrationRecoveryFailedException}
+   *   <li>{@link RegisterAccountRequestRejectedException}
    * </ul>
    *
    * in addition to the list of common exception types.
@@ -430,6 +461,139 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
         .thenApply(responseHandle -> new RegisterAccountResponse(responseHandle));
   }
 
+  /**
+   * Send a request to register an account that has no phone number.
+   *
+   * <p>{@code accountAttributes.recoveryPassword} must not be empty, since a recovery password is
+   * the only way such an account can ever be recovered.
+   *
+   * <p>The returned future resolves to a {@link RegisterAccountResponse} if the request is
+   * successful. If not, the future resolves with
+   *
+   * <ul>
+   *   <li>{@link RegistrationRecoveryPasswordRequiredException} if the recovery password is empty
+   *   <li>{@link RegisterAccountRequestRejectedException} if the receipt credential presentation
+   *       can't be parsed
+   *   <li>{@link RegistrationInvalidReceiptException} if the receipt credential presentation fails
+   *       verification, has expired, or has already been redeemed
+   * </ul>
+   *
+   * in addition to the list of common network/chat exception types.
+   *
+   * <p>With the websocket transport, this makes a POST request to {@code /v1/registration}.
+   *
+   * @see RegistrationService {@code RegistrationService} lists the common types of exceptions that
+   *     can be thrown
+   */
+  public static CompletableFuture<RegisterAccountResponse> registerAccountWithoutNumber(
+      Network network,
+      ReceiptCredentialPresentation receiptCredentialPresentation,
+      String accountPassword,
+      boolean skipDeviceTransfer,
+      AccountAttributes accountAttributes,
+      String gcmPushToken,
+      ECPublicKey aciPublicKey,
+      SignedPublicPreKey<ECPublicKey> aciSignedPreKey,
+      SignedPublicPreKey<KEMPublicKey> aciPqLastResortPreKey) {
+
+    var request =
+        new RegisterAccountRequest(
+            accountPassword,
+            skipDeviceTransfer,
+            gcmPushToken,
+            aciPublicKey,
+            aciSignedPreKey,
+            aciPqLastResortPreKey);
+
+    var tokioAsyncContext = network.getAsyncContext();
+
+    return tokioAsyncContext
+        .guardedMap(
+            tokioContext ->
+                accountAttributes.guardedMap(
+                    attributesHandle ->
+                        request.guardedMap(
+                            register ->
+                                Native.RegistrationService_RegisterAccountWithoutNumber(
+                                    tokioContext,
+                                    network.getConnectionManager(),
+                                    receiptCredentialPresentation.getInternalContentsForJNI(),
+                                    register,
+                                    attributesHandle))))
+        .thenApply(responseHandle -> new RegisterAccountResponse(responseHandle));
+  }
+
+  /**
+   * Send a request to re-register an account that has no phone number, identified by its ACI.
+   *
+   * <p>The counterpart to {@link #reregisterAccount} for an account with no phone number. No PNI
+   * keys are accepted here; libsignal generates the PNI material the server requires and then
+   * discards. {@code accountAttributes.recoveryPassword} must not be empty, since a recovery
+   * password is the only way such an account can ever be re-registered.
+   *
+   * <p>The returned future resolves to a {@link RegisterAccountResponse} if the request is
+   * successful. If not, the future resolves with
+   *
+   * <ul>
+   *   <li>{@link RegistrationRecoveryPasswordRequiredException}
+   *   <li>{@link RegistrationOneTimePasswordRequiredException}
+   *   <li>{@link RegistrationRecoveryFailedException}
+   *   <li>{@link RegisterAccountRequestRejectedException}
+   * </ul>
+   *
+   * in addition to the list of common exception types.
+   *
+   * <p>{@code oneTimePassword} is sent as a number, so {@code 012345} becomes {@code 12345}. Can be
+   * {@code null} if no TOTP was set up for the account.
+   *
+   * <p>With the websocket transport, this makes a POST request to {@code /v1/registration}.
+   *
+   * @see RegistrationService {@code RegistrationService} lists the common types of exceptions that
+   *     can be thrown
+   */
+  public static CompletableFuture<RegisterAccountResponse> reregisterAccountWithoutNumber(
+      Network network,
+      ServiceId.Aci aci,
+      String accountPassword,
+      boolean skipDeviceTransfer,
+      Integer oneTimePassword,
+      AccountAttributes accountAttributes,
+      String gcmPushToken,
+      ECPublicKey aciPublicKey,
+      SignedPublicPreKey<ECPublicKey> aciSignedPreKey,
+      SignedPublicPreKey<KEMPublicKey> aciPqLastResortPreKey) {
+
+    var request =
+        new RegisterAccountRequest(
+            accountPassword,
+            skipDeviceTransfer,
+            gcmPushToken,
+            aciPublicKey,
+            aciSignedPreKey,
+            aciPqLastResortPreKey);
+
+    if (oneTimePassword != null) {
+      request.setOneTimePassword(oneTimePassword);
+    }
+
+    var tokioAsyncContext = network.getAsyncContext();
+
+    return tokioAsyncContext
+        .guardedMap(
+            tokioContext ->
+                accountAttributes.guardedMap(
+                    attributesHandle ->
+                        request.guardedMap(
+                            register ->
+                                Native.RegistrationService_ReregisterAccountWithoutNumber(
+                                    tokioContext,
+                                    network.getConnectionManager(),
+                                    aci.toServiceIdFixedWidthBinary(),
+                                    register,
+                                    attributesHandle))))
+        .thenApply(responseHandle -> new RegisterAccountResponse(responseHandle));
+  }
+
   /** Test-only; sends a {@link CreateSession} request to a {@FakeChatServer} to start a session. */
   static CompletableFuture<RegistrationService> fakeCreateSession(
       FakeChatServer fakeServer, CreateSession createSession) {
@@ -449,6 +613,37 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
       super(Native.RegisterAccountRequest_Create());
     }
 
+    /** Builds a request with ACI keys only, for an account that will have no PNI. */
+    public RegisterAccountRequest(
+        String accountPassword,
+        boolean skipDeviceTransfer,
+        String gcmPushToken,
+        ECPublicKey aciPublicKey,
+        SignedPublicPreKey<ECPublicKey> aciSignedPreKey,
+        SignedPublicPreKey<KEMPublicKey> aciPqLastResortPreKey) {
+      this();
+      final int ACI = ServiceId.Kind.ACI.ordinal();
+
+      this.guardedRun(
+          requestHandle -> {
+            Native.RegisterAccountRequest_SetAccountPassword(requestHandle, accountPassword);
+            Native.RegisterAccountRequest_SetGcmPushToken(requestHandle, gcmPushToken);
+            aciPublicKey.guardedRun(
+                handle ->
+                    Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, ACI, handle));
+
+            Native.RegisterAccountRequest_SetIdentitySignedPreKey(
+                requestHandle, ACI, aciSignedPreKey);
+
+            Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
+                requestHandle, ACI, aciPqLastResortPreKey);
+
+            if (skipDeviceTransfer) {
+              Native.RegisterAccountRequest_SetSkipDeviceTransfer(requestHandle);
+            }
+          });
+    }
+
     public RegisterAccountRequest(
         String accountPassword,
         boolean skipDeviceTransfer,
@@ -459,35 +654,33 @@ public class RegistrationService extends NativeHandleGuard.SimpleOwner {
         SignedPublicPreKey<ECPublicKey> pniSignedPreKey,
         SignedPublicPreKey<KEMPublicKey> aciPqLastResortPreKey,
         SignedPublicPreKey<KEMPublicKey> pniPqLastResortPreKey) {
-      this();
-      final int ACI = ServiceId.Kind.ACI.ordinal();
+      this(
+          accountPassword,
+          skipDeviceTransfer,
+          gcmPushToken,
+          aciPublicKey,
+          aciSignedPreKey,
+          aciPqLastResortPreKey);
       final int PNI = ServiceId.Kind.PNI.ordinal();
 
       this.guardedRun(
           requestHandle -> {
-            Native.RegisterAccountRequest_SetAccountPassword(requestHandle, accountPassword);
-            Native.RegisterAccountRequest_SetGcmPushToken(requestHandle, gcmPushToken);
-            aciPublicKey.guardedRun(
-                handle ->
-                    Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, ACI, handle));
             pniPublicKey.guardedRun(
                 handle ->
                     Native.RegisterAccountRequest_SetIdentityPublicKey(requestHandle, PNI, handle));
 
             Native.RegisterAccountRequest_SetIdentitySignedPreKey(
-                requestHandle, ACI, aciSignedPreKey);
-            Native.RegisterAccountRequest_SetIdentitySignedPreKey(
                 requestHandle, PNI, pniSignedPreKey);
 
             Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
-                requestHandle, ACI, aciPqLastResortPreKey);
-            Native.RegisterAccountRequest_SetIdentityPqLastResortPreKey(
                 requestHandle, PNI, pniPqLastResortPreKey);
-
-            if (skipDeviceTransfer) {
-              Native.RegisterAccountRequest_SetSkipDeviceTransfer(requestHandle);
-            }
           });
+    }
+
+    private void setOneTimePassword(int oneTimePassword) {
+      this.guardedRun(
+          requestHandle ->
+              Native.RegisterAccountRequest_SetOneTimePassword(requestHandle, oneTimePassword));
     }
 
     protected void release(long nativeHandle) {

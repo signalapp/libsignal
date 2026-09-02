@@ -2178,10 +2178,22 @@ internal object Native {
   ): Unit
 
   @JvmStatic
+  public external fun RegisterAccountRequest_SetOneTimePassword(
+    registerAccount: ObjectHandle,
+    oneTimePassword: Int,
+  ): Unit
+
+  @JvmStatic
   public external fun RegisterAccountRequest_SetSkipDeviceTransfer(registerAccount: ObjectHandle): Unit
 
   @JvmStatic
   public external fun RegisterAccountResponse_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun RegisterAccountResponse_GetAci(response: ObjectHandle): UUID
+
+  @JvmStatic
+  public external fun RegisterAccountResponse_GetAuthCredentialSalt(response: ObjectHandle): ByteArray?
 
   @JvmStatic
   public external fun RegisterAccountResponse_GetEntitlementBackupExpirationSeconds(response: ObjectHandle): Long
@@ -2193,13 +2205,10 @@ internal object Native {
   public external fun RegisterAccountResponse_GetEntitlementBadges(response: ObjectHandle): Array<Object>
 
   @JvmStatic
-  public external fun RegisterAccountResponse_GetIdentity(
-    response: ObjectHandle,
-    identityType: Int,
-  ): ByteArray
+  public external fun RegisterAccountResponse_GetNumber(response: ObjectHandle): String?
 
   @JvmStatic
-  public external fun RegisterAccountResponse_GetNumber(response: ObjectHandle): String
+  public external fun RegisterAccountResponse_GetPni(response: ObjectHandle): UUID?
 
   @JvmStatic
   public external fun RegisterAccountResponse_GetReregistration(response: ObjectHandle): Boolean
@@ -2254,6 +2263,15 @@ internal object Native {
   ): CompletableFuture<ObjectHandle>
 
   @JvmStatic
+  public external fun RegistrationService_RegisterAccountWithoutNumber(
+    asyncRuntime: ObjectHandle,
+    connectChat: ConnectChatBridge,
+    receiptCredentialPresentation: ByteArray,
+    registerAccount: ObjectHandle,
+    accountAttributes: ObjectHandle,
+  ): CompletableFuture<ObjectHandle>
+
+  @JvmStatic
   public external fun RegistrationService_RegistrationSession(service: ObjectHandle): ObjectHandle
 
   @JvmStatic
@@ -2277,6 +2295,15 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     connectChat: ConnectChatBridge,
     number: String,
+    registerAccount: ObjectHandle,
+    accountAttributes: ObjectHandle,
+  ): CompletableFuture<ObjectHandle>
+
+  @JvmStatic
+  public external fun RegistrationService_ReregisterAccountWithoutNumber(
+    asyncRuntime: ObjectHandle,
+    connectChat: ConnectChatBridge,
+    aci: ByteArray,
     registerAccount: ObjectHandle,
     accountAttributes: ObjectHandle,
   ): CompletableFuture<ObjectHandle>

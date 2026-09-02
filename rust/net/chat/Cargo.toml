@@ -60,7 +60,7 @@ libsignal-net = { workspace = true, features = ["test-util"] }
 
 anyhow = { workspace = true }
 bytes = { workspace = true }
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true, features = ["derive", "env"] }
 env_logger = { workspace = true }
 futures-util = { workspace = true }
 hyper = { workspace = true, features = ["http2", "client"] }

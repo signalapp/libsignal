@@ -83,6 +83,21 @@ describe('Registration types', () => {
       expirationSeconds: 888888n,
     });
     expect(response.reregistration).to.eq(true);
+    void expect(response.authCredentialSalt).to.be.null;
+  });
+
+  it('converts a response for an account with no phone number', () => {
+    const response = new RegisterAccountResponse(
+      Native.TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber()
+    );
+    void expect(response.number).to.be.null;
+    void expect(response.pni).to.be.null;
+    expect(response.aci).to.deep.eq(
+      Aci.parseFromServiceIdString('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')
+    );
+    expect(response.authCredentialSalt).to.deep.eq(
+      Buffer.from('auth-credential-salt')
+    );
   });
 
   it('converts SVR2 credential response correctly', () => {
@@ -316,6 +331,17 @@ describe('Registration types', () => {
               svr2Username: 'user',
               svr2Password: 'pass',
             },
+          ],
+          ['RequestRejected', ErrorCode.RegisterAccountRequestRejected],
+          ['InvalidSession', ErrorCode.RegistrationInvalidSession],
+          ['InvalidReceipt', ErrorCode.RegistrationInvalidReceipt],
+          [
+            'RecoveryPasswordRequired',
+            ErrorCode.RegistrationRecoveryPasswordRequired,
+          ],
+          [
+            'OneTimePasswordRequired',
+            ErrorCode.RegistrationOneTimePasswordRequired,
           ],
 
           retryLaterCase,

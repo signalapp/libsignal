@@ -976,6 +976,21 @@ mod registration {
                 RegisterAccountError::RegistrationRecoveryVerificationFailed => {
                     ClassName("org.signal.libsignal.net.RegistrationRecoveryFailedException")
                 }
+                RegisterAccountError::RequestRejected => {
+                    ClassName("org.signal.libsignal.net.RegisterAccountRequestRejectedException")
+                }
+                RegisterAccountError::InvalidSession => {
+                    ClassName("org.signal.libsignal.net.RegistrationInvalidSessionException")
+                }
+                RegisterAccountError::InvalidReceipt => {
+                    ClassName("org.signal.libsignal.net.RegistrationInvalidReceiptException")
+                }
+                RegisterAccountError::RecoveryPasswordRequired => ClassName(
+                    "org.signal.libsignal.net.RegistrationRecoveryPasswordRequiredException",
+                ),
+                RegisterAccountError::OneTimePasswordRequired => ClassName(
+                    "org.signal.libsignal.net.RegistrationOneTimePasswordRequiredException",
+                ),
             };
 
             make_single_message_throwable(env, self.to_string(), class_name)

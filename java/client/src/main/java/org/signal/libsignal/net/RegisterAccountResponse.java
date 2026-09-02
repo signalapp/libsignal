@@ -46,15 +46,23 @@ public class RegisterAccountResponse extends NativeHandleGuard.SimpleOwner {
   }
 
   public ServiceId.Aci getAci() {
-    return (ServiceId.Aci) this.getIdentity(ServiceId.Kind.ACI);
+    return new ServiceId.Aci(guardedMap(Native::RegisterAccountResponse_GetAci));
   }
 
+  /** Returns {@code null} for an account with no phone number. */
   public ServiceId.Pni getPni() {
-    return (ServiceId.Pni) this.getIdentity(ServiceId.Kind.PNI);
+    UUID pni = guardedMap(Native::RegisterAccountResponse_GetPni);
+    return pni == null ? null : new ServiceId.Pni(pni);
   }
 
+  /** Returns {@code null} for an account with no phone number. */
   public String getNumber() {
     return guardedMap(Native::RegisterAccountResponse_GetNumber);
+  }
+
+  /** Returns {@code null} for an account with a phone number. */
+  public byte[] getAuthCredentialSalt() {
+    return guardedMap(Native::RegisterAccountResponse_GetAuthCredentialSalt);
   }
 
   public boolean isReregistration() {
@@ -71,18 +79,5 @@ public class RegisterAccountResponse extends NativeHandleGuard.SimpleOwner {
 
   public UUID getUsernameLinkHandle() {
     return guardedMap(Native::RegisterAccountResponse_GetUsernameLinkHandle);
-  }
-
-  private ServiceId getIdentity(ServiceId.Kind kind) {
-    try {
-      return ServiceId.parseFromFixedWidthBinary(
-          guardedMap(
-              nativeHandle ->
-                  Native.RegisterAccountResponse_GetIdentity(nativeHandle, kind.ordinal())));
-
-    } catch (ServiceId.InvalidServiceIdException e) {
-      // This is prevented by the Rust side.
-      return null;
-    }
   }
 }

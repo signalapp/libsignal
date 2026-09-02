@@ -1940,9 +1940,19 @@ type NativeFunctions = {
     identity_type: number,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  RegisterAccountRequest_SetOneTimePassword: (
+    register_account: Wrapper<RegisterAccountRequest>,
+    one_time_password: number
+  ) => void;
   RegisterAccountRequest_SetSkipDeviceTransfer: (
     register_account: Wrapper<RegisterAccountRequest>
   ) => void;
+  RegisterAccountResponse_GetAci: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => Uuid;
+  RegisterAccountResponse_GetAuthCredentialSalt: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => Uint8Array<ArrayBuffer> | null;
   RegisterAccountResponse_GetEntitlementBackupExpirationSeconds: (
     response: Wrapper<RegisterAccountResponse>
   ) => bigint | null;
@@ -1952,13 +1962,12 @@ type NativeFunctions = {
   RegisterAccountResponse_GetEntitlementBadges: (
     response: Wrapper<RegisterAccountResponse>
   ) => Array<RegisterResponseBadge>;
-  RegisterAccountResponse_GetIdentity: (
-    response: Wrapper<RegisterAccountResponse>,
-    identity_type: number
-  ) => Uint8Array<ArrayBuffer>;
   RegisterAccountResponse_GetNumber: (
     response: Wrapper<RegisterAccountResponse>
-  ) => string;
+  ) => string | null;
+  RegisterAccountResponse_GetPni: (
+    response: Wrapper<RegisterAccountResponse>
+  ) => Uuid | null;
   RegisterAccountResponse_GetReregistration: (
     response: Wrapper<RegisterAccountResponse>
   ) => boolean;
@@ -1997,6 +2006,13 @@ type NativeFunctions = {
     register_account: Wrapper<RegisterAccountRequest>,
     account_attributes: Wrapper<RegistrationAccountAttributes>
   ) => CancellablePromise<RegisterAccountResponse>;
+  RegistrationService_RegisterAccountWithoutNumber: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connect_chat: ConnectChatBridge,
+    receipt_credential_presentation: Uint8Array<ArrayBuffer>,
+    register_account: Wrapper<RegisterAccountRequest>,
+    account_attributes: Wrapper<RegistrationAccountAttributes>
+  ) => CancellablePromise<RegisterAccountResponse>;
   RegistrationService_RegistrationSession: (
     service: Wrapper<RegistrationService>
   ) => RegistrationSession;
@@ -2011,6 +2027,13 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     connect_chat: ConnectChatBridge,
     number: string,
+    register_account: Wrapper<RegisterAccountRequest>,
+    account_attributes: Wrapper<RegistrationAccountAttributes>
+  ) => CancellablePromise<RegisterAccountResponse>;
+  RegistrationService_ReregisterAccountWithoutNumber: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    connect_chat: ConnectChatBridge,
+    aci: Uint8Array<ArrayBuffer>,
     register_account: Wrapper<RegisterAccountRequest>,
     account_attributes: Wrapper<RegistrationAccountAttributes>
   ) => CancellablePromise<RegisterAccountResponse>;
@@ -2934,6 +2957,7 @@ type NativeFunctions = {
     GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, ReturnFfiRedeemBackupReceiptOut>
   >;
   TESTING_RegisterAccountResponse_CreateTestValue: () => RegisterAccountResponse;
+  TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber: () => RegisterAccountResponse;
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert: (
     error_description: string
   ) => void;
@@ -3785,12 +3809,15 @@ const {
   RegisterAccountRequest_SetIdentityPqLastResortPreKey,
   RegisterAccountRequest_SetIdentityPublicKey,
   RegisterAccountRequest_SetIdentitySignedPreKey,
+  RegisterAccountRequest_SetOneTimePassword,
   RegisterAccountRequest_SetSkipDeviceTransfer,
+  RegisterAccountResponse_GetAci,
+  RegisterAccountResponse_GetAuthCredentialSalt,
   RegisterAccountResponse_GetEntitlementBackupExpirationSeconds,
   RegisterAccountResponse_GetEntitlementBackupLevel,
   RegisterAccountResponse_GetEntitlementBadges,
-  RegisterAccountResponse_GetIdentity,
   RegisterAccountResponse_GetNumber,
+  RegisterAccountResponse_GetPni,
   RegisterAccountResponse_GetReregistration,
   RegisterAccountResponse_GetStorageCapable,
   RegisterAccountResponse_GetUsernameHash,
@@ -3799,9 +3826,11 @@ const {
   RegistrationService_CheckSvr2Credentials,
   RegistrationService_CreateSession,
   RegistrationService_RegisterAccount,
+  RegistrationService_RegisterAccountWithoutNumber,
   RegistrationService_RegistrationSession,
   RegistrationService_RequestVerificationCode,
   RegistrationService_ReregisterAccount,
+  RegistrationService_ReregisterAccountWithoutNumber,
   RegistrationService_ResumeSession,
   RegistrationService_SessionId,
   RegistrationService_SubmitCaptcha,
@@ -4061,6 +4090,7 @@ const {
   TESTING_ProcessBytestringArray,
   TESTING_RedeemBackupReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
+  TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber,
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
   TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert,
   TESTING_RegistrationService_CreateSessionErrorConvert,
@@ -4556,12 +4586,15 @@ export {
   RegisterAccountRequest_SetIdentityPqLastResortPreKey,
   RegisterAccountRequest_SetIdentityPublicKey,
   RegisterAccountRequest_SetIdentitySignedPreKey,
+  RegisterAccountRequest_SetOneTimePassword,
   RegisterAccountRequest_SetSkipDeviceTransfer,
+  RegisterAccountResponse_GetAci,
+  RegisterAccountResponse_GetAuthCredentialSalt,
   RegisterAccountResponse_GetEntitlementBackupExpirationSeconds,
   RegisterAccountResponse_GetEntitlementBackupLevel,
   RegisterAccountResponse_GetEntitlementBadges,
-  RegisterAccountResponse_GetIdentity,
   RegisterAccountResponse_GetNumber,
+  RegisterAccountResponse_GetPni,
   RegisterAccountResponse_GetReregistration,
   RegisterAccountResponse_GetStorageCapable,
   RegisterAccountResponse_GetUsernameHash,
@@ -4570,9 +4603,11 @@ export {
   RegistrationService_CheckSvr2Credentials,
   RegistrationService_CreateSession,
   RegistrationService_RegisterAccount,
+  RegistrationService_RegisterAccountWithoutNumber,
   RegistrationService_RegistrationSession,
   RegistrationService_RequestVerificationCode,
   RegistrationService_ReregisterAccount,
+  RegistrationService_ReregisterAccountWithoutNumber,
   RegistrationService_ResumeSession,
   RegistrationService_SessionId,
   RegistrationService_SubmitCaptcha,
@@ -4832,6 +4867,7 @@ export {
   TESTING_ProcessBytestringArray,
   TESTING_RedeemBackupReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
+  TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber,
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
   TESTING_RegistrationService_CheckSvr2CredentialsResponseConvert,
   TESTING_RegistrationService_CreateSessionErrorConvert,

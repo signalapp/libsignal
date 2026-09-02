@@ -60,6 +60,35 @@ public enum RegistrationError: Error {
     /// - Parameter svr2Username: The SVR username to use to recover the secret used to derive the registration lock password. `nil` when the existing lock has no associated SVR2 secret.
     /// - Parameter svr2Password: The SVR password to use to recover the secret used to derive the registration lock password. `nil` when the existing lock has no associated SVR2 secret.
     case registrationLock(timeRemaining: TimeInterval, svr2Username: String?, svr2Password: String?)
+    /// The server rejected the request.
+    ///
+    /// This corresponds to an HTTP 400 response to a POST request to `/v1/registration`.
+    case registerAccountRequestRejected(String)
+    /// The verification session used to register is unverified, or the server no longer has it.
+    ///
+    /// The server sends the same status either way, so the caller cannot tell whether resubmitting a code would help.
+    /// Starting a new session always does.
+    ///
+    /// Distinct from ``invalidSessionId(_:)``, which is a session ID that could not be parsed.
+    ///
+    /// This corresponds to an HTTP 401 response to a POST request to `/v1/registration`.
+    case invalidSession(String)
+    /// The receipt credential presentation used to register was not accepted.
+    ///
+    /// It failed verification, has expired, or has already been redeemed.
+    ///
+    /// This corresponds to an HTTP 401 response to a POST request to `/v1/registration`.
+    case invalidReceipt(String)
+    /// A registration request needs a recovery password but none was provided.
+    ///
+    /// An account with no phone number can only ever be recovered by the recovery password stored on it, so registering
+    /// one requires a non-empty `recoveryPassword` in the account attributes. This is checked before the request is
+    /// sent.
+    case recoveryPasswordRequired(String)
+    /// A registration request needs a one-time password but it was either missing or invalid.
+    ///
+    /// This corresponds to an HTTP 441 response to a POST request to `/v1/registration`.
+    case oneTimePasswordRequired(String)
     /// An unknow error occurred during registration.
     case unknown(String)
 }
@@ -68,6 +97,27 @@ public enum RegistrationError: Error {
 ///
 /// This wraps a ``Net`` to provide a reliable registration service client.
 ///
+/// There are four ways to register, along two axes: whether the account has a phone number, and whether it already
+/// exists. Only ``registerAccount(accountPassword:skipDeviceTransfer:accountAttributes:apnPushToken:aciPublicKey:pniPublicKey:aciSignedPreKey:pniSignedPreKey:aciPqLastResortPreKey:pniPqLastResortPreKey:)``
+/// needs a session, since proving control of a phone number is an interactive process. The other three authenticate
+/// with something the caller already holds, so they need no session and are type methods.
+///
+/// # Usage
+/// ```swift
+/// let service = try await RegistrationService.createSession(net, e164: e164, pushToken: apnPushToken)
+///
+/// // Answer whatever service.sessionState.requestedInformation asks for, using
+/// // requestPushChallenge()/submitPushChallenge() or submitCaptcha(), until
+/// // sessionState.allowedToRequestCode is true.
+///
+/// try await service.requestVerificationCode(transport: .sms, client: "ios", languages: languages)
+///
+/// // A wrong code is not an error: the request succeeds and the session stays
+/// // unverified, so check service.sessionState.verified before calling registerAccount.
+/// try await service.submitVerificationCode(code: codeFromUser)
+///
+/// let response = try await service.registerAccount(accountPassword: accountPassword, ...)
+/// ```
 public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistrationService>, @unchecked Sendable {
     private let asyncContext: TokioAsyncContext
 
@@ -350,6 +400,8 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
     ///   - ``RegistrationError/registrationLock(timeRemaining:svr2Username:svr2Password:)``
     ///   - ``RegistrationError/deviceTransferPossible(_:)``
     ///   - ``RegistrationError/recoveryVerificationFailed(_:)``
+    ///   - ``RegistrationError/registerAccountRequestRejected(_:)``
+    ///   - ``RegistrationError/invalidSession(_:)`` if the session is unverified or no longer exists.
     ///   - A different ``RegistrationError`` if the request fails with another known error response.
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
     ///   - Some other `SignalError` if the request can't be completed.
@@ -407,6 +459,7 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
     ///   - ``RegistrationError/registrationLock(timeRemaining:svr2Username:svr2Password:)``
     ///   - ``RegistrationError/deviceTransferPossible(_:)``
     ///   - ``RegistrationError/recoveryVerificationFailed(_:)``
+    ///   - ``RegistrationError/registerAccountRequestRejected(_:)``
     ///   - A different ``RegistrationError`` if the request fails with another known error response.
     ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
     ///   - Some other `SignalError` if the request can't be completed.
@@ -459,6 +512,137 @@ public class RegistrationService: NativeHandleOwner<SignalMutPointerRegistration
 
         return RegisterAccountResponse(owned: NonNull(response)!)
     }
+
+    /// Send a request to register an account that has no phone number.
+    ///
+    /// No PNI keys are accepted here, since the account has no phone number to associate them with.
+    ///
+    /// `accountAttributes.recoveryPassword` must not be empty, since a recovery password is the only way such an
+    /// account can ever be recovered.
+    ///
+    /// # Return
+    /// If the request succeeds, returns a ``RegisterAccountResponse``.
+    ///
+    /// - Throws: On failure, throws one of
+    ///   - ``RegistrationError/recoveryPasswordRequired(_:)`` if the recovery password is empty.
+    ///   - ``RegistrationError/registerAccountRequestRejected(_:)`` if the receipt credential presentation can't be parsed.
+    ///   - ``RegistrationError/invalidReceipt(_:)`` if the receipt credential presentation fails verification, has
+    ///     expired, or has already been redeemed.
+    ///   - A different ``RegistrationError`` if the request fails with another known error response.
+    ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
+    ///   - Some other `SignalError` if the request can't be completed.
+    public class func registerAccountWithoutNumber(
+        _ net: Net,
+        receiptCredentialPresentation: ReceiptCredentialPresentation,
+        accountPassword: String,
+        skipDeviceTransfer: Bool,
+        accountAttributes: RegisterAccountAttributes,
+        apnPushToken: String?,
+        aciPublicKey: PublicKey,
+        aciSignedPreKey: SignedPublicPreKey<PublicKey>,
+        aciPqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>
+    ) async throws -> RegisterAccountResponse {
+        let request = RegisterAccountRequst.create(
+            apnPushToken: apnPushToken,
+            accountPassword: accountPassword,
+            skipDeviceTransfer: skipDeviceTransfer,
+            aciIdentityKey: aciPublicKey,
+            aciSignedPreKey: aciSignedPreKey,
+            aciPqSignedPreKey: aciPqLastResortPreKey
+        )
+
+        var connectChatBridge = SignalFfiConnectChatBridgeStruct.forManager(net.connectionManager)
+
+        let response = try await net.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            request.withNativeHandle { request in
+                accountAttributes.withNativeHandle { accountAttributes in
+                    withUnsafePointer(to: &connectChatBridge) { connectChatBridge in
+                        receiptCredentialPresentation.withUnsafeBorrowedBuffer { presentation in
+                            signal_registration_service_register_account_without_number(
+                                promise,
+                                asyncContext.const(),
+                                SignalConstPointerFfiConnectChatBridgeStruct(raw: connectChatBridge),
+                                presentation,
+                                request.const(),
+                                accountAttributes.const()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        return RegisterAccountResponse(owned: NonNull(response)!)
+    }
+
+    /// Send a request to re-register an account that has no phone number, identified by its ACI.
+    ///
+    /// The counterpart to
+    /// ``reregisterAccount(_:e164:accountPassword:skipDeviceTransfer:accountAttributes:apnPushToken:aciPublicKey:pniPublicKey:aciSignedPreKey:pniSignedPreKey:aciPqLastResortPreKey:pniPqLastResortPreKey:)``
+    /// for an account with no phone number. No PNI keys are accepted here; libsignal generates the PNI material the
+    /// server requires and then discards.
+    ///
+    /// `accountAttributes.recoveryPassword` must not be empty, since a recovery password is the only way such an account can ever be re-registered.
+    ///
+    /// `oneTimePassword` is sent as a number, so `012345` becomes `12345`. Can be omitted if no TOTP was set up for
+    /// the account.
+    ///
+    /// # Return
+    /// If the request succeeds, returns a ``RegisterAccountResponse``.
+    ///
+    /// - Throws: On failure, throws one of
+    ///   - ``RegistrationError/recoveryPasswordRequired(_:)`` if the recovery password is empty.
+    ///   - ``RegistrationError/oneTimePasswordRequired(_:)`` if no valid one-time password was given.
+    ///   - ``RegistrationError/recoveryVerificationFailed(_:)`` if the recovery password could not be verified.
+    ///   - ``RegistrationError/registerAccountRequestRejected(_:)``
+    ///   - A different ``RegistrationError`` if the request fails with another known error response.
+    ///   - ``SignalError/rateLimitedError(retryAfter:message:)`` if the server requests a retry later.
+    ///   - Some other `SignalError` if the request can't be completed.
+    public class func reregisterAccountWithoutNumber(
+        _ net: Net,
+        aci: Aci,
+        accountPassword: String,
+        skipDeviceTransfer: Bool,
+        oneTimePassword: UInt32? = nil,
+        accountAttributes: RegisterAccountAttributes,
+        apnPushToken: String?,
+        aciPublicKey: PublicKey,
+        aciSignedPreKey: SignedPublicPreKey<PublicKey>,
+        aciPqLastResortPreKey: SignedPublicPreKey<KEMPublicKey>
+    ) async throws -> RegisterAccountResponse {
+        let request = RegisterAccountRequst.create(
+            apnPushToken: apnPushToken,
+            accountPassword: accountPassword,
+            skipDeviceTransfer: skipDeviceTransfer,
+            oneTimePassword: oneTimePassword,
+            aciIdentityKey: aciPublicKey,
+            aciSignedPreKey: aciSignedPreKey,
+            aciPqSignedPreKey: aciPqLastResortPreKey
+        )
+
+        var connectChatBridge = SignalFfiConnectChatBridgeStruct.forManager(net.connectionManager)
+
+        let response = try await net.asyncContext.invokeAsyncFunction { promise, asyncContext in
+            request.withNativeHandle { request in
+                accountAttributes.withNativeHandle { accountAttributes in
+                    withUnsafePointer(to: &connectChatBridge) { connectChatBridge in
+                        aci.withPointerToFixedWidthBinary { aci in
+                            signal_registration_service_reregister_account_without_number(
+                                promise,
+                                asyncContext.const(),
+                                SignalConstPointerFfiConnectChatBridgeStruct(raw: connectChatBridge),
+                                aci,
+                                request.const(),
+                                accountAttributes.const()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        return RegisterAccountResponse(owned: NonNull(response)!)
+    }
 }
 
 private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterAccountRequest> {
@@ -472,12 +656,13 @@ private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterA
         apnPushToken: String?,
         accountPassword: String,
         skipDeviceTransfer: Bool,
+        oneTimePassword: UInt32? = nil,
         aciIdentityKey: PublicKey,
-        pniIdentityKey: PublicKey,
+        pniIdentityKey: PublicKey? = nil,
         aciSignedPreKey: SignedPublicPreKey<PublicKey>,
-        pniSignedPreKey: SignedPublicPreKey<PublicKey>,
+        pniSignedPreKey: SignedPublicPreKey<PublicKey>? = nil,
         aciPqSignedPreKey: SignedPublicPreKey<KEMPublicKey>,
-        pniPqSignedPreKey: SignedPublicPreKey<KEMPublicKey>
+        pniPqSignedPreKey: SignedPublicPreKey<KEMPublicKey>? = nil
     ) -> Self {
         let request: Self = failOnError {
             try invokeFnReturningNativeHandle {
@@ -501,6 +686,11 @@ private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterA
                 if skipDeviceTransfer {
                     try checkError(signal_register_account_request_set_skip_device_transfer(native.const()))
                 }
+                if let oneTimePassword {
+                    try checkError(
+                        signal_register_account_request_set_one_time_password(native.const(), oneTimePassword)
+                    )
+                }
 
                 try checkError(
                     aciIdentityKey.withNativeHandle {
@@ -511,15 +701,17 @@ private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterA
                         )
                     }
                 )
-                try checkError(
-                    pniIdentityKey.withNativeHandle {
-                        signal_register_account_request_set_identity_public_key(
-                            native.const(),
-                            ServiceIdKind.pni.rawValue,
-                            $0.const()
-                        )
-                    }
-                )
+                if let pniIdentityKey {
+                    try checkError(
+                        pniIdentityKey.withNativeHandle {
+                            signal_register_account_request_set_identity_public_key(
+                                native.const(),
+                                ServiceIdKind.pni.rawValue,
+                                $0.const()
+                            )
+                        }
+                    )
+                }
                 try checkError(
                     aciSignedPreKey.withNativeStruct {
                         signal_register_account_request_set_identity_signed_pre_key(
@@ -529,15 +721,17 @@ private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterA
                         )
                     }
                 )
-                try checkError(
-                    pniSignedPreKey.withNativeStruct {
-                        signal_register_account_request_set_identity_signed_pre_key(
-                            native.const(),
-                            ServiceIdKind.pni.rawValue,
-                            $0
-                        )
-                    }
-                )
+                if let pniSignedPreKey {
+                    try checkError(
+                        pniSignedPreKey.withNativeStruct {
+                            signal_register_account_request_set_identity_signed_pre_key(
+                                native.const(),
+                                ServiceIdKind.pni.rawValue,
+                                $0
+                            )
+                        }
+                    )
+                }
                 try checkError(
                     aciPqSignedPreKey.withNativeStruct {
                         signal_register_account_request_set_identity_pq_last_resort_pre_key(
@@ -547,15 +741,17 @@ private class RegisterAccountRequst: NativeHandleOwner<SignalMutPointerRegisterA
                         )
                     }
                 )
-                try checkError(
-                    pniPqSignedPreKey.withNativeStruct {
-                        signal_register_account_request_set_identity_pq_last_resort_pre_key(
-                            native.const(),
-                            ServiceIdKind.pni.rawValue,
-                            $0
-                        )
-                    }
-                )
+                if let pniPqSignedPreKey {
+                    try checkError(
+                        pniPqSignedPreKey.withNativeStruct {
+                            signal_register_account_request_set_identity_pq_last_resort_pre_key(
+                                native.const(),
+                                ServiceIdKind.pni.rawValue,
+                                $0
+                            )
+                        }
+                    )
+                }
             }
         }
 

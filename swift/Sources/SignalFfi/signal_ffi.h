@@ -3186,6 +3186,11 @@ typedef enum {
   SignalErrorCodeRegistrationDeviceTransferPossible = 199,
   SignalErrorCodeRegistrationRecoveryVerificationFailed = 200,
   SignalErrorCodeRegistrationLock = 201,
+  SignalErrorCodeRegisterAccountRequestRejected = 202,
+  SignalErrorCodeRegistrationRecoveryPasswordRequired = 203,
+  SignalErrorCodeRegistrationOneTimePasswordRequired = 204,
+  SignalErrorCodeRegistrationInvalidSession = 205,
+  SignalErrorCodeRegistrationInvalidReceipt = 206,
   SignalErrorCodeKeyTransparencyError = 210,
   SignalErrorCodeKeyTransparencyVerificationFailed = 211,
   SignalErrorCodeRequestUnauthorized = 220,
@@ -5301,11 +5306,23 @@ SignalFfiError* signal_register_account_request_set_identity_signed_pre_key(
   uint8_t identity_type,
   SignalFfiSignedPublicPreKey signed_pre_key
 );
+SignalFfiError* signal_register_account_request_set_one_time_password(
+  SignalConstPointerRegisterAccountRequest register_account,
+  uint32_t one_time_password
+);
 SignalFfiError* signal_register_account_request_set_skip_device_transfer(
   SignalConstPointerRegisterAccountRequest register_account
 );
 SignalFfiError* signal_register_account_response_destroy(
   SignalMutPointerRegisterAccountResponse p
+);
+SignalFfiError* signal_register_account_response_get_aci(
+  SignalUuid* out,
+  SignalConstPointerRegisterAccountResponse response
+);
+SignalFfiError* signal_register_account_response_get_auth_credential_salt(
+  SignalOwnedBuffer* out,
+  SignalConstPointerRegisterAccountResponse response
 );
 SignalFfiError* signal_register_account_response_get_entitlement_backup_expiration_seconds(
   uint64_t* out,
@@ -5319,13 +5336,12 @@ SignalFfiError* signal_register_account_response_get_entitlement_badges(
   SignalOwnedBufferOfFfiRegisterResponseBadge* out,
   SignalConstPointerRegisterAccountResponse response
 );
-SignalFfiError* signal_register_account_response_get_identity(
-  SignalType_FixedArray17_uint8_t* out,
-  SignalConstPointerRegisterAccountResponse response,
-  uint8_t identity_type
-);
 SignalFfiError* signal_register_account_response_get_number(
   SignalCStringPtr* out,
+  SignalConstPointerRegisterAccountResponse response
+);
+SignalFfiError* signal_register_account_response_get_pni(
+  SignalOptionalUuid* out,
   SignalConstPointerRegisterAccountResponse response
 );
 SignalFfiError* signal_register_account_response_get_reregistration(
@@ -5380,6 +5396,14 @@ SignalFfiError* signal_registration_service_register_account(
   SignalConstPointerRegisterAccountRequest register_account,
   SignalConstPointerRegistrationAccountAttributes account_attributes
 );
+SignalFfiError* signal_registration_service_register_account_without_number(
+  SignalCPromiseMutPointerRegisterAccountResponse* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerFfiConnectChatBridgeStruct connect_chat,
+  SignalBorrowedBuffer receipt_credential_presentation,
+  SignalConstPointerRegisterAccountRequest register_account,
+  SignalConstPointerRegistrationAccountAttributes account_attributes
+);
 SignalFfiError* signal_registration_service_registration_session(
   SignalMutPointerRegistrationSession* out,
   SignalConstPointerRegistrationService service
@@ -5403,6 +5427,14 @@ SignalFfiError* signal_registration_service_reregister_account(
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerFfiConnectChatBridgeStruct connect_chat,
   const int8_t* number,
+  SignalConstPointerRegisterAccountRequest register_account,
+  SignalConstPointerRegistrationAccountAttributes account_attributes
+);
+SignalFfiError* signal_registration_service_reregister_account_without_number(
+  SignalCPromiseMutPointerRegisterAccountResponse* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerFfiConnectChatBridgeStruct connect_chat,
+  const SignalType_FixedArray17_uint8_t* aci,
   SignalConstPointerRegisterAccountRequest register_account,
   SignalConstPointerRegistrationAccountAttributes account_attributes
 );

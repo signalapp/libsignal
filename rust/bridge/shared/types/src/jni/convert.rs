@@ -743,6 +743,10 @@ zkgroup_serialize_type!(
     TryFrom::try_from,
     "org.signal.libsignal.zkgroup.GenericServerPublicParams"
 );
+zkgroup_serialize_type!(
+    zkgroup::receipts::ReceiptCredentialPresentation,
+    "org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation"
+);
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;

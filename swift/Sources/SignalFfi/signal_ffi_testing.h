@@ -1891,6 +1891,9 @@ SignalFfiError* signal_testing_redeem_backup_receipt_tests(
 SignalFfiError* signal_testing_register_account_response_create_test_value(
   SignalMutPointerRegisterAccountResponse* out
 );
+SignalFfiError* signal_testing_register_account_response_create_test_value_without_phone_number(
+  SignalMutPointerRegisterAccountResponse* out
+);
 SignalFfiError* signal_testing_registration_service_check_svr2_credentials_error_convert(
   const int8_t* error_description
 );

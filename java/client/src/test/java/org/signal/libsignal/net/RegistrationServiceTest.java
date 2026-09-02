@@ -97,6 +97,19 @@ public class RegistrationServiceTest {
         response.getBackupEntitlement(),
         new RegisterAccountResponse.BackupEntitlement(123, Duration.ofSeconds(888888)));
     assertEquals(response.isReregistration(), true);
+    assertNull(response.getAuthCredentialSalt());
+  }
+
+  @Test
+  public void testConvertRegistrationResponseWithoutPhoneNumber() throws Exception {
+    var response =
+        new RegisterAccountResponse(
+            NativeTesting.TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber());
+    assertNull(response.getNumber());
+    assertNull(response.getPni());
+    assertEquals(
+        response.getAci(), ServiceId.Aci.parseFromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+    assertArrayEquals(response.getAuthCredentialSalt(), "auth-credential-salt".getBytes());
   }
 
   @Test
@@ -228,6 +241,26 @@ public class RegistrationServiceTest {
     assertRegistrationSessionErrorIs(
         "RegistrationLockFor50Seconds",
         RegistrationLockException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "RequestRejected",
+        RegisterAccountRequestRejectedException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "InvalidSession",
+        RegistrationInvalidSessionException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "InvalidReceipt",
+        RegistrationInvalidReceiptException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "RecoveryPasswordRequired",
+        RegistrationRecoveryPasswordRequiredException.class,
+        NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
+    assertRegistrationSessionErrorIs(
+        "OneTimePasswordRequired",
+        RegistrationOneTimePasswordRequiredException.class,
         NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
     assertIsRetryAfterError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);
     assertIsTimeoutError(NativeTesting::TESTING_RegistrationService_RegisterAccountErrorConvert);

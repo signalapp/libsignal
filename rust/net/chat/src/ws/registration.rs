@@ -8,18 +8,17 @@ use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as Chat
 
 use crate::api::registration::{
     AccountKeys, CheckSvr2CredentialsError, CheckSvr2CredentialsResponse, CreateSession,
-    CreateSessionError, ForServiceIds, InvalidSessionId, NewMessageNotification,
-    ProvidedAccountAttributes, PushToken, RegisterAccountError, RegisterAccountResponse,
-    RegistrationChatApi, RegistrationResponse as RegistrationOutput, RequestVerificationCodeError,
-    ResumeSessionError, SessionId, SkipDeviceTransfer, SubmitVerificationError, UpdateSessionError,
-    VerificationTransport, WithRecoveredSession,
+    CreateSessionError, InvalidSessionId, NewMessageNotification, PniAccountMaterial,
+    ProvidedAccountAttributes, PushToken, RegisterAccountError, RegisterAccountMethod,
+    RegisterAccountResponse, RegistrationChatApi, RegistrationResponse as RegistrationOutput,
+    RequestVerificationCodeError, ResumeSessionError, SessionId, SkipDeviceTransfer,
+    SubmitVerificationError, UpdateSessionError, VerificationTransport, WithRecoveredSession,
 };
 use crate::api::{Registration, RequestError};
 use crate::ws::{ResponseError, TryIntoResponse, WsConnection};
 
 mod error;
 mod request;
-
 #[cfg(test)]
 pub(crate) use request::RegistrationResponse;
 use request::*;
@@ -228,21 +227,23 @@ where
 
     async fn register_account(
         &self,
-        number: &str,
-        session_id: Option<&SessionId>,
+        method: RegisterAccountMethod<'_>,
         message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
-        keys: ForServiceIds<AccountKeys<'_>>,
+        one_time_password: Option<u32>,
+        aci_keys: AccountKeys<'_>,
+        pni_material: Option<PniAccountMaterial<'_>>,
         account_password: &str,
     ) -> Result<RegisterAccountResponse, Self::Error<RegisterAccountError>> {
         let request = ChatRequest::register_account(
-            number,
-            session_id,
+            method,
             message_notification,
             account_attributes,
             device_transfer,
-            keys,
+            one_time_password,
+            aci_keys,
+            pni_material,
             account_password,
         );
 
@@ -253,7 +254,9 @@ where
             .await
             .map_err(SendError::into_request_error)?;
 
-        response.try_into_response().map_err(Self::Error::from)
+        response
+            .try_into_response()
+            .map_err(|e: ResponseError| e.into_register_account_error(method))
     }
 }
 

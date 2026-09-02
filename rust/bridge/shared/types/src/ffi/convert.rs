@@ -747,6 +747,10 @@ zkgroup_serialize_type!(
     TryFrom::try_from,
     "GenericServerPublicParams"
 );
+zkgroup_serialize_type!(
+    zkgroup::receipts::ReceiptCredentialPresentation,
+    "ReceiptCredentialPresentation"
+);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;

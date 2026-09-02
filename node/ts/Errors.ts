@@ -81,9 +81,14 @@ export enum ErrorCode {
 
   UploadTooLarge,
 
+  RegisterAccountRequestRejected,
   RegistrationCredentialsCouldNotBeParsed,
   RegistrationDeviceTransferPossibleNotSkipped,
+  RegistrationInvalidReceipt,
+  RegistrationInvalidSession,
   RegistrationLock,
+  RegistrationOneTimePasswordRequired,
+  RegistrationRecoveryPasswordRequired,
   RegistrationRecoveryVerificationFailed,
   RegistrationRequestInvalid,
   RegistrationRequestRejected,
@@ -482,15 +487,35 @@ export type RegistrationDeviceTransferPossibleNotSkippedError =
     code: ErrorCode.RegistrationDeviceTransferPossibleNotSkipped;
   };
 
+export type RegistrationOneTimePasswordRequiredError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationOneTimePasswordRequired;
+};
+
+export type RegistrationRecoveryPasswordRequiredError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationRecoveryPasswordRequired;
+};
+
 export type RegistrationRecoveryVerificationFailedError =
   LibSignalErrorCommon & {
     code: ErrorCode.RegistrationRecoveryVerificationFailed;
   };
 
+export type RegisterAccountRequestRejectedError = LibSignalErrorCommon & {
+  code: ErrorCode.RegisterAccountRequestRejected;
+};
+
 export type RegistrationCredentialsCouldNotBeParsedError =
   LibSignalErrorCommon & {
     code: ErrorCode.RegistrationCredentialsCouldNotBeParsed;
   };
+
+export type RegistrationInvalidSessionError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationInvalidSession;
+};
+
+export type RegistrationInvalidReceiptError = LibSignalErrorCommon & {
+  code: ErrorCode.RegistrationInvalidReceipt;
+};
 
 export type DeviceIdNotFound = LibSignalErrorCommon & {
   code: ErrorCode.DeviceIdNotFound;
@@ -589,8 +614,13 @@ export type LibSignalError =
   | RegistrationVerificationCodeNotDeliverableError
   | RegistrationLockError
   | RegistrationDeviceTransferPossibleNotSkippedError
+  | RegistrationOneTimePasswordRequiredError
+  | RegistrationRecoveryPasswordRequiredError
   | RegistrationRecoveryVerificationFailedError
+  | RegisterAccountRequestRejectedError
   | RegistrationCredentialsCouldNotBeParsedError
+  | RegistrationInvalidSessionError
+  | RegistrationInvalidReceiptError
   | DeviceIdNotFound
   | UsernameNotAvailable
   | UsernameNotSet

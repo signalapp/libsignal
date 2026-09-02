@@ -110,6 +110,30 @@ pub enum RegisterAccountError {
     RegistrationRecoveryVerificationFailed,
     /// registration lock is enabled
     RegistrationLock(RegistrationLock),
+    /// the server rejected the request
+    // The meaning of a 400 is request-dependent.
+    RequestRejected,
+    /// the verification session is unverified or no longer exists
+    // A 401 on a flow that authenticates with a verification session. The
+    // server sends the same status whether the session was never verified or
+    // it has since expired, so the caller cannot tell whether resubmitting a
+    // code would help; starting a new session always does.
+    InvalidSession,
+    /// the receipt credential presentation was not accepted
+    // A 401 on a flow that authenticates with a receipt credential
+    // presentation: it failed verification, has expired, or has already been
+    // redeemed.
+    InvalidReceipt,
+    /// a recovery password is required
+    // Checked before sending the request, rather than upon receiving response.
+    // Applies to the flows that can produce an account with no phone number,
+    // since a recovery password is the only way it can be recovered.
+    RecoveryPasswordRequired,
+    /// a valid one-time password is required
+    // The server sends the same status whether no one-time password was
+    // provided or the one provided was incorrect. Either way the caller
+    // should ask the user for a code and try again.
+    OneTimePasswordRequired,
 }
 impl LogSafeDisplay for RegisterAccountError {}
 

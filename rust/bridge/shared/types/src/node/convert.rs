@@ -845,6 +845,10 @@ zkgroup_serialize_type!(
     TryFrom::try_from,
     "GenericServerPublicParams"
 );
+zkgroup_serialize_type!(
+    zkgroup::receipts::ReceiptCredentialPresentation,
+    "ReceiptCredentialPresentation"
+);
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

@@ -97,30 +97,44 @@ public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegister
     }
 
     public var aci: Aci {
-        return failOnError {
+        let uuid = failOnError {
             try self.withNativeHandle { native in
-                try invokeFnReturningServiceId {
-                    signal_register_account_response_get_identity($0, native.const(), ServiceIdKind.aci.rawValue)
+                try invokeFnReturningUuid {
+                    signal_register_account_response_get_aci($0, native.const())
                 }
             }
         }
+        return Aci(fromUUID: uuid)
     }
 
-    public var pni: Pni {
+    /// `nil` for an account with no phone number.
+    public var pni: Pni? {
         return failOnError {
             try self.withNativeHandle { native in
-                try invokeFnReturningServiceId {
-                    signal_register_account_response_get_identity($0, native.const(), ServiceIdKind.pni.rawValue)
+                try invokeFnReturningOptionalUuid {
+                    signal_register_account_response_get_pni($0, native.const())
                 }
             }
-        }
+        }.map { Pni(fromUUID: $0) }
     }
 
-    public var number: String {
+    /// `nil` for an account with no phone number.
+    public var number: String? {
         return failOnError {
             try self.withNativeHandle { native in
-                try invokeFnReturningString {
+                try invokeFnReturningOptionalString {
                     signal_register_account_response_get_number($0, native.const())
+                }
+            }
+        }
+    }
+
+    /// Non-`nil` only for an account with no phone number.
+    public var authCredentialSalt: Data? {
+        return failOnError {
+            try self.withNativeHandle { native in
+                try invokeFnReturningOptionalArray {
+                    signal_register_account_response_get_auth_credential_salt($0, native.const())
                 }
             }
         }

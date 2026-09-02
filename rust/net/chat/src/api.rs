@@ -238,6 +238,36 @@ pub(crate) mod testutil {
         rand_chacha::ChaCha20Rng::seed_from_u64(0)
     }
 
+    const TEST_RANDOMNESS: [u8; zkgroup::RANDOMNESS_LEN] = zkgroup::TEST_ARRAY_32;
+
+    pub(crate) fn test_server_params() -> (zkgroup::ServerSecretParams, zkgroup::ServerPublicParams)
+    {
+        let secret = zkgroup::ServerSecretParams::generate(TEST_RANDOMNESS);
+        let public = secret.get_public_params();
+        (secret, public)
+    }
+
+    /// A `ReceiptCredentialPresentation` issued by [`test_server_params`].
+    pub(crate) fn valid_receipt_credential_presentation()
+    -> zkgroup::receipts::ReceiptCredentialPresentation {
+        let (secret_params, public_params) = test_server_params();
+
+        let request_context = public_params
+            .create_receipt_credential_request_context(TEST_RANDOMNESS, zkgroup::TEST_ARRAY_16);
+        let response = secret_params.issue_receipt_credential(
+            TEST_RANDOMNESS,
+            &request_context.get_request(),
+            zkgroup::Timestamp::from_epoch_seconds(zkgroup::SECONDS_PER_DAY),
+            6,
+        );
+        public_params.create_receipt_credential_presentation(
+            TEST_RANDOMNESS,
+            &public_params
+                .receive_receipt_credential(&request_context, &response)
+                .expect("valid response"),
+        )
+    }
+
     /// A fake `GroupSendFullToken` with a known form for serialization
     /// ([`SERIALIZED_GROUP_SEND_TOKEN`]).
     pub(crate) fn structurally_valid_group_send_token() -> zkgroup::groups::GroupSendFullToken {

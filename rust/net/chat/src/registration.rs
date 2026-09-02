@@ -4,10 +4,14 @@
 //
 
 use std::convert::Infallible;
+use std::num::NonZeroU16;
 use std::panic::UnwindSafe;
 
+use libsignal_core::Aci;
 use libsignal_net::chat::{LanguageList, Request as ChatRequest, Response as ChatResponse};
+use libsignal_protocol::{KeyPair, PublicKey};
 use static_assertions::assert_impl_all;
+use zkgroup::receipts::ReceiptCredentialPresentation;
 
 use crate::api::Registration;
 use crate::api::registration::*;
@@ -271,7 +275,8 @@ impl<'c> RegistrationService<'c> {
         message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
-        keys: ForServiceIds<AccountKeys<'_>>,
+        aci_keys: AccountKeys<'_>,
+        pni_material: PniAccountMaterial<'_>,
         account_password: &str,
     ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
         let Self {
@@ -285,12 +290,14 @@ impl<'c> RegistrationService<'c> {
 
         let response = Registration(&*connection)
             .register_account(
-                number,
-                Some(session_id),
+                RegisterAccountMethod::SessionId { number, session_id },
                 message_notification,
                 account_attributes,
                 device_transfer,
-                keys,
+                // Only offered for accounts with no phone number.
+                None,
+                aci_keys,
+                Some(pni_material),
                 account_password,
             )
             .await?;
@@ -306,25 +313,212 @@ pub async fn reregister_account(
     message_notification: NewMessageNotification<&str>,
     account_attributes: ProvidedAccountAttributes<'_>,
     device_transfer: Option<SkipDeviceTransfer>,
-    keys: ForServiceIds<AccountKeys<'_>>,
+    aci_keys: AccountKeys<'_>,
+    pni_material: PniAccountMaterial<'_>,
     account_password: &str,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
     log::info!("sending re-register account request");
 
+    let response = connect_and_register_account(
+        connect_chat,
+        RegisterAccountMethod::PhoneNumberRecoveryPassword { number },
+        message_notification,
+        account_attributes,
+        device_transfer,
+        // Only offered for accounts with no phone number.
+        None,
+        aci_keys,
+        Some(pni_material),
+        account_password,
+    )
+    .await?;
+
+    log::info!("reregister account request succeeded");
+    Ok(response)
+}
+
+/// Registers a new account that has no phone number.
+///
+/// `account_attributes.recovery_password` MUST NOT be empty. The phone number
+/// flows accept an empty one, but an account with no phone number can only ever
+/// be recovered by its recovery password. An empty one is reported as
+/// [`RegisterAccountError::RecoveryPasswordRequired`] without sending anything.
+pub async fn register_account_without_number(
+    receipt_credential_presentation: &ReceiptCredentialPresentation,
+    connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + '_>,
+    message_notification: NewMessageNotification<&str>,
+    account_attributes: ProvidedAccountAttributes<'_>,
+    device_transfer: Option<SkipDeviceTransfer>,
+    aci_keys: AccountKeys<'_>,
+    account_password: &str,
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    log::info!("sending register account without number request");
+
+    let response = connect_and_register_account(
+        connect_chat,
+        RegisterAccountMethod::ReceiptCredential {
+            presentation: receipt_credential_presentation,
+        },
+        message_notification,
+        account_attributes,
+        device_transfer,
+        // This flow only ever creates a brand-new account, so there is
+        // nothing to check a code against.
+        None,
+        aci_keys,
+        None,
+        account_password,
+    )
+    .await?;
+
+    log::info!("register account without number request succeeded");
+    Ok(response)
+}
+
+/// Re-registers the account with the given ACI.
+///
+/// Like [`reregister_account`], but identifying the account by its ACI rather
+/// than a phone number.
+///
+/// `rng` is used to generate a temporary valid PNI key material for the request.
+/// It should be valid to pass any validation, but will be discarded by the server.
+#[expect(clippy::too_many_arguments)]
+pub async fn reregister_account_without_number(
+    aci: Aci,
+    connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + '_>,
+    message_notification: NewMessageNotification<&str>,
+    account_attributes: ProvidedAccountAttributes<'_>,
+    device_transfer: Option<SkipDeviceTransfer>,
+    one_time_password: Option<u32>,
+    aci_keys: AccountKeys<'_>,
+    account_password: &str,
+    mut rng: &mut (dyn rand::CryptoRng + Send),
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    log::info!("sending re-register account without number request");
+
+    let pni = FakePniKeys::generate(&mut rng);
+
+    let response = connect_and_register_account(
+        connect_chat,
+        RegisterAccountMethod::AccountRecoveryPassword { aci },
+        message_notification,
+        account_attributes,
+        device_transfer,
+        one_time_password,
+        aci_keys,
+        Some(pni.as_material()),
+        account_password,
+    )
+    .await?;
+
+    log::info!("reregister account without number request succeeded");
+    Ok(response)
+}
+
+/// PNI key material generated only to satisfy the server validation. Never actually used.
+struct FakePniKeys {
+    registration_id: NonZeroU16,
+    identity_key: PublicKey,
+    signed_pre_key: SignedPreKeyBody<Box<[u8]>>,
+    pq_last_resort_pre_key: SignedPreKeyBody<Box<[u8]>>,
+}
+
+/// Upper bound for pre-key ID.
+///
+/// Matches the bound clients use.
+const MAX_PRE_KEY_ID: u32 = 0xFF_FFFF;
+
+/// Upper bound for registration ID.
+///
+/// Matches Java's `KeyHelper.generateRegistrationId`.
+const MAX_REGISTRATION_ID: u16 = 16380;
+
+impl FakePniKeys {
+    fn generate<R: rand::Rng + rand::CryptoRng>(rng: &mut R) -> Self {
+        let identity = KeyPair::generate(&mut *rng);
+
+        let signed_pre_key = {
+            let public_key = KeyPair::generate(&mut *rng).public_key.serialize();
+            let signature = identity
+                .private_key
+                .calculate_signature(&public_key, &mut *rng)
+                .expect("can sign");
+            SignedPreKeyBody {
+                key_id: rng.random_range(0..MAX_PRE_KEY_ID),
+                public_key,
+                signature,
+            }
+        };
+        let pq_last_resort_pre_key = {
+            let public_key = libsignal_protocol::kem::KeyPair::generate(
+                libsignal_protocol::kem::KeyType::Kyber1024,
+                &mut *rng,
+            )
+            .public_key
+            .serialize();
+            let signature = identity
+                .private_key
+                .calculate_signature(&public_key, &mut *rng)
+                .expect("can sign");
+            SignedPreKeyBody {
+                key_id: rng.random_range(0..MAX_PRE_KEY_ID),
+                public_key,
+                signature,
+            }
+        };
+
+        Self {
+            registration_id: NonZeroU16::new(rng.random_range(1..=MAX_REGISTRATION_ID))
+                .expect("valid range"),
+            identity_key: identity.public_key,
+            signed_pre_key,
+            pq_last_resort_pre_key,
+        }
+    }
+
+    fn as_material(&self) -> PniAccountMaterial<'_> {
+        PniAccountMaterial {
+            registration_id: self.registration_id.get(),
+            keys: AccountKeys {
+                identity_key: &self.identity_key,
+                signed_pre_key: self.signed_pre_key.as_deref(),
+                pq_last_resort_pre_key: self.pq_last_resort_pre_key.as_deref(),
+            },
+        }
+    }
+}
+
+#[expect(clippy::too_many_arguments)]
+async fn connect_and_register_account(
+    connect_chat: Box<dyn ConnectUnauthChat + Send + Sync + UnwindSafe + '_>,
+    method: RegisterAccountMethod<'_>,
+    message_notification: NewMessageNotification<&str>,
+    account_attributes: ProvidedAccountAttributes<'_>,
+    device_transfer: Option<SkipDeviceTransfer>,
+    one_time_password: Option<u32>,
+    aci_keys: AccountKeys<'_>,
+    pni_material: Option<PniAccountMaterial<'_>>,
+    account_password: &str,
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    if method.requires_recovery_password() && account_attributes.recovery_password.is_empty() {
+        return Err(RequestError::Other(
+            RegisterAccountError::RecoveryPasswordRequired,
+        ));
+    }
+
     let connection = RegistrationConnection::connect(connect_chat).await?;
     let response = Registration(&connection)
         .register_account(
-            number,
-            None,
+            method,
             message_notification,
             account_attributes,
             device_transfer,
-            keys,
+            one_time_password,
+            aci_keys,
+            pni_material,
             account_password,
         )
         .await?;
-
-    log::info!("reregister account request succeeded");
     Ok(response)
 }
 
@@ -417,6 +611,7 @@ mod testutil {
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashSet;
     use std::str::FromStr as _;
 
     use assert_matches::assert_matches;
@@ -426,11 +621,107 @@ mod test {
     use libsignal_net::chat::fake::FakeChatRemote;
     use libsignal_net::chat::{ChatConnection, ConnectError};
     use libsignal_net::proto::chat_websocket::WebSocketRequestMessage;
+    use rand::TryRngCore as _;
+    use rand::rngs::OsRng;
     use tokio::sync::mpsc;
 
     use super::*;
     use crate::api::Unauth;
     use crate::ws::registration::RegistrationResponse;
+
+    // Mimics server verification. Not a real thing, but a static snapshot of one.
+    #[test]
+    fn fake_pni_keys_should_be_verifiable_by_server() {
+        let mut rng = crate::api::testutil::fixed_seed_test_rng();
+        let keys = FakePniKeys::generate(&mut rng);
+        let material = keys.as_material();
+
+        for pre_key in [
+            material.keys.signed_pre_key,
+            material.keys.pq_last_resort_pre_key,
+        ] {
+            assert!(
+                material
+                    .keys
+                    .identity_key
+                    .verify_signature(pre_key.public_key, pre_key.signature),
+                "signature verification failed"
+            );
+            assert!(pre_key.key_id < MAX_PRE_KEY_ID, "{}", pre_key.key_id);
+        }
+        assert!(
+            material.registration_id <= MAX_REGISTRATION_ID,
+            "registration ID {} too large",
+            material.registration_id
+        );
+    }
+
+    #[test]
+    fn fake_pni_keys_do_not_reuse_ids() {
+        let mut rng = crate::api::testutil::fixed_seed_test_rng();
+        let first = FakePniKeys::generate(&mut rng);
+        let second = FakePniKeys::generate(&mut rng);
+
+        assert_ne!(first.registration_id, second.registration_id);
+        assert_ne!(first.signed_pre_key.key_id, second.signed_pre_key.key_id);
+        assert_ne!(
+            first.pq_last_resort_pre_key.key_id,
+            second.pq_last_resort_pre_key.key_id
+        );
+    }
+
+    struct ConnectMustNotBeCalled;
+
+    impl ConnectUnauthChat for ConnectMustNotBeCalled {
+        fn connect_chat(
+            &self,
+            _on_disconnect: tokio::sync::oneshot::Sender<std::convert::Infallible>,
+        ) -> BoxFuture<'_, Result<Unauth<ChatConnection>, ConnectError>> {
+            panic!("should not connect")
+        }
+    }
+
+    #[tokio::test]
+    async fn register_account_without_number_rejects_empty_recovery_password() {
+        let mut rng = OsRng.unwrap_err();
+        let identity_key = libsignal_protocol::KeyPair::generate(&mut rng).public_key;
+        let pre_key = SignedPreKeyBody {
+            key_id: 1,
+            public_key: &b"public key"[..],
+            signature: &b"signature"[..],
+        };
+
+        let result = register_account_without_number(
+            &crate::api::testutil::valid_receipt_credential_presentation(),
+            Box::new(ConnectMustNotBeCalled),
+            NewMessageNotification::WillFetchMessages,
+            ProvidedAccountAttributes {
+                recovery_password: b"",
+                registration_id: 123,
+                name: None,
+                registration_lock: None,
+                unidentified_access_key: &[0; 16],
+                unrestricted_unidentified_access: false,
+                capabilities: HashSet::new(),
+                discoverable_by_phone_number: false,
+            },
+            Some(SkipDeviceTransfer),
+            AccountKeys {
+                identity_key: &identity_key,
+                signed_pre_key: pre_key,
+                pq_last_resort_pre_key: pre_key,
+            },
+            "encoded account password",
+        )
+        .await;
+
+        assert_matches!(
+            result,
+            Err(RequestError::Other(
+                RegisterAccountError::RecoveryPasswordRequired
+            ))
+        );
+    }
 
     struct ConnectOnlyOnce<C>(std::sync::Mutex<Option<C>>);
 

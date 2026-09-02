@@ -16,6 +16,7 @@ use serde_with::{
     DurationMilliSeconds, DurationSeconds, FromInto, serde_as, skip_serializing_none,
 };
 use uuid::Uuid;
+use zkgroup::receipts::ReceiptCredentialPresentation;
 
 mod error;
 pub use error::*;
@@ -89,16 +90,52 @@ pub(crate) trait RegistrationChatApi {
         Output = Result<CheckSvr2CredentialsResponse, Self::Error<CheckSvr2CredentialsError>>,
     > + Send;
 
+    #[expect(clippy::too_many_arguments)]
     fn register_account(
         &self,
-        number: &str,
-        session_id: Option<&SessionId>,
+        method: RegisterAccountMethod<'_>,
         message_notification: NewMessageNotification<&str>,
         account_attributes: ProvidedAccountAttributes<'_>,
         device_transfer: Option<SkipDeviceTransfer>,
-        keys: ForServiceIds<AccountKeys<'_>>,
+        one_time_password: Option<u32>,
+        aci_keys: AccountKeys<'_>,
+        pni_material: Option<PniAccountMaterial<'_>>,
         account_password: &str,
     ) -> impl Future<Output = Result<RegisterAccountResponse, Self::Error<RegisterAccountError>>> + Send;
+}
+
+/// How a `/v1/registration` request identifies the account being registered.
+///
+/// The variant determines the `authorization` header's username and which
+/// verification field goes in the request body.
+#[derive(Copy, Clone)]
+pub(crate) enum RegisterAccountMethod<'a> {
+    /// Register a phone number verified by the given session.
+    SessionId {
+        number: &'a str,
+        session_id: &'a SessionId,
+    },
+    /// Re-register a phone number, authenticating with the recovery password
+    /// from the account attributes.
+    PhoneNumberRecoveryPassword { number: &'a str },
+    /// Register an account with no phone number, redeeming the given receipt
+    /// credential presentation.
+    ReceiptCredential {
+        presentation: &'a ReceiptCredentialPresentation,
+    },
+    /// Re-register the account with the given ACI, authenticating with the
+    /// recovery password from the account attributes.
+    AccountRecoveryPassword { aci: Aci },
+}
+
+impl RegisterAccountMethod<'_> {
+    /// Whether the server rejects the request with an empty recovery password.
+    pub(crate) fn requires_recovery_password(&self) -> bool {
+        match self {
+            Self::SessionId { .. } | Self::PhoneNumberRecoveryPassword { .. } => false,
+            Self::ReceiptCredential { .. } | Self::AccountRecoveryPassword { .. } => true,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -247,8 +284,6 @@ pub struct ProvidedAccountAttributes<'a> {
     pub recovery_password: &'a [u8],
     /// Generated ID associated with a user's ACI.
     pub registration_id: u16,
-    /// Generated ID associated with a user's PNI.
-    pub pni_registration_id: u16,
     /// Protobuf-encoded device name.
     #[serde_as(as = "Option<Base64Padded>")]
     pub name: Option<&'a [u8]>,
@@ -270,11 +305,12 @@ pub struct RegisterAccountResponse {
     #[serde_as(as = "FromInto<Uuid>")]
     #[serde(rename = "uuid")]
     pub aci: Aci,
-    /// The phone number associated with this account.
-    pub number: String,
-    /// The account identifier for this account's phone-number identity.
-    #[serde_as(as = "FromInto<Uuid>")]
-    pub pni: Pni,
+    /// The phone number associated with this account, absent if it has none.
+    pub number: Option<String>,
+    /// The account identifier for this account's phone-number identity, absent
+    /// if the account has no phone number.
+    #[serde_as(as = "Option<FromInto<Uuid>>")]
+    pub pni: Option<Pni>,
     /// A hash of this account's username, if set.
     #[serde_as(as = "Option<Base64Padded>")]
     pub username_hash: Option<Box<[u8]>>,
@@ -289,6 +325,10 @@ pub struct RegisterAccountResponse {
     /// If true, there was an existing account registered for this number.
     #[serde(default)]
     pub reregistration: bool,
+    /// Salt for deriving PNI auth credentials, present only for an account with
+    /// no phone number.
+    #[serde_as(as = "Option<Base64Padded>")]
+    pub auth_credential_salt: Option<Box<[u8]>>,
 }
 
 #[serde_as]
@@ -354,6 +394,15 @@ pub struct AccountKeys<'a> {
     pub identity_key: &'a PublicKey,
     pub signed_pre_key: SignedPreKeyBody<&'a [u8]>,
     pub pq_last_resort_pre_key: SignedPreKeyBody<&'a [u8]>,
+}
+
+/// The PNI-associated values for an account with a phone number.
+///
+/// The server requires both or neither.
+pub struct PniAccountMaterial<'a> {
+    /// Generated ID associated with a user's PNI.
+    pub registration_id: u16,
+    pub keys: AccountKeys<'a>,
 }
 
 /// How a device wants to be notified of messages when offline.

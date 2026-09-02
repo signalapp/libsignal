@@ -541,6 +541,9 @@ public object NativeTesting {
   public external fun TESTING_RegisterAccountResponse_CreateTestValue(): ObjectHandle
 
   @JvmStatic
+  public external fun TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber(): ObjectHandle
+
+  @JvmStatic
   @Throws(Exception::class)
   public external fun TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert(errorDescription: String): Unit
 

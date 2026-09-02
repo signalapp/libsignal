@@ -801,6 +801,11 @@ mod registration {
         RegistrationLock(RegistrationLock),
         RecoveryVerificationFailed,
         DeviceTransferPossibleNotSkipped,
+        RegisterAccountRequestRejected,
+        InvalidSession,
+        InvalidReceipt,
+        RecoveryPasswordRequired,
+        OneTimePasswordRequired,
     }
 
     impl SignalNodeError for BridgedErrorVariant {
@@ -912,6 +917,26 @@ mod registration {
                     "RegistrationDeviceTransferPossibleNotSkipped",
                     "device transfer is possible but wasn't explicitly skipped",
                 ),
+                Self::RegisterAccountRequestRejected => (
+                    "RegisterAccountRequestRejected",
+                    "the server rejected the request",
+                ),
+                Self::InvalidSession => (
+                    "RegistrationInvalidSession",
+                    "the verification session is unverified or no longer exists",
+                ),
+                Self::InvalidReceipt => (
+                    "RegistrationInvalidReceipt",
+                    "the receipt credential presentation was not accepted",
+                ),
+                Self::RecoveryPasswordRequired => (
+                    "RegistrationRecoveryPasswordRequired",
+                    "a recovery password is required",
+                ),
+                Self::OneTimePasswordRequired => (
+                    "RegistrationOneTimePasswordRequired",
+                    "a valid one-time password is required",
+                ),
             };
             new_js_error(cx, Some(name), message, operation_name, no_extra_properties)
         }
@@ -992,6 +1017,11 @@ mod registration {
                 RegisterAccountError::RegistrationLock(registration_lock) => {
                     Self::RegistrationLock(registration_lock)
                 }
+                RegisterAccountError::RequestRejected => Self::RegisterAccountRequestRejected,
+                RegisterAccountError::InvalidSession => Self::InvalidSession,
+                RegisterAccountError::InvalidReceipt => Self::InvalidReceipt,
+                RegisterAccountError::RecoveryPasswordRequired => Self::RecoveryPasswordRequired,
+                RegisterAccountError::OneTimePasswordRequired => Self::OneTimePasswordRequired,
             }
         }
     }

@@ -316,6 +316,16 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw RegistrationError.deviceTransferPossible(errStr)
     case SignalErrorCodeRegistrationRecoveryVerificationFailed:
         throw RegistrationError.recoveryVerificationFailed(errStr)
+    case SignalErrorCodeRegisterAccountRequestRejected:
+        throw RegistrationError.registerAccountRequestRejected(errStr)
+    case SignalErrorCodeRegistrationInvalidSession:
+        throw RegistrationError.invalidSession(errStr)
+    case SignalErrorCodeRegistrationInvalidReceipt:
+        throw RegistrationError.invalidReceipt(errStr)
+    case SignalErrorCodeRegistrationRecoveryPasswordRequired:
+        throw RegistrationError.recoveryPasswordRequired(errStr)
+    case SignalErrorCodeRegistrationOneTimePasswordRequired:
+        throw RegistrationError.oneTimePasswordRequired(errStr)
     case SignalErrorCodeRegistrationLock:
         var timeRemaining: UInt64 = 0
         var credentials = SignalPairOfCStringPtrCStringPtr()

@@ -4,6 +4,7 @@
 //
 use std::collections::HashSet;
 
+use ::zkgroup::receipts::ReceiptCredentialPresentation;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::registration::{
@@ -17,6 +18,7 @@ use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::api::registration::*;
 use libsignal_net_chat::registration::RequestError;
 use libsignal_protocol::*;
+use rand::TryRngCore as _;
 use uuid::Uuid;
 
 use crate::support::*;
@@ -131,42 +133,25 @@ async fn RegistrationService_RegisterAccount(
     register_account: &RegisterAccountRequest,
     account_attributes: &RegistrationAccountAttributes,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
-    let RegisterAccountInner {
-        message_notification,
-        device_transfer,
-        account_password,
-        identity_keys,
-        signed_pre_keys,
-        pq_last_resort_pre_keys,
-    } = register_account
+    let inner = register_account
         .0
         .lock()
         .expect("not poisoned")
         .take()
         .expect("not taken");
-
     service
         .0
         .lock()
         .await
         .register_account(
-            message_notification.as_deref(),
+            inner.message_notification.as_deref(),
             account_attributes.into(),
-            device_transfer,
-            ForServiceIds::generate(|kind| AccountKeys {
-                identity_key: identity_keys.get(kind).as_ref().expect("key was provided"),
-                signed_pre_key: signed_pre_keys
-                    .get(kind)
-                    .as_ref()
-                    .expect("key was provided")
-                    .as_deref(),
-                pq_last_resort_pre_key: pq_last_resort_pre_keys
-                    .get(kind)
-                    .as_ref()
-                    .expect("key was provided")
-                    .as_deref(),
-            }),
-            &account_password,
+            inner.device_transfer,
+            inner.aci_keys(),
+            inner
+                .pni_material(account_attributes.pni_registration_id)
+                .expect("PNI keys were provided"),
+            &inner.account_password,
         )
         .await
 }
@@ -178,40 +163,83 @@ async fn RegistrationService_ReregisterAccount(
     register_account: &RegisterAccountRequest,
     account_attributes: &RegistrationAccountAttributes,
 ) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
-    let RegisterAccountInner {
-        message_notification,
-        device_transfer,
-        account_password,
-        identity_keys,
-        signed_pre_keys,
-        pq_last_resort_pre_keys,
-    } = register_account
+    let inner = register_account
         .0
         .lock()
         .expect("not poisoned")
         .take()
         .expect("not taken");
-
     libsignal_net_chat::registration::reregister_account(
         &number,
         connect_chat.create_chat_connector(tokio::runtime::Handle::current()),
-        message_notification.as_deref(),
+        inner.message_notification.as_deref(),
         account_attributes.into(),
-        device_transfer,
-        ForServiceIds::generate(|kind| AccountKeys {
-            identity_key: identity_keys.get(kind).as_ref().expect("key was provided"),
-            signed_pre_key: signed_pre_keys
-                .get(kind)
-                .as_ref()
-                .expect("key was provided")
-                .as_deref(),
-            pq_last_resort_pre_key: pq_last_resort_pre_keys
-                .get(kind)
-                .as_ref()
-                .expect("key was provided")
-                .as_deref(),
-        }),
-        &account_password,
+        inner.device_transfer,
+        inner.aci_keys(),
+        inner
+            .pni_material(account_attributes.pni_registration_id)
+            .expect("PNI keys were provided"),
+        &inner.account_password,
+    )
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn RegistrationService_RegisterAccountWithoutNumber(
+    connect_chat: Box<dyn ConnectChatBridge>,
+    receipt_credential_presentation: ReceiptCredentialPresentation,
+    register_account: &RegisterAccountRequest,
+    account_attributes: &RegistrationAccountAttributes,
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    let inner = register_account
+        .0
+        .lock()
+        .expect("not poisoned")
+        .take()
+        .expect("not taken");
+    assert!(
+        !inner.has_pni_keys(),
+        "PNI keys must not be provided when registering without a phone number"
+    );
+    libsignal_net_chat::registration::register_account_without_number(
+        &receipt_credential_presentation,
+        connect_chat.create_chat_connector(tokio::runtime::Handle::current()),
+        inner.message_notification.as_deref(),
+        account_attributes.into(),
+        inner.device_transfer,
+        inner.aci_keys(),
+        &inner.account_password,
+    )
+    .await
+}
+
+#[bridge_io(TokioAsyncContext)]
+async fn RegistrationService_ReregisterAccountWithoutNumber(
+    connect_chat: Box<dyn ConnectChatBridge>,
+    aci: Aci,
+    register_account: &RegisterAccountRequest,
+    account_attributes: &RegistrationAccountAttributes,
+) -> Result<RegisterAccountResponse, RequestError<RegisterAccountError>> {
+    let inner = register_account
+        .0
+        .lock()
+        .expect("not poisoned")
+        .take()
+        .expect("not taken");
+    assert!(
+        !inner.has_pni_keys(),
+        "PNI keys must not be provided when re-registering without a phone number"
+    );
+    libsignal_net_chat::registration::reregister_account_without_number(
+        aci,
+        connect_chat.create_chat_connector(tokio::runtime::Handle::current()),
+        inner.message_notification.as_deref(),
+        account_attributes.into(),
+        inner.device_transfer,
+        inner.one_time_password,
+        inner.aci_keys(),
+        &inner.account_password,
+        &mut rand::rngs::OsRng.unwrap_err(),
     )
     .await
 }
@@ -285,6 +313,27 @@ fn RegisterAccountRequest_SetSkipDeviceTransfer(register_account: &RegisterAccou
         .as_mut()
         .expect("not taken")
         .device_transfer = Some(SkipDeviceTransfer);
+}
+
+/// Sets the one-time password to send with the registration request.
+///
+/// Set this after a request fails with
+/// [`RegisterAccountError::OneTimePasswordRequired`] and try again.
+///
+/// Only used when re-registering an account that has no phone number. The
+/// other registration flows ignore it.
+#[bridge_fn]
+fn RegisterAccountRequest_SetOneTimePassword(
+    register_account: &RegisterAccountRequest,
+    one_time_password: u32,
+) {
+    register_account
+        .0
+        .lock()
+        .expect("not poisoned")
+        .as_mut()
+        .expect("not taken")
+        .one_time_password = Some(one_time_password);
 }
 
 #[bridge_fn]
@@ -398,19 +447,26 @@ fn RegistrationAccountAttributes_Create(
 }
 
 #[bridge_fn]
-fn RegisterAccountResponse_GetIdentity(
-    response: &RegisterAccountResponse,
-    identity_type: AsType<ServiceIdKind, u8>,
-) -> ServiceId {
-    match identity_type.into_inner() {
-        ServiceIdKind::Aci => response.aci.into(),
-        ServiceIdKind::Pni => response.pni.into(),
-    }
+fn RegisterAccountResponse_GetAci(response: &RegisterAccountResponse) -> Uuid {
+    response.aci.into()
+}
+
+// An account with no phone number has no PNI.
+#[bridge_fn]
+fn RegisterAccountResponse_GetPni(response: &RegisterAccountResponse) -> Option<Uuid> {
+    response.pni.map(|pni| pni.into())
 }
 
 #[bridge_fn]
-fn RegisterAccountResponse_GetNumber(response: &RegisterAccountResponse) -> &str {
-    &response.number
+fn RegisterAccountResponse_GetNumber(response: &RegisterAccountResponse) -> Option<&str> {
+    response.number.as_deref()
+}
+
+#[bridge_fn]
+fn RegisterAccountResponse_GetAuthCredentialSalt(
+    response: &RegisterAccountResponse,
+) -> Option<&[u8]> {
+    response.auth_credential_salt.as_deref()
 }
 
 #[bridge_fn]

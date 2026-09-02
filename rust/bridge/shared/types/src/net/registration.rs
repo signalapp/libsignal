@@ -9,10 +9,12 @@ use std::panic::UnwindSafe;
 
 use futures_util::TryFutureExt as _;
 use libsignal_bridge_macros::c_export;
+use libsignal_core::ServiceIdKind;
 use libsignal_net_chat::api::registration::{
-    CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
-    ProvidedAccountAttributes, PushToken, RegisterAccountResponse, RegistrationSession,
-    ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer, UnidentifiedAccessKey,
+    AccountKeys, CreateSession, CreateSessionError, ForServiceIds, NewMessageNotification,
+    PniAccountMaterial, ProvidedAccountAttributes, PushToken, RegisterAccountResponse,
+    RegistrationSession, ResumeSessionError, SessionId, SignedPreKeyBody, SkipDeviceTransfer,
+    UnidentifiedAccessKey,
 };
 use libsignal_net_chat::registration::{self as net_registration, ConnectUnauthChat, RequestError};
 use libsignal_protocol::PublicKey;
@@ -28,10 +30,48 @@ pub struct RegistrationService(pub AsyncMutex<net_registration::RegistrationServ
 pub struct RegisterAccountInner {
     pub message_notification: NewMessageNotification<String>,
     pub device_transfer: Option<SkipDeviceTransfer>,
+    pub one_time_password: Option<u32>,
     pub account_password: Box<str>,
     pub identity_keys: ForServiceIds<Option<PublicKey>>,
     pub signed_pre_keys: ForServiceIds<Option<SignedPreKeyBody<Box<[u8]>>>>,
     pub pq_last_resort_pre_keys: ForServiceIds<Option<SignedPreKeyBody<Box<[u8]>>>>,
+}
+
+impl RegisterAccountInner {
+    pub fn aci_keys(&self) -> AccountKeys<'_> {
+        self.keys(ServiceIdKind::Aci)
+            .expect("ACI keys were provided")
+    }
+
+    pub fn pni_material(&self, registration_id: u16) -> Option<PniAccountMaterial<'_>> {
+        self.keys(ServiceIdKind::Pni)
+            .map(|keys| PniAccountMaterial {
+                registration_id,
+                keys,
+            })
+    }
+
+    pub fn has_pni_keys(&self) -> bool {
+        self.keys(ServiceIdKind::Pni).is_some()
+    }
+
+    fn keys(&self, kind: ServiceIdKind) -> Option<AccountKeys<'_>> {
+        match (
+            self.identity_keys.get(kind).as_ref(),
+            self.signed_pre_keys.get(kind).as_ref(),
+            self.pq_last_resort_pre_keys.get(kind).as_ref(),
+        ) {
+            (Some(identity_key), Some(signed_pre_key), Some(pq_last_resort_pre_key)) => {
+                Some(AccountKeys {
+                    identity_key,
+                    signed_pre_key: signed_pre_key.as_deref(),
+                    pq_last_resort_pre_key: pq_last_resort_pre_key.as_deref(),
+                })
+            }
+            (None, None, None) => None,
+            _ => panic!("{kind} keys must all be provided or all omitted"),
+        }
+    }
 }
 
 pub struct RegisterAccountRequest(pub std::sync::Mutex<Option<RegisterAccountInner>>);
@@ -112,7 +152,8 @@ impl<'a> From<&'a AccountAttributes> for ProvidedAccountAttributes<'a> {
         let AccountAttributes {
             recovery_password,
             aci_registration_id,
-            pni_registration_id,
+            // Not forwarded here; sent with the PNI keys on the register-account request.
+            pni_registration_id: _,
             registration_lock,
             unidentified_access_key,
             unrestricted_unidentified_access,
@@ -122,7 +163,6 @@ impl<'a> From<&'a AccountAttributes> for ProvidedAccountAttributes<'a> {
         Self {
             recovery_password,
             registration_id: *aci_registration_id,
-            pni_registration_id: *pni_registration_id,
             name: None,
             registration_lock: registration_lock.as_deref(),
             unidentified_access_key,
