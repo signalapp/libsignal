@@ -45,7 +45,7 @@ resolver = "2" # so that our dev-dependency features don't leak into products
 version = "0.101.3"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
-rust-version = "1.88"
+rust-version = "1.93.1"
 
 [workspace.lints.clippy]
 # Prefer TryFrom between integers unless truncation is desired.

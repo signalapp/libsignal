@@ -6,3 +6,4 @@ v0.101.3
   - `checkSVRCredentials()`
   - `getCurrencyConversions()`
   - `AuthKeysService.getPreKeyCount()`
+- MSRV bumped to 1.93.1
