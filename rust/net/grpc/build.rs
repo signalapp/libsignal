@@ -54,6 +54,11 @@ fn main() {
             ".org.signal.chat.messages.GetMessagesResponse.response",
             "#[expect(clippy::large_enum_variant)]",
         )
+        // Similarly, fetching subscription information is likely to be done by active subscribers.
+        .type_attribute(
+            ".org.signal.chat.purchase.GetSubscriptionInformationResponse.response",
+            "#[expect(clippy::large_enum_variant)]",
+        )
         // Lets tests iterate every capability the server knows about.
         .type_attribute(
             ".org.signal.chat.common.DeviceCapability",
