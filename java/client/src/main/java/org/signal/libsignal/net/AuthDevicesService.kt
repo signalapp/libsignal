@@ -6,6 +6,7 @@
 package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.DeviceCapabilityInternal
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.DeviceId
@@ -59,6 +60,43 @@ public data class LinkedDevice(
     return result
   }
 }
+
+/**
+ * A feature that a device may declare support for.
+ */
+public enum class DeviceCapability {
+  /** Support for Signal's storage service. */
+  STORAGE,
+
+  /** Support for transferring data between devices. */
+  TRANSFER,
+
+  /** Support for attachment backfill. */
+  ATTACHMENT_BACKFILL,
+
+  /** Support for sparse post-quantum ratchets. */
+  SPARSE_POST_QUANTUM_RATCHET,
+
+  /** Support for version 2 of the profiles API. */
+  PROFILES_V2,
+
+  /** Support for username-change sync messages. */
+  USERNAME_CHANGE_SYNC_MESSAGE,
+
+  /** Support for accounts without a phone number. */
+  OPTIONAL_PHONE_NUMBER,
+}
+
+private fun DeviceCapability.toInternal(): DeviceCapabilityInternal =
+  when (this) {
+    DeviceCapability.STORAGE -> DeviceCapabilityInternal.Storage
+    DeviceCapability.TRANSFER -> DeviceCapabilityInternal.Transfer
+    DeviceCapability.ATTACHMENT_BACKFILL -> DeviceCapabilityInternal.AttachmentBackfill
+    DeviceCapability.SPARSE_POST_QUANTUM_RATCHET -> DeviceCapabilityInternal.SparsePostQuantumRatchet
+    DeviceCapability.PROFILES_V2 -> DeviceCapabilityInternal.ProfilesV2
+    DeviceCapability.USERNAME_CHANGE_SYNC_MESSAGE -> DeviceCapabilityInternal.UsernameChangeSyncMessage
+    DeviceCapability.OPTIONAL_PHONE_NUMBER -> DeviceCapabilityInternal.OptionalPhoneNumber
+  }
 
 public class AuthDevicesService(
   private val connection: AuthenticatedChatConnection,
@@ -133,6 +171,32 @@ public class AuthDevicesService(
           chat = connection,
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Declares that the current device supports the specified features.
+   *
+   * The provided set of capabilities replaces the device's previously declared capabilities; a
+   * capability not listed is cleared.
+   *
+   * @param capabilities The [DeviceCapability] values supported by the current device.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setCapabilities(capabilities: Set<DeviceCapability>): CompletableFuture<RequestResult<Unit, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_set_capabilities(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          capabilities = capabilities.map { it.toInternal() },
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
           onError = { err -> err.toRequestResult() },
         )
     } catch (e: Throwable) {

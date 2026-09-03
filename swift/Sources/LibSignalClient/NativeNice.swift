@@ -260,6 +260,33 @@ extension SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg: SignalBorrowed
 
 }
 
+extension SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg: SignalBorrowedSliceOf {
+
+    typealias Element = SignalDeviceCapabilityInternalFfiArg
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
 extension SignalBorrowedSliceOfu32: SignalBorrowedSliceOf {
 
     typealias Element = UInt32
@@ -2351,6 +2378,16 @@ internal struct DeleteBackupMediaNextChunk {
 
 }
 
+internal enum DeviceCapabilityInternal {
+    case storage
+    case transfer
+    case attachmentBackfill
+    case sparsePostQuantumRatchet
+    case profilesV2
+    case usernameChangeSyncMessage
+    case optionalPhoneNumber
+}
+
 /*
 // LinkedDevice
 
@@ -3360,6 +3397,67 @@ internal enum DerivedArgConverterCallQualitySurveyInternal: NiceArgConverter {
     }
 }
 
+internal enum DerivedArgConverterDeviceCapabilityInternal: NiceArgConverter {
+    typealias NiceArg = DeviceCapabilityInternal
+    typealias FfiArg = SignalDeviceCapabilityInternalFfiArg
+    typealias KeepAlive = ()
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+
+        case .storage:
+            return (SignalDeviceCapabilityInternalFfiArgStorage, nil)
+
+        case .transfer:
+            return (SignalDeviceCapabilityInternalFfiArgTransfer, nil)
+
+        case .attachmentBackfill:
+            return (SignalDeviceCapabilityInternalFfiArgAttachmentBackfill, nil)
+
+        case .sparsePostQuantumRatchet:
+            return (SignalDeviceCapabilityInternalFfiArgSparsePostQuantumRatchet, nil)
+
+        case .profilesV2:
+            return (SignalDeviceCapabilityInternalFfiArgProfilesV2, nil)
+
+        case .usernameChangeSyncMessage:
+            return (SignalDeviceCapabilityInternalFfiArgUsernameChangeSyncMessage, nil)
+
+        case .optionalPhoneNumber:
+            return (SignalDeviceCapabilityInternalFfiArgOptionalPhoneNumber, nil)
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .storage:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgStorage)
+
+        case .transfer:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgTransfer)
+
+        case .attachmentBackfill:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgAttachmentBackfill)
+
+        case .sparsePostQuantumRatchet:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgSparsePostQuantumRatchet)
+
+        case .profilesV2:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgProfilesV2)
+
+        case .usernameChangeSyncMessage:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgUsernameChangeSyncMessage)
+
+        case .optionalPhoneNumber:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgOptionalPhoneNumber)
+
+        }
+    }
+}
+
 internal enum DerivedArgConverterPaymentProvider: NiceArgConverter {
     typealias NiceArg = PaymentProvider
     typealias FfiArg = SignalPaymentProviderFfiArg
@@ -3674,6 +3772,33 @@ internal enum NativeNice {
                     }
             }
         return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_set_capabilities(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        capabilities: [DeviceCapabilityInternal],
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ArrayArgConverter<
+                            DerivedArgConverterDeviceCapabilityInternal,
+                            SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg
+                        >.convertArgBorrowed(capabilities) { capabilitiesFfi in
+                            SignalFfi.signal_authenticated_chat_connection_set_capabilities(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                capabilitiesFfi,
+                            )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_set_device_name(

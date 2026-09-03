@@ -7,6 +7,7 @@ v0.102.0
   - `getCurrencyConversions()`
   - `AuthKeysService.getPreKeyCount()`
   - `createLoginReceiptCredential()`
+  - `AuthDevicesService.setCapabilities()`
 - MSRV bumped to 1.93.1
 - registration: Add support for registration without E.164
 - libsignal builds off stable Rust by default

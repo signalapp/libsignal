@@ -6,6 +6,7 @@
 package org.signal.libsignal.net
 
 import kotlinx.coroutines.test.runTest
+import org.signal.libsignal.internal.DeviceCapabilityInternal
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.RemoveDeviceOut
 import org.signal.libsignal.internal.SetDeviceNameOut
@@ -13,6 +14,19 @@ import org.signal.libsignal.net.assertNonSuccess
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+
+// This `when` is deliberately exhaustive: it stops compiling if the internal type gains a
+// variant that the public enum does not expose, so the two stay in sync.
+private fun DeviceCapabilityInternal.toDeviceCapability(): DeviceCapability =
+  when (this) {
+    DeviceCapabilityInternal.Storage -> DeviceCapability.STORAGE
+    DeviceCapabilityInternal.Transfer -> DeviceCapability.TRANSFER
+    DeviceCapabilityInternal.AttachmentBackfill -> DeviceCapability.ATTACHMENT_BACKFILL
+    DeviceCapabilityInternal.SparsePostQuantumRatchet -> DeviceCapability.SPARSE_POST_QUANTUM_RATCHET
+    DeviceCapabilityInternal.ProfilesV2 -> DeviceCapability.PROFILES_V2
+    DeviceCapabilityInternal.UsernameChangeSyncMessage -> DeviceCapability.USERNAME_CHANGE_SYNC_MESSAGE
+    DeviceCapabilityInternal.OptionalPhoneNumber -> DeviceCapability.OPTIONAL_PHONE_NUMBER
+  }
 
 class AuthDevicesServiceTest {
   @Test
@@ -33,6 +47,22 @@ class AuthDevicesServiceTest {
             SetDeviceNameOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
             SetDeviceNameOut.DeviceNotFound -> actual.assertNonSuccess<_, _, DeviceIdNotFoundException>()
           }
+        },
+      )
+    }
+
+  @Test
+  fun testSetCapabilities() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetCapabilitiesTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthDevicesService,
+        invoke = { chat, req ->
+          chat.setCapabilities(req.capabilities.map { it.toDeviceCapability() }.toSet())
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
         },
       )
     }

@@ -6,12 +6,13 @@
 use std::convert::Infallible;
 
 use libsignal_core::{DeviceId, LogSafeDisplay};
+use libsignal_net_grpc::proto::chat::common::DeviceCapability as GrpcDeviceCapability;
 use libsignal_net_grpc::proto::chat::device::devices_client::DevicesClient;
 use libsignal_net_grpc::proto::chat::device::get_devices_response::LinkedDevice as GrpcLinkedDevice;
 use libsignal_net_grpc::proto::chat::device::{
     ClearPushTokenRequest, ClearPushTokenResponse, GetDevicesRequest, RemoveDeviceRequest,
-    RemoveDeviceResponse, SetDeviceNameRequest, SetPushTokenRequest, SetPushTokenResponse,
-    set_device_name_response, set_push_token_request,
+    RemoveDeviceResponse, SetCapabilitiesRequest, SetCapabilitiesResponse, SetDeviceNameRequest,
+    SetPushTokenRequest, SetPushTokenResponse, set_device_name_response, set_push_token_request,
 };
 use libsignal_protocol::Timestamp;
 
@@ -71,6 +72,43 @@ impl std::fmt::Display for Redact<RemoveDeviceRequest> {
         f.debug_struct("RemoveDeviceRequest")
             .field("id", id)
             .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<SetCapabilitiesRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetCapabilitiesRequest { capabilities }) = self;
+        // Capabilities are the same for every install of a given app version,
+        // so they are not user-identifying and safe to log.
+        f.debug_struct("SetCapabilitiesRequest")
+            .field("capabilities", capabilities)
+            .finish()
+    }
+}
+
+/// A feature that a device may declare support for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DeviceCapability {
+    Storage,
+    Transfer,
+    AttachmentBackfill,
+    SparsePostQuantumRatchet,
+    ProfilesV2,
+    UsernameChangeSyncMessage,
+    OptionalPhoneNumber,
+}
+
+impl From<DeviceCapability> for GrpcDeviceCapability {
+    fn from(value: DeviceCapability) -> Self {
+        match value {
+            DeviceCapability::Storage => Self::Storage,
+            DeviceCapability::Transfer => Self::Transfer,
+            DeviceCapability::AttachmentBackfill => Self::AttachmentBackfill,
+            DeviceCapability::SparsePostQuantumRatchet => Self::SparsePostQuantumRatchet,
+            DeviceCapability::ProfilesV2 => Self::ProfilesV2,
+            DeviceCapability::UsernameChangeSyncMessage => Self::UsernameChangeSyncMessage,
+            DeviceCapability::OptionalPhoneNumber => Self::OptionalPhoneNumber,
+        }
     }
 }
 
@@ -226,6 +264,37 @@ impl<T: GrpcServiceProvider> Auth<T> {
         let desc = Redact(&request).to_string();
         let SetPushTokenResponse {} =
             log_and_send("auth", &desc, || client.set_push_token(request))
+                .await?
+                .into_inner();
+        Ok(())
+    }
+
+    /// Declares that the current device supports the specified features.
+    ///
+    /// The provided capabilities replace the device's previously declared
+    /// capabilities; a capability not listed is cleared. Duplicates are
+    /// permitted and have no additional effect.
+    ///
+    /// `capabilities` contains the [`DeviceCapability`] values supported by the
+    /// current device.
+    pub async fn set_capabilities(
+        &self,
+        capabilities: &[DeviceCapability],
+    ) -> Result<(), RequestError<Infallible>> {
+        let mut capabilities: Vec<i32> = capabilities
+            .iter()
+            .map(|&capability| GrpcDeviceCapability::from(capability).into())
+            .collect();
+        // The server treats the capabilities as a set. Sort and dedupe so the
+        // request encoding is deterministic no matter what order the caller's
+        // set iterates in.
+        capabilities.sort_unstable();
+        capabilities.dedup();
+        let mut client = DevicesClient::new(self.0.service());
+        let request = SetCapabilitiesRequest { capabilities };
+        let desc = Redact(&request).to_string();
+        let SetCapabilitiesResponse {} =
+            log_and_send("auth", &desc, || client.set_capabilities(request))
                 .await?
                 .into_inner();
         Ok(())
@@ -432,6 +501,66 @@ pub mod test_cases {
         ]
     }
 
+    pub struct SetCapabilitiesArgs {
+        pub capabilities: Vec<DeviceCapability>,
+    }
+    pub fn set_capabilities_test_cases()
+    -> Vec<GrpcTestCase<SetCapabilitiesArgs, SetCapabilitiesRequest, SetCapabilitiesResponse, ()>>
+    {
+        let method = "/org.signal.chat.device.Devices/SetCapabilities";
+        vec![
+            // The requests are expected to arrive sorted and deduped no matter
+            // what order the caller's set iterates in.
+            GrpcTestCase {
+                name: "all capabilities, in any order".to_string(),
+                method: method.to_string(),
+                request: SetCapabilitiesArgs {
+                    capabilities: vec![
+                        DeviceCapability::OptionalPhoneNumber,
+                        DeviceCapability::UsernameChangeSyncMessage,
+                        DeviceCapability::Storage,
+                        DeviceCapability::SparsePostQuantumRatchet,
+                        DeviceCapability::Transfer,
+                        DeviceCapability::ProfilesV2,
+                        DeviceCapability::AttachmentBackfill,
+                    ],
+                },
+                request_grpc: SetCapabilitiesRequest {
+                    capabilities: vec![1, 2, 6, 7, 8, 9, 10],
+                },
+                response_grpc: SetCapabilitiesResponse {},
+                response: (),
+            },
+            GrpcTestCase {
+                name: "duplicates are removed".to_string(),
+                method: method.to_string(),
+                request: SetCapabilitiesArgs {
+                    capabilities: vec![
+                        DeviceCapability::SparsePostQuantumRatchet,
+                        DeviceCapability::SparsePostQuantumRatchet,
+                    ],
+                },
+                request_grpc: SetCapabilitiesRequest {
+                    capabilities: vec![7],
+                },
+                response_grpc: SetCapabilitiesResponse {},
+                response: (),
+            },
+            GrpcTestCase {
+                name: "no capabilities".to_string(),
+                method: method.to_string(),
+                request: SetCapabilitiesArgs {
+                    capabilities: vec![],
+                },
+                request_grpc: SetCapabilitiesRequest {
+                    capabilities: vec![],
+                },
+                response_grpc: SetCapabilitiesResponse {},
+                response: (),
+            },
+        ]
+    }
+
     pub struct SetDeviceNameArgs {
         pub id: u8,
         pub encrypted_name: Vec<u8>,
@@ -550,6 +679,47 @@ mod test {
             |resp, result| match resp {
                 RemoveDeviceOut::Success => assert_matches!(result, Ok(())),
             },
+        );
+    }
+
+    #[test]
+    fn every_grpc_capability_is_accounted_for() {
+        use strum::IntoEnumIterator as _;
+
+        for grpc in GrpcDeviceCapability::iter() {
+            let public = match grpc {
+                GrpcDeviceCapability::Unspecified => None,
+                GrpcDeviceCapability::Storage => Some(DeviceCapability::Storage),
+                GrpcDeviceCapability::Transfer => Some(DeviceCapability::Transfer),
+                GrpcDeviceCapability::AttachmentBackfill => {
+                    Some(DeviceCapability::AttachmentBackfill)
+                }
+                GrpcDeviceCapability::SparsePostQuantumRatchet => {
+                    Some(DeviceCapability::SparsePostQuantumRatchet)
+                }
+                GrpcDeviceCapability::ProfilesV2 => Some(DeviceCapability::ProfilesV2),
+                GrpcDeviceCapability::UsernameChangeSyncMessage => {
+                    Some(DeviceCapability::UsernameChangeSyncMessage)
+                }
+                GrpcDeviceCapability::OptionalPhoneNumber => {
+                    Some(DeviceCapability::OptionalPhoneNumber)
+                }
+            };
+            if let Some(public) = public {
+                assert_eq!(GrpcDeviceCapability::from(public), grpc);
+            }
+        }
+    }
+
+    #[test]
+    fn test_set_capabilities() {
+        use test_cases::*;
+        run_tests(
+            set_capabilities_test_cases(),
+            |chat: Auth<_>, SetCapabilitiesArgs { capabilities }| async move {
+                chat.set_capabilities(&capabilities).await
+            },
+            |(), result| assert_matches!(result, Ok(())),
         );
     }
 

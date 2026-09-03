@@ -38,6 +38,11 @@ export type LinkedDevice = {
   createdAtCiphertext: Uint8Array<ArrayBuffer>;
 };
 
+/**
+ * A feature that a device may declare support for.
+ */
+export type DeviceCapability = NativeNice.DeviceCapabilityInternal;
+
 export interface AuthDevicesService {
   /**
    * Set the name of the given device ID to the provided encrypted name.
@@ -80,6 +85,23 @@ export interface AuthDevicesService {
    * @throws {StandardNetworkError}
    */
   getDevices: (options?: RequestOptions) => Promise<Array<LinkedDevice>>;
+  /**
+   * Declares that the current device supports the specified features.
+   *
+   * The provided set of capabilities replaces the device's previously declared
+   * capabilities; a capability not listed is cleared.
+   *
+   * @param request.capabilities The {@link DeviceCapability} values supported
+   * by the current device.
+   *
+   * @throws {StandardNetworkError}
+   */
+  setCapabilities: (
+    request: {
+      capabilities: ReadonlySet<DeviceCapability>;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
   /**
    * Remove any push tokens associated with the current device.
    *
@@ -133,6 +155,22 @@ AuthenticatedChatConnection.prototype.getDevices = async function (
     asyncContext: this.asyncContext,
     abortSignal: options?.abortSignal,
     chat: this.chatService,
+  });
+};
+
+AuthenticatedChatConnection.prototype.setCapabilities = async function (
+  {
+    capabilities,
+  }: {
+    capabilities: ReadonlySet<DeviceCapability>;
+  },
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_set_capabilities({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    capabilities: Array.from(capabilities),
   });
 };
 

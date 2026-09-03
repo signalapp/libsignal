@@ -12,6 +12,7 @@ import type {
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
   ArgFfiCallQualitySurveyInternal,
+  ArgFfiDeviceCapabilityInternal,
   ArgFfiMyRemoteDeriveEnum,
   ArgFfiMyRemoteDeriveStruct,
   ArgFfiMySimpleTestEnum,
@@ -40,6 +41,7 @@ import type {
   ReturnFfiCurrencyInternal,
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
+  ReturnFfiDeviceCapabilityInternal,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
   ReturnFfiGetMediaBackupInfoOut,
@@ -66,6 +68,7 @@ import type {
   ReturnFfiReserveUsernameHashArgs,
   ReturnFfiReserveUsernameHashOut,
   ReturnFfiServerPublicParamsSerialized,
+  ReturnFfiSetCapabilitiesArgs,
   ReturnFfiSetDeviceNameArgs,
   ReturnFfiSetDeviceNameOut,
   ReturnFfiSetUsernameLinkArgs,
@@ -247,6 +250,15 @@ export type DeleteBackupMediaOut =
   | 'credentialRejected'
   | 'credentialRejectedWithoutAppropriateServerInfo';
 
+export type DeviceCapabilityInternal =
+  | 'storage'
+  | 'transfer'
+  | 'attachmentBackfill'
+  | 'sparsePostQuantumRatchet'
+  | 'profilesV2'
+  | 'usernameChangeSyncMessage'
+  | 'optionalPhoneNumber';
+
 export type GetCdnCredentialsOut =
   | {
       success: CdnCredentials;
@@ -413,6 +425,10 @@ export type ReserveUsernameHashOut =
 
 export type ServerPublicParamsSerialized = {
   bytes: Uint8Array<ArrayBuffer>;
+};
+
+export type SetCapabilitiesArgs = {
+  capabilities: Array<DeviceCapabilityInternal>;
 };
 
 export type SetDeviceNameArgs = {
@@ -768,6 +784,33 @@ export function returnConverterDeleteBackupMediaOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for DeleteBackupMediaOut');
+  }
+}
+
+export function returnConverterDeviceCapabilityInternal(
+  ffiInput: Native.ReturnFfiDeviceCapabilityInternal
+): DeviceCapabilityInternal {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'storage';
+    case 1:
+      return 'transfer';
+    case 2:
+      return 'attachmentBackfill';
+    case 3:
+      return 'sparsePostQuantumRatchet';
+    case 4:
+      return 'profilesV2';
+    case 5:
+      return 'usernameChangeSyncMessage';
+    case 6:
+      return 'optionalPhoneNumber';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for DeviceCapabilityInternal'
+      );
   }
 }
 
@@ -1172,6 +1215,15 @@ export function returnConverterServerPublicParamsSerialized(
   };
 }
 
+export function returnConverterSetCapabilitiesArgs(
+  ffiInput: Native.ReturnFfiSetCapabilitiesArgs
+): SetCapabilitiesArgs {
+  return {
+    capabilities: ((arr: Array<ReturnFfiDeviceCapabilityInternal>) =>
+      arr.map(returnConverterDeviceCapabilityInternal))(ffiInput.capabilities),
+  };
+}
+
 export function returnConverterSetDeviceNameArgs(
   ffiInput: Native.ReturnFfiSetDeviceNameArgs
 ): SetDeviceNameArgs {
@@ -1337,6 +1389,41 @@ export function argConverterCallQualitySurveyInternal(
     call_telemetry: liftNull(identity)(call_telemetry),
     call_id_hash: liftNull(identity)(call_id_hash),
   };
+}
+
+export function argConverterDeviceCapabilityInternal(
+  niceInput: DeviceCapabilityInternal
+): Native.ArgFfiDeviceCapabilityInternal {
+  if (niceInput === 'storage') {
+    return { __type: 0 };
+  }
+
+  if (niceInput === 'transfer') {
+    return { __type: 1 };
+  }
+
+  if (niceInput === 'attachmentBackfill') {
+    return { __type: 2 };
+  }
+
+  if (niceInput === 'sparsePostQuantumRatchet') {
+    return { __type: 3 };
+  }
+
+  if (niceInput === 'profilesV2') {
+    return { __type: 4 };
+  }
+
+  if (niceInput === 'usernameChangeSyncMessage') {
+    return { __type: 5 };
+  }
+
+  if (niceInput === 'optionalPhoneNumber') {
+    return { __type: 6 };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on DeviceCapabilityInternal argument');
 }
 
 export function argConverterMyRemoteDeriveEnum(
@@ -1726,6 +1813,29 @@ export async function AuthenticatedChatConnection_reserve_username_hash({
         ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
           username_hashes
         )
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_capabilities({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  capabilities: capabilities,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  capabilities: Array<DeviceCapabilityInternal>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_capabilities(
+        asyncContext,
+        identity(chat),
+        ((arr: Array<DeviceCapabilityInternal>) =>
+          arr.map(argConverterDeviceCapabilityInternal))(capabilities)
       )
     )
   );
@@ -2389,6 +2499,15 @@ export function TESTING_ReturnSomeIoError({
   return liftNull(identity)(
     Native.TESTING_ReturnSomeIoError(identity(present))
   );
+}
+
+export function TESTING_SetCapabilitiesTests(): Array<
+  GrpcTestCase<SetCapabilitiesArgs, void>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetCapabilitiesArgs,
+    identity
+  )(Native.TESTING_SetCapabilitiesTests());
 }
 
 export function TESTING_SetDeviceNameTests(): Array<

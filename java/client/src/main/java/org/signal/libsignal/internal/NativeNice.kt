@@ -175,6 +175,22 @@ public data class DeleteBackupMediaNextChunk(
   public val termination: Any?,
 )
 
+public sealed class DeviceCapabilityInternal {
+  public data object Storage : DeviceCapabilityInternal()
+
+  public data object Transfer : DeviceCapabilityInternal()
+
+  public data object AttachmentBackfill : DeviceCapabilityInternal()
+
+  public data object SparsePostQuantumRatchet : DeviceCapabilityInternal()
+
+  public data object ProfilesV2 : DeviceCapabilityInternal()
+
+  public data object UsernameChangeSyncMessage : DeviceCapabilityInternal()
+
+  public data object OptionalPhoneNumber : DeviceCapabilityInternal()
+}
+
 /*
 // org.signal.libsignal.net.LinkedDevice
 
@@ -786,6 +802,63 @@ public fun org.signal.libsignal.net.CallQualitySurvey.toFfiArgType(): CallQualit
 public fun org.signal.libsignal.net.CallQualitySurvey.toFfiArgTypeObject(): Object =
   convertToObject(this.toFfiArgType())
 
+public sealed class DeviceCapabilityInternal_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_Storage_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.Storage.toFfiArgType(): DeviceCapabilityInternal_Storage_FfiArgType =
+  DeviceCapabilityInternal_Storage_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_Transfer_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.Transfer.toFfiArgType(): DeviceCapabilityInternal_Transfer_FfiArgType =
+  DeviceCapabilityInternal_Transfer_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_AttachmentBackfill_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.AttachmentBackfill.toFfiArgType(): DeviceCapabilityInternal_AttachmentBackfill_FfiArgType =
+  DeviceCapabilityInternal_AttachmentBackfill_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_SparsePostQuantumRatchet_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.SparsePostQuantumRatchet.toFfiArgType(): DeviceCapabilityInternal_SparsePostQuantumRatchet_FfiArgType =
+  DeviceCapabilityInternal_SparsePostQuantumRatchet_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_ProfilesV2_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.ProfilesV2.toFfiArgType(): DeviceCapabilityInternal_ProfilesV2_FfiArgType =
+  DeviceCapabilityInternal_ProfilesV2_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.UsernameChangeSyncMessage.toFfiArgType(): DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType =
+  DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.OptionalPhoneNumber.toFfiArgType(): DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType =
+  DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType
+
+public fun DeviceCapabilityInternal.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is DeviceCapabilityInternal.Storage -> this.toFfiArgType()
+      is DeviceCapabilityInternal.Transfer -> this.toFfiArgType()
+      is DeviceCapabilityInternal.AttachmentBackfill -> this.toFfiArgType()
+      is DeviceCapabilityInternal.SparsePostQuantumRatchet -> this.toFfiArgType()
+      is DeviceCapabilityInternal.ProfilesV2 -> this.toFfiArgType()
+      is DeviceCapabilityInternal.UsernameChangeSyncMessage -> this.toFfiArgType()
+      is DeviceCapabilityInternal.OptionalPhoneNumber -> this.toFfiArgType()
+    },
+  )
+
 public sealed class PaymentProvider_FfiArgType
 
 @CalledFromNative
@@ -1037,6 +1110,28 @@ public object NativeNice {
           asyncCtxHandle.nativeHandle(),
           ffi_chat,
           ffi_username_hashes,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_set_capabilities(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    capabilities: List<org.signal.libsignal.internal.DeviceCapabilityInternal>,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_capabilities =
+      mapBridgeVecArg<Object, org.signal.libsignal.internal.DeviceCapabilityInternal>({
+        (org.signal.libsignal.internal.DeviceCapabilityInternal::toFfiArgTypeObject)(it)
+      })(capabilities)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_capabilities(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_capabilities,
         )
       }
     return ffiOut

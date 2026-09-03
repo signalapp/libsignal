@@ -344,6 +344,29 @@ export type ReturnFfiDeleteBackupMediaOut =
       __type: 3;
     };
 
+export type ReturnFfiDeviceCapabilityInternal =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    }
+  | {
+      __type: 5;
+    }
+  | {
+      __type: 6;
+    };
+
 export type ReturnFfiGetCdnCredentialsOut =
   | {
       __type: 0;
@@ -589,6 +612,10 @@ export type ReturnFfiServerPublicParamsSerialized = {
   bytes: Uint8Array<ArrayBuffer>;
 };
 
+export type ReturnFfiSetCapabilitiesArgs = {
+  capabilities: Array<ReturnFfiDeviceCapabilityInternal>;
+};
+
 export type ReturnFfiSetDeviceNameArgs = {
   id: number;
   encrypted_name: Uint8Array<ArrayBuffer>;
@@ -669,6 +696,29 @@ export type ArgFfiCallQualitySurveyInternal = {
   call_telemetry: Uint8Array<ArrayBuffer> | null;
   call_id_hash: Uint8Array<ArrayBuffer> | null;
 };
+
+export type ArgFfiDeviceCapabilityInternal =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    }
+  | {
+      __type: 5;
+    }
+  | {
+      __type: 6;
+    };
 
 export type ArgFfiMyRemoteDeriveEnum =
   | {
@@ -926,6 +976,11 @@ type NativeFunctions = {
     registration_ids: Uint32Array<ArrayBuffer>,
     contents: Array<Wrapper<CiphertextMessage>>,
     is_urgent: boolean
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_capabilities: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    capabilities: Array<ArgFfiDeviceCapabilityInternal>
   ) => CancellablePromise<void>;
   AuthenticatedChatConnection_set_device_name: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -3084,6 +3139,9 @@ type NativeFunctions = {
   TESTING_RoundTripU64: (input: bigint) => bigint;
   TESTING_RoundTripU8: (input: number) => number;
   TESTING_ServerMessageAck_Create: () => ServerMessageAck;
+  TESTING_SetCapabilitiesTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetCapabilitiesArgs, void>
+  >;
   TESTING_SetDeviceNameTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetDeviceNameArgs, ReturnFfiSetDeviceNameOut>
   >;
@@ -3595,6 +3653,7 @@ const {
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
+  AuthenticatedChatConnection_set_capabilities,
   AuthenticatedChatConnection_set_device_name,
   AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_registration_lock,
@@ -4206,6 +4265,7 @@ const {
   TESTING_RoundTripU64,
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
+  TESTING_SetCapabilitiesTests,
   TESTING_SetDeviceNameTests,
   TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetRegistrationLockTests,
@@ -4374,6 +4434,7 @@ export {
   AuthenticatedChatConnection_send_message,
   AuthenticatedChatConnection_send_raw_grpc,
   AuthenticatedChatConnection_send_sync_message,
+  AuthenticatedChatConnection_set_capabilities,
   AuthenticatedChatConnection_set_device_name,
   AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_registration_lock,
@@ -4985,6 +5046,7 @@ export {
   TESTING_RoundTripU64,
   TESTING_RoundTripU8,
   TESTING_ServerMessageAck_Create,
+  TESTING_SetCapabilitiesTests,
   TESTING_SetDeviceNameTests,
   TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetRegistrationLockTests,

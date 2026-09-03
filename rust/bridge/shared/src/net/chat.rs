@@ -42,7 +42,9 @@ use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
-use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
+use libsignal_net_chat::grpc::devices::{
+    DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
+};
 use libsignal_net_chat::grpc::login_purchase::{PaymentProvider, ReceiptCredentialError};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -1171,6 +1173,17 @@ async fn UnauthenticatedChatConnection_check_svr_credentials(
         .check_svr_credentials(number, credentials.0)
         .await
         .map(|entries| BridgeVec(entries.into_iter().collect()))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_capabilities(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    capabilities: BridgeVec<DeviceCapability>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_capabilities(&capabilities)
+        .await
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]

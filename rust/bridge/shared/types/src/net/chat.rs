@@ -1389,6 +1389,19 @@ pub mod remote_derives {
         /// participants in a call.
         pub call_id_hash: Option<Vec<u8>>,
     }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(remote = libsignal_net_chat::grpc::devices::DeviceCapability)]
+    #[allow(unused)]
+    pub enum DeviceCapabilityInternal {
+        Storage,
+        Transfer,
+        AttachmentBackfill,
+        SparsePostQuantumRatchet,
+        ProfilesV2,
+        UsernameChangeSyncMessage,
+        OptionalPhoneNumber,
+    }
 }
 
 #[cfg(test)]

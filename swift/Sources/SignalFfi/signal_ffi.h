@@ -981,6 +981,20 @@ static_assert_64bit(alignof(SignalCurrencyConversionsInternalFfiResult) == 8);
 typedef const SignalCurrencyConversionsInternalFfiResult* SignalType_ConstPointer_SignalCurrencyConversionsInternalFfiResult;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalCurrencyConversionsInternalFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalCurrencyConversionsInternalFfiResult) == 8);
+typedef enum {
+  SignalDeviceCapabilityInternalFfiArgStorage,
+  SignalDeviceCapabilityInternalFfiArgTransfer,
+  SignalDeviceCapabilityInternalFfiArgAttachmentBackfill,
+  SignalDeviceCapabilityInternalFfiArgSparsePostQuantumRatchet,
+  SignalDeviceCapabilityInternalFfiArgProfilesV2,
+  SignalDeviceCapabilityInternalFfiArgUsernameChangeSyncMessage,
+  SignalDeviceCapabilityInternalFfiArgOptionalPhoneNumber,
+} SignalDeviceCapabilityInternalFfiArg;
+static_assert_64bit(sizeof(SignalDeviceCapabilityInternalFfiArg) == 4);
+static_assert_64bit(alignof(SignalDeviceCapabilityInternalFfiArg) == 4);
+typedef const SignalDeviceCapabilityInternalFfiArg* SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg) == 8);
 typedef struct {
   int32_t cdn;
   SignalType_FixedArray15_uint8_t media_id;
@@ -2727,6 +2741,14 @@ static_assert_64bit(offsetof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfi
 static_assert_64bit(sizeof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg) == 16);
 static_assert_64bit(alignof(SignalBorrowedSliceOfBridgeDeleteBackupMediaItemFfiArg) == 8);
 typedef struct {
+  const SignalDeviceCapabilityInternalFfiArg* base;
+  size_t length;
+} SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg;
+static_assert_64bit(offsetof(SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg, base) == 0);
+static_assert_64bit(offsetof(SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg, length) == 8);
+static_assert_64bit(sizeof(SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg) == 16);
+static_assert_64bit(alignof(SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg) == 8);
+typedef struct {
   const uint32_t* base;
   size_t length;
 } SignalBorrowedSliceOfu32;
@@ -3626,6 +3648,12 @@ SignalFfiError* signal_authenticated_chat_connection_send_sync_message(
   SignalBorrowedSliceOfu32 registration_ids,
   SignalBorrowedSliceOfConstPointerCiphertextMessage contents,
   bool is_urgent
+);
+SignalFfiError* signal_authenticated_chat_connection_set_capabilities(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  SignalBorrowedSliceOfDeviceCapabilityInternalFfiArg capabilities
 );
 SignalFfiError* signal_authenticated_chat_connection_set_device_name(
   SignalCPromisebool* promise,

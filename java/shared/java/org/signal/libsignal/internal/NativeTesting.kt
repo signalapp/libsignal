@@ -614,6 +614,9 @@ public object NativeTesting {
   public external fun TESTING_RoundTripU8(input: Int): Int
 
   @JvmStatic
+  public external fun TESTING_SetCapabilitiesTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_SetDeviceNameTests(): Array<Object>
 
   @JvmStatic

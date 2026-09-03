@@ -289,6 +289,10 @@ public data class ServerPublicParamsSerialized(
   public val bytes: ByteArray,
 )
 
+public data class SetCapabilitiesArgs(
+  public val capabilities: List<org.signal.libsignal.internal.DeviceCapabilityInternal>,
+)
+
 public data class SetDeviceNameArgs(
   public val id: Int,
   public val encryptedName: ByteArray,
@@ -616,6 +620,55 @@ public object DeleteBackupMediaOut_CredentialRejectedWithoutAppropriateServerInf
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
+}
+
+public object DeviceCapabilityInternal_Storage_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.Storage
+}
+
+public object DeviceCapabilityInternal_Transfer_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.Transfer
+}
+
+public object DeviceCapabilityInternal_AttachmentBackfill_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.AttachmentBackfill
+}
+
+public object DeviceCapabilityInternal_SparsePostQuantumRatchet_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.SparsePostQuantumRatchet
+}
+
+public object DeviceCapabilityInternal_ProfilesV2_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ProfilesV2
+}
+
+public object DeviceCapabilityInternal_UsernameChangeSyncMessage_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.UsernameChangeSyncMessage
+}
+
+public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
 }
 
 public object GetCdnCredentialsOut_Success_ReturnConverter {
@@ -1111,6 +1164,19 @@ public object ServerPublicParamsSerialized_ReturnConverter {
     ServerPublicParamsSerialized(
       bytes =
         identity(bytes as ByteArray),
+    )
+}
+
+public object SetCapabilitiesArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(capabilities: Any?): Any? =
+    SetCapabilitiesArgs(
+      capabilities =
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.DeviceCapabilityInternal>({
+          downcastFromObject<org.signal.libsignal.internal.DeviceCapabilityInternal>(it)
+        })(capabilities as Array<*>),
     )
 }
 
@@ -1941,6 +2007,16 @@ public object NativeTestingNice {
       )
 
     return identity(ffiOut)
+  }
+
+  public fun TESTING_SetCapabilitiesTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetCapabilitiesArgs, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetCapabilitiesTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Void?, org.signal.libsignal.internal.SetCapabilitiesArgs, Void?>({
+        downcastFromObject<org.signal.libsignal.internal.SetCapabilitiesArgs>(it)
+      }, { identity(it) })(ffiOut)
   }
 
   public fun TESTING_SetDeviceNameTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetDeviceNameArgs, org.signal.libsignal.internal.SetDeviceNameOut>> {

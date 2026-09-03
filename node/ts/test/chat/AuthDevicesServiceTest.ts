@@ -85,6 +85,22 @@ describe('AuthDevicesService', () => {
     );
   });
 
+  describe('setCapabilities', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetCapabilitiesTests(),
+      connectAuth<AuthDevicesService>,
+      async (
+        chat: AuthDevicesService,
+        args: NativeNice.SetCapabilitiesArgs,
+        _resp: void
+      ) => {
+        await chat.setCapabilities({
+          capabilities: new Set(args.capabilities),
+        });
+      }
+    );
+  });
+
   describe('clearPushToken', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_ClearPushTokenTests(),

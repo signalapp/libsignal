@@ -54,6 +54,11 @@ fn main() {
             ".org.signal.chat.messages.GetMessagesResponse.response",
             "#[expect(clippy::large_enum_variant)]",
         )
+        // Lets tests iterate every capability the server knows about.
+        .type_attribute(
+            ".org.signal.chat.common.DeviceCapability",
+            "#[derive(::strum::EnumIter)]",
+        )
         .compile_fds_with_config(fds, config)
         .expect("can generate code");
 }

@@ -424,6 +424,13 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_capabilities(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    capabilities: Array<*>,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_device_name(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

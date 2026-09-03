@@ -506,7 +506,7 @@ mod remote_derives {
         BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem, BridgeMediaBackupInfo,
         BridgeMessageBackupInfo,
     };
-    use libsignal_net_chat::grpc::devices::LinkedDevice;
+    use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::login_purchase::{
         ChargeFailure, PaymentProvider, ReceiptCredentialError as ReceiptCredentialErrorReal,
     };
@@ -579,6 +579,12 @@ mod remote_derives {
         Success(ReceiptCredential),
         UnexpectedError { contains: String },
         ExplicitError(ReceiptCredentialError),
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::devices::test_cases::SetCapabilitiesArgs)]
+    pub(super) struct SetCapabilitiesArgs {
+        capabilities: BridgeVec<DeviceCapability>,
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
@@ -772,6 +778,11 @@ mod remote_derives {
         pub number: String,
         pub passwords: BridgeVec<String>,
     }
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetCapabilitiesTests() -> GrpcTestCases<remote_derives::SetCapabilitiesArgs, ()> {
+    libsignal_net_chat::grpc::devices::test_cases::set_capabilities_test_cases().into()
 }
 
 #[bridge_fn(nice = true)]
