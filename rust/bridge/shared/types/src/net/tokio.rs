@@ -186,7 +186,7 @@ impl TokioAsyncContext {
         const STALLED_FUTURE_LOG_TIMEOUT: tokio::time::Duration =
             tokio::time::Duration::from_secs(90);
 
-        let _: tokio::task::JoinHandle<()> = self.rt.spawn(async move {
+        drop::<tokio::task::JoinHandle<()>>(self.rt.spawn(async move {
             let start_time = tokio::time::Instant::now();
             let deadline = start_time + STALLED_FUTURE_LOG_TIMEOUT;
             tokio::pin!(future);
@@ -206,7 +206,7 @@ impl TokioAsyncContext {
 
             Self::check_metrics(&handle, label);
 
-            let _: tokio::task::JoinHandle<()> = handle.spawn_blocking(report_fn);
+            drop::<tokio::task::JoinHandle<()>>(handle.spawn_blocking(report_fn));
             // What happens if we don't get here? We leak an entry in the task map. Also, we
             // probably have bigger problems, because in practice all the `bridge_io` futures are
             // supposed to be catching panics.
@@ -217,7 +217,7 @@ impl TokioAsyncContext {
                     .remove(&cancellation_id);
             }
             log::trace!("completed task for {label} with {cancellation_id:?}");
-        });
+        }));
 
         log::trace!("started task for {label} with {cancellation_id:?}");
         cancellation_id
