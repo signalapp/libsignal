@@ -141,6 +141,20 @@ public data class CallQualitySurveyInternal(
 
 */
 
+/*
+// org.signal.libsignal.net.ChargeFailure
+
+public data class ChargeFailure(
+  public val processor: org.signal.libsignal.net.PaymentProvider,
+  public val code: String,
+  public val message: String,
+  public val outcomeNetworkStatus: String?,
+  public val outcomeReason: String?,
+  public val outcomeType: String?,
+)
+
+*/
+
 public data class CopyBackupMediaNextChunk(
   public val chunk: List<org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome>,
   public val termination: Any?,
@@ -194,6 +208,21 @@ public data class ListMediaResponse(
   public val mediaDir: String,
   public val cursor: String?,
 )
+
+*/
+
+/*
+// org.signal.libsignal.net.PaymentProvider
+
+public sealed class PaymentProvider {
+  public data object GooglePlayBilling : PaymentProvider()
+
+  public data object AppleAppStore : PaymentProvider()
+
+  public data object Stripe : PaymentProvider()
+
+  public data object Braintree : PaymentProvider()
+}
 
 */
 
@@ -342,6 +371,34 @@ public object BridgePreKeyCounts_ReturnConverter {
     )
 }
 
+public object ChargeFailure_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    processor: Any?,
+    code: Any?,
+    message: Any?,
+    outcome_network_status: Any?,
+    outcome_reason: Any?,
+    outcome_type: Any?,
+  ): Any? =
+    org.signal.libsignal.net.ChargeFailure(
+      processor =
+        downcastFromObject<org.signal.libsignal.net.PaymentProvider>(processor as Object),
+      code =
+        identity(code as String),
+      message =
+        identity(message as String),
+      outcomeNetworkStatus =
+        identity(outcome_network_status as String?),
+      outcomeReason =
+        identity(outcome_reason as String?),
+      outcomeType =
+        identity(outcome_type as String?),
+    )
+}
+
 public object CopyBackupMediaNextChunk_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -480,6 +537,34 @@ public object ListMediaResponse_ReturnConverter {
       cursor =
         identity(cursor as String?),
     )
+}
+
+public object PaymentProvider_GooglePlayBilling_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.GooglePlayBilling
+}
+
+public object PaymentProvider_AppleAppStore_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.AppleAppStore
+}
+
+public object PaymentProvider_Stripe_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Stripe
+}
+
+public object PaymentProvider_Braintree_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Braintree
 }
 
 @CalledFromNative
@@ -700,6 +785,42 @@ public fun org.signal.libsignal.net.CallQualitySurvey.toFfiArgType(): CallQualit
 
 public fun org.signal.libsignal.net.CallQualitySurvey.toFfiArgTypeObject(): Object =
   convertToObject(this.toFfiArgType())
+
+public sealed class PaymentProvider_FfiArgType
+
+@CalledFromNative
+public object PaymentProvider_GooglePlayBilling_FfiArgType : PaymentProvider_FfiArgType()
+
+public fun org.signal.libsignal.net.PaymentProvider.GooglePlayBilling.toFfiArgType(): PaymentProvider_GooglePlayBilling_FfiArgType =
+  PaymentProvider_GooglePlayBilling_FfiArgType
+
+@CalledFromNative
+public object PaymentProvider_AppleAppStore_FfiArgType : PaymentProvider_FfiArgType()
+
+public fun org.signal.libsignal.net.PaymentProvider.AppleAppStore.toFfiArgType(): PaymentProvider_AppleAppStore_FfiArgType =
+  PaymentProvider_AppleAppStore_FfiArgType
+
+@CalledFromNative
+public object PaymentProvider_Stripe_FfiArgType : PaymentProvider_FfiArgType()
+
+public fun org.signal.libsignal.net.PaymentProvider.Stripe.toFfiArgType(): PaymentProvider_Stripe_FfiArgType =
+  PaymentProvider_Stripe_FfiArgType
+
+@CalledFromNative
+public object PaymentProvider_Braintree_FfiArgType : PaymentProvider_FfiArgType()
+
+public fun org.signal.libsignal.net.PaymentProvider.Braintree.toFfiArgType(): PaymentProvider_Braintree_FfiArgType =
+  PaymentProvider_Braintree_FfiArgType
+
+public fun org.signal.libsignal.net.PaymentProvider.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is org.signal.libsignal.net.PaymentProvider.GooglePlayBilling -> this.toFfiArgType()
+      is org.signal.libsignal.net.PaymentProvider.AppleAppStore -> this.toFfiArgType()
+      is org.signal.libsignal.net.PaymentProvider.Stripe -> this.toFfiArgType()
+      is org.signal.libsignal.net.PaymentProvider.Braintree -> this.toFfiArgType()
+    },
+  )
 
 public object NativeNice {
   public fun AuthenticatedChatConnection_clear_push_token(
@@ -1504,6 +1625,48 @@ public object NativeNice {
             identity(it)
           }, { downcastFromObject<org.signal.libsignal.net.AuthCheckResult>(it) })(it)
         })(it)
+      }
+  }
+
+  public fun UnauthenticatedChatConnection_create_login_receipt_credential(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    paymentProcessor: org.signal.libsignal.net.PaymentProvider,
+    purchaseIdentifier: String,
+    receiptCredentialRequestContext: org.signal.libsignal.zkgroup.receipts.ReceiptCredentialRequestContext,
+    serverParams: org.signal.libsignal.zkgroup.ServerPublicParams,
+    purchaseTime: java.time.Instant,
+  ): CompletableFuture<org.signal.libsignal.zkgroup.receipts.ReceiptCredential> {
+    val ffi_chat = identity(chat)
+    val ffi_payment_processor = (org.signal.libsignal.net.PaymentProvider::toFfiArgTypeObject)(paymentProcessor)
+    val ffi_purchase_identifier = identity(purchaseIdentifier)
+    val ffi_receipt_credential_request_context =
+      (org.signal.libsignal.zkgroup.receipts.ReceiptCredentialRequestContext::getInternalContentsForJNI)(
+        receiptCredentialRequestContext,
+      )
+    val ffi_server_params = identity(serverParams)
+    val ffi_purchase_time = (java.time.Instant::toEpochMilli)(purchaseTime)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_create_login_receipt_credential(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_payment_processor,
+          ffi_purchase_identifier,
+          ffi_receipt_credential_request_context,
+          ffi_server_params,
+          ffi_purchase_time,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.receipts
+              .ReceiptCredential(x)
+          }
+        )(it)
       }
   }
 

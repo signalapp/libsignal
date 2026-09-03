@@ -167,6 +167,9 @@ public object NativeTesting {
   public external fun TESTING_CopyBackupMediaTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_CreateLoginReceiptCredentialTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_CreateOTP(
     username: String,
     secret: ByteArray,

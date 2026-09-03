@@ -104,6 +104,11 @@ export enum ErrorCode {
 
   InvalidReceipt,
   MissingBackupId,
+
+  ReceiptCredentialErrorPaymentStillProcessing,
+  ReceiptCredentialErrorPaymentRequired,
+  ReceiptCredentialErrorPaymentNotFound,
+  ReceiptCredentialErrorReceiptAlreadyIssued,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -146,11 +151,26 @@ export class MismatchedDevicesEntry {
   }
 }
 
+export type PaymentProvider =
+  | 'googlePlayBilling'
+  | 'appleAppStore'
+  | 'stripe'
+  | 'braintree';
+export type ChargeFailure = {
+  processor: PaymentProvider;
+  code: string;
+  message: string;
+  outcomeNetworkStatus: string | null;
+  outcomeReason: string | null;
+  outcomeType: string | null;
+};
+
 export class LibSignalErrorBase extends Error {
   public readonly code: ErrorCode;
   public readonly operation: string;
   readonly _addr?: string | Native.ProtocolAddress;
   readonly _sessionState?: Native.RegistrationSession;
+  readonly _chargeFailure?: ChargeFailure | null;
 
   constructor(
     message: string,
@@ -201,6 +221,12 @@ export class LibSignalErrorBase extends Error {
     );
   }
 
+  public get chargeFailure(): ChargeFailure | null {
+    if (this._chargeFailure === undefined)
+      throw new TypeError(`cannot get ChargeFailure from this error (${this})`);
+    return this._chargeFailure;
+  }
+
   public toString(): string {
     return `${this.name} - ${this.operation}: ${this.message}`;
   }
@@ -225,7 +251,10 @@ export class LibSignalErrorBase extends Error {
   }
 }
 
-export type LibSignalErrorCommon = Omit<LibSignalErrorBase, 'addr'>;
+export type LibSignalErrorCommon = Omit<
+  LibSignalErrorBase,
+  'addr' | 'chargeFailure'
+>;
 
 export type GenericError = LibSignalErrorCommon & {
   code: ErrorCode.Generic;
@@ -552,6 +581,22 @@ export type MissingBackupId = LibSignalErrorCommon & {
   code: ErrorCode.MissingBackupId;
 };
 
+export type ReceiptCredentialErrorPaymentStillProcessing =
+  LibSignalErrorCommon & {
+    code: ErrorCode.ReceiptCredentialErrorPaymentStillProcessing;
+  };
+export type ReceiptCredentialErrorPaymentRequired = LibSignalErrorCommon & {
+  code: ErrorCode.ReceiptCredentialErrorPaymentRequired;
+  readonly chargeFailure: ChargeFailure | null;
+};
+export type ReceiptCredentialErrorPaymentNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.ReceiptCredentialErrorPaymentNotFound;
+};
+export type ReceiptCredentialErrorReceiptAlreadyIssued =
+  LibSignalErrorCommon & {
+    code: ErrorCode.ReceiptCredentialErrorReceiptAlreadyIssued;
+  };
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -626,4 +671,8 @@ export type LibSignalError =
   | UsernameNotSet
   | UsernameReservationNotFound
   | InvalidReceiptError
-  | MissingBackupId;
+  | MissingBackupId
+  | ReceiptCredentialErrorPaymentStillProcessing
+  | ReceiptCredentialErrorPaymentRequired
+  | ReceiptCredentialErrorPaymentNotFound
+  | ReceiptCredentialErrorReceiptAlreadyIssued;

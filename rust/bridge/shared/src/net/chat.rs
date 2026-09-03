@@ -7,7 +7,9 @@ use std::borrow::Cow;
 use std::convert::Infallible;
 use std::time::Duration;
 
+use ::zkgroup::ServerPublicParams;
 use ::zkgroup::groups::GroupSendFullToken;
+use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
 use futures_util::TryStreamExt;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
@@ -41,6 +43,7 @@ use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 use libsignal_net_chat::grpc::devices::{DeviceIdNotFoundInAccount, LinkedDevice};
+use libsignal_net_chat::grpc::login_purchase::{PaymentProvider, ReceiptCredentialError};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
@@ -1168,4 +1171,25 @@ async fn UnauthenticatedChatConnection_check_svr_credentials(
         .check_svr_credentials(number, credentials.0)
         .await
         .map(|entries| BridgeVec(entries.into_iter().collect()))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_create_login_receipt_credential(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    payment_processor: PaymentProvider,
+    purchase_identifier: String,
+    receipt_credential_request_context: ReceiptCredentialRequestContext,
+    server_params: BridgeHandleRef<'_, ServerPublicParams>,
+    purchase_time: Timestamp,
+) -> Result<ReceiptCredential, RequestError<ReceiptCredentialError>> {
+    chat.require_grpc()
+        .await
+        .create_login_receipt_credential(
+            payment_processor,
+            purchase_identifier,
+            &receipt_credential_request_context,
+            &server_params,
+            purchase_time,
+        )
+        .await
 }

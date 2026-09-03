@@ -86,6 +86,10 @@ public enum SignalError: Error {
     case usernameReservationNotFound(String)
     case invalidReceipt(String)
     case missingBackupId(String)
+    case ReceiptCredentialErrorPaymentStillProcessing(String)
+    case ReceiptCredentialErrorPaymentRequired(chargeFailure: ChargeFailure?, message: String)
+    case ReceiptCredentialErrorPaymentNotFound(String)
+    case ReceiptCredentialErrorReceiptAlreadyIssued(String)
 
     case unknown(UInt32, String)
 }
@@ -375,6 +379,18 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.invalidReceipt(errStr)
     case SignalErrorCodeMissingBackupId:
         throw SignalError.missingBackupId(errStr)
+    case SignalErrorCodeReceiptCredentialErrorPaymentStillProcessing:
+        throw SignalError.ReceiptCredentialErrorPaymentStillProcessing(errStr)
+    case SignalErrorCodeReceiptCredentialErrorPaymentRequired:
+        let chargeFailure = try NativeNice.Error_GetChargeFailure(err: error)
+        throw SignalError.ReceiptCredentialErrorPaymentRequired(
+            chargeFailure: chargeFailure,
+            message: errStr
+        )
+    case SignalErrorCodeReceiptCredentialErrorPaymentNotFound:
+        throw SignalError.ReceiptCredentialErrorPaymentNotFound(errStr)
+    case SignalErrorCodeReceiptCredentialErrorReceiptAlreadyIssued:
+        throw SignalError.ReceiptCredentialErrorReceiptAlreadyIssued(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

@@ -67,7 +67,7 @@ macro_rules! nice_identity_arg_converter {
             fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
                 SwiftArgConverter {
                     nice_type: $swift.into(),
-                    converter_type: format!("IdentityConverter<{}>", $swift),
+                    converter_type: format!("IdentityArgConverter<{}>", $swift),
                 }
             }
         }
@@ -82,7 +82,7 @@ macro_rules! nice_identity_result_converter {
             ) -> SwiftReturnConverter {
                 SwiftReturnConverter {
                     nice_type: $swift.into(),
-                    converter_type: format!("IdentityConverter<{}>", $swift),
+                    converter_type: format!("IdentityResultConverter<{}>", $swift),
                 }
             }
         }
@@ -732,6 +732,23 @@ macro_rules! zkgroup_serialize_type {
                 }
             }
         }
+        impl ResultTypeInfo for $ty {
+            type ResultType = <Vec<u8> as ResultTypeInfo>::ResultType;
+            fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+                zkgroup::serialize(&self).convert_into()
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for $ty {
+            fn register_swift_result_converter(
+                _ctx: &mut SwiftMetadataContext,
+            ) -> SwiftReturnConverter {
+                SwiftReturnConverter {
+                    nice_type: $swift_ty.to_string(),
+                    converter_type: format!("ByteArrayConverter<{}>", $swift_ty),
+                }
+            }
+        }
     };
     ($ty:ty, $swift_ty:expr) => {
         zkgroup_serialize_type!($ty, zkgroup::deserialize, $swift_ty);
@@ -746,6 +763,11 @@ zkgroup_serialize_type!(
     zkgroup::generic_server_params::GenericServerPublicParams,
     TryFrom::try_from,
     "GenericServerPublicParams"
+);
+zkgroup_serialize_type!(zkgroup::receipts::ReceiptCredential, "ReceiptCredential");
+zkgroup_serialize_type!(
+    zkgroup::receipts::ReceiptCredentialRequestContext,
+    "ReceiptCredentialRequestContext"
 );
 zkgroup_serialize_type!(
     zkgroup::receipts::ReceiptCredentialPresentation,
@@ -1320,7 +1342,7 @@ impl NiceArgConverter for RandomNumberGenerator {
     fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
         SwiftArgConverter {
             nice_type: "Int64".to_owned(),
-            converter_type: "IdentityConverter".to_owned(),
+            converter_type: "IdentityArgConverter".to_owned(),
         }
     }
 }
@@ -1543,6 +1565,7 @@ impl<'a> ArgTypeInfo<'a> for &'a SignalFfiError {
         unsafe { stored.as_ref() }.expect("non-null checked above")
     }
 }
+nice_identity_arg_converter!(&'_ SignalFfiError, "SignalFfiErrorRef?");
 
 impl<T: BridgeHandle> ResultTypeInfo for T {
     type ResultType = MutPointer<T>;
@@ -2048,33 +2071,8 @@ trivial!(bool, "Bool");
 trivial!(f64, "Double");
 trivial!(f32, "Float");
 
-macro_rules! simple_optional {
+macro_rules! return_optional {
     ($ty:ty) => {
-        impl SimpleArgTypeInfo for Option<$ty> {
-            type ArgType = OptionalOf<<$ty as SimpleArgTypeInfo>::ArgType>;
-
-            fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-                Ok(if foreign.present {
-                    Some(<$ty as SimpleArgTypeInfo>::convert_from(unsafe {
-                        foreign.value.assume_init_read()
-                    })?)
-                } else {
-                    None
-                })
-            }
-        }
-        #[cfg(feature = "metadata")]
-        impl NiceArgConverter for Option<$ty> {
-            fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
-                let opt = <OptionalOf<<$ty as SimpleArgTypeInfo>::ArgType>>::register_c_type(ctx);
-                let opt = opt.swift_name();
-                let ty = <$ty as NiceArgConverter>::register_swift_arg_converter(ctx);
-                SwiftArgConverter {
-                    nice_type: format!("{}?", ty.nice_type),
-                    converter_type: format!("OptionalArgConverter<{}, {opt}>", ty.converter_type),
-                }
-            }
-        }
         impl ResultTypeInfo for Option<$ty> {
             type ResultType = OptionalOf<<$ty as ResultTypeInfo>::ResultType>;
 
@@ -2105,8 +2103,40 @@ macro_rules! simple_optional {
         }
     };
 }
+
+macro_rules! simple_optional {
+    ($ty:ty) => {
+        impl SimpleArgTypeInfo for Option<$ty> {
+            type ArgType = OptionalOf<<$ty as SimpleArgTypeInfo>::ArgType>;
+
+            fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+                Ok(if foreign.present {
+                    Some(<$ty as SimpleArgTypeInfo>::convert_from(unsafe {
+                        foreign.value.assume_init_read()
+                    })?)
+                } else {
+                    None
+                })
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for Option<$ty> {
+            fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+                let opt = <OptionalOf<<$ty as SimpleArgTypeInfo>::ArgType>>::register_c_type(ctx);
+                let opt = opt.swift_name();
+                let ty = <$ty as NiceArgConverter>::register_swift_arg_converter(ctx);
+                SwiftArgConverter {
+                    nice_type: format!("{}?", ty.nice_type),
+                    converter_type: format!("OptionalArgConverter<{}, {opt}>", ty.converter_type),
+                }
+            }
+        }
+        return_optional!($ty);
+    };
+}
 simple_optional!(f32);
 simple_optional!(Vec<u8>);
+return_optional!(libsignal_net_chat::grpc::login_purchase::ChargeFailure);
 
 #[cfg(test)]
 mod test {

@@ -241,6 +241,15 @@ export type ReturnFfiCallQualitySurveyInternal = {
   call_id_hash: Uint8Array<ArrayBuffer> | null;
 };
 
+export type ReturnFfiChargeFailure = {
+  processor: ReturnFfiPaymentProvider;
+  code: string;
+  message: string;
+  outcome_network_status: string | null;
+  outcome_reason: string | null;
+  outcome_type: string | null;
+};
+
 export type ReturnFfiCheckSvrCredentialsArgs = {
   number: string;
   passwords: Array<string>;
@@ -281,6 +290,28 @@ export type ReturnFfiCopyBackupMediaOut =
     }
   | {
       __type: 3;
+    };
+
+export type ReturnFfiCreateLoginReceiptCredentialArgs = {
+  payment_processor: ReturnFfiPaymentProvider;
+  purchase_identifier: string;
+  receipt_credential_request_context: Uint8Array<ArrayBuffer>;
+  server_params: ReturnFfiServerPublicParamsSerialized;
+  purchase_time: Timestamp;
+};
+
+export type ReturnFfiCreateLoginReceiptCredentialOut =
+  | {
+      __type: 0;
+      _0: Uint8Array<ArrayBuffer>;
+    }
+  | {
+      __type: 1;
+      contains: string;
+    }
+  | {
+      __type: 2;
+      _0: ReturnFfiReceiptCredentialError;
     };
 
 export type ReturnFfiCurrencyConversionsInternal = {
@@ -490,6 +521,35 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiPaymentProvider =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiReceiptCredentialError =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      charge_failure: Array<ReturnFfiChargeFailure>;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
 export type ReturnFfiRedeemBackupReceiptOut =
   | {
       __type: 0;
@@ -524,6 +584,10 @@ export type ReturnFfiReserveUsernameHashOut =
   | {
       __type: 1;
     };
+
+export type ReturnFfiServerPublicParamsSerialized = {
+  bytes: Uint8Array<ArrayBuffer>;
+};
 
 export type ReturnFfiSetDeviceNameArgs = {
   id: number;
@@ -668,6 +732,20 @@ export type ArgFfiMyTestStruct = {
   my_numeric_field: number;
   my_string_field: string;
 };
+
+export type ArgFfiPaymentProvider =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
 
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
@@ -2704,6 +2782,12 @@ type NativeFunctions = {
       Array<ReturnFfiCopyBackupMediaOut>
     >
   >;
+  TESTING_CreateLoginReceiptCredentialTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiCreateLoginReceiptCredentialArgs,
+      ReturnFfiCreateLoginReceiptCredentialOut
+    >
+  >;
   TESTING_CreateOTP: (
     username: string,
     secret: Uint8Array<ArrayBuffer>
@@ -3294,6 +3378,15 @@ type NativeFunctions = {
     connection_manager: Wrapper<ConnectionManager>,
     languages: Array<string>
   ) => CancellablePromise<UnauthenticatedChatConnection>;
+  UnauthenticatedChatConnection_create_login_receipt_credential: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    payment_processor: ArgFfiPaymentProvider,
+    purchase_identifier: string,
+    receipt_credential_request_context: Uint8Array<ArrayBuffer>,
+    server_params: Wrapper<ServerPublicParams>,
+    purchase_time: Timestamp
+  ) => CancellablePromise<Uint8Array<ArrayBuffer>>;
   UnauthenticatedChatConnection_disconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>
@@ -4002,6 +4095,7 @@ const {
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
   TESTING_CopyBackupMediaTests,
+  TESTING_CreateLoginReceiptCredentialTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteAccountTests,
@@ -4198,6 +4292,7 @@ const {
   UnauthenticatedChatConnection_backup_set_public_key,
   UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
+  UnauthenticatedChatConnection_create_login_receipt_credential,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
@@ -4779,6 +4874,7 @@ export {
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
   TESTING_CopyBackupMediaTests,
+  TESTING_CreateLoginReceiptCredentialTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteAccountTests,
@@ -4975,6 +5071,7 @@ export {
   UnauthenticatedChatConnection_backup_set_public_key,
   UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
+  UnauthenticatedChatConnection_create_login_receipt_credential,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,

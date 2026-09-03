@@ -56,6 +56,28 @@ public sealed class CopyBackupMediaOut {
   public data object CredentialRejectedWithoutAppropriateServerInfo : CopyBackupMediaOut()
 }
 
+public data class CreateLoginReceiptCredentialArgs(
+  public val paymentProcessor: org.signal.libsignal.net.PaymentProvider,
+  public val purchaseIdentifier: String,
+  public val receiptCredentialRequestContext: org.signal.libsignal.zkgroup.receipts.ReceiptCredentialRequestContext,
+  public val serverParams: org.signal.libsignal.internal.ServerPublicParamsSerialized,
+  public val purchaseTime: java.time.Instant,
+)
+
+public sealed class CreateLoginReceiptCredentialOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.zkgroup.receipts.ReceiptCredential,
+  ) : CreateLoginReceiptCredentialOut()
+
+  public data class UnexpectedError(
+    public val contains: String,
+  ) : CreateLoginReceiptCredentialOut()
+
+  public data class ExplicitError(
+    public val _0: org.signal.libsignal.internal.ReceiptCredentialError,
+  ) : CreateLoginReceiptCredentialOut()
+}
+
 public sealed class DeleteBackupMediaOut {
   public data class Item(
     public val _0: org.signal.libsignal.net.DeleteBackupMediaItem,
@@ -221,6 +243,18 @@ public data class MyTestStruct(
   public val myStringField: String,
 )
 
+public sealed class ReceiptCredentialError {
+  public data object PaymentStillProcessing : ReceiptCredentialError()
+
+  public data class PaymentRequired(
+    public val chargeFailure: List<org.signal.libsignal.net.ChargeFailure>,
+  ) : ReceiptCredentialError()
+
+  public data object PaymentNotFound : ReceiptCredentialError()
+
+  public data object ReceiptAlreadyIssued : ReceiptCredentialError()
+}
+
 public sealed class RedeemBackupReceiptOut {
   public data object Success : RedeemBackupReceiptOut()
 
@@ -250,6 +284,10 @@ public sealed class ReserveUsernameHashOut {
 
   public data object UsernameNotAvailable : ReserveUsernameHashOut()
 }
+
+public data class ServerPublicParamsSerialized(
+  public val bytes: ByteArray,
+)
 
 public data class SetDeviceNameArgs(
   public val id: Int,
@@ -476,6 +514,76 @@ public object CopyBackupMediaOut_CredentialRejectedWithoutAppropriateServerInfo_
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = CopyBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
+}
+
+public object CreateLoginReceiptCredentialArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    payment_processor: Any?,
+    purchase_identifier: Any?,
+    receipt_credential_request_context: Any?,
+    server_params: Any?,
+    purchase_time: Any?,
+  ): Any? =
+    CreateLoginReceiptCredentialArgs(
+      paymentProcessor =
+        downcastFromObject<org.signal.libsignal.net.PaymentProvider>(payment_processor as Object),
+      purchaseIdentifier =
+        identity(purchase_identifier as String),
+      receiptCredentialRequestContext =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.receipts
+              .ReceiptCredentialRequestContext(x)
+          }
+        )(receipt_credential_request_context as ByteArray),
+      serverParams =
+        downcastFromObject<org.signal.libsignal.internal.ServerPublicParamsSerialized>(
+          server_params as Object,
+        ),
+      purchaseTime =
+        (java.time.Instant::ofEpochMilli)(purchase_time as Long),
+    )
+}
+
+public object CreateLoginReceiptCredentialOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    CreateLoginReceiptCredentialOut.Success(
+      _0 =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.receipts
+              .ReceiptCredential(x)
+          }
+        )(_0 as ByteArray),
+    )
+}
+
+public object CreateLoginReceiptCredentialOut_UnexpectedError_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(contains: Any?): Any? =
+    CreateLoginReceiptCredentialOut.UnexpectedError(
+      contains =
+        identity(contains as String),
+    )
+}
+
+public object CreateLoginReceiptCredentialOut_ExplicitError_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    CreateLoginReceiptCredentialOut.ExplicitError(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.ReceiptCredentialError>(_0 as Object),
+    )
 }
 
 public object DeleteBackupMediaOut_Item_ReturnConverter {
@@ -886,6 +994,40 @@ public object MyTestStruct_ReturnConverter {
     )
 }
 
+public object ReceiptCredentialError_PaymentStillProcessing_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ReceiptCredentialError.PaymentStillProcessing
+}
+
+public object ReceiptCredentialError_PaymentRequired_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(charge_failure: Any?): Any? =
+    ReceiptCredentialError.PaymentRequired(
+      chargeFailure =
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.ChargeFailure>({
+          downcastFromObject<org.signal.libsignal.net.ChargeFailure>(it)
+        })(charge_failure as Array<*>),
+    )
+}
+
+public object ReceiptCredentialError_PaymentNotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ReceiptCredentialError.PaymentNotFound
+}
+
+public object ReceiptCredentialError_ReceiptAlreadyIssued_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ReceiptCredentialError.ReceiptAlreadyIssued
+}
+
 public object RedeemBackupReceiptOut_Success_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -959,6 +1101,17 @@ public object ReserveUsernameHashOut_UsernameNotAvailable_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = ReserveUsernameHashOut.UsernameNotAvailable
+}
+
+public object ServerPublicParamsSerialized_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(bytes: Any?): Any? =
+    ServerPublicParamsSerialized(
+      bytes =
+        identity(bytes as ByteArray),
+    )
 }
 
 public object SetDeviceNameArgs_ReturnConverter {
@@ -1422,6 +1575,16 @@ public object NativeTestingNice {
           downcastFromObject<org.signal.libsignal.internal.CopyBackupMediaOut>(it)
         })(it)
       })(ffiOut)
+  }
+
+  public fun TESTING_CreateLoginReceiptCredentialTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.CreateLoginReceiptCredentialArgs, org.signal.libsignal.internal.CreateLoginReceiptCredentialOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_CreateLoginReceiptCredentialTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.CreateLoginReceiptCredentialArgs, org.signal.libsignal.internal.CreateLoginReceiptCredentialOut>({
+        downcastFromObject<org.signal.libsignal.internal.CreateLoginReceiptCredentialArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.CreateLoginReceiptCredentialOut>(it) })(ffiOut)
   }
 
   public fun TESTING_DeleteAccountTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Void?>> {

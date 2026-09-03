@@ -118,6 +118,9 @@ import SignalFfi
     {% endif %}
 {% endfor %}
 
+{% for name in ctx.derived_types_equatable %}
+    extension {{ name }}: Equatable {}
+{% endfor %}
 
 {% for (name, struct_or_enum) in ctx.derived_return_converters|items %}
     {% set nice_type = struct_or_enum.nice_type or name %}

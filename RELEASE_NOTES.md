@@ -6,5 +6,6 @@ v0.102.0
   - `checkSVRCredentials()`
   - `getCurrencyConversions()`
   - `AuthKeysService.getPreKeyCount()`
+  - `createLoginReceiptCredential()`
 - MSRV bumped to 1.93.1
 - registration: Add support for registration without E.164

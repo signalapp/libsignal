@@ -439,17 +439,18 @@ pub(crate) fn derive_bridged_as_value(
     target: &syn::Path,
     nice_type: Option<&str>,
     options: &BridgeAsValueOptions,
+    swift_equatable: bool,
 ) -> syn::Result<TokenStream2> {
     if matches!(input.data, Data::Union(_)) {
         return Err(syn::Error::new_spanned(input, "Unions aren't supported"));
     }
     let result = options
         .result
-        .then(|| derive_bridged_as_value_return(input, target, nice_type))
+        .then(|| derive_bridged_as_value_return(input, target, nice_type, swift_equatable))
         .transpose()?;
     let arg = options
         .arg
-        .then(|| derive_bridged_as_value_arg(input, target, nice_type))
+        .then(|| derive_bridged_as_value_arg(input, target, nice_type, swift_equatable))
         .transpose()?;
     Ok(quote! {
         #result
@@ -457,10 +458,17 @@ pub(crate) fn derive_bridged_as_value(
     })
 }
 
+fn swift_register_equatable(name: &str) -> TokenStream2 {
+    quote! {
+        ctx.derived_types_equatable.insert(#name.to_string());
+    }
+}
+
 fn derive_bridged_as_value_arg(
     input: &DeriveInput,
     target: &syn::Path,
     nice_type: Option<&str>,
+    swift_equatable: bool,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
@@ -536,6 +544,11 @@ fn derive_bridged_as_value_arg(
     let nice_type = nice_type
         .map(|nice_type| quote!(#nice_type))
         .unwrap_or_else(|| quote!(stringify!(#ident)));
+    let swift_register_equatable = if swift_equatable {
+        Some(swift_register_equatable(&input.ident.to_string()))
+    } else {
+        None
+    };
     Ok(quote! {
         #arg_ty_decl
         #[cfg(feature = "ffi")]
@@ -577,6 +590,7 @@ fn derive_bridged_as_value_arg(
                 ctx: &mut #krate::ffi::SwiftMetadataContext
             ) -> #krate::metadata::ffi::SwiftArgConverter {
                 #register_swift_nice_type
+                #swift_register_equatable
                 #register_swift_arg_converter
                 <#arg_ty as #krate::ffi::capi::IsCType>::register_c_type(ctx);
                 #krate::metadata::ffi::SwiftArgConverter {
@@ -593,6 +607,7 @@ fn derive_bridged_as_value_return(
     input: &DeriveInput,
     target: &syn::Path,
     nice_type: Option<&str>,
+    swift_equatable: bool,
 ) -> syn::Result<TokenStream2> {
     let krate = crates::libsignal_bridge_types();
     let ident = &input.ident;
@@ -648,6 +663,11 @@ fn derive_bridged_as_value_return(
     let nice_type = nice_type
         .map(|nice_type| quote!(#nice_type))
         .unwrap_or_else(|| quote!(stringify!(#ident)));
+    let swift_register_equatable = if swift_equatable {
+        Some(swift_register_equatable(&input.ident.to_string()))
+    } else {
+        None
+    };
     Ok(quote! {
         #result_ty_decl
         #[cfg(feature = "ffi")]
@@ -669,6 +689,7 @@ fn derive_bridged_as_value_return(
                 ctx: &mut #krate::metadata::ffi::SwiftMetadataContext
             ) -> #krate::metadata::ffi::SwiftReturnConverter {
                 #register_swift_nice_type
+                #swift_register_equatable
                 #register_swift_result_converter
                 <#result_ty as #krate::ffi::capi::IsCType>::register_c_type(ctx);
                 #krate::metadata::ffi::SwiftReturnConverter {

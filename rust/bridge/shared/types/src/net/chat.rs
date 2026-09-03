@@ -1198,6 +1198,36 @@ pub mod remote_derives {
 
     #[derive(BridgedAsValue)]
     #[bridge(
+        remote = libsignal_net_chat::grpc::login_purchase::PaymentProvider,
+        ffi_nice_type = "PaymentProvider",
+        jni_nice_type = "org.signal.libsignal.net.PaymentProvider",
+    )]
+    #[allow(unused)]
+    pub enum PaymentProvider {
+        GooglePlayBilling,
+        AppleAppStore,
+        Stripe,
+        Braintree,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::login_purchase::ChargeFailure,
+        ffi_nice_type = "ChargeFailure",
+        jni_nice_type = "org.signal.libsignal.net.ChargeFailure",
+    )]
+    #[allow(unused)]
+    pub struct ChargeFailure {
+        pub processor: libsignal_net_chat::grpc::login_purchase::PaymentProvider,
+        pub code: String,
+        pub message: String,
+        pub outcome_network_status: Option<String>,
+        pub outcome_reason: Option<String>,
+        pub outcome_type: Option<String>,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
         remote = libsignal_net_chat::grpc::devices::LinkedDevice,
         ffi_nice_type = "LinkedDevice",
         jni_nice_type = "org.signal.libsignal.net.LinkedDevice",

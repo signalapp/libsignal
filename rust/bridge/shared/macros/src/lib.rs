@@ -608,6 +608,7 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
     let mut jni = true;
     let mut ffi_nice_type = None;
     let mut jni_nice_type = None;
+    let mut swift_equatable = false;
     let mut remote: Option<syn::Path> = None;
     let mut options = util::BridgeAsValueOptions::default();
     for attr in &item.attrs {
@@ -647,6 +648,10 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
                     let flag: LitBool = meta.value()?.parse()?;
                     options.result = flag.value();
                     Ok(())
+                } else if meta.path.is_ident("swift_equatable") {
+                    let flag: LitBool = meta.value()?.parse()?;
+                    swift_equatable = flag.value();
+                    Ok(())
                 } else {
                     Err(meta.error("unrecognized key"))
                 }
@@ -666,6 +671,7 @@ fn derive_bridged_as_value_inner(item: DeriveInput) -> syn::Result<proc_macro2::
             &target,
             ffi_nice_type.as_deref(),
             &options,
+            swift_equatable,
         )?)
     } else {
         None

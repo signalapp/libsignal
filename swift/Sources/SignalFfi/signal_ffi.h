@@ -1979,6 +1979,44 @@ static_assert_64bit(alignof(SignalMutPointerServerSecretParams) == 8);
 typedef SignalMutPointerServerSecretParams* SignalType_MutPointer_SignalMutPointerServerSecretParams;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
+typedef enum {
+  SignalPaymentProviderFfiResultGooglePlayBilling,
+  SignalPaymentProviderFfiResultAppleAppStore,
+  SignalPaymentProviderFfiResultStripe,
+  SignalPaymentProviderFfiResultBraintree,
+} SignalPaymentProviderFfiResult;
+static_assert_64bit(sizeof(SignalPaymentProviderFfiResult) == 4);
+static_assert_64bit(alignof(SignalPaymentProviderFfiResult) == 4);
+typedef struct {
+  SignalPaymentProviderFfiResult processor;
+  const int8_t* code;
+  const int8_t* message;
+  const int8_t* outcome_network_status;
+  const int8_t* outcome_reason;
+  const int8_t* outcome_type;
+} SignalChargeFailureFfiResult;
+static_assert_64bit(offsetof(SignalChargeFailureFfiResult, processor) == 0);
+static_assert_64bit(offsetof(SignalChargeFailureFfiResult, code) == 8);
+static_assert_64bit(offsetof(SignalChargeFailureFfiResult, message) == 16);
+static_assert_64bit(offsetof(SignalChargeFailureFfiResult, outcome_network_status) == 24);
+static_assert_64bit(offsetof(SignalChargeFailureFfiResult, outcome_reason) == 32);
+static_assert_64bit(offsetof(SignalChargeFailureFfiResult, outcome_type) == 40);
+static_assert_64bit(sizeof(SignalChargeFailureFfiResult) == 48);
+static_assert_64bit(alignof(SignalChargeFailureFfiResult) == 8);
+typedef SignalChargeFailureFfiResult MaybeUninitOfChargeFailureFfiResult;
+static_assert_64bit(sizeof(MaybeUninitOfChargeFailureFfiResult) == 48);
+static_assert_64bit(alignof(MaybeUninitOfChargeFailureFfiResult) == 8);
+typedef struct {
+  bool present;
+  MaybeUninitOfChargeFailureFfiResult value;
+} SignalOptionalOfChargeFailureFfiResult;
+static_assert_64bit(offsetof(SignalOptionalOfChargeFailureFfiResult, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfChargeFailureFfiResult, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfChargeFailureFfiResult) == 56);
+static_assert_64bit(alignof(SignalOptionalOfChargeFailureFfiResult) == 8);
+typedef SignalOptionalOfChargeFailureFfiResult* SignalType_MutPointer_SignalOptionalOfChargeFailureFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfChargeFailureFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfChargeFailureFfiResult) == 8);
 typedef SignalOptionalUuid* SignalType_MutPointer_SignalOptionalUuid;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalUuid) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalUuid) == 8);
@@ -3203,6 +3241,10 @@ typedef enum {
   SignalErrorCodeUsernameReservationNotFound = 227,
   SignalErrorCodeInvalidReceipt = 228,
   SignalErrorCodeMissingBackupId = 229,
+  SignalErrorCodeReceiptCredentialErrorPaymentStillProcessing = 230,
+  SignalErrorCodeReceiptCredentialErrorPaymentRequired = 231,
+  SignalErrorCodeReceiptCredentialErrorPaymentNotFound = 232,
+  SignalErrorCodeReceiptCredentialErrorReceiptAlreadyIssued = 233,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);
 static_assert_64bit(alignof(SignalErrorCode) == 4);
@@ -3274,6 +3316,14 @@ static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_telemet
 static_assert_64bit(offsetof(SignalCallQualitySurveyInternalFfiArg, call_id_hash) == 192);
 static_assert_64bit(sizeof(SignalCallQualitySurveyInternalFfiArg) == 216);
 static_assert_64bit(alignof(SignalCallQualitySurveyInternalFfiArg) == 8);
+typedef enum {
+  SignalPaymentProviderFfiArgGooglePlayBilling,
+  SignalPaymentProviderFfiArgAppleAppStore,
+  SignalPaymentProviderFfiArgStripe,
+  SignalPaymentProviderFfiArgBraintree,
+} SignalPaymentProviderFfiArg;
+static_assert_64bit(sizeof(SignalPaymentProviderFfiArg) == 4);
+static_assert_64bit(alignof(SignalPaymentProviderFfiArg) == 4);
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
@@ -4216,6 +4266,10 @@ void signal_error_free(
 );
 SignalFfiError* signal_error_get_address(
   SignalMutPointerProtocolAddress* out,
+  const SignalFfiError* err
+);
+SignalFfiError* signal_error_get_charge_failure(
+  SignalOptionalOfChargeFailureFfiResult* out,
   const SignalFfiError* err
 );
 SignalFfiError* signal_error_get_invalid_protocol_address(
@@ -6202,6 +6256,16 @@ SignalFfiError* signal_unauthenticated_chat_connection_connect(
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerConnectionManager connection_manager,
   SignalBorrowedBytestringArray languages
+);
+SignalFfiError* signal_unauthenticated_chat_connection_create_login_receipt_credential(
+  SignalCPromiseOwnedBuffer* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalPaymentProviderFfiArg payment_processor,
+  const int8_t* purchase_identifier,
+  SignalBorrowedBuffer receipt_credential_request_context,
+  SignalConstPointerServerPublicParams server_params,
+  uint64_t purchase_time
 );
 SignalFfiError* signal_unauthenticated_chat_connection_destroy(
   SignalMutPointerUnauthenticatedChatConnection p

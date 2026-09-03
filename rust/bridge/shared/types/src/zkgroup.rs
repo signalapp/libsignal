@@ -117,6 +117,7 @@ bridge_as_fixed_length_serializable!(UuidCiphertext);
 
 bridge_as_handle!(
     ServerPublicParams,
+    swift_type = "ServerPublicParams",
     jni_class = "org.signal.libsignal.zkgroup.ServerPublicParams",
 );
 bridge_as_handle!(

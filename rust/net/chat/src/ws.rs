@@ -281,10 +281,10 @@ impl ResponseError {
                     if status.is_server_error() {
                         return RequestError::ServerSideError;
                     }
-                    if status.as_u16() == 429 {
-                        if let Some(retry_later) = extract_retry_later(headers) {
-                            return RequestError::RetryLater(retry_later);
-                        }
+                    if status.as_u16() == 429
+                        && let Some(retry_later) = extract_retry_later(headers)
+                    {
+                        return RequestError::RetryLater(retry_later);
                     }
                     if status.as_u16() == 428
                         && allow_rate_limit_errors == AllowRateLimitChallenges::Yes

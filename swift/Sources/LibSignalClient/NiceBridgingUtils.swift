@@ -169,20 +169,9 @@ extension Int8: DefaultInit {}
 extension UInt8: DefaultInit {}
 extension Float: DefaultInit {}
 
-internal struct IdentityConverter<T: DefaultInit>: NiceArgConverter, NiceReturnConverter {
-    typealias NiceArg = T
-    typealias FfiArg = T
-    typealias KeepAlive = ()
+internal enum IdentityResultConverter<T: DefaultInit>: NiceReturnConverter {
     typealias NiceReturn = T
     typealias FfiReturn = T
-
-    static func convertArg(_ arg: T) -> (T, ()?) {
-        (arg, nil)
-    }
-
-    static func convertArgBorrowed<Result>(_ arg: T, _ thunk: (T) throws -> Result) rethrows -> Result {
-        return try thunk(arg)
-    }
 
     static func emptyFfiReturn() -> T {
         return T()
@@ -190,6 +179,19 @@ internal struct IdentityConverter<T: DefaultInit>: NiceArgConverter, NiceReturnC
 
     static func convertReturn(consuming value: T) throws -> T {
         return value
+    }
+}
+internal enum IdentityArgConverter<T>: NiceArgConverter {
+    typealias NiceArg = T
+    typealias FfiArg = T
+    typealias KeepAlive = ()
+
+    static func convertArg(_ arg: T) -> (T, ()?) {
+        (arg, nil)
+    }
+
+    static func convertArgBorrowed<Result>(_ arg: T, _ thunk: (T) throws -> Result) rethrows -> Result {
+        return try thunk(arg)
     }
 }
 
@@ -247,10 +249,20 @@ internal struct BridgeHandleConverter<Ptr: SignalMutPointer, T: NativeHandleOwne
     }
 }
 
-internal struct ByteArrayConverter<T: ByteArray>: NiceArgConverter {
+internal struct ByteArrayConverter<T: ByteArray>: NiceArgConverter, NiceReturnConverter {
+    typealias NiceReturn = T
+    typealias FfiReturn = SignalOwnedBuffer
     typealias NiceArg = T
     typealias FfiArg = SignalBorrowedBuffer
     typealias KeepAlive = NSData
+
+    static func emptyFfiReturn() -> SignalOwnedBuffer {
+        SignalOwnedBuffer()
+    }
+    static func convertReturn(consuming value: SignalOwnedBuffer) throws -> T {
+        let data = try DataConverter.convertReturn(consuming: value)
+        return try T(contents: data)
+    }
 
     static func convertArg(_ arg: T) -> (FfiArg, KeepAlive?) {
         return DataConverter.convertArg(arg.serialize())

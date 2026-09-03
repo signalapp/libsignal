@@ -498,6 +498,8 @@ mod grpc_test_cases;
 use grpc_test_cases::*;
 
 mod remote_derives {
+    use ::zkgroup::ServerPublicParams;
+    use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::ListMediaResponse;
     use libsignal_bridge_types::net::chat::{
@@ -505,9 +507,79 @@ mod remote_derives {
         BridgeMessageBackupInfo,
     };
     use libsignal_net_chat::grpc::devices::LinkedDevice;
+    use libsignal_net_chat::grpc::login_purchase::{
+        ChargeFailure, PaymentProvider, ReceiptCredentialError as ReceiptCredentialErrorReal,
+    };
+    use libsignal_protocol::Timestamp;
     use uuid::Uuid;
 
-    use crate::*;
+    use super::*;
+
+    #[derive(BridgedAsValue)]
+    pub struct ServerPublicParamsSerialized {
+        pub bytes: Vec<u8>,
+    }
+    impl From<ServerPublicParams> for ServerPublicParamsSerialized {
+        fn from(value: ServerPublicParams) -> Self {
+            Self {
+                bytes: ::zkgroup::serialize(&value),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(
+        libsignal_net_chat::grpc::login_purchase::test_cases::CreateLoginReceiptCredentialArgs
+    )]
+    pub struct CreateLoginReceiptCredentialArgs {
+        pub payment_processor: PaymentProvider,
+        pub purchase_identifier: String,
+        pub receipt_credential_request_context: ReceiptCredentialRequestContext,
+        pub server_params: ServerPublicParamsSerialized,
+        pub purchase_time: Timestamp,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(swift_equatable = true)]
+    pub enum ReceiptCredentialError {
+        /// The purchase is still pending with the payment provider. The client may retry later.
+        PaymentStillProcessing,
+        /// The purchase did not complete successfully.
+        PaymentRequired {
+            // BridgeVec because we don't have generic Option impls; it's not worth it to support
+            // it for this test.
+            charge_failure: BridgeVec<ChargeFailure>,
+        },
+        /// The payment provider has no purchase with the provided purchase_identifier
+        PaymentNotFound,
+        /// The purchase was already redeemed for a receipt credential, but with a different receipt
+        /// credential request
+        ReceiptAlreadyIssued,
+    }
+    impl From<ReceiptCredentialErrorReal> for ReceiptCredentialError {
+        fn from(value: ReceiptCredentialErrorReal) -> Self {
+            match value {
+                ReceiptCredentialErrorReal::PaymentStillProcessing => Self::PaymentStillProcessing,
+                ReceiptCredentialErrorReal::PaymentRequired { charge_failure } => {
+                    Self::PaymentRequired {
+                        charge_failure: BridgeVec(charge_failure.map(|x| *x).into_iter().collect()),
+                    }
+                }
+                ReceiptCredentialErrorReal::PaymentNotFound => Self::PaymentNotFound,
+                ReceiptCredentialErrorReal::ReceiptAlreadyIssued => Self::ReceiptAlreadyIssued,
+            }
+        }
+    }
+    #[allow(clippy::large_enum_variant)]
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(
+        libsignal_net_chat::grpc::login_purchase::test_cases::CreateLoginReceiptCredentialOut
+    )]
+    pub enum CreateLoginReceiptCredentialOut {
+        Success(ReceiptCredential),
+        UnexpectedError { contains: String },
+        ExplicitError(ReceiptCredentialError),
+    }
 
     #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::devices::test_cases::SetDeviceNameArgs)]
@@ -897,4 +969,12 @@ fn TESTING_CheckSvrCredentialsTests()
 #[bridge_fn(nice = true)]
 fn TESTING_GetPreKeyCountTests() -> GrpcTestCases<(), BridgePreKeyCounts> {
     libsignal_net_chat::grpc::keys::test_cases::get_pre_key_count_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_CreateLoginReceiptCredentialTests() -> GrpcTestCases<
+    remote_derives::CreateLoginReceiptCredentialArgs,
+    remote_derives::CreateLoginReceiptCredentialOut,
+> {
+    libsignal_net_chat::grpc::login_purchase::test_cases::create_login_receipt_credential_test_cases().into()
 }

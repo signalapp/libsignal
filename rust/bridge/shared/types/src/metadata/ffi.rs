@@ -70,6 +70,7 @@ pub struct SwiftMetadataContext {
     pub fixed_byte_array_lengths: BTreeSet<usize>,
 
     pub derived_types: BTreeMap<String, DerivedType<NiceType>>,
+    pub derived_types_equatable: BTreeSet<String>,
     pub derived_return_converters: BTreeMap<String, DerivedType<SwiftReturnConverter>>,
     pub derived_arg_converters: BTreeMap<String, DerivedType<SwiftArgConverter>>,
 

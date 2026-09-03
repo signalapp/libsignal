@@ -33,6 +33,7 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::login_purchase::ReceiptCredentialError;
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -367,6 +368,58 @@ impl MessageOnlyExceptionJniError for UploadTooLarge {
         ClassName("org.signal.libsignal.net.UploadTooLargeException")
     }
 }
+
+impl JniError for ReceiptCredentialError {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        make_single_message_throwable(
+            env,
+            self.to_string(),
+            ClassName(match self {
+                ReceiptCredentialError::PaymentStillProcessing => {
+                    "org.signal.libsignal.net.CreateLoginReceiptCredentialException$PaymentStillProcessing"
+                }
+                ReceiptCredentialError::PaymentNotFound => {
+                    "org.signal.libsignal.net.CreateLoginReceiptCredentialException$PaymentNotFound"
+                }
+                ReceiptCredentialError::ReceiptAlreadyIssued => {
+                    "org.signal.libsignal.net.CreateLoginReceiptCredentialException$ReceiptAlreadyIssued"
+                }
+                ReceiptCredentialError::PaymentRequired { charge_failure } => {
+                    let message = new_jstring_from_owned_utf8(env, self.to_string())?;
+                    let charge_failure = charge_failure
+                        .clone()
+                        .map(|cf| cf.convert_into(env))
+                        .transpose()?
+                        .unwrap_or_default();
+                    return new_instance(
+                        env,
+                        ClassName(
+                            "org.signal.libsignal.net.CreateLoginReceiptCredentialException$PaymentRequired",
+                        ),
+                        jni_args!((
+                            message => java.lang.String,
+                            charge_failure => org.signal.libsignal.net.ChargeFailure,
+                        ) -> void),
+                    );
+                }
+            }),
+        )
+    }
+}
+#[cfg(feature = "metadata")]
+#[linkme::distributed_slice(crate::metadata::jni::JNI_ITEMS)]
+static _FORCE_CHARGE_FAILURE_CONVERTER_TO_BE_EMITTED: crate::metadata::FnWithModule<
+    crate::metadata::jni::KtMetadataContext,
+> = crate::metadata::FnWithModule {
+    module_path: module_path!(),
+    apply: |ctx| {
+        use libsignal_net_chat::grpc::login_purchase::ChargeFailure;
+        ChargeFailure::register_kt_result_converter(ctx);
+    },
+};
 
 impl MessageOnlyExceptionJniError for BackupAuthCredentialRejected {
     fn exception_class(&self) -> ClassName<'static> {

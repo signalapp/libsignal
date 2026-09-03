@@ -38,6 +38,9 @@ pub mod proto {
                 pub mod keys {
                     tonic::include_proto!("org.signal.chat.keys");
                 }
+                pub mod login_purchase {
+                    tonic::include_proto!("org.signal.chat.purchase");
+                }
                 pub mod messages {
                     tonic::include_proto!("org.signal.chat.messages");
                 }

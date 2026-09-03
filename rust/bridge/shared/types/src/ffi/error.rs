@@ -22,6 +22,7 @@ use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::login_purchase::{ChargeFailure, ReceiptCredentialError};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
@@ -154,6 +155,11 @@ pub enum SignalErrorCode {
     UsernameReservationNotFound = 227,
     InvalidReceipt = 228,
     MissingBackupId = 229,
+
+    ReceiptCredentialErrorPaymentStillProcessing = 230,
+    ReceiptCredentialErrorPaymentRequired = 231,
+    ReceiptCredentialErrorPaymentNotFound = 232,
+    ReceiptCredentialErrorReceiptAlreadyIssued = 233,
 }
 
 pub trait UpcastAsAny {
@@ -217,6 +223,9 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_mismatched_device_errors(&self) -> Result<&[MismatchedDeviceError], WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_charge_failure(&self) -> Result<Option<ChargeFailure>, WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -1367,5 +1376,36 @@ impl IntoFfiError for libsignal_net_chat::grpc::usernames::ConfirmUsernameError 
             ConfirmUsernameError::UsernameNotAvailable => SignalErrorCode::UsernameNotAvailable,
         };
         SimpleError::new(code, self.to_string())
+    }
+}
+
+impl FfiError for ReceiptCredentialError {
+    fn provide_charge_failure(&self) -> Result<Option<ChargeFailure>, WrongErrorKind> {
+        if let ReceiptCredentialError::PaymentRequired { charge_failure } = self {
+            Ok(charge_failure.as_ref().map(|x| (**x).clone()))
+        } else {
+            Err(WrongErrorKind)
+        }
+    }
+
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            ReceiptCredentialError::PaymentStillProcessing => {
+                SignalErrorCode::ReceiptCredentialErrorPaymentStillProcessing
+            }
+            ReceiptCredentialError::PaymentRequired { .. } => {
+                SignalErrorCode::ReceiptCredentialErrorPaymentRequired
+            }
+            ReceiptCredentialError::PaymentNotFound => {
+                SignalErrorCode::ReceiptCredentialErrorPaymentNotFound
+            }
+            ReceiptCredentialError::ReceiptAlreadyIssued => {
+                SignalErrorCode::ReceiptCredentialErrorReceiptAlreadyIssued
+            }
+        }
     }
 }

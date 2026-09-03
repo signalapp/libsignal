@@ -18,6 +18,7 @@ import type {
   ArgFfiMyTestEnum,
   ArgFfiMyTestPoint,
   ArgFfiMyTestStruct,
+  ArgFfiPaymentProvider,
   ReturnFfiAuthCheckResult,
   ReturnFfiBridgeCopyBackupMediaItem,
   ReturnFfiBridgeCopyBackupMediaOutcome,
@@ -27,11 +28,14 @@ import type {
   ReturnFfiBridgeMessageBackupInfo,
   ReturnFfiBridgePreKeyCounts,
   ReturnFfiCallQualitySurveyInternal,
+  ReturnFfiChargeFailure,
   ReturnFfiCheckSvrCredentialsArgs,
   ReturnFfiConfirmUsernameArgs,
   ReturnFfiConfirmUsernameOut,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
+  ReturnFfiCreateLoginReceiptCredentialArgs,
+  ReturnFfiCreateLoginReceiptCredentialOut,
   ReturnFfiCurrencyConversionsInternal,
   ReturnFfiCurrencyInternal,
   ReturnFfiDeleteBackupMediaNextChunk,
@@ -54,11 +58,14 @@ import type {
   ReturnFfiMyTestEnum,
   ReturnFfiMyTestPoint,
   ReturnFfiMyTestStruct,
+  ReturnFfiPaymentProvider,
+  ReturnFfiReceiptCredentialError,
   ReturnFfiRedeemBackupReceiptOut,
   ReturnFfiRemoveDeviceArgs,
   ReturnFfiRemoveDeviceOut,
   ReturnFfiReserveUsernameHashArgs,
   ReturnFfiReserveUsernameHashOut,
+  ReturnFfiServerPublicParamsSerialized,
   ReturnFfiSetDeviceNameArgs,
   ReturnFfiSetDeviceNameOut,
   ReturnFfiSetUsernameLinkArgs,
@@ -159,6 +166,15 @@ export type CallQualitySurveyInternal = {
   callIdHash: Uint8Array<ArrayBuffer> | null;
 };
 
+export type ChargeFailure = {
+  processor: PaymentProvider;
+  code: string;
+  message: string;
+  outcomeNetworkStatus: string | null;
+  outcomeReason: string | null;
+  outcomeType: string | null;
+};
+
 export type CheckSvrCredentialsArgs = {
   number: string;
   passwords: Array<string>;
@@ -188,6 +204,25 @@ export type CopyBackupMediaOut =
   | 'invalidDataInStream'
   | 'credentialRejected'
   | 'credentialRejectedWithoutAppropriateServerInfo';
+
+export type CreateLoginReceiptCredentialArgs = {
+  paymentProcessor: PaymentProvider;
+  purchaseIdentifier: string;
+  receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
+  serverParams: ServerPublicParamsSerialized;
+  purchaseTime: Timestamp;
+};
+
+export type CreateLoginReceiptCredentialOut =
+  | {
+      success: zkgroup.ReceiptCredential;
+    }
+  | {
+      unexpectedError: string;
+    }
+  | {
+      explicitError: ReceiptCredentialError;
+    };
 
 export type CurrencyConversionsInternal = {
   timestampMs: Timestamp;
@@ -340,6 +375,20 @@ export type MyTestStruct = {
   myStringField: string;
 };
 
+export type PaymentProvider =
+  | 'googlePlayBilling'
+  | 'appleAppStore'
+  | 'stripe'
+  | 'braintree';
+
+export type ReceiptCredentialError =
+  | 'paymentStillProcessing'
+  | {
+      paymentRequired: Array<ChargeFailure>;
+    }
+  | 'paymentNotFound'
+  | 'receiptAlreadyIssued';
+
 export type RedeemBackupReceiptOut =
   | 'success'
   | 'invalidReceipt'
@@ -361,6 +410,10 @@ export type ReserveUsernameHashOut =
       success: Uint8Array<ArrayBuffer>;
     }
   | 'usernameNotAvailable';
+
+export type ServerPublicParamsSerialized = {
+  bytes: Uint8Array<ArrayBuffer>;
+};
 
 export type SetDeviceNameArgs = {
   id: number;
@@ -540,6 +593,19 @@ export function returnConverterCallQualitySurveyInternal(
   };
 }
 
+export function returnConverterChargeFailure(
+  ffiInput: Native.ReturnFfiChargeFailure
+): ChargeFailure {
+  return {
+    processor: returnConverterPaymentProvider(ffiInput.processor),
+    code: identity(ffiInput.code),
+    message: identity(ffiInput.message),
+    outcomeNetworkStatus: liftNull(identity)(ffiInput.outcome_network_status),
+    outcomeReason: liftNull(identity)(ffiInput.outcome_reason),
+    outcomeType: liftNull(identity)(ffiInput.outcome_type),
+  };
+}
+
 export function returnConverterCheckSvrCredentialsArgs(
   ffiInput: Native.ReturnFfiCheckSvrCredentialsArgs
 ): CheckSvrCredentialsArgs {
@@ -605,6 +671,49 @@ export function returnConverterCopyBackupMediaOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for CopyBackupMediaOut');
+  }
+}
+
+export function returnConverterCreateLoginReceiptCredentialArgs(
+  ffiInput: Native.ReturnFfiCreateLoginReceiptCredentialArgs
+): CreateLoginReceiptCredentialArgs {
+  return {
+    paymentProcessor: returnConverterPaymentProvider(
+      ffiInput.payment_processor
+    ),
+    purchaseIdentifier: identity(ffiInput.purchase_identifier),
+    receiptCredentialRequestContext: ((x) =>
+      new zkgroup.ReceiptCredentialRequestContext(x))(
+      ffiInput.receipt_credential_request_context
+    ),
+    serverParams: returnConverterServerPublicParamsSerialized(
+      ffiInput.server_params
+    ),
+    purchaseTime: identity(ffiInput.purchase_time),
+  };
+}
+
+export function returnConverterCreateLoginReceiptCredentialOut(
+  ffiInput: Native.ReturnFfiCreateLoginReceiptCredentialOut
+): CreateLoginReceiptCredentialOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: ((x) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
+      };
+    case 1:
+      return {
+        unexpectedError: identity(ffiInput.contains),
+      };
+    case 2:
+      return {
+        explicitError: returnConverterReceiptCredentialError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for CreateLoginReceiptCredentialOut'
+      );
   }
 }
 
@@ -941,6 +1050,49 @@ export function returnConverterMyTestStruct(
   };
 }
 
+export function returnConverterPaymentProvider(
+  ffiInput: Native.ReturnFfiPaymentProvider
+): PaymentProvider {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'googlePlayBilling';
+    case 1:
+      return 'appleAppStore';
+    case 2:
+      return 'stripe';
+    case 3:
+      return 'braintree';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for PaymentProvider');
+  }
+}
+
+export function returnConverterReceiptCredentialError(
+  ffiInput: Native.ReturnFfiReceiptCredentialError
+): ReceiptCredentialError {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'paymentStillProcessing';
+    case 1:
+      return {
+        paymentRequired: ((arr: Array<ReturnFfiChargeFailure>) =>
+          arr.map(returnConverterChargeFailure))(ffiInput.charge_failure),
+      };
+    case 2:
+      return 'paymentNotFound';
+    case 3:
+      return 'receiptAlreadyIssued';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for ReceiptCredentialError'
+      );
+  }
+}
+
 export function returnConverterRedeemBackupReceiptOut(
   ffiInput: Native.ReturnFfiRedeemBackupReceiptOut
 ): RedeemBackupReceiptOut {
@@ -1010,6 +1162,14 @@ export function returnConverterReserveUsernameHashOut(
         'Unknown FFI return enum type for ReserveUsernameHashOut'
       );
   }
+}
+
+export function returnConverterServerPublicParamsSerialized(
+  ffiInput: Native.ReturnFfiServerPublicParamsSerialized
+): ServerPublicParamsSerialized {
+  return {
+    bytes: identity(ffiInput.bytes),
+  };
 }
 
 export function returnConverterSetDeviceNameArgs(
@@ -1296,6 +1456,29 @@ export function argConverterMyTestStruct(
     my_numeric_field: identity(my_numeric_field),
     my_string_field: identity(my_string_field),
   };
+}
+
+export function argConverterPaymentProvider(
+  niceInput: PaymentProvider
+): Native.ArgFfiPaymentProvider {
+  if (niceInput === 'googlePlayBilling') {
+    return { __type: 0 };
+  }
+
+  if (niceInput === 'appleAppStore') {
+    return { __type: 1 };
+  }
+
+  if (niceInput === 'stripe') {
+    return { __type: 2 };
+  }
+
+  if (niceInput === 'braintree') {
+    return { __type: 3 };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on PaymentProvider argument');
 }
 
 export async function AuthenticatedChatConnection_clear_push_token({
@@ -1815,6 +1998,18 @@ export function TESTING_CopyBackupMediaTests(): Array<
     (arr: Array<ReturnFfiCopyBackupMediaOut>) =>
       arr.map(returnConverterCopyBackupMediaOut)
   )(Native.TESTING_CopyBackupMediaTests());
+}
+
+export function TESTING_CreateLoginReceiptCredentialTests(): Array<
+  GrpcTestCase<
+    CreateLoginReceiptCredentialArgs,
+    CreateLoginReceiptCredentialOut
+  >
+> {
+  return grpcTestCaseConverter(
+    returnConverterCreateLoginReceiptCredentialArgs,
+    returnConverterCreateLoginReceiptCredentialOut
+  )(Native.TESTING_CreateLoginReceiptCredentialTests());
 }
 
 export function TESTING_DeleteAccountTests(): Array<GrpcTestCase<void, void>> {
@@ -3243,6 +3438,42 @@ export async function UnauthenticatedChatConnection_check_svr_credentials({
         identity(chat),
         identity(number),
         ((arr: Array<string>) => arr.map(identity))(credentials)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_create_login_receipt_credential({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  paymentProcessor: payment_processor,
+  purchaseIdentifier: purchase_identifier,
+  receiptCredentialRequestContext: receipt_credential_request_context,
+  serverParams: server_params,
+  purchaseTime: purchase_time,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  paymentProcessor: PaymentProvider;
+  purchaseIdentifier: string;
+  receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
+  serverParams: Native.Wrapper<Native.ServerPublicParams>;
+  purchaseTime: Timestamp;
+}): Promise<zkgroup.ReceiptCredential> {
+  return ((x) => new zkgroup.ReceiptCredential(x))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_create_login_receipt_credential(
+        asyncContext,
+        identity(chat),
+        argConverterPaymentProvider(payment_processor),
+        identity(purchase_identifier),
+        ByteArray.prototype.getContents.call(
+          receipt_credential_request_context
+        ),
+        identity(server_params),
+        identity(purchase_time)
       )
     )
   );

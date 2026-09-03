@@ -83,7 +83,7 @@ struct NativeTestingNiceTests {
     }
     @Test
     func testBool() throws {
-        try IdentityConverter<Bool>.testConversion(
+        try IdentityArgConverter<Bool>.testConversion(
             items: [true, false],
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_bool_to_string(x: $0) },
@@ -93,7 +93,7 @@ struct NativeTestingNiceTests {
     }
     @Test
     func testU8() throws {
-        try IdentityConverter<UInt8>.testConversion(
+        try IdentityArgConverter<UInt8>.testConversion(
             items: UInt8.min...UInt8.max,
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_u8_to_string(x: $0) },
@@ -103,7 +103,7 @@ struct NativeTestingNiceTests {
     }
     @Test
     func testU16() throws {
-        try IdentityConverter<UInt16>.testConversion(
+        try IdentityArgConverter<UInt16>.testConversion(
             items: UInt16.min...UInt16.max,
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_u16_to_string(x: $0) },
@@ -113,7 +113,7 @@ struct NativeTestingNiceTests {
     }
     @Test
     func testI32() throws {
-        try IdentityConverter<Int32>.testConversion(
+        try IdentityArgConverter<Int32>.testConversion(
             items: -1024...1024,
             toString: { "\($0)" },
             nativeToString: { try NativeTestingNice.TESTING_conversion_i32_to_string(x: $0) },
@@ -367,7 +367,7 @@ struct NativeTestingNiceTests {
 
     @Test
     func testFloat() throws {
-        try IdentityConverter<Float>
+        try IdentityArgConverter<Float>
             .testConversion(
                 items: testFloats,
                 toString: float2str,
@@ -379,7 +379,7 @@ struct NativeTestingNiceTests {
 
     @Test
     func testOptionalFloat() throws {
-        try OptionalArgConverter<IdentityConverter<Float>, SignalOptionalOff32>
+        try OptionalArgConverter<IdentityArgConverter<Float>, SignalOptionalOff32>
             .testConversion(
                 items: testFloats + [nil],
                 toString: {

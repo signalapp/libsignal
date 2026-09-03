@@ -723,6 +723,9 @@ static_assert_64bit(alignof(SignalBridgeCopyBackupMediaItemFfiResult) == 8);
 typedef SignalBridgeCopyBackupMediaItemFfiResult* SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeCopyBackupMediaItemFfiResult) == 8);
+typedef SignalChargeFailureFfiResult* SignalType_MutPointer_SignalChargeFailureFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
 typedef struct {
   const int8_t* number;
   SignalOwnedBufferOfMaxAlignedCStringPtr passwords;
@@ -755,6 +758,77 @@ typedef struct {
 } SignalConfirmUsernameOutFfiResult;
 static_assert_64bit(sizeof(SignalConfirmUsernameOutFfiResult) == 20);
 static_assert_64bit(alignof(SignalConfirmUsernameOutFfiResult) == 4);
+typedef struct {
+  SignalOwnedBuffer bytes;
+} SignalServerPublicParamsSerializedFfiResult;
+static_assert_64bit(offsetof(SignalServerPublicParamsSerializedFfiResult, bytes) == 0);
+static_assert_64bit(sizeof(SignalServerPublicParamsSerializedFfiResult) == 16);
+static_assert_64bit(alignof(SignalServerPublicParamsSerializedFfiResult) == 8);
+typedef struct {
+  SignalPaymentProviderFfiResult payment_processor;
+  const int8_t* purchase_identifier;
+  SignalOwnedBuffer receipt_credential_request_context;
+  SignalServerPublicParamsSerializedFfiResult server_params;
+  uint64_t purchase_time;
+} SignalCreateLoginReceiptCredentialArgsFfiResult;
+static_assert_64bit(offsetof(SignalCreateLoginReceiptCredentialArgsFfiResult, payment_processor) == 0);
+static_assert_64bit(offsetof(SignalCreateLoginReceiptCredentialArgsFfiResult, purchase_identifier) == 8);
+static_assert_64bit(offsetof(SignalCreateLoginReceiptCredentialArgsFfiResult, receipt_credential_request_context) == 16);
+static_assert_64bit(offsetof(SignalCreateLoginReceiptCredentialArgsFfiResult, server_params) == 32);
+static_assert_64bit(offsetof(SignalCreateLoginReceiptCredentialArgsFfiResult, purchase_time) == 48);
+static_assert_64bit(sizeof(SignalCreateLoginReceiptCredentialArgsFfiResult) == 56);
+static_assert_64bit(alignof(SignalCreateLoginReceiptCredentialArgsFfiResult) == 8);
+typedef struct {
+  SignalChargeFailureFfiResult* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult) == 8);
+typedef enum {
+  SignalReceiptCredentialErrorFfiResultPaymentStillProcessing,
+  SignalReceiptCredentialErrorFfiResultPaymentRequired,
+  SignalReceiptCredentialErrorFfiResultPaymentNotFound,
+  SignalReceiptCredentialErrorFfiResultReceiptAlreadyIssued,
+} SignalReceiptCredentialErrorFfiResult_Tag;
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult charge_failure;
+} SignalReceiptCredentialErrorFfiResultSignalPaymentRequired_Body;
+typedef struct {
+  SignalReceiptCredentialErrorFfiResult_Tag tag;
+  union {
+    SignalReceiptCredentialErrorFfiResultSignalPaymentRequired_Body payment_required;
+  };
+} SignalReceiptCredentialErrorFfiResult;
+static_assert_64bit(sizeof(SignalReceiptCredentialErrorFfiResult) == 32);
+static_assert_64bit(alignof(SignalReceiptCredentialErrorFfiResult) == 8);
+typedef enum {
+  SignalCreateLoginReceiptCredentialOutFfiResultSuccess,
+  SignalCreateLoginReceiptCredentialOutFfiResultUnexpectedError,
+  SignalCreateLoginReceiptCredentialOutFfiResultExplicitError,
+} SignalCreateLoginReceiptCredentialOutFfiResult_Tag;
+typedef struct {
+  SignalOwnedBuffer _0;
+} SignalCreateLoginReceiptCredentialOutFfiResultSignalSuccess_Body;
+typedef struct {
+  const int8_t* contains;
+} SignalCreateLoginReceiptCredentialOutFfiResultSignalUnexpectedError_Body;
+typedef struct {
+  SignalReceiptCredentialErrorFfiResult _0;
+} SignalCreateLoginReceiptCredentialOutFfiResultSignalExplicitError_Body;
+typedef struct {
+  SignalCreateLoginReceiptCredentialOutFfiResult_Tag tag;
+  union {
+    SignalCreateLoginReceiptCredentialOutFfiResultSignalSuccess_Body success;
+    SignalCreateLoginReceiptCredentialOutFfiResultSignalUnexpectedError_Body unexpected_error;
+    SignalCreateLoginReceiptCredentialOutFfiResultSignalExplicitError_Body explicit_error;
+  };
+} SignalCreateLoginReceiptCredentialOutFfiResult;
+static_assert_64bit(sizeof(SignalCreateLoginReceiptCredentialOutFfiResult) == 40);
+static_assert_64bit(alignof(SignalCreateLoginReceiptCredentialOutFfiResult) == 8);
 typedef enum {
   SignalGetCdnCredentialsOutFfiResultSuccess,
   SignalGetCdnCredentialsOutFfiResultCredentialRejected,
@@ -1524,6 +1598,9 @@ SignalFfiError* signal_testing_convert_optional_uuid(
   bool present
 );
 SignalFfiError* signal_testing_copy_backup_media_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_create_login_receipt_credential_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_create_otp(

@@ -281,6 +281,9 @@ fn main() -> anyhow::Result<()> {
             }
         }
     }
+    testing_ctx
+        .derived_types_equatable
+        .retain(|x| !non_testing_ctx.derived_types_equatable.contains(x));
 
     if args.dump_json {
         println!(

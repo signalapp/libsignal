@@ -3240,6 +3240,17 @@ internal object Native {
   ): CompletableFuture<ObjectHandle>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_create_login_receipt_credential(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    paymentProcessor: Object,
+    purchaseIdentifier: String,
+    receiptCredentialRequestContext: ByteArray,
+    serverParams: SimpleOwner,
+    purchaseTime: Long,
+  ): CompletableFuture<ByteArray>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_disconnect(
     asyncRuntime: ObjectHandle,
     chat: ObjectHandle,

@@ -14,6 +14,7 @@ use libsignal_core::ProtocolAddress;
 use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::api::messages::MismatchedDeviceError;
+use libsignal_net_chat::grpc::login_purchase::ChargeFailure;
 use uuid::Uuid;
 
 // Not using bridge_fn because it also handles `NULL`.
@@ -179,5 +180,14 @@ fn Error_GetMismatchedDeviceErrors(
         IllegalArgumentError::new(format!(
             "cannot get mismatched device errors from error ({err})"
         ))
+    })
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn Error_GetChargeFailure(
+    err: &SignalFfiError,
+) -> Result<Option<ChargeFailure>, IllegalArgumentError> {
+    err.provide_charge_failure().map_err(|_| {
+        IllegalArgumentError::new(format!("cannot get charge failure from error ({err})"))
     })
 }

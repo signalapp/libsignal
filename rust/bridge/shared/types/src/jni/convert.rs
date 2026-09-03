@@ -725,6 +725,27 @@ macro_rules! zkgroup_serialize_type {
                 }
             }
         }
+
+        impl<'a> ResultTypeInfo<'a> for $ty {
+            type ResultType = JByteArray<'a>;
+            fn convert_into(
+                self,
+                env: &mut jni::Env<'a>,
+            ) -> Result<Self::ResultType, BridgeLayerError> {
+                zkgroup::serialize(&self).convert_into(env)
+            }
+        }
+
+        #[cfg(feature = "metadata")]
+        impl NiceResultConverter for $ty {
+            fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+                KtReturnConverter {
+                    nice_type: $cls.to_string(),
+                    ffi_type: "ByteArray".to_string(),
+                    converter_function: format!("({{ x: ByteArray -> {}(x) }})", $cls),
+                }
+            }
+        }
     };
     ($ty:ty, $cls:expr) => {
         zkgroup_serialize_type!($ty, zkgroup::deserialize, $cls);
@@ -742,6 +763,14 @@ zkgroup_serialize_type!(
     zkgroup::generic_server_params::GenericServerPublicParams,
     TryFrom::try_from,
     "org.signal.libsignal.zkgroup.GenericServerPublicParams"
+);
+zkgroup_serialize_type!(
+    zkgroup::receipts::ReceiptCredential,
+    "org.signal.libsignal.zkgroup.receipts.ReceiptCredential"
+);
+zkgroup_serialize_type!(
+    zkgroup::receipts::ReceiptCredentialRequestContext,
+    "org.signal.libsignal.zkgroup.receipts.ReceiptCredentialRequestContext"
 );
 zkgroup_serialize_type!(
     zkgroup::receipts::ReceiptCredentialPresentation,
