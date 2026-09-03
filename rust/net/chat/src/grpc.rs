@@ -16,6 +16,7 @@ pub mod login_purchase;
 mod messages;
 pub mod payments;
 mod profiles;
+pub mod stickers;
 pub mod usernames;
 
 use std::convert::Infallible;
@@ -34,7 +35,9 @@ use libsignal_net_grpc::proto::google;
 use prost::Message as _;
 use tonic::codegen::StdError;
 
-use crate::api::{ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError};
+use crate::api::{
+    ChallengeOption, DisconnectedError, RateLimitChallenge, RequestError, S3UploadForm,
+};
 use crate::logging::{DebugAsStrOrBytes, Redact, RedactHex};
 use crate::stream_util::take_until_first_error;
 
@@ -709,6 +712,34 @@ impl TryFrom<ChallengeRequiredProto> for RateLimitChallenge {
             retry_later: retry_after_seconds.map(|seconds| RetryLater {
                 retry_after_seconds: seconds.try_into().unwrap_or(u32::MAX),
             }),
+        })
+    }
+}
+
+impl TryFrom<libsignal_net_grpc::proto::chat::common::S3UploadForm> for S3UploadForm {
+    type Error = RequestError<std::convert::Infallible>;
+
+    fn try_from(
+        value: libsignal_net_grpc::proto::chat::common::S3UploadForm,
+    ) -> Result<Self, Self::Error> {
+        let libsignal_net_grpc::proto::chat::common::S3UploadForm {
+            key,
+            credential,
+            acl,
+            algorithm,
+            date,
+            policy,
+            signature,
+        } = value;
+        // If we want to validate any of these fields, here's where we'd do it.
+        Ok(S3UploadForm {
+            key,
+            credential,
+            acl,
+            algorithm,
+            date,
+            policy,
+            signature,
         })
     }
 }

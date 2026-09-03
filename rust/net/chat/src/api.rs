@@ -196,6 +196,34 @@ pub struct UploadForm {
     pub signed_upload_url: String,
 }
 
+// The upload form for CDN0 is different because S3 uses a POST-based API.
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq, Eq))]
+pub struct S3UploadForm {
+    // The S3 key (i.e. path and filename) for the uploaded file.
+    pub key: String,
+
+    // A scoped credential. Includes the AWS access key, date, region targeted,
+    // and AWS service.
+    pub credential: String,
+
+    // The type of access control for the uploaded file.
+    pub acl: String,
+
+    // The algorithm used to calculate a signature on the S3 policy.
+    pub algorithm: String,
+
+    // The timestamp (formatted as "yyyyMMdd'T'HHmmssX") at which the S3 policy
+    // and signature were generated.
+    pub date: String,
+
+    // The S3 policy (as a base64-encoded JSON string) used to upload the file.
+    pub policy: String,
+
+    // A digital signature (formatted as a hex string) on the S3 policy.
+    pub signature: String,
+}
+
 /// A convenience trait covering all Chat APIs.
 ///
 /// This should be extended to include any new submodules' traits.
