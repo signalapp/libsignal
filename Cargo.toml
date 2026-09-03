@@ -216,6 +216,8 @@ test-case = "3.3"
 test-log = "0.2.16"
 testing_logger = "0.1.1"
 thiserror = "2.0.11"
+# 1.13.0 doesn't build without the `std` feature; remove the upper bound once that's fixed upstream.
+tinyvec = { version = ">=1.11.0, <1.13.0", default-features = false }
 tls-parser = "0.12.2"
 tokio = "1.52.2"
 tokio-socks = "0.5.2"

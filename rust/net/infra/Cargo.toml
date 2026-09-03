@@ -74,6 +74,7 @@ snow = { workspace = true, default-features = true }
 socks5-server = { workspace = true }
 test-case = { workspace = true }
 test-log = { workspace = true }
+tinyvec = { workspace = true }
 tls-parser = { workspace = true }
 tokio = { workspace = true, features = ["test-util", "io-std", "rt-multi-thread"] }
 warp = { workspace = true, features = ["server"] }
