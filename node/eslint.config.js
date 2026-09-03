@@ -76,8 +76,6 @@ const config = defineConfig(
       ],
       '@typescript-eslint/no-non-null-assertion': 'error',
 
-      '@typescript-eslint/no-redeclare': 'error',
-
       '@typescript-eslint/no-shadow': [
         'error',
         {
