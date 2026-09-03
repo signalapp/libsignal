@@ -336,7 +336,7 @@ class UnauthBackupsServiceTest {
           when (expected) {
             is GetMessageBackupInfoOut.Success ->
               assertEquals(
-                MessageBackupInfo.fromInternal(expected._0),
+                expected._0,
                 assertIs<RequestResult.Success<MessageBackupInfo>>(actual).result,
               )
             GetMessageBackupInfoOut.CredentialRejected ->
@@ -367,7 +367,7 @@ class UnauthBackupsServiceTest {
           when (expected) {
             is GetMediaBackupInfoOut.Success ->
               assertEquals(
-                MediaBackupInfo.fromInternal(expected._0),
+                expected._0,
                 assertIs<RequestResult.Success<MediaBackupInfo>>(actual).result,
               )
             GetMediaBackupInfoOut.CredentialRejected ->
@@ -551,7 +551,7 @@ class UnauthBackupsServiceTest {
           when (expected) {
             is ListMediaOut.Page ->
               assertEquals(
-                ListBackupMediaResponse.fromInternal(expected._0),
+                expected._0,
                 assertIs<RequestResult.Success<ListBackupMediaResponse>>(actual).result,
               )
             ListMediaOut.CredentialRejected ->

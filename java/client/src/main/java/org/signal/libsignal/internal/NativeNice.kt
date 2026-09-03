@@ -37,6 +37,9 @@ public sealed class AuthCheckResult {
 
 */
 
+/*
+// org.signal.libsignal.net.CopyBackupMediaItem
+
 public data class BridgeCopyBackupMediaItem(
   public val sourceAttachmentCdn: Int,
   public val sourceKey: String,
@@ -44,6 +47,8 @@ public data class BridgeCopyBackupMediaItem(
   public val mediaId: ByteArray,
   public val encryptionKey: ByteArray,
 )
+
+*/
 
 public data class BridgeCopyBackupMediaOutcome(
   public val mediaId: ByteArray,
@@ -62,10 +67,18 @@ public sealed class BridgeCopyBackupMediaResult {
   public data object OutOfSpace : BridgeCopyBackupMediaResult()
 }
 
+/*
+// org.signal.libsignal.net.DeleteBackupMediaItem
+
 public data class BridgeDeleteBackupMediaItem(
   public val mediaId: ByteArray,
   public val cdn: Int,
 )
+
+*/
+
+/*
+// org.signal.libsignal.net.MediaBackupInfo
 
 public data class BridgeMediaBackupInfo(
   public val backupDir: String,
@@ -73,11 +86,21 @@ public data class BridgeMediaBackupInfo(
   public val usedSpace: Long,
 )
 
+*/
+
+/*
+// org.signal.libsignal.net.MessageBackupInfo
+
 public data class BridgeMessageBackupInfo(
   public val backupDir: String,
   public val cdn: Int,
   public val backupName: String,
 )
+
+*/
+
+/*
+// org.signal.libsignal.net.PreKeyCounts
 
 public data class BridgePreKeyCounts(
   public val aciEcPreKeyCount: Int,
@@ -85,6 +108,8 @@ public data class BridgePreKeyCounts(
   public val pniEcPreKeyCount: Int,
   public val pniKemPreKeyCount: Int,
 )
+
+*/
 
 /*
 // org.signal.libsignal.net.CallQualitySurvey
@@ -132,7 +157,7 @@ public data class CurrencyInternal(
 )
 
 public data class DeleteBackupMediaNextChunk(
-  public val chunk: List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>,
+  public val chunk: List<org.signal.libsignal.net.DeleteBackupMediaItem>,
   public val termination: Any?,
 )
 
@@ -149,18 +174,28 @@ public data class LinkedDeviceInternal(
 
 */
 
+/*
+// org.signal.libsignal.net.ListBackupMediaResponse.Item
+
 public data class ListMediaItem(
   public val cdn: Int,
   public val mediaId: ByteArray,
   public val objectLength: Long,
 )
 
+*/
+
+/*
+// org.signal.libsignal.net.ListBackupMediaResponse
+
 public data class ListMediaResponse(
-  public val items: List<org.signal.libsignal.internal.ListMediaItem>,
+  public val items: List<org.signal.libsignal.net.ListBackupMediaResponse.Item>,
   public val backupDir: String,
   public val mediaDir: String,
   public val cursor: String?,
 )
+
+*/
 
 public object AuthCheckResult_Match_ReturnConverter {
   @CalledFromNative
@@ -239,7 +274,7 @@ public object BridgeDeleteBackupMediaItem_ReturnConverter {
     media_id: Any?,
     cdn: Any?,
   ): Any? =
-    BridgeDeleteBackupMediaItem(
+    org.signal.libsignal.net.DeleteBackupMediaItem(
       mediaId =
         identity(media_id as ByteArray),
       cdn =
@@ -256,7 +291,7 @@ public object BridgeMediaBackupInfo_ReturnConverter {
     media_dir: Any?,
     used_space: Any?,
   ): Any? =
-    BridgeMediaBackupInfo(
+    org.signal.libsignal.net.MediaBackupInfo(
       backupDir =
         identity(backup_dir as String),
       mediaDir =
@@ -275,7 +310,7 @@ public object BridgeMessageBackupInfo_ReturnConverter {
     cdn: Any?,
     backup_name: Any?,
   ): Any? =
-    BridgeMessageBackupInfo(
+    org.signal.libsignal.net.MessageBackupInfo(
       backupDir =
         identity(backup_dir as String),
       cdn =
@@ -295,7 +330,7 @@ public object BridgePreKeyCounts_ReturnConverter {
     pni_ec_pre_key_count: Any?,
     pni_kem_pre_key_count: Any?,
   ): Any? =
-    BridgePreKeyCounts(
+    org.signal.libsignal.net.PreKeyCounts(
       aciEcPreKeyCount =
         identity(aci_ec_pre_key_count as Int),
       aciKemPreKeyCount =
@@ -371,8 +406,8 @@ public object DeleteBackupMediaNextChunk_ReturnConverter {
   ): Any? =
     DeleteBackupMediaNextChunk(
       chunk =
-        mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>({
-          downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(it)
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.DeleteBackupMediaItem>({
+          downcastFromObject<org.signal.libsignal.net.DeleteBackupMediaItem>(it)
         })(chunk as Array<*>),
       termination =
         identity(termination as Object?),
@@ -413,7 +448,7 @@ public object ListMediaItem_ReturnConverter {
     media_id: Any?,
     object_length: Any?,
   ): Any? =
-    ListMediaItem(
+    org.signal.libsignal.net.ListBackupMediaResponse.Item(
       cdn =
         identity(cdn as Int),
       mediaId =
@@ -433,10 +468,10 @@ public object ListMediaResponse_ReturnConverter {
     media_dir: Any?,
     cursor: Any?,
   ): Any? =
-    ListMediaResponse(
+    org.signal.libsignal.net.ListBackupMediaResponse(
       items =
-        mapBridgeVecReturn<Object, org.signal.libsignal.internal.ListMediaItem>({
-          downcastFromObject<org.signal.libsignal.internal.ListMediaItem>(it)
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.ListBackupMediaResponse.Item>({
+          downcastFromObject<org.signal.libsignal.net.ListBackupMediaResponse.Item>(it)
         })(items as Array<*>),
       backupDir =
         identity(backup_dir as String),
@@ -479,7 +514,7 @@ public class BridgeCopyBackupMediaItem_FfiArgType {
   }
 }
 
-public fun BridgeCopyBackupMediaItem.toFfiArgType(): BridgeCopyBackupMediaItem_FfiArgType =
+public fun org.signal.libsignal.net.CopyBackupMediaItem.toFfiArgType(): BridgeCopyBackupMediaItem_FfiArgType =
   BridgeCopyBackupMediaItem_FfiArgType(
     source_attachment_cdn = identity(sourceAttachmentCdn),
     source_key = identity(sourceKey),
@@ -488,7 +523,8 @@ public fun BridgeCopyBackupMediaItem.toFfiArgType(): BridgeCopyBackupMediaItem_F
     encryption_key = identity(encryptionKey),
   )
 
-public fun BridgeCopyBackupMediaItem.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+public fun org.signal.libsignal.net.CopyBackupMediaItem.toFfiArgTypeObject(): Object =
+  convertToObject(this.toFfiArgType())
 
 @CalledFromNative
 @Suppress("ktlint:standard:backing-property-naming")
@@ -507,13 +543,14 @@ public class BridgeDeleteBackupMediaItem_FfiArgType {
   }
 }
 
-public fun BridgeDeleteBackupMediaItem.toFfiArgType(): BridgeDeleteBackupMediaItem_FfiArgType =
+public fun org.signal.libsignal.net.DeleteBackupMediaItem.toFfiArgType(): BridgeDeleteBackupMediaItem_FfiArgType =
   BridgeDeleteBackupMediaItem_FfiArgType(
     media_id = identity(mediaId),
     cdn = identity(cdn),
   )
 
-public fun BridgeDeleteBackupMediaItem.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+public fun org.signal.libsignal.net.DeleteBackupMediaItem.toFfiArgTypeObject(): Object =
+  convertToObject(this.toFfiArgType())
 
 @CalledFromNative
 @Suppress("ktlint:standard:backing-property-naming")
@@ -813,7 +850,7 @@ public object NativeNice {
   public fun AuthenticatedChatConnection_get_pre_key_count(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
-  ): CompletableFuture<org.signal.libsignal.internal.BridgePreKeyCounts> {
+  ): CompletableFuture<org.signal.libsignal.net.PreKeyCounts> {
     val ffi_chat = identity(chat)
     val ffiOut =
       NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
@@ -824,7 +861,7 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgePreKeyCounts>(it) }
+      .thenApply { downcastFromObject<org.signal.libsignal.net.PreKeyCounts>(it) }
   }
 
   public fun AuthenticatedChatConnection_redeem_backup_receipt(
@@ -1103,7 +1140,7 @@ public object NativeNice {
     credential: org.signal.libsignal.zkgroup.backups.BackupAuthCredential,
     serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
     signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
-    items: List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>,
+    items: List<org.signal.libsignal.net.CopyBackupMediaItem>,
     rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
   ): org.signal.libsignal.net.internal.CopyBackupMediaStream {
     val ffi_chat = identity(chat)
@@ -1113,8 +1150,8 @@ public object NativeNice {
       (org.signal.libsignal.zkgroup.GenericServerPublicParams::getInternalContentsForJNI)(serverKeys)
     val ffi_signing_key = identity(signingKey)
     val ffi_items =
-      mapBridgeVecArg<Object, org.signal.libsignal.internal.BridgeCopyBackupMediaItem>({
-        (org.signal.libsignal.internal.BridgeCopyBackupMediaItem::toFfiArgTypeObject)(it)
+      mapBridgeVecArg<Object, org.signal.libsignal.net.CopyBackupMediaItem>({
+        (org.signal.libsignal.net.CopyBackupMediaItem::toFfiArgTypeObject)(it)
       })(items)
     val ffi_rng =
       org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
@@ -1170,7 +1207,7 @@ public object NativeNice {
     credential: org.signal.libsignal.zkgroup.backups.BackupAuthCredential,
     serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
     signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
-    items: List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>,
+    items: List<org.signal.libsignal.net.DeleteBackupMediaItem>,
     rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
   ): org.signal.libsignal.net.internal.DeleteBackupMediaStream {
     val ffi_chat = identity(chat)
@@ -1180,8 +1217,8 @@ public object NativeNice {
       (org.signal.libsignal.zkgroup.GenericServerPublicParams::getInternalContentsForJNI)(serverKeys)
     val ffi_signing_key = identity(signingKey)
     val ffi_items =
-      mapBridgeVecArg<Object, org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>({
-        (org.signal.libsignal.internal.BridgeDeleteBackupMediaItem::toFfiArgTypeObject)(it)
+      mapBridgeVecArg<Object, org.signal.libsignal.net.DeleteBackupMediaItem>({
+        (org.signal.libsignal.net.DeleteBackupMediaItem::toFfiArgTypeObject)(it)
       })(items)
     val ffi_rng =
       org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
@@ -1246,7 +1283,7 @@ public object NativeNice {
     serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
     signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
     rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
-  ): CompletableFuture<org.signal.libsignal.internal.BridgeMediaBackupInfo> {
+  ): CompletableFuture<org.signal.libsignal.net.MediaBackupInfo> {
     val ffi_chat = identity(chat)
     val ffi_credential =
       (org.signal.libsignal.zkgroup.backups.BackupAuthCredential::getInternalContentsForJNI)(credential)
@@ -1269,7 +1306,7 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeMediaBackupInfo>(it) }
+      .thenApply { downcastFromObject<org.signal.libsignal.net.MediaBackupInfo>(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_get_message_backup_info(
@@ -1279,7 +1316,7 @@ public object NativeNice {
     serverKeys: org.signal.libsignal.zkgroup.GenericServerPublicParams,
     signingKey: org.signal.libsignal.protocol.ecc.ECPrivateKey,
     rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
-  ): CompletableFuture<org.signal.libsignal.internal.BridgeMessageBackupInfo> {
+  ): CompletableFuture<org.signal.libsignal.net.MessageBackupInfo> {
     val ffi_chat = identity(chat)
     val ffi_credential =
       (org.signal.libsignal.zkgroup.backups.BackupAuthCredential::getInternalContentsForJNI)(credential)
@@ -1302,7 +1339,7 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeMessageBackupInfo>(it) }
+      .thenApply { downcastFromObject<org.signal.libsignal.net.MessageBackupInfo>(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_get_svrb_credentials(
@@ -1347,7 +1384,7 @@ public object NativeNice {
     cursor: String,
     limit: Int,
     rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
-  ): CompletableFuture<org.signal.libsignal.internal.ListMediaResponse> {
+  ): CompletableFuture<org.signal.libsignal.net.ListBackupMediaResponse> {
     val ffi_chat = identity(chat)
     val ffi_credential =
       (org.signal.libsignal.zkgroup.backups.BackupAuthCredential::getInternalContentsForJNI)(credential)
@@ -1374,7 +1411,7 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply { downcastFromObject<org.signal.libsignal.internal.ListMediaResponse>(it) }
+      .thenApply { downcastFromObject<org.signal.libsignal.net.ListBackupMediaResponse>(it) }
   }
 
   public fun UnauthenticatedChatConnection_backup_refresh(

@@ -6,12 +6,8 @@
 package org.signal.libsignal.net
 
 import kotlinx.coroutines.flow.Flow
-import org.signal.libsignal.internal.BridgeCopyBackupMediaItem
 import org.signal.libsignal.internal.BridgeCopyBackupMediaOutcome
 import org.signal.libsignal.internal.BridgeCopyBackupMediaResult
-import org.signal.libsignal.internal.BridgeDeleteBackupMediaItem
-import org.signal.libsignal.internal.BridgeMediaBackupInfo
-import org.signal.libsignal.internal.BridgeMessageBackupInfo
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeNice
@@ -64,16 +60,7 @@ public data class MessageBackupInfo(
    * Always non-empty, even if a backup has not actually been stored to the CDN.
    */
   val backupName: String,
-) {
-  public companion object {
-    public fun fromInternal(it: BridgeMessageBackupInfo): MessageBackupInfo =
-      MessageBackupInfo(
-        backupDir = it.backupDir,
-        cdn = it.cdn,
-        backupName = it.backupName,
-      )
-  }
-}
+)
 
 public data class MediaBackupInfo(
   /**
@@ -95,16 +82,7 @@ public data class MediaBackupInfo(
    * The amount of space used to store media, in bytes.
    */
   val usedSpace: Long,
-) {
-  public companion object {
-    public fun fromInternal(it: BridgeMediaBackupInfo): MediaBackupInfo =
-      MediaBackupInfo(
-        backupDir = it.backupDir,
-        mediaDir = it.mediaDir,
-        usedSpace = it.usedSpace,
-      )
-  }
-}
+)
 
 /**
  * A single item to copy from the attachment CDN to the backup CDN.
@@ -199,8 +177,6 @@ public data class DeleteBackupMediaItem(
   val mediaId: ByteArray,
   val cdn: Int,
 ) {
-  internal constructor(value: BridgeDeleteBackupMediaItem) : this(value.mediaId, value.cdn) {}
-
   override fun equals(other: Any?): Boolean {
     if (other !is DeleteBackupMediaItem) {
       return false
@@ -249,16 +225,6 @@ public data class ListBackupMediaResponse(
     }
 
     override fun hashCode(): Int = Objects.hash(cdn, mediaId.contentHashCode(), objectLength)
-  }
-
-  public companion object {
-    public fun fromInternal(response: org.signal.libsignal.internal.ListMediaResponse): ListBackupMediaResponse =
-      ListBackupMediaResponse(
-        items = response.items.map { Item(cdn = it.cdn, mediaId = it.mediaId, objectLength = it.objectLength) },
-        backupDir = response.backupDir,
-        mediaDir = response.mediaDir,
-        cursor = response.cursor,
-      )
   }
 }
 
@@ -431,7 +397,7 @@ public class UnauthBackupsService(
           signingKey = auth.signingKey,
           rng = rngSeedForTesting,
         ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(MessageBackupInfo.fromInternal(it)) },
+          onSuccess = { RequestResult.Success(it) },
           onError = { it.toRequestResult<RequestUnauthorizedException>() },
         )
     } catch (e: Throwable) {
@@ -464,7 +430,7 @@ public class UnauthBackupsService(
           signingKey = auth.signingKey,
           rng = rngSeedForTesting,
         ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(MediaBackupInfo.fromInternal(it)) },
+          onSuccess = { RequestResult.Success(it) },
           onError = { it.toRequestResult<RequestUnauthorizedException>() },
         )
     } catch (e: Throwable) {
@@ -593,16 +559,7 @@ public class UnauthBackupsService(
         credential = auth.credential,
         serverKeys = auth.serverKeys,
         signingKey = auth.signingKey,
-        items =
-          items.map {
-            BridgeCopyBackupMediaItem(
-              sourceAttachmentCdn = it.sourceAttachmentCdn,
-              sourceKey = it.sourceKey,
-              objectLength = it.objectLength,
-              mediaId = it.mediaId,
-              encryptionKey = it.encryptionKey,
-            )
-          },
+        items = items,
         rng = rngSeedForTesting,
       )
     return wrapStream(
@@ -644,13 +601,7 @@ public class UnauthBackupsService(
         credential = auth.credential,
         serverKeys = auth.serverKeys,
         signingKey = auth.signingKey,
-        items =
-          items.map {
-            BridgeDeleteBackupMediaItem(
-              mediaId = it.mediaId,
-              cdn = it.cdn,
-            )
-          },
+        items = items,
         rng = rngSeedForTesting,
       )
     return wrapStream(
@@ -659,7 +610,7 @@ public class UnauthBackupsService(
       pull = { asyncRuntime, stream ->
         NativeNice.DeleteBackupMediaStream_next(asyncRuntime, stream).thenApply { Pair(it.chunk, it.termination) }
       },
-      convertItem = ::DeleteBackupMediaItem,
+      convertItem = { it },
       cancel = Native::DeleteBackupMediaStream_cancel,
     )
   }
@@ -695,7 +646,7 @@ public class UnauthBackupsService(
           limit = limit ?: -1,
           rng = rngSeedForTesting,
         ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(ListBackupMediaResponse.fromInternal(it)) },
+          onSuccess = { RequestResult.Success(it) },
           onError = { it.toRequestResult<RequestUnauthorizedException>() },
         )
     } catch (e: Throwable) {

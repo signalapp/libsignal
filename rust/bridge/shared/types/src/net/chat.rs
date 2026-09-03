@@ -866,6 +866,7 @@ pub enum UserBasedSendAuthorizationKind {
 }
 
 #[derive(BridgedAsValue)]
+#[bridge(jni_nice_type = "org.signal.libsignal.net.CopyBackupMediaItem")]
 pub struct BridgeCopyBackupMediaItem {
     pub source_attachment_cdn: i32,
     pub source_key: String,
@@ -876,7 +877,10 @@ pub struct BridgeCopyBackupMediaItem {
 
 // TODO: This can go away when we implement u32 and u64 Nice bridging to Kotlin.
 #[derive(BridgedAsValue)]
-#[bridge(arg = false)]
+#[bridge(
+    arg = false,
+    jni_nice_type = "org.signal.libsignal.net.MessageBackupInfo"
+)]
 pub struct BridgeMessageBackupInfo {
     pub backup_dir: String,
     pub cdn: i32,
@@ -894,7 +898,10 @@ impl From<MessageBackupInfo> for BridgeMessageBackupInfo {
 }
 
 #[derive(BridgedAsValue)]
-#[bridge(arg = false)]
+#[bridge(
+    arg = false,
+    jni_nice_type = "org.signal.libsignal.net.MediaBackupInfo"
+)]
 pub struct BridgeMediaBackupInfo {
     pub backup_dir: String,
     pub media_dir: String,
@@ -918,7 +925,7 @@ impl From<MediaBackupInfo> for BridgeMediaBackupInfo {
 // libsignal_net_chat::grpc::keys::PreKeyCounts (and gets renamed PreKeyCountsInternal to match),
 // dropping this manual `From` impl.
 #[derive(BridgedAsValue)]
-#[bridge(arg = false)]
+#[bridge(arg = false, jni_nice_type = "org.signal.libsignal.net.PreKeyCounts")]
 pub struct BridgePreKeyCounts {
     pub aci_ec_pre_key_count: i32,
     pub aci_kem_pre_key_count: i32,
@@ -1107,6 +1114,7 @@ bridge_as_handle!(
 );
 
 #[derive(BridgedAsValue)]
+#[bridge(jni_nice_type = "org.signal.libsignal.net.DeleteBackupMediaItem")]
 pub struct BridgeDeleteBackupMediaItem {
     pub media_id: [u8; MEDIA_ID_LEN],
     pub cdn: i32,
@@ -1204,6 +1212,7 @@ pub mod remote_derives {
     }
 
     #[derive(BridgedAsValue)]
+    #[bridge(jni_nice_type = "org.signal.libsignal.net.ListBackupMediaResponse.Item")]
     pub struct ListMediaItem {
         pub cdn: i32,
         pub media_id: [u8; MEDIA_ID_LEN],
@@ -1227,7 +1236,10 @@ pub mod remote_derives {
 
     #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::backups::ListMediaResponse)]
-    #[bridge(arg = false)]
+    #[bridge(
+        arg = false,
+        jni_nice_type = "org.signal.libsignal.net.ListBackupMediaResponse"
+    )]
     pub struct ListMediaResponse {
         /// The requested page of items.
         pub items: BridgeVec<ListMediaItem>,

@@ -5,7 +5,6 @@
 
 package org.signal.libsignal.net
 
-import org.signal.libsignal.internal.BridgePreKeyCounts
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
@@ -31,18 +30,7 @@ public data class PreKeyCounts(
    * associated with the caller's PNI.
    */
   val pniKemPreKeyCount: Int,
-) {
-  // These need to be public for testing
-  public companion object {
-    public fun fromInternal(it: BridgePreKeyCounts): PreKeyCounts =
-      PreKeyCounts(
-        aciEcPreKeyCount = it.aciEcPreKeyCount,
-        aciKemPreKeyCount = it.aciKemPreKeyCount,
-        pniEcPreKeyCount = it.pniEcPreKeyCount,
-        pniKemPreKeyCount = it.pniKemPreKeyCount,
-      )
-  }
-}
+)
 
 public class AuthKeysService(
   private val connection: AuthenticatedChatConnection,
@@ -67,7 +55,7 @@ public class AuthKeysService(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
         ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(PreKeyCounts.fromInternal(it)) },
+          onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult() },
         )
     } catch (e: Throwable) {

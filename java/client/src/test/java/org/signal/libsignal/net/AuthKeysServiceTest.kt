@@ -24,7 +24,7 @@ class AuthKeysServiceTest {
         },
         check = { expected, actual ->
           assertEquals(
-            PreKeyCounts.fromInternal(expected),
+            expected,
             assertIs<RequestResult.Success<PreKeyCounts>>(actual).result,
           )
         },

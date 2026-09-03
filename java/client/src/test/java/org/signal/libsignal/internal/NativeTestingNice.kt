@@ -58,7 +58,7 @@ public sealed class CopyBackupMediaOut {
 
 public sealed class DeleteBackupMediaOut {
   public data class Item(
-    public val _0: org.signal.libsignal.internal.BridgeDeleteBackupMediaItem,
+    public val _0: org.signal.libsignal.net.DeleteBackupMediaItem,
   ) : DeleteBackupMediaOut()
 
   public data object InvalidDataInStream : DeleteBackupMediaOut()
@@ -84,7 +84,7 @@ public data class GetDevicesOut(
 
 public sealed class GetMediaBackupInfoOut {
   public data class Success(
-    public val _0: org.signal.libsignal.internal.BridgeMediaBackupInfo,
+    public val _0: org.signal.libsignal.net.MediaBackupInfo,
   ) : GetMediaBackupInfoOut()
 
   public data object CredentialRejected : GetMediaBackupInfoOut()
@@ -94,7 +94,7 @@ public sealed class GetMediaBackupInfoOut {
 
 public sealed class GetMessageBackupInfoOut {
   public data class Success(
-    public val _0: org.signal.libsignal.internal.BridgeMessageBackupInfo,
+    public val _0: org.signal.libsignal.net.MessageBackupInfo,
   ) : GetMessageBackupInfoOut()
 
   public data object CredentialRejected : GetMessageBackupInfoOut()
@@ -120,7 +120,7 @@ public data class ListMediaArgs(
 
 public sealed class ListMediaOut {
   public data class Page(
-    public val _0: org.signal.libsignal.internal.ListMediaResponse,
+    public val _0: org.signal.libsignal.net.ListBackupMediaResponse,
   ) : ListMediaOut()
 
   public data object MalformedMediaId : ListMediaOut()
@@ -299,7 +299,7 @@ public object BridgeCopyBackupMediaItem_ReturnConverter {
     media_id: Any?,
     encryption_key: Any?,
   ): Any? =
-    BridgeCopyBackupMediaItem(
+    org.signal.libsignal.net.CopyBackupMediaItem(
       sourceAttachmentCdn =
         identity(source_attachment_cdn as Int),
       sourceKey =
@@ -485,7 +485,7 @@ public object DeleteBackupMediaOut_Item_ReturnConverter {
   internal fun fromNative(_0: Any?): Any? =
     DeleteBackupMediaOut.Item(
       _0 =
-        downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(_0 as Object),
+        downcastFromObject<org.signal.libsignal.net.DeleteBackupMediaItem>(_0 as Object),
     )
 }
 
@@ -556,7 +556,7 @@ public object GetMediaBackupInfoOut_Success_ReturnConverter {
   internal fun fromNative(_0: Any?): Any? =
     GetMediaBackupInfoOut.Success(
       _0 =
-        downcastFromObject<org.signal.libsignal.internal.BridgeMediaBackupInfo>(_0 as Object),
+        downcastFromObject<org.signal.libsignal.net.MediaBackupInfo>(_0 as Object),
     )
 }
 
@@ -581,7 +581,7 @@ public object GetMessageBackupInfoOut_Success_ReturnConverter {
   internal fun fromNative(_0: Any?): Any? =
     GetMessageBackupInfoOut.Success(
       _0 =
-        downcastFromObject<org.signal.libsignal.internal.BridgeMessageBackupInfo>(_0 as Object),
+        downcastFromObject<org.signal.libsignal.net.MessageBackupInfo>(_0 as Object),
     )
 }
 
@@ -652,7 +652,7 @@ public object ListMediaOut_Page_ReturnConverter {
   internal fun fromNative(_0: Any?): Any? =
     ListMediaOut.Page(
       _0 =
-        downcastFromObject<org.signal.libsignal.internal.ListMediaResponse>(_0 as Object),
+        downcastFromObject<org.signal.libsignal.net.ListBackupMediaResponse>(_0 as Object),
     )
 }
 
@@ -1408,14 +1408,14 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.ConfirmUsernameOut>(it) })(ffiOut)
   }
 
-  public fun TESTING_CopyBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>> {
+  public fun TESTING_CopyBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.net.CopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>> {
     val ffiOut =
       NativeTesting.TESTING_CopyBackupMediaTests()
 
     return org.signal.libsignal.net.GrpcTestCase
-      .resultConverter<Array<*>, Array<*>, List<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>({
-        mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeCopyBackupMediaItem>({
-          downcastFromObject<org.signal.libsignal.internal.BridgeCopyBackupMediaItem>(it)
+      .resultConverter<Array<*>, Array<*>, List<org.signal.libsignal.net.CopyBackupMediaItem>, List<org.signal.libsignal.internal.CopyBackupMediaOut>>({
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.CopyBackupMediaItem>({
+          downcastFromObject<org.signal.libsignal.net.CopyBackupMediaItem>(it)
         })(it)
       }, {
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.CopyBackupMediaOut>({
@@ -1433,14 +1433,14 @@ public object NativeTestingNice {
     }, { identity(it) })(ffiOut)
   }
 
-  public fun TESTING_DeleteBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>> {
+  public fun TESTING_DeleteBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.net.DeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>> {
     val ffiOut =
       NativeTesting.TESTING_DeleteBackupMediaTests()
 
     return org.signal.libsignal.net.GrpcTestCase
-      .resultConverter<Array<*>, Array<*>, List<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>({
-        mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>({
-          downcastFromObject<org.signal.libsignal.internal.BridgeDeleteBackupMediaItem>(it)
+      .resultConverter<Array<*>, Array<*>, List<org.signal.libsignal.net.DeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>({
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.DeleteBackupMediaItem>({
+          downcastFromObject<org.signal.libsignal.net.DeleteBackupMediaItem>(it)
         })(it)
       }, {
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.DeleteBackupMediaOut>({
@@ -1527,14 +1527,14 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.GetMessageBackupInfoOut>(it) })(ffiOut)
   }
 
-  public fun TESTING_GetPreKeyCountTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.BridgePreKeyCounts>> {
+  public fun TESTING_GetPreKeyCountTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.net.PreKeyCounts>> {
     val ffiOut =
       NativeTesting.TESTING_GetPreKeyCountTests()
 
     return org.signal.libsignal.net.GrpcTestCase
-      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.BridgePreKeyCounts>({
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.net.PreKeyCounts>({
         identity(it)
-      }, { downcastFromObject<org.signal.libsignal.internal.BridgePreKeyCounts>(it) })(ffiOut)
+      }, { downcastFromObject<org.signal.libsignal.net.PreKeyCounts>(it) })(ffiOut)
   }
 
   public fun TESTING_LookUpUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.LookUpUsernameLinkArgs, org.signal.libsignal.internal.LookUpUsernameLinkOut>> {
