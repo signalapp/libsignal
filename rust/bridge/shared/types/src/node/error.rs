@@ -1189,3 +1189,39 @@ impl SignalNodeError for ReceiptCredentialError {
         })
     }
 }
+
+impl SimpleNodeError for libsignal_net_chat::grpc::accounts::GenerateTotpKeyError {
+    fn js_error_name(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::TooManyTotpKeys => "TooManyTotpKeys",
+            Self::TooManyMfaKeys => "TooManyMfaKeys",
+        })
+    }
+}
+
+impl SimpleNodeError for libsignal_net_chat::grpc::accounts::ConfirmTotpKeyError {
+    fn js_error_name(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::OneTimePasswordNotVerified => "OneTimePasswordNotVerified",
+            Self::TooManyMfaKeys => "TooManyMfaKeys",
+        })
+    }
+}
+
+impl SimpleNodeError for libsignal_net_chat::grpc::accounts::MfaKeyNotFound {
+    fn js_error_name(&self) -> Option<&'static str> {
+        Some("MfaKeyNotFound")
+    }
+}
+
+impl<E> SignalNodeError for crate::support::RequestOrArgumentError<E>
+where
+    libsignal_net_chat::api::RequestError<E>: SignalNodeError,
+{
+    fn into_throwable<'cx>(self, cx: &mut Cx<'cx>, operation_name: &str) -> Handle<'cx, JsError> {
+        match self {
+            Self::Request(e) => e.into_throwable(cx, operation_name),
+            Self::Argument(e) => e.into_throwable(cx, operation_name),
+        }
+    }
+}

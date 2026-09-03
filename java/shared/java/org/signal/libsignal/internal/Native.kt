@@ -282,6 +282,17 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_confirm_totp_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    oneTimePassword: Int,
+    name: String,
+    createdAt: Long,
+    svrKey: ByteArray,
+    rng: Long,
+  ): CompletableFuture<Int>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_confirm_username(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -325,6 +336,12 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_generate_totp_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_currency_conversions(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -363,6 +380,13 @@ internal object Native {
   ): Unit
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_list_mfa_keys(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    svrKey: ByteArray,
+  ): CompletableFuture<Array<*>>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_preconnect(
     asyncRuntime: ObjectHandle,
     connectionManager: ObjectHandle,
@@ -380,6 +404,13 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
     deviceId: Int,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_remove_mfa_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    keyId: Int,
   ): CompletableFuture<Void?>
 
   @JvmStatic
@@ -450,6 +481,17 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
     discoverable: Boolean,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_mfa_key_metadata(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    keyId: Int,
+    name: String,
+    createdAt: Long,
+    svrKey: ByteArray,
+    rng: Long,
   ): CompletableFuture<Void?>
 
   @JvmStatic

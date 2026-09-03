@@ -2608,8 +2608,10 @@ dependencies = [
 name = "libsignal-account-keys"
 version = "0.1.0"
 dependencies = [
+ "aes 0.9.1",
  "argon2",
  "assert_matches",
+ "cbc",
  "const-str",
  "criterion",
  "derive_more 2.1.1",
@@ -2617,12 +2619,14 @@ dependencies = [
  "hkdf",
  "hmac",
  "libsignal-core",
+ "libsignal-protocol",
  "partial-default",
  "password-hash",
  "proptest",
  "protobuf",
  "protobuf-codegen",
  "rand 0.9.4",
+ "rand_chacha",
  "rand_core 0.9.5",
  "serde",
  "sha2 0.11.0",

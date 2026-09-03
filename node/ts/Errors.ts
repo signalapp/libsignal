@@ -109,6 +109,10 @@ export enum ErrorCode {
   ReceiptCredentialErrorPaymentRequired,
   ReceiptCredentialErrorPaymentNotFound,
   ReceiptCredentialErrorReceiptAlreadyIssued,
+  TooManyTotpKeys,
+  TooManyMfaKeys,
+  OneTimePasswordNotVerified,
+  MfaKeyNotFound,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -596,6 +600,21 @@ export type ReceiptCredentialErrorReceiptAlreadyIssued =
   LibSignalErrorCommon & {
     code: ErrorCode.ReceiptCredentialErrorReceiptAlreadyIssued;
   };
+export type TooManyTotpKeys = LibSignalErrorCommon & {
+  code: ErrorCode.TooManyTotpKeys;
+};
+
+export type TooManyMfaKeys = LibSignalErrorCommon & {
+  code: ErrorCode.TooManyMfaKeys;
+};
+
+export type OneTimePasswordNotVerified = LibSignalErrorCommon & {
+  code: ErrorCode.OneTimePasswordNotVerified;
+};
+
+export type MfaKeyNotFound = LibSignalErrorCommon & {
+  code: ErrorCode.MfaKeyNotFound;
+};
 
 export type LibSignalError =
   | GenericError
@@ -675,4 +694,8 @@ export type LibSignalError =
   | ReceiptCredentialErrorPaymentStillProcessing
   | ReceiptCredentialErrorPaymentRequired
   | ReceiptCredentialErrorPaymentNotFound
-  | ReceiptCredentialErrorReceiptAlreadyIssued;
+  | ReceiptCredentialErrorReceiptAlreadyIssued
+  | TooManyTotpKeys
+  | TooManyMfaKeys
+  | OneTimePasswordNotVerified
+  | MfaKeyNotFound;

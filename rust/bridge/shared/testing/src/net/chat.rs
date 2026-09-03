@@ -505,8 +505,8 @@ mod remote_derives {
         GetStickerUploadFormsResponse, ListMediaResponse,
     };
     use libsignal_bridge_types::net::chat::{
-        BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem, BridgeMediaBackupInfo,
-        BridgeMessageBackupInfo,
+        BridgeConfirmedMfaKey, BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem,
+        BridgeMediaBackupInfo, BridgeMessageBackupInfo, BridgeMfaMetadata, BridgePendingTotpKey,
     };
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::login_purchase::{
@@ -789,6 +789,148 @@ mod remote_derives {
         Success(GetStickerUploadFormsResponse),
         Invalid,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::GenerateTotpKeyOut)]
+    #[bridge(arg = false)]
+    pub(super) enum GenerateTotpKeyOut {
+        Success(BridgePendingTotpKey),
+        TooManyTotpKeys,
+        TooManyMfaKeys,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct ConfirmTotpKeyArgs {
+        pub one_time_password: i32,
+        pub name: String,
+        pub created_at: Timestamp,
+        pub svr_key: [u8; 32],
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::ConfirmTotpKeyArgs>
+        for ConfirmTotpKeyArgs
+    {
+        fn from(value: libsignal_net_chat::grpc::accounts::test_cases::ConfirmTotpKeyArgs) -> Self {
+            let libsignal_net_chat::grpc::accounts::test_cases::ConfirmTotpKeyArgs {
+                one_time_password,
+                metadata,
+                svr_key,
+            } = value;
+            let BridgeMfaMetadata { name, created_at } = metadata.into();
+            Self {
+                one_time_password: one_time_password
+                    .try_into()
+                    .expect("one-time passwords are small"),
+                name,
+                created_at,
+                svr_key,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) enum ConfirmTotpKeyOut {
+        Success(i32),
+        OneTimePasswordNotVerified,
+        TooManyMfaKeys,
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::ConfirmTotpKeyOut> for ConfirmTotpKeyOut {
+        fn from(value: libsignal_net_chat::grpc::accounts::test_cases::ConfirmTotpKeyOut) -> Self {
+            use libsignal_net_chat::grpc::accounts::test_cases::ConfirmTotpKeyOut as Remote;
+            match value {
+                Remote::Success(key_id) => {
+                    Self::Success(u32::from(key_id).try_into().expect("key IDs are small"))
+                }
+                Remote::OneTimePasswordNotVerified => Self::OneTimePasswordNotVerified,
+                Remote::TooManyMfaKeys => Self::TooManyMfaKeys,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::ListMfaKeysArgs)]
+    #[bridge(arg = false)]
+    pub(super) struct ListMfaKeysArgs {
+        pub svr_key: [u8; 32],
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) enum ListMfaKeysOut {
+        Success(BridgeVec<BridgeConfirmedMfaKey>),
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::ListMfaKeysOut> for ListMfaKeysOut {
+        fn from(value: libsignal_net_chat::grpc::accounts::test_cases::ListMfaKeysOut) -> Self {
+            use libsignal_net_chat::grpc::accounts::test_cases::ListMfaKeysOut as Remote;
+            match value {
+                Remote::Success(keys) => Self::Success(
+                    keys.into_iter()
+                        .map(BridgeConfirmedMfaKey::from)
+                        .collect::<Vec<_>>()
+                        .into(),
+                ),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct SetMfaKeyMetadataArgs {
+        pub key_id: i32,
+        pub name: String,
+        pub created_at: Timestamp,
+        pub svr_key: [u8; 32],
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::SetMfaKeyMetadataArgs>
+        for SetMfaKeyMetadataArgs
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::accounts::test_cases::SetMfaKeyMetadataArgs,
+        ) -> Self {
+            let libsignal_net_chat::grpc::accounts::test_cases::SetMfaKeyMetadataArgs {
+                key_id,
+                metadata,
+                svr_key,
+            } = value;
+            let BridgeMfaMetadata { name, created_at } = metadata.into();
+            Self {
+                key_id: u32::from(key_id).try_into().expect("key IDs are small"),
+                name,
+                created_at,
+                svr_key,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::SetMfaKeyMetadataOut)]
+    #[bridge(arg = false)]
+    pub(super) enum SetMfaKeyMetadataOut {
+        Success,
+        KeyNotFound,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct RemoveMfaKeyArgs {
+        pub key_id: i32,
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::RemoveMfaKeyArgs> for RemoveMfaKeyArgs {
+        fn from(value: libsignal_net_chat::grpc::accounts::test_cases::RemoveMfaKeyArgs) -> Self {
+            let libsignal_net_chat::grpc::accounts::test_cases::RemoveMfaKeyArgs { key_id } = value;
+            Self {
+                key_id: u32::from(key_id).try_into().expect("key IDs are small"),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::RemoveMfaKeyOut)]
+    #[bridge(arg = false)]
+    pub(super) enum RemoveMfaKeyOut {
+        Success,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -870,6 +1012,30 @@ fn TESTING_SetRegistrationRecoveryPasswordTests() -> GrpcTestCases<[u8; 32], ()>
 fn TESTING_SetDiscoverableByPhoneNumberTests() -> GrpcTestCases<bool, ()> {
     libsignal_net_chat::grpc::accounts::test_cases::set_discoverable_by_phone_number_test_cases()
         .into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GenerateTotpKeyTests() -> GrpcTestCases<(), remote_derives::GenerateTotpKeyOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::generate_totp_key_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_ConfirmTotpKeyTests()
+-> GrpcTestCases<remote_derives::ConfirmTotpKeyArgs, remote_derives::ConfirmTotpKeyOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::confirm_totp_key_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_ListMfaKeysTests()
+-> GrpcTestCases<remote_derives::ListMfaKeysArgs, remote_derives::ListMfaKeysOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::list_mfa_keys_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SetMfaKeyMetadataTests()
+-> GrpcTestCases<remote_derives::SetMfaKeyMetadataArgs, remote_derives::SetMfaKeyMetadataOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::set_mfa_key_metadata_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_RemoveMfaKeyTests()
+-> GrpcTestCases<remote_derives::RemoveMfaKeyArgs, remote_derives::RemoveMfaKeyOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::remove_mfa_key_test_cases().into()
 }
 
 #[bridge_fn(nice = true)]

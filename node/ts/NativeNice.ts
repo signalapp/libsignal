@@ -21,16 +21,24 @@ import type {
   ArgFfiMyTestStruct,
   ArgFfiPaymentProvider,
   ReturnFfiAuthCheckResult,
+  ReturnFfiBridgeConfirmedMfaKey,
+  ReturnFfiBridgeConfirmedMfaKeyMetadata,
   ReturnFfiBridgeCopyBackupMediaItem,
   ReturnFfiBridgeCopyBackupMediaOutcome,
   ReturnFfiBridgeCopyBackupMediaResult,
   ReturnFfiBridgeDeleteBackupMediaItem,
   ReturnFfiBridgeMediaBackupInfo,
   ReturnFfiBridgeMessageBackupInfo,
+  ReturnFfiBridgeMfaKeyKind,
+  ReturnFfiBridgeMfaMetadata,
+  ReturnFfiBridgePendingTotpKey,
   ReturnFfiBridgePreKeyCounts,
+  ReturnFfiBridgeTotpParameters,
   ReturnFfiCallQualitySurveyInternal,
   ReturnFfiChargeFailure,
   ReturnFfiCheckSvrCredentialsArgs,
+  ReturnFfiConfirmTotpKeyArgs,
+  ReturnFfiConfirmTotpKeyOut,
   ReturnFfiConfirmUsernameArgs,
   ReturnFfiConfirmUsernameOut,
   ReturnFfiCopyBackupMediaNextChunk,
@@ -42,6 +50,7 @@ import type {
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiDeviceCapabilityInternal,
+  ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
   ReturnFfiGetMediaBackupInfoOut,
@@ -54,6 +63,8 @@ import type {
   ReturnFfiListMediaItem,
   ReturnFfiListMediaOut,
   ReturnFfiListMediaResponse,
+  ReturnFfiListMfaKeysArgs,
+  ReturnFfiListMfaKeysOut,
   ReturnFfiLookUpUsernameLinkArgs,
   ReturnFfiLookUpUsernameLinkOut,
   ReturnFfiMyRemoteDeriveEnum,
@@ -67,6 +78,8 @@ import type {
   ReturnFfiRedeemBackupReceiptOut,
   ReturnFfiRemoveDeviceArgs,
   ReturnFfiRemoveDeviceOut,
+  ReturnFfiRemoveMfaKeyArgs,
+  ReturnFfiRemoveMfaKeyOut,
   ReturnFfiReserveUsernameHashArgs,
   ReturnFfiReserveUsernameHashOut,
   ReturnFfiS3UploadFormInternal,
@@ -74,6 +87,8 @@ import type {
   ReturnFfiSetCapabilitiesArgs,
   ReturnFfiSetDeviceNameArgs,
   ReturnFfiSetDeviceNameOut,
+  ReturnFfiSetMfaKeyMetadataArgs,
+  ReturnFfiSetMfaKeyMetadataOut,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
   ReturnFfiSimpleBackupTestOut,
@@ -101,6 +116,18 @@ import {
 import { Rng } from './RngForTesting.js';
 
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
+
+export type BridgeConfirmedMfaKey = {
+  id: number;
+  metadata: BridgeConfirmedMfaKeyMetadata;
+  kind: BridgeMfaKeyKind;
+};
+
+export type BridgeConfirmedMfaKeyMetadata =
+  | {
+      metadata: BridgeMfaMetadata;
+    }
+  | 'unreadable';
 
 export type BridgeCopyBackupMediaItem = {
   sourceAttachmentCdn: number;
@@ -140,11 +167,29 @@ export type BridgeMessageBackupInfo = {
   backupName: string;
 };
 
+export type BridgeMfaKeyKind = 'totp' | 'unknown';
+
+export type BridgeMfaMetadata = {
+  name: string;
+  createdAt: Timestamp;
+};
+
+export type BridgePendingTotpKey = {
+  key: Uint8Array<ArrayBuffer>;
+  parameters: BridgeTotpParameters;
+};
+
 export type BridgePreKeyCounts = {
   aciEcPreKeyCount: number;
   aciKemPreKeyCount: number;
   pniEcPreKeyCount: number;
   pniKemPreKeyCount: number;
+};
+
+export type BridgeTotpParameters = {
+  algorithm: string;
+  passwordLength: number;
+  timeStepSeconds: number;
 };
 
 export type CallQualitySurveyInternal = {
@@ -185,6 +230,20 @@ export type CheckSvrCredentialsArgs = {
   number: string;
   passwords: Array<string>;
 };
+
+export type ConfirmTotpKeyArgs = {
+  oneTimePassword: number;
+  name: string;
+  createdAt: Timestamp;
+  svrKey: Uint8Array<ArrayBuffer>;
+};
+
+export type ConfirmTotpKeyOut =
+  | {
+      success: number;
+    }
+  | 'oneTimePasswordNotVerified'
+  | 'tooManyMfaKeys';
 
 export type ConfirmUsernameArgs = {
   username: string;
@@ -261,6 +320,13 @@ export type DeviceCapabilityInternal =
   | 'profilesV2'
   | 'usernameChangeSyncMessage'
   | 'optionalPhoneNumber';
+
+export type GenerateTotpKeyOut =
+  | {
+      success: BridgePendingTotpKey;
+    }
+  | 'tooManyTotpKeys'
+  | 'tooManyMfaKeys';
 
 export type GetCdnCredentialsOut =
   | {
@@ -341,6 +407,14 @@ export type ListMediaResponse = {
   backupDir: string;
   mediaDir: string;
   cursor: string | null;
+};
+
+export type ListMfaKeysArgs = {
+  svrKey: Uint8Array<ArrayBuffer>;
+};
+
+export type ListMfaKeysOut = {
+  success: Array<BridgeConfirmedMfaKey>;
 };
 
 export type LookUpUsernameLinkArgs = {
@@ -428,6 +502,12 @@ export type RemoveDeviceArgs = {
 
 export type RemoveDeviceOut = 'success';
 
+export type RemoveMfaKeyArgs = {
+  keyId: number;
+};
+
+export type RemoveMfaKeyOut = 'success';
+
 export type ReserveUsernameHashArgs = {
   usernames: Array<Uint8Array<ArrayBuffer>>;
 };
@@ -462,6 +542,15 @@ export type SetDeviceNameArgs = {
 };
 
 export type SetDeviceNameOut = 'success' | 'deviceNotFound';
+
+export type SetMfaKeyMetadataArgs = {
+  keyId: number;
+  name: string;
+  createdAt: Timestamp;
+  svrKey: Uint8Array<ArrayBuffer>;
+};
+
+export type SetMfaKeyMetadataOut = 'success' | 'keyNotFound';
 
 export type SetUsernameLinkArgs = {
   usernameCiphertext: Uint8Array<ArrayBuffer>;
@@ -498,6 +587,35 @@ export function returnConverterAuthCheckResult(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for AuthCheckResult');
+  }
+}
+
+export function returnConverterBridgeConfirmedMfaKey(
+  ffiInput: Native.ReturnFfiBridgeConfirmedMfaKey
+): BridgeConfirmedMfaKey {
+  return {
+    id: identity(ffiInput.id),
+    metadata: returnConverterBridgeConfirmedMfaKeyMetadata(ffiInput.metadata),
+    kind: returnConverterBridgeMfaKeyKind(ffiInput.kind),
+  };
+}
+
+export function returnConverterBridgeConfirmedMfaKeyMetadata(
+  ffiInput: Native.ReturnFfiBridgeConfirmedMfaKeyMetadata
+): BridgeConfirmedMfaKeyMetadata {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        metadata: returnConverterBridgeMfaMetadata(ffiInput._0),
+      };
+    case 1:
+      return 'unreadable';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for BridgeConfirmedMfaKeyMetadata'
+      );
   }
 }
 
@@ -574,6 +692,39 @@ export function returnConverterBridgeMessageBackupInfo(
   };
 }
 
+export function returnConverterBridgeMfaKeyKind(
+  ffiInput: Native.ReturnFfiBridgeMfaKeyKind
+): BridgeMfaKeyKind {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'totp';
+    case 1:
+      return 'unknown';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for BridgeMfaKeyKind');
+  }
+}
+
+export function returnConverterBridgeMfaMetadata(
+  ffiInput: Native.ReturnFfiBridgeMfaMetadata
+): BridgeMfaMetadata {
+  return {
+    name: identity(ffiInput.name),
+    createdAt: identity(ffiInput.created_at),
+  };
+}
+
+export function returnConverterBridgePendingTotpKey(
+  ffiInput: Native.ReturnFfiBridgePendingTotpKey
+): BridgePendingTotpKey {
+  return {
+    key: identity(ffiInput.key),
+    parameters: returnConverterBridgeTotpParameters(ffiInput.parameters),
+  };
+}
+
 export function returnConverterBridgePreKeyCounts(
   ffiInput: Native.ReturnFfiBridgePreKeyCounts
 ): BridgePreKeyCounts {
@@ -582,6 +733,16 @@ export function returnConverterBridgePreKeyCounts(
     aciKemPreKeyCount: identity(ffiInput.aci_kem_pre_key_count),
     pniEcPreKeyCount: identity(ffiInput.pni_ec_pre_key_count),
     pniKemPreKeyCount: identity(ffiInput.pni_kem_pre_key_count),
+  };
+}
+
+export function returnConverterBridgeTotpParameters(
+  ffiInput: Native.ReturnFfiBridgeTotpParameters
+): BridgeTotpParameters {
+  return {
+    algorithm: identity(ffiInput.algorithm),
+    passwordLength: identity(ffiInput.password_length),
+    timeStepSeconds: identity(ffiInput.time_step_seconds),
   };
 }
 
@@ -654,6 +815,36 @@ export function returnConverterCheckSvrCredentialsArgs(
     number: identity(ffiInput.number),
     passwords: ((arr: Array<string>) => arr.map(identity))(ffiInput.passwords),
   };
+}
+
+export function returnConverterConfirmTotpKeyArgs(
+  ffiInput: Native.ReturnFfiConfirmTotpKeyArgs
+): ConfirmTotpKeyArgs {
+  return {
+    oneTimePassword: identity(ffiInput.one_time_password),
+    name: identity(ffiInput.name),
+    createdAt: identity(ffiInput.created_at),
+    svrKey: identity(ffiInput.svr_key),
+  };
+}
+
+export function returnConverterConfirmTotpKeyOut(
+  ffiInput: Native.ReturnFfiConfirmTotpKeyOut
+): ConfirmTotpKeyOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput._0),
+      };
+    case 1:
+      return 'oneTimePasswordNotVerified';
+    case 2:
+      return 'tooManyMfaKeys';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for ConfirmTotpKeyOut');
+  }
 }
 
 export function returnConverterConfirmUsernameArgs(
@@ -836,6 +1027,25 @@ export function returnConverterDeviceCapabilityInternal(
       throw new Error(
         'Unknown FFI return enum type for DeviceCapabilityInternal'
       );
+  }
+}
+
+export function returnConverterGenerateTotpKeyOut(
+  ffiInput: Native.ReturnFfiGenerateTotpKeyOut
+): GenerateTotpKeyOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterBridgePendingTotpKey(ffiInput._0),
+      };
+    case 1:
+      return 'tooManyTotpKeys';
+    case 2:
+      return 'tooManyMfaKeys';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GenerateTotpKeyOut');
   }
 }
 
@@ -1025,6 +1235,29 @@ export function returnConverterListMediaResponse(
     mediaDir: identity(ffiInput.media_dir),
     cursor: liftNull(identity)(ffiInput.cursor),
   };
+}
+
+export function returnConverterListMfaKeysArgs(
+  ffiInput: Native.ReturnFfiListMfaKeysArgs
+): ListMfaKeysArgs {
+  return {
+    svrKey: identity(ffiInput.svr_key),
+  };
+}
+
+export function returnConverterListMfaKeysOut(
+  ffiInput: Native.ReturnFfiListMfaKeysOut
+): ListMfaKeysOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: ((arr: Array<ReturnFfiBridgeConfirmedMfaKey>) =>
+          arr.map(returnConverterBridgeConfirmedMfaKey))(ffiInput._0),
+      };
+    default:
+      ffiInput.__type satisfies never;
+      throw new Error('Unknown FFI return enum type for ListMfaKeysOut');
+  }
 }
 
 export function returnConverterLookUpUsernameLinkArgs(
@@ -1237,6 +1470,27 @@ export function returnConverterRemoveDeviceOut(
   }
 }
 
+export function returnConverterRemoveMfaKeyArgs(
+  ffiInput: Native.ReturnFfiRemoveMfaKeyArgs
+): RemoveMfaKeyArgs {
+  return {
+    keyId: identity(ffiInput.key_id),
+  };
+}
+
+export function returnConverterRemoveMfaKeyOut(
+  ffiInput: Native.ReturnFfiRemoveMfaKeyOut
+): RemoveMfaKeyOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+
+    default:
+      ffiInput.__type satisfies never;
+      throw new Error('Unknown FFI return enum type for RemoveMfaKeyOut');
+  }
+}
+
 export function returnConverterReserveUsernameHashArgs(
   ffiInput: Native.ReturnFfiReserveUsernameHashArgs
 ): ReserveUsernameHashArgs {
@@ -1318,6 +1572,32 @@ export function returnConverterSetDeviceNameOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for SetDeviceNameOut');
+  }
+}
+
+export function returnConverterSetMfaKeyMetadataArgs(
+  ffiInput: Native.ReturnFfiSetMfaKeyMetadataArgs
+): SetMfaKeyMetadataArgs {
+  return {
+    keyId: identity(ffiInput.key_id),
+    name: identity(ffiInput.name),
+    createdAt: identity(ffiInput.created_at),
+    svrKey: identity(ffiInput.svr_key),
+  };
+}
+
+export function returnConverterSetMfaKeyMetadataOut(
+  ffiInput: Native.ReturnFfiSetMfaKeyMetadataOut
+): SetMfaKeyMetadataOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+    case 1:
+      return 'keyNotFound';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetMfaKeyMetadataOut');
   }
 }
 
@@ -1679,6 +1959,40 @@ export async function AuthenticatedChatConnection_clear_registration_lock({
     )
   );
 }
+export async function AuthenticatedChatConnection_confirm_totp_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  oneTimePassword: one_time_password,
+  name: name,
+  createdAt: created_at,
+  svrKey: svr_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  oneTimePassword: number;
+  name: string;
+  createdAt: Timestamp;
+  svrKey: Uint8Array<ArrayBuffer>;
+  rng: Rng | undefined;
+}): Promise<number> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_confirm_totp_key(
+        asyncContext,
+        identity(chat),
+        identity(one_time_password),
+        identity(name),
+        identity(created_at),
+        identity(svr_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_confirm_username({
   asyncContext,
   abortSignal,
@@ -1758,6 +2072,25 @@ export async function AuthenticatedChatConnection_delete_username_link({
     await asyncContext.makeCancellable(
       abortSignal,
       Native.AuthenticatedChatConnection_delete_username_link(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_generate_totp_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<BridgePendingTotpKey> {
+  return returnConverterBridgePendingTotpKey(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_generate_totp_key(
         asyncContext,
         identity(chat)
       )
@@ -1844,6 +2177,29 @@ export async function AuthenticatedChatConnection_get_sticker_upload_forms({
     )
   );
 }
+export async function AuthenticatedChatConnection_list_mfa_keys({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  svrKey: svr_key,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  svrKey: Uint8Array<ArrayBuffer>;
+}): Promise<Array<BridgeConfirmedMfaKey>> {
+  return ((arr: Array<ReturnFfiBridgeConfirmedMfaKey>) =>
+    arr.map(returnConverterBridgeConfirmedMfaKey))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_list_mfa_keys(
+        asyncContext,
+        identity(chat),
+        identity(svr_key)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_redeem_backup_receipt({
   asyncContext,
   abortSignal,
@@ -1884,6 +2240,28 @@ export async function AuthenticatedChatConnection_remove_device({
         asyncContext,
         identity(chat),
         identity(device_id)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_remove_mfa_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  keyId: key_id,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  keyId: number;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_remove_mfa_key(
+        asyncContext,
+        identity(chat),
+        identity(key_id)
       )
     )
   );
@@ -1978,6 +2356,40 @@ export async function AuthenticatedChatConnection_set_discoverable_by_phone_numb
         asyncContext,
         identity(chat),
         identity(discoverable)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_mfa_key_metadata({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  keyId: key_id,
+  name: name,
+  createdAt: created_at,
+  svrKey: svr_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  keyId: number;
+  name: string;
+  createdAt: Timestamp;
+  svrKey: Uint8Array<ArrayBuffer>;
+  rng: Rng | undefined;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_mfa_key_metadata(
+        asyncContext,
+        identity(chat),
+        identity(key_id),
+        identity(name),
+        identity(created_at),
+        identity(svr_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )
   );
@@ -2185,6 +2597,15 @@ export function TESTING_ClearRegistrationLockTests(): Array<
   )(Native.TESTING_ClearRegistrationLockTests());
 }
 
+export function TESTING_ConfirmTotpKeyTests(): Array<
+  GrpcTestCase<ConfirmTotpKeyArgs, ConfirmTotpKeyOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterConfirmTotpKeyArgs,
+    returnConverterConfirmTotpKeyOut
+  )(Native.TESTING_ConfirmTotpKeyTests());
+}
+
 export function TESTING_ConfirmUsernameTests(): Array<
   GrpcTestCase<ConfirmUsernameArgs, ConfirmUsernameOut>
 > {
@@ -2251,6 +2672,15 @@ export function TESTING_DeleteUsernameLinkTests(): Array<
     identity,
     identity
   )(Native.TESTING_DeleteUsernameLinkTests());
+}
+
+export function TESTING_GenerateTotpKeyTests(): Array<
+  GrpcTestCase<void, GenerateTotpKeyOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGenerateTotpKeyOut
+  )(Native.TESTING_GenerateTotpKeyTests());
 }
 
 export function TESTING_GetBackupCdnCredentialsTests(): Array<
@@ -2323,6 +2753,15 @@ export function TESTING_GetStickerUploadFormTests(): Array<
     identity,
     returnConverterGetStickerUploadFormsOut
   )(Native.TESTING_GetStickerUploadFormTests());
+}
+
+export function TESTING_ListMfaKeysTests(): Array<
+  GrpcTestCase<ListMfaKeysArgs, ListMfaKeysOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterListMfaKeysArgs,
+    returnConverterListMfaKeysOut
+  )(Native.TESTING_ListMfaKeysTests());
 }
 
 export function TESTING_LookUpUsernameLinkTests(): Array<
@@ -2582,6 +3021,15 @@ export function TESTING_RemoveDeviceTests(): Array<
   )(Native.TESTING_RemoveDeviceTests());
 }
 
+export function TESTING_RemoveMfaKeyTests(): Array<
+  GrpcTestCase<RemoveMfaKeyArgs, RemoveMfaKeyOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterRemoveMfaKeyArgs,
+    returnConverterRemoveMfaKeyOut
+  )(Native.TESTING_RemoveMfaKeyTests());
+}
+
 export function TESTING_ReserveUsernameHashTests(): Array<
   GrpcTestCase<ReserveUsernameHashArgs, ReserveUsernameHashOut>
 > {
@@ -2630,6 +3078,15 @@ export function TESTING_SetDiscoverableByPhoneNumberTests(): Array<
     identity,
     identity
   )(Native.TESTING_SetDiscoverableByPhoneNumberTests());
+}
+
+export function TESTING_SetMfaKeyMetadataTests(): Array<
+  GrpcTestCase<SetMfaKeyMetadataArgs, SetMfaKeyMetadataOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetMfaKeyMetadataArgs,
+    returnConverterSetMfaKeyMetadataOut
+  )(Native.TESTING_SetMfaKeyMetadataTests());
 }
 
 export function TESTING_SetRegistrationLockTests(): Array<

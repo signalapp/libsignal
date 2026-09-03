@@ -90,6 +90,10 @@ public enum SignalError: Error {
     case ReceiptCredentialErrorPaymentRequired(chargeFailure: ChargeFailure?, message: String)
     case ReceiptCredentialErrorPaymentNotFound(String)
     case ReceiptCredentialErrorReceiptAlreadyIssued(String)
+    case tooManyTotpKeys(String)
+    case tooManyMfaKeys(String)
+    case oneTimePasswordNotVerified(String)
+    case mfaKeyNotFound(String)
 
     case unknown(UInt32, String)
 }
@@ -391,6 +395,14 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.ReceiptCredentialErrorPaymentNotFound(errStr)
     case SignalErrorCodeReceiptCredentialErrorReceiptAlreadyIssued:
         throw SignalError.ReceiptCredentialErrorReceiptAlreadyIssued(errStr)
+    case SignalErrorCodeTooManyTotpKeys:
+        throw SignalError.tooManyTotpKeys(errStr)
+    case SignalErrorCodeTooManyMfaKeys:
+        throw SignalError.tooManyMfaKeys(errStr)
+    case SignalErrorCodeOneTimePasswordNotVerified:
+        throw SignalError.oneTimePasswordNotVerified(errStr)
+    case SignalErrorCodeMfaKeyNotFound:
+        throw SignalError.mfaKeyNotFound(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

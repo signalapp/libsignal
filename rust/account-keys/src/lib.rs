@@ -8,6 +8,8 @@
 mod backup;
 mod error;
 mod hash;
+mod mfa_metadata;
+mod proto;
 
 use core::{fmt, str};
 
@@ -16,6 +18,7 @@ pub use error::{Error, Result};
 pub use hash::{PinHash, local_pin_hash, verify_local_pin_hash};
 use hkdf::Hkdf;
 use hmac::{Hmac, KeyInit as _, Mac as _};
+pub use mfa_metadata::*;
 use rand::distr::slice;
 use rand::{CryptoRng, Rng};
 use sha2::Sha256;
@@ -71,6 +74,11 @@ impl AccountEntropyPool {
 #[derive(Clone)]
 pub struct SvrKey([u8; SVR_KEY_LEN]);
 
+pub(crate) struct MfaMetadataKeys {
+    pub(crate) cipher_key: [u8; 32],
+    pub(crate) hmac_key: [u8; 32],
+}
+
 impl SvrKey {
     /// Wraps the raw 32-byte SVR key.
     ///
@@ -100,6 +108,18 @@ impl SvrKey {
     /// Derives the key used to obscure sensitive identifiers in logs.
     pub fn derive_logging_key(&self) -> [u8; 32] {
         self.derive(b"Logging Key")
+    }
+
+    /// Derives the keys used to encrypt and authenticate the metadata attached to the account's
+    /// multi-factor authentication (MFA) keys.
+    ///
+    /// Unlike the other keys derived from the SVR key, this is only `pub(crate)` because libsignal
+    /// handles all usages of these keys on behalf of clients.
+    pub(crate) fn derive_mfa_metadata_keys(&self) -> MfaMetadataKeys {
+        MfaMetadataKeys {
+            cipher_key: self.derive(b"20260831 TOTP Metadata Encryption"),
+            hmac_key: self.derive(b"20260831 TOTP Metadata Authentication"),
+        }
     }
 
     fn derive(&self, label: &[u8]) -> [u8; 32] {
@@ -241,7 +261,7 @@ mod tests {
     mod svr_key_tests {
         use const_str::hex;
 
-        use crate::SvrKey;
+        use crate::{MfaMetadataKeys, SvrKey};
 
         // These known answers were taken from iOS' MasterKeyTest.testDerivedKeys.
         // See: https://github.com/signalapp/Signal-iOS/blob/265ee500/SignalServiceKit/tests/Account/MasterKeyTest.swift#L54
@@ -254,6 +274,22 @@ mod tests {
             assert_eq!(
                 svr_key.derive_registration_lock(),
                 hex!("3a40e25812e6c20cca76a602451dd2bc7484553514438cade320c2aef54e10d1")
+            );
+        }
+
+        #[test]
+        fn derive_mfa_metadata_keys_known_answer() {
+            let MfaMetadataKeys {
+                cipher_key,
+                hmac_key,
+            } = SvrKey::new([0x2a; 32]).derive_mfa_metadata_keys();
+            assert_eq!(
+                cipher_key,
+                hex!("3ac203547d12b86aedc2c0ed76f4d80b2d504fa8859a85153378b2694af67116")
+            );
+            assert_eq!(
+                hmac_key,
+                hex!("8f89663ca56515705125d2208be3a5828147fa7326e0796edc26871dfe7c8aa0")
             );
         }
 

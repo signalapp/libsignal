@@ -160,6 +160,10 @@ pub enum SignalErrorCode {
     ReceiptCredentialErrorPaymentRequired = 231,
     ReceiptCredentialErrorPaymentNotFound = 232,
     ReceiptCredentialErrorReceiptAlreadyIssued = 233,
+    TooManyTotpKeys = 234,
+    TooManyMfaKeys = 235,
+    OneTimePasswordNotVerified = 236,
+    MfaKeyNotFound = 237,
 }
 
 pub trait UpcastAsAny {
@@ -1406,6 +1410,44 @@ impl FfiError for ReceiptCredentialError {
             ReceiptCredentialError::ReceiptAlreadyIssued => {
                 SignalErrorCode::ReceiptCredentialErrorReceiptAlreadyIssued
             }
+        }
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::accounts::GenerateTotpKeyError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            Self::TooManyTotpKeys => SignalErrorCode::TooManyTotpKeys,
+            Self::TooManyMfaKeys => SignalErrorCode::TooManyMfaKeys,
+        };
+        SimpleError::new(code, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::accounts::ConfirmTotpKeyError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            Self::OneTimePasswordNotVerified => SignalErrorCode::OneTimePasswordNotVerified,
+            Self::TooManyMfaKeys => SignalErrorCode::TooManyMfaKeys,
+        };
+        SimpleError::new(code, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::accounts::MfaKeyNotFound {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::MfaKeyNotFound, self.to_string())
+    }
+}
+
+impl<E> IntoFfiError for crate::support::RequestOrArgumentError<E>
+where
+    libsignal_net_chat::api::RequestError<E>: IntoFfiError,
+{
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        match self {
+            Self::Request(e) => SignalFfiError::from(e),
+            Self::Argument(e) => SignalFfiError::from(e),
         }
     }
 }

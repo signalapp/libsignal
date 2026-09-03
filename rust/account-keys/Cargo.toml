@@ -16,8 +16,11 @@ workspace = true
 
 [dependencies]
 libsignal-core = { workspace = true }
+libsignal-protocol = { workspace = true }
 
+aes = { workspace = true, features = ["zeroize"] }
 argon2 = { workspace = true, features = ["zeroize"] }
+cbc = { workspace = true, features = ["alloc", "zeroize"] }
 derive_more = { workspace = true, features = ["from"] }
 displaydoc = { workspace = true }
 hkdf = { workspace = true }
@@ -39,6 +42,7 @@ assert_matches = { workspace = true }
 const-str = { workspace = true }
 criterion = { workspace = true }
 proptest = { workspace = true }
+rand_chacha = { workspace = true }
 test-case = { workspace = true }
 
 [build-dependencies]

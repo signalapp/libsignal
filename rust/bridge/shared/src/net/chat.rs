@@ -14,7 +14,7 @@ use futures_util::TryStreamExt;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
 use itertools::Itertools as _;
-use libsignal_account_keys::SvrKey;
+use libsignal_account_keys::{MfaMetadata, SvrKey};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
@@ -41,6 +41,9 @@ use libsignal_net_chat::api::messages::{
 use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::grpc::accounts::{
+    ConfirmTotpKeyError, GenerateTotpKeyError, MAX_MFA_KEY_ID, MfaKeyId, MfaKeyNotFound,
+};
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 use libsignal_net_chat::grpc::devices::{
@@ -1066,6 +1069,105 @@ async fn AuthenticatedChatConnection_set_discoverable_by_phone_number(
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_generate_totp_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgePendingTotpKey, RequestError<GenerateTotpKeyError>> {
+    chat.require_grpc()
+        .await
+        .generate_totp_key()
+        .await
+        .map(Into::into)
+}
+
+/// Validates an app-provided MFA key ID, which must be in `0..=MAX_MFA_KEY_ID`.
+fn mfa_key_id(key_id: i32) -> Result<MfaKeyId, IllegalArgumentError> {
+    u32::try_from(key_id)
+        .ok()
+        .and_then(|id| MfaKeyId::try_from(id).ok())
+        .ok_or_else(|| {
+            IllegalArgumentError::new(format!("MFA key IDs must be in 0..={MAX_MFA_KEY_ID}"))
+        })
+}
+
+/// Builds the metadata from its app-provided fields, enforcing the name length limit.
+fn mfa_metadata(name: String, created_at: Timestamp) -> Result<MfaMetadata, IllegalArgumentError> {
+    MfaMetadata::new(name, created_at).map_err(|e| IllegalArgumentError::new(e.to_string()))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_confirm_totp_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    one_time_password: i32,
+    name: String,
+    created_at: Timestamp,
+    svr_key: [u8; 32],
+    rng: RandomNumberGenerator,
+) -> Result<i32, RequestOrArgumentError<ConfirmTotpKeyError>> {
+    let one_time_password = u32::try_from(one_time_password)
+        .map_err(|_| IllegalArgumentError::new("one-time passwords are non-negative"))?;
+    let metadata = mfa_metadata(name, created_at)?;
+    let mut rng = rng.create();
+    let key_id = chat
+        .require_grpc()
+        .await
+        .confirm_totp_key(
+            one_time_password,
+            &metadata,
+            &SvrKey::new(svr_key),
+            &mut rng,
+        )
+        .await?;
+    Ok(u32::from(key_id)
+        .try_into()
+        .expect("validated by libsignal-net-chat"))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_list_mfa_keys(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    svr_key: [u8; 32],
+) -> Result<BridgeVec<BridgeConfirmedMfaKey>, RequestError<Infallible>> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .list_mfa_keys(&SvrKey::new(svr_key))
+        .await?
+        .into_iter()
+        .map(BridgeConfirmedMfaKey::from)
+        .collect::<Vec<_>>()
+        .into())
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_mfa_key_metadata(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    key_id: i32,
+    name: String,
+    created_at: Timestamp,
+    svr_key: [u8; 32],
+    rng: RandomNumberGenerator,
+) -> Result<(), RequestOrArgumentError<MfaKeyNotFound>> {
+    let key_id = mfa_key_id(key_id)?;
+    let metadata = mfa_metadata(name, created_at)?;
+    let mut rng = rng.create();
+    chat.require_grpc()
+        .await
+        .set_mfa_key_metadata(key_id, &metadata, &SvrKey::new(svr_key), &mut rng)
+        .await?;
+    Ok(())
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_remove_mfa_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    key_id: i32,
+) -> Result<(), RequestOrArgumentError<Infallible>> {
+    let key_id = mfa_key_id(key_id)?;
+    chat.require_grpc().await.remove_mfa_key(key_id).await?;
+    Ok(())
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_delete_username_hash(
     chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
 ) -> Result<(), RequestError<Infallible>> {
@@ -1222,4 +1324,41 @@ async fn AuthenticatedChatConnection_get_sticker_upload_forms(
         )
         .await
         .map(Into::into)
+}
+
+#[cfg(test)]
+mod test {
+    use assert_matches::assert_matches;
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case(-1 => false)]
+    #[test_case(0 => true)]
+    #[test_case(MAX_MFA_KEY_ID as i32 => true)]
+    #[test_case(MAX_MFA_KEY_ID as i32 + 1 => false)]
+    #[test_case(i32::MAX => false)]
+    fn mfa_key_id_range(key_id: i32) -> bool {
+        mfa_key_id(key_id).is_ok()
+    }
+
+    #[test]
+    fn mfa_metadata_validation() {
+        assert_matches!(
+            mfa_metadata("ok".to_owned(), Timestamp::from_epoch_millis(0)),
+            Ok(_)
+        );
+        assert_matches!(
+            mfa_metadata(
+                "a".repeat(libsignal_account_keys::MFA_KEY_NAME_MAX_LEN + 1),
+                Timestamp::from_epoch_millis(0)
+            ),
+            Err(_)
+        );
+        // There is no upper bound on the creation time.
+        assert_matches!(
+            mfa_metadata("ok".to_owned(), Timestamp::from_epoch_millis(u64::MAX)),
+            Ok(_)
+        );
+    }
 }

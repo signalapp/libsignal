@@ -2018,3 +2018,41 @@ impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::usernames::Confi
         }
     }
 }
+
+impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::GenerateTotpKeyError {
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            Self::TooManyTotpKeys => ClassName("org.signal.libsignal.net.TooManyTotpKeysException"),
+            Self::TooManyMfaKeys => ClassName("org.signal.libsignal.net.TooManyMfaKeysException"),
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::ConfirmTotpKeyError {
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            Self::OneTimePasswordNotVerified => {
+                ClassName("org.signal.libsignal.net.OneTimePasswordNotVerifiedException")
+            }
+            Self::TooManyMfaKeys => ClassName("org.signal.libsignal.net.TooManyMfaKeysException"),
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::MfaKeyNotFound {
+    fn exception_class(&self) -> ClassName<'static> {
+        ClassName("org.signal.libsignal.net.MfaKeyNotFoundException")
+    }
+}
+
+impl<E: JniError> JniError for crate::support::RequestOrArgumentError<E> {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        match self {
+            Self::Request(e) => e.to_throwable_impl(env),
+            Self::Argument(e) => e.to_throwable_impl(env),
+        }
+    }
+}

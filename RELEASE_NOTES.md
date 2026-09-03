@@ -9,6 +9,8 @@ v0.102.0
   - `createLoginReceiptCredential()`
   - `AuthDevicesService.setCapabilities()`
   - `AuthStickersService.getStickerUploadForms()`
+  - MFA key management on `AuthAccountsService`: `generateTotpKey`, `confirmTotpKey`,
+    `listMfaKeys`, `setMfaKeyMetadata`, and `removeMfaKey`
 - MSRV bumped to 1.93.1
 - registration: Add support for registration without E.164
 - libsignal builds off stable Rust by default

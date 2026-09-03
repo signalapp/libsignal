@@ -155,6 +155,9 @@ public object NativeTesting {
   public external fun TESTING_ClearRegistrationLockTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_ConfirmTotpKeyTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_ConfirmUsernameTests(): Array<Object>
 
   @JvmStatic
@@ -375,6 +378,9 @@ public object NativeTesting {
   public external fun TESTING_FutureThrowsPoisonErrorType(asyncRuntime: ObjectHandle): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun TESTING_GenerateTotpKeyTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetBackupCdnCredentialsTests(): Array<Object>
 
   @JvmStatic
@@ -421,6 +427,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_KeyTransStoredAccountData(): ByteArray
+
+  @JvmStatic
+  public external fun TESTING_ListMfaKeysTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_LookUpUsernameLinkTests(): Array<Object>
@@ -587,6 +596,9 @@ public object NativeTesting {
   public external fun TESTING_RemoveDeviceTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_RemoveMfaKeyTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_ReserveUsernameHashTests(): Array<Object>
 
   @JvmStatic
@@ -624,6 +636,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_SetDiscoverableByPhoneNumberTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_SetMfaKeyMetadataTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_SetPushTokenFcmTests(): Array<Object>

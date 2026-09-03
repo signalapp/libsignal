@@ -18,8 +18,10 @@ use futures_util::{FutureExt as _, Stream, StreamExt as _};
 use http::status::InvalidStatusCode;
 use http::uri::{InvalidUri, PathAndQuery};
 use http::{HeaderMap, HeaderName, HeaderValue};
-use libsignal_account_keys::{MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN};
-use libsignal_bridge_macros::{BridgedAsValue, bridge_callbacks};
+use libsignal_account_keys::{
+    InvalidMfaMetadata, MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN, MfaMetadata,
+};
+use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom, bridge_callbacks};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -37,6 +39,9 @@ use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
 use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagleAlgorithm};
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
+use libsignal_net_chat::grpc::accounts::{
+    ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters,
+};
 use libsignal_net_chat::grpc::backups::{
     CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
     MediaBackupInfo, MessageBackupInfo,
@@ -956,6 +961,100 @@ impl From<PreKeyCounts> for BridgePreKeyCounts {
     }
 }
 
+// TODO: More i32/u32 cheating.
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeTotpParameters {
+    pub algorithm: String,
+    pub password_length: i32,
+    pub time_step_seconds: i32,
+}
+
+impl From<TotpParameters> for BridgeTotpParameters {
+    fn from(value: TotpParameters) -> Self {
+        let TotpParameters {
+            algorithm,
+            password_length,
+            time_step_seconds,
+        } = value;
+        Self {
+            algorithm,
+            password_length: password_length
+                .try_into()
+                .expect("validated by libsignal-net-chat"),
+            time_step_seconds: time_step_seconds
+                .try_into()
+                .expect("validated by libsignal-net-chat"),
+        }
+    }
+}
+
+#[derive(BridgedAsValue, StructuralFrom)]
+#[structural_from(PendingTotpKey)]
+#[bridge(arg = false)]
+pub struct BridgePendingTotpKey {
+    pub key: Vec<u8>,
+    pub parameters: BridgeTotpParameters,
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeMfaMetadata {
+    pub name: String,
+    pub created_at: Timestamp,
+}
+
+impl From<MfaMetadata> for BridgeMfaMetadata {
+    fn from(value: MfaMetadata) -> Self {
+        Self {
+            name: value.name().to_owned(),
+            created_at: value.created_at(),
+        }
+    }
+}
+
+/// The metadata attached to a confirmed MFA key, or a marker that it couldn't be read with the
+/// SVR key provided to the listing.
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub enum BridgeConfirmedMfaKeyMetadata {
+    Metadata(BridgeMfaMetadata),
+    Unreadable,
+}
+
+/// The kind of a confirmed MFA key.
+#[derive(BridgedAsValue, StructuralFrom, Clone, Copy, PartialEq, Eq, Debug)]
+#[structural_from(MfaKeyKind)]
+#[bridge(arg = false)]
+pub enum BridgeMfaKeyKind {
+    Totp,
+    Unknown,
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeConfirmedMfaKey {
+    pub id: i32,
+    pub metadata: BridgeConfirmedMfaKeyMetadata,
+    pub kind: BridgeMfaKeyKind,
+}
+
+impl From<ConfirmedMfaKey> for BridgeConfirmedMfaKey {
+    fn from(value: ConfirmedMfaKey) -> Self {
+        let ConfirmedMfaKey { id, metadata, kind } = value;
+        Self {
+            id: u32::from(id)
+                .try_into()
+                .expect("validated by libsignal-net-chat"),
+            metadata: match metadata {
+                Ok(metadata) => BridgeConfirmedMfaKeyMetadata::Metadata(metadata.into()),
+                Err(InvalidMfaMetadata) => BridgeConfirmedMfaKeyMetadata::Unreadable,
+            },
+            kind: kind.into(),
+        }
+    }
+}
+
 impl From<CopyBackupMediaItem> for BridgeCopyBackupMediaItem {
     fn from(value: CopyBackupMediaItem) -> Self {
         Self {
@@ -1440,6 +1539,7 @@ mod test {
     use std::sync::Arc;
 
     use assert_matches::assert_matches;
+    use libsignal_net_chat::grpc::accounts::MfaKeyId;
     use test_case::test_case;
 
     use super::*;
@@ -1463,6 +1563,30 @@ mod test {
     #[test_case("a" => None)]
     fn test_parse_username(input: &str) -> Option<(libsignal_core::Aci, libsignal_core::DeviceId)> {
         AuthenticatedChatConnection::parse_username(input)
+    }
+
+    #[test]
+    fn invalid_mfa_metadata_is_bridged_as_unreadable() {
+        let bridged = BridgeConfirmedMfaKey::from(ConfirmedMfaKey {
+            id: MfaKeyId::try_from(1).expect("in range"),
+            metadata: Err(InvalidMfaMetadata),
+            kind: MfaKeyKind::Totp,
+        });
+        assert!(matches!(
+            bridged.metadata,
+            BridgeConfirmedMfaKeyMetadata::Unreadable
+        ));
+        assert_eq!(bridged.kind, BridgeMfaKeyKind::Totp);
+    }
+
+    #[test]
+    fn unknown_mfa_key_kind_is_bridged_as_unknown() {
+        let bridged = BridgeConfirmedMfaKey::from(ConfirmedMfaKey {
+            id: MfaKeyId::try_from(1).expect("in range"),
+            metadata: Err(InvalidMfaMetadata),
+            kind: MfaKeyKind::Unknown,
+        });
+        assert_eq!(bridged.kind, BridgeMfaKeyKind::Unknown);
     }
 
     #[tokio::test]

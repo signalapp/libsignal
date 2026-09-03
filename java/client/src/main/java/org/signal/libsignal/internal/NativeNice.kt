@@ -37,6 +37,20 @@ public sealed class AuthCheckResult {
 
 */
 
+public data class BridgeConfirmedMfaKey(
+  public val id: Int,
+  public val metadata: org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata,
+  public val kind: org.signal.libsignal.internal.BridgeMfaKeyKind,
+)
+
+public sealed class BridgeConfirmedMfaKeyMetadata {
+  public data class Metadata(
+    public val _0: org.signal.libsignal.internal.BridgeMfaMetadata,
+  ) : BridgeConfirmedMfaKeyMetadata()
+
+  public data object Unreadable : BridgeConfirmedMfaKeyMetadata()
+}
+
 /*
 // org.signal.libsignal.net.CopyBackupMediaItem
 
@@ -99,6 +113,22 @@ public data class BridgeMessageBackupInfo(
 
 */
 
+public sealed class BridgeMfaKeyKind {
+  public data object Totp : BridgeMfaKeyKind()
+
+  public data object Unknown : BridgeMfaKeyKind()
+}
+
+public data class BridgeMfaMetadata(
+  public val name: String,
+  public val createdAt: java.time.Instant,
+)
+
+public data class BridgePendingTotpKey(
+  public val key: ByteArray,
+  public val parameters: org.signal.libsignal.internal.BridgeTotpParameters,
+)
+
 /*
 // org.signal.libsignal.net.PreKeyCounts
 
@@ -110,6 +140,12 @@ public data class BridgePreKeyCounts(
 )
 
 */
+
+public data class BridgeTotpParameters(
+  public val algorithm: String,
+  public val passwordLength: Int,
+  public val timeStepSeconds: Int,
+)
 
 /*
 // org.signal.libsignal.net.CallQualitySurvey
@@ -289,6 +325,43 @@ public object AuthCheckResult_Invalid_ReturnConverter {
   internal fun fromNative(): Any? = org.signal.libsignal.net.AuthCheckResult.Invalid
 }
 
+public object BridgeConfirmedMfaKey_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    id: Any?,
+    metadata: Any?,
+    kind: Any?,
+  ): Any? =
+    BridgeConfirmedMfaKey(
+      id =
+        identity(id as Int),
+      metadata =
+        downcastFromObject<org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata>(metadata as Object),
+      kind =
+        downcastFromObject<org.signal.libsignal.internal.BridgeMfaKeyKind>(kind as Object),
+    )
+}
+
+public object BridgeConfirmedMfaKeyMetadata_Metadata_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    BridgeConfirmedMfaKeyMetadata.Metadata(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeMfaMetadata>(_0 as Object),
+    )
+}
+
+public object BridgeConfirmedMfaKeyMetadata_Unreadable_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = BridgeConfirmedMfaKeyMetadata.Unreadable
+}
+
 public object BridgeCopyBackupMediaOutcome_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -391,6 +464,52 @@ public object BridgeMessageBackupInfo_ReturnConverter {
     )
 }
 
+public object BridgeMfaKeyKind_Totp_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = BridgeMfaKeyKind.Totp
+}
+
+public object BridgeMfaKeyKind_Unknown_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = BridgeMfaKeyKind.Unknown
+}
+
+public object BridgeMfaMetadata_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    name: Any?,
+    created_at: Any?,
+  ): Any? =
+    BridgeMfaMetadata(
+      name =
+        identity(name as String),
+      createdAt =
+        (java.time.Instant::ofEpochMilli)(created_at as Long),
+    )
+}
+
+public object BridgePendingTotpKey_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    key: Any?,
+    parameters: Any?,
+  ): Any? =
+    BridgePendingTotpKey(
+      key =
+        identity(key as ByteArray),
+      parameters =
+        downcastFromObject<org.signal.libsignal.internal.BridgeTotpParameters>(parameters as Object),
+    )
+}
+
 public object BridgePreKeyCounts_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -410,6 +529,25 @@ public object BridgePreKeyCounts_ReturnConverter {
         identity(pni_ec_pre_key_count as Int),
       pniKemPreKeyCount =
         identity(pni_kem_pre_key_count as Int),
+    )
+}
+
+public object BridgeTotpParameters_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    algorithm: Any?,
+    password_length: Any?,
+    time_step_seconds: Any?,
+  ): Any? =
+    BridgeTotpParameters(
+      algorithm =
+        identity(algorithm as String),
+      passwordLength =
+        identity(password_length as Int),
+      timeStepSeconds =
+        identity(time_step_seconds as Int),
     )
 }
 
@@ -1006,6 +1144,39 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_confirm_totp_key(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    oneTimePassword: Int,
+    name: String,
+    createdAt: java.time.Instant,
+    svrKey: ByteArray,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<Int> {
+    val ffi_chat = identity(chat)
+    val ffi_one_time_password = identity(oneTimePassword)
+    val ffi_name = identity(name)
+    val ffi_created_at = (java.time.Instant::toEpochMilli)(createdAt)
+    val ffi_svr_key = identity(svrKey)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_confirm_totp_key(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_one_time_password,
+          ffi_name,
+          ffi_created_at,
+          ffi_svr_key,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_confirm_username(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
@@ -1079,6 +1250,23 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_generate_totp_key(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.internal.BridgePendingTotpKey> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_generate_totp_key(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgePendingTotpKey>(it) }
   }
 
   public fun AuthenticatedChatConnection_get_currency_conversions(
@@ -1156,6 +1344,30 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.net.GetStickerUploadFormsResponse>(it) }
   }
 
+  public fun AuthenticatedChatConnection_list_mfa_keys(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    svrKey: ByteArray,
+  ): CompletableFuture<List<org.signal.libsignal.internal.BridgeConfirmedMfaKey>> {
+    val ffi_chat = identity(chat)
+    val ffi_svr_key = identity(svrKey)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_list_mfa_keys(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_svr_key,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.BridgeConfirmedMfaKey>({
+          downcastFromObject<org.signal.libsignal.internal.BridgeConfirmedMfaKey>(it)
+        })(it)
+      }
+  }
+
   public fun AuthenticatedChatConnection_redeem_backup_receipt(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
@@ -1189,6 +1401,25 @@ public object NativeNice {
           asyncCtxHandle.nativeHandle(),
           ffi_chat,
           ffi_device_id,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_remove_mfa_key(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    keyId: Int,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_key_id = identity(keyId)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_remove_mfa_key(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_key_id,
         )
       }
     return ffiOut
@@ -1271,6 +1502,39 @@ public object NativeNice {
           asyncCtxHandle.nativeHandle(),
           ffi_chat,
           ffi_discoverable,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_set_mfa_key_metadata(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    keyId: Int,
+    name: String,
+    createdAt: java.time.Instant,
+    svrKey: ByteArray,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_key_id = identity(keyId)
+    val ffi_name = identity(name)
+    val ffi_created_at = (java.time.Instant::toEpochMilli)(createdAt)
+    val ffi_svr_key = identity(svrKey)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_mfa_key_metadata(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_key_id,
+          ffi_name,
+          ffi_created_at,
+          ffi_svr_key,
+          ffi_rng,
         )
       }
     return ffiOut

@@ -75,8 +75,7 @@ pub enum ReceiptCredentialError {
     },
     /// The payment provider has no purchase with the provided purchase_identifier
     PaymentNotFound,
-    /// The purchase was already redeemed for a receipt credential, but with a different receipt
-    /// credential request
+    /// The purchase was already redeemed for a receipt credential using a different request
     ReceiptAlreadyIssued,
 }
 
