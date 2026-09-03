@@ -10,6 +10,8 @@ pub mod proto {
     // We'll export org::signal::chat for a more flat interface elsewhere.
     mod org {
         pub(super) mod signal {
+            // The comments in proto files shouldn't be held to strict rustdoc standards.
+            #[allow(rustdoc::bare_urls)]
             pub mod chat {
                 pub mod common {
                     tonic::include_proto!("org.signal.chat.common");
