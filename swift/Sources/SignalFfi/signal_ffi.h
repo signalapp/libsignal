@@ -996,6 +996,50 @@ typedef const SignalDeviceCapabilityInternalFfiArg* SignalType_ConstPointer_Sign
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalDeviceCapabilityInternalFfiArg) == 8);
 typedef struct {
+  const int8_t* key;
+  const int8_t* credential;
+  const int8_t* acl;
+  const int8_t* algorithm;
+  const int8_t* date;
+  const int8_t* policy;
+  const int8_t* signature;
+} SignalS3UploadFormInternalFfiResult;
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, key) == 0);
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, credential) == 8);
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, acl) == 16);
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, algorithm) == 24);
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, date) == 32);
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, policy) == 40);
+static_assert_64bit(offsetof(SignalS3UploadFormInternalFfiResult, signature) == 48);
+static_assert_64bit(sizeof(SignalS3UploadFormInternalFfiResult) == 56);
+static_assert_64bit(alignof(SignalS3UploadFormInternalFfiResult) == 8);
+typedef SignalS3UploadFormInternalFfiResult* SignalType_MutPointer_SignalS3UploadFormInternalFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalS3UploadFormInternalFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalS3UploadFormInternalFfiResult) == 8);
+typedef struct {
+  SignalS3UploadFormInternalFfiResult* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult) == 8);
+typedef struct {
+  const int8_t* pack_id;
+  SignalS3UploadFormInternalFfiResult manifest_upload_form;
+  SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult sticker_upload_forms;
+} SignalGetStickerUploadFormsResponseFfiResult;
+static_assert_64bit(offsetof(SignalGetStickerUploadFormsResponseFfiResult, pack_id) == 0);
+static_assert_64bit(offsetof(SignalGetStickerUploadFormsResponseFfiResult, manifest_upload_form) == 8);
+static_assert_64bit(offsetof(SignalGetStickerUploadFormsResponseFfiResult, sticker_upload_forms) == 64);
+static_assert_64bit(sizeof(SignalGetStickerUploadFormsResponseFfiResult) == 88);
+static_assert_64bit(alignof(SignalGetStickerUploadFormsResponseFfiResult) == 8);
+typedef const SignalGetStickerUploadFormsResponseFfiResult* SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult) == 8);
+typedef struct {
   int32_t cdn;
   SignalType_FixedArray15_uint8_t media_id;
   int64_t object_length;
@@ -2610,6 +2654,22 @@ static_assert_64bit(alignof(SignalCPromiseCurrencyConversionsInternalFfiResult) 
 typedef SignalCPromiseCurrencyConversionsInternalFfiResult* SignalType_MutPointer_SignalCPromiseCurrencyConversionsInternalFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseCurrencyConversionsInternalFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseCurrencyConversionsInternalFfiResult) == 8);
+typedef void (*SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult_SignalType_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult_SignalType_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult_SignalType_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult_SignalType_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseGetStickerUploadFormsResponseFfiResult;
+static_assert_64bit(offsetof(SignalCPromiseGetStickerUploadFormsResponseFfiResult, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseGetStickerUploadFormsResponseFfiResult, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseGetStickerUploadFormsResponseFfiResult, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseGetStickerUploadFormsResponseFfiResult) == 24);
+static_assert_64bit(alignof(SignalCPromiseGetStickerUploadFormsResponseFfiResult) == 8);
+typedef SignalCPromiseGetStickerUploadFormsResponseFfiResult* SignalType_MutPointer_SignalCPromiseGetStickerUploadFormsResponseFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseGetStickerUploadFormsResponseFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseGetStickerUploadFormsResponseFfiResult) == 8);
 typedef void (*SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalListMediaResponseFfiResult, SignalType_ConstPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalListMediaResponseFfiResult_SignalType_ConstPointer_void) == 8);
@@ -3574,6 +3634,12 @@ SignalFfiError* signal_authenticated_chat_connection_get_pre_key_count(
   SignalCPromiseBridgePreKeyCountsFfiResult* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat
+);
+SignalFfiError* signal_authenticated_chat_connection_get_sticker_upload_forms(
+  SignalCPromiseGetStickerUploadFormsResponseFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  int32_t number_of_stickers
 );
 SignalFfiError* signal_authenticated_chat_connection_get_upload_form(
   SignalCPromiseFfiUploadForm* promise,

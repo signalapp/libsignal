@@ -8,6 +8,7 @@ v0.102.0
   - `AuthKeysService.getPreKeyCount()`
   - `createLoginReceiptCredential()`
   - `AuthDevicesService.setCapabilities()`
+  - `AuthStickersService.getStickerUploadForms()`
 - MSRV bumped to 1.93.1
 - registration: Add support for registration without E.164
 - libsignal builds off stable Rust by default

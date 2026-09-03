@@ -31,6 +31,39 @@ export type UploadForm = {
   signedUploadUrl: URL;
 };
 
+/**
+ * The information needed for an upload to CDN0.
+ *
+ * Only the `key` is relevant to an application, as the CDN-relative path of the uploaded file.
+ * Everything else should be passed through directly to AWS.
+ */
+export type S3UploadForm = {
+  key: string;
+  credential: string;
+  acl: string;
+  algorithm: string;
+  date: string;
+  policy: string;
+  signature: string;
+};
+
+// "Methods" for S3UploadForm even though it's not a true class.
+// eslint-disable-next-line @typescript-eslint/no-namespace
+export namespace S3UploadForm {
+  /** Retrieves the properties in a known-working order for S3's POST-based upload. */
+  export function asHeaders(form: S3UploadForm): [string, string][] {
+    return [
+      ['acl', form.acl],
+      ['key', form.key],
+      ['policy', form.policy],
+      ['x-amz-algorithm', form.algorithm],
+      ['x-amz-credential', form.credential],
+      ['x-amz-date', form.date],
+      ['x-amz-signature', form.signature],
+    ];
+  }
+}
+
 type ConnectionManager = Native.Wrapper<Native.ConnectionManager>;
 
 export class ChatServerMessageAck {

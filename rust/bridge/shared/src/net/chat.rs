@@ -18,7 +18,8 @@ use libsignal_account_keys::SvrKey;
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
-    CallQualitySurveyInternal, CurrencyConversionsInternal, ListMediaResponse,
+    CallQualitySurveyInternal, CurrencyConversionsInternal, GetStickerUploadFormsResponse,
+    ListMediaResponse,
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -1205,4 +1206,20 @@ async fn UnauthenticatedChatConnection_create_login_receipt_credential(
             purchase_time,
         )
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_sticker_upload_forms(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    number_of_stickers: i32,
+) -> Result<GetStickerUploadFormsResponse, RequestError<core::convert::Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_sticker_upload_forms(
+            number_of_stickers
+                .try_into()
+                .expect("cannot ask for a negative number of stickers"),
+        )
+        .await
+        .map(Into::into)
 }

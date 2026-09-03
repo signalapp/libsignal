@@ -343,6 +343,13 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_sticker_upload_forms(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    numberOfStickers: Int,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_upload_form(
     asyncRuntime: ObjectHandle,
     chat: ObjectHandle,

@@ -396,6 +396,9 @@ public object NativeTesting {
   public external fun TESTING_GetPreKeyCountTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetStickerUploadFormTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_InputStreamReadIntoZeroLengthSlice(capsAlphabetInput: InputStream): ByteArray
 
   @JvmStatic

@@ -1515,6 +1515,43 @@ extension SignalCPromiseCurrencyConversionsInternalFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseGetStickerUploadFormsResponseFfiResult: SignalCPromise {
+
+    typealias Result = SignalGetStickerUploadFormsResponseFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult_SignalType_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_SignalType_MutPointer_SignalFfiError_SignalType_ConstPointer_SignalGetStickerUploadFormsResponseFfiResult_SignalType_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseListMediaResponseFfiResult: SignalCPromise {
 
     typealias Result = SignalListMediaResponseFfiResult
@@ -1855,6 +1892,40 @@ extension SignalOwnedBufferOfMaxAlignedListMediaItemFfiResult: SignalOwnedBuffer
     }
 
     var generic_base: SignalType_MutPointer_SignalListMediaItemFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalS3UploadFormInternalFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalS3UploadFormInternalFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalS3UploadFormInternalFfiResult? {
         get { self.base }
         set { base = newValue }
     }
@@ -2389,6 +2460,18 @@ internal enum DeviceCapabilityInternal {
 }
 
 /*
+// GetStickerUploadFormsResponse
+
+internal struct GetStickerUploadFormsResponse {
+    var packId: String
+    var manifestUploadForm: S3UploadForm
+    var stickerUploadForms: [S3UploadForm]
+
+}
+
+*/
+
+/*
 // LinkedDevice
 
 internal struct LinkedDeviceInternal {
@@ -2425,6 +2508,22 @@ internal enum PaymentProvider {
     case appleAppStore
     case stripe
     case braintree
+}
+
+*/
+
+/*
+// S3UploadForm
+
+internal struct S3UploadFormInternal {
+    var key: String
+    var credential: String
+    var acl: String
+    var algorithm: String
+    var date: String
+    var policy: String
+    var signature: String
+
 }
 
 */
@@ -2697,6 +2796,32 @@ internal enum DerivedReturnConverterDeleteBackupMediaNextChunk: NiceReturnConver
     }
 }
 
+internal enum DerivedReturnConverterGetStickerUploadFormsResponse: NiceReturnConverter {
+    typealias NiceReturn = GetStickerUploadFormsResponse
+    typealias FfiReturn = SignalGetStickerUploadFormsResponseFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetStickerUploadFormsResponseFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let pack_id = Result { try StringConverter.convertReturn(consuming: ffiValue.pack_id) }
+        let manifest_upload_form = Result {
+            try DerivedReturnConverterS3UploadFormInternal.convertReturn(consuming: ffiValue.manifest_upload_form)
+        }
+        let sticker_upload_forms = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterS3UploadFormInternal, SignalOwnedBufferOfMaxAlignedS3UploadFormInternalFfiResult
+            >.convertReturn(consuming: ffiValue.sticker_upload_forms)
+        }
+
+        return GetStickerUploadFormsResponse(
+            packId: try pack_id.get(),
+            manifestUploadForm: try manifest_upload_form.get(),
+            stickerUploadForms: try sticker_upload_forms.get()
+        )
+    }
+}
+
 internal enum DerivedReturnConverterLinkedDeviceInternal: NiceReturnConverter {
     typealias NiceReturn = LinkedDevice
     typealias FfiReturn = SignalLinkedDeviceInternalFfiResult
@@ -2791,6 +2916,34 @@ internal enum DerivedReturnConverterPaymentProvider: NiceReturnConverter {
         default:
             throw SignalError.internalError("Unexpected enum tag for PaymentProvider: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterS3UploadFormInternal: NiceReturnConverter {
+    typealias NiceReturn = S3UploadForm
+    typealias FfiReturn = SignalS3UploadFormInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalS3UploadFormInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let key = Result { try StringConverter.convertReturn(consuming: ffiValue.key) }
+        let credential = Result { try StringConverter.convertReturn(consuming: ffiValue.credential) }
+        let acl = Result { try StringConverter.convertReturn(consuming: ffiValue.acl) }
+        let algorithm = Result { try StringConverter.convertReturn(consuming: ffiValue.algorithm) }
+        let date = Result { try StringConverter.convertReturn(consuming: ffiValue.date) }
+        let policy = Result { try StringConverter.convertReturn(consuming: ffiValue.policy) }
+        let signature = Result { try StringConverter.convertReturn(consuming: ffiValue.signature) }
+
+        return S3UploadForm(
+            key: try key.get(),
+            credential: try credential.get(),
+            acl: try acl.get(),
+            algorithm: try algorithm.get(),
+            date: try date.get(),
+            policy: try policy.get(),
+            signature: try signature.get()
+        )
     }
 }
 
@@ -3697,6 +3850,30 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgePreKeyCounts.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_sticker_upload_forms(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        numberOfStickers number_of_stickers: Int32,
+    ) async throws -> GetStickerUploadFormsResponse {
+        let rawOutput: DerivedReturnConverterGetStickerUploadFormsResponse.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        IdentityArgConverter<Int32>.convertArgBorrowed(number_of_stickers) { number_of_stickersFfi in
+                            SignalFfi.signal_authenticated_chat_connection_get_sticker_upload_forms(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                number_of_stickersFfi,
+                            )
+                        }
+                    }
+            }
+        return try DerivedReturnConverterGetStickerUploadFormsResponse.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_redeem_backup_receipt(

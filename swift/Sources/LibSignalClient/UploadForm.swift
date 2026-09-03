@@ -56,3 +56,48 @@ extension SignalFfiUploadForm {
         self = .init()
     }
 }
+
+/// The information needed for an upload to CDN0.
+///
+/// Only the `key` is relevant to an application, as the CDN-relative path of the uploaded file.
+/// Everything else should be passed through directly to AWS.
+public struct S3UploadForm: Equatable, Sendable {
+    public var key: String
+    public var credential: String
+    public var acl: String
+    public var algorithm: String
+    public var date: String
+    public var policy: String
+    public var signature: String
+
+    public init(
+        key: String,
+        credential: String,
+        acl: String,
+        algorithm: String,
+        date: String,
+        policy: String,
+        signature: String
+    ) {
+        self.key = key
+        self.credential = credential
+        self.acl = acl
+        self.algorithm = algorithm
+        self.date = date
+        self.policy = policy
+        self.signature = signature
+    }
+
+    /// Retrieves the properties in a known-working order for S3's POST-based upload.
+    public func asHeaders() -> [(String, String)] {
+        [
+            ("acl", acl),
+            ("key", key),
+            ("policy", policy),
+            ("x-amz-algorithm", algorithm),
+            ("x-amz-credential", credential),
+            ("x-amz-date", date),
+            ("x-amz-signature", signature),
+        ]
+    }
+}

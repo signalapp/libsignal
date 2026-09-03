@@ -124,6 +124,14 @@ public sealed class GetMessageBackupInfoOut {
   public data object MissingResponse : GetMessageBackupInfoOut()
 }
 
+public sealed class GetStickerUploadFormsOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.net.GetStickerUploadFormsResponse,
+  ) : GetStickerUploadFormsOut()
+
+  public data object Invalid : GetStickerUploadFormsOut()
+}
+
 public sealed class GetSvrBCredentialsOut {
   public data class Success(
     public val username: String,
@@ -758,6 +766,24 @@ public object GetMessageBackupInfoOut_MissingResponse_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = GetMessageBackupInfoOut.MissingResponse
+}
+
+public object GetStickerUploadFormsOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetStickerUploadFormsOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.net.GetStickerUploadFormsResponse>(_0 as Object),
+    )
+}
+
+public object GetStickerUploadFormsOut_Invalid_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetStickerUploadFormsOut.Invalid
 }
 
 public object GetSvrBCredentialsOut_Success_ReturnConverter {
@@ -1764,6 +1790,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.net.PreKeyCounts>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.net.PreKeyCounts>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetStickerUploadFormTests(): List<org.signal.libsignal.net.GrpcTestCase<Int, org.signal.libsignal.internal.GetStickerUploadFormsOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetStickerUploadFormTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Int, Object, Int, org.signal.libsignal.internal.GetStickerUploadFormsOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetStickerUploadFormsOut>(it) })(ffiOut)
   }
 
   public fun TESTING_LookUpUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.LookUpUsernameLinkArgs, org.signal.libsignal.internal.LookUpUsernameLinkOut>> {

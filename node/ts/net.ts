@@ -38,6 +38,7 @@ export * from './net/chat/AuthDevicesService.js';
 export * from './net/chat/AuthKeysService.js';
 export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthPaymentsService.js';
+export * from './net/chat/AuthStickersService.js';
 export * from './net/chat/AuthUsernamesService.js';
 export * from './net/chat/UnauthBackupsService.js';
 export * from './net/chat/UnauthCallQualityService.js';

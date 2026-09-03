@@ -192,6 +192,17 @@ public sealed class DeviceCapabilityInternal {
 }
 
 /*
+// org.signal.libsignal.net.GetStickerUploadFormsResponse
+
+public data class GetStickerUploadFormsResponse(
+  public val packId: String,
+  public val manifestUploadForm: org.signal.libsignal.net.S3UploadForm,
+  public val stickerUploadForms: List<org.signal.libsignal.net.S3UploadForm>,
+)
+
+*/
+
+/*
 // org.signal.libsignal.net.LinkedDevice
 
 public data class LinkedDeviceInternal(
@@ -239,6 +250,21 @@ public sealed class PaymentProvider {
 
   public data object Braintree : PaymentProvider()
 }
+
+*/
+
+/*
+// org.signal.libsignal.net.S3UploadForm
+
+public data class S3UploadFormInternal(
+  public val key: String,
+  public val credential: String,
+  public val acl: String,
+  public val algorithm: String,
+  public val date: String,
+  public val policy: String,
+  public val signature: String,
+)
 
 */
 
@@ -487,6 +513,27 @@ public object DeleteBackupMediaNextChunk_ReturnConverter {
     )
 }
 
+public object GetStickerUploadFormsResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    pack_id: Any?,
+    manifest_upload_form: Any?,
+    sticker_upload_forms: Any?,
+  ): Any? =
+    org.signal.libsignal.net.GetStickerUploadFormsResponse(
+      packId =
+        identity(pack_id as String),
+      manifestUploadForm =
+        downcastFromObject<org.signal.libsignal.net.S3UploadForm>(manifest_upload_form as Object),
+      stickerUploadForms =
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.S3UploadForm>({
+          downcastFromObject<org.signal.libsignal.net.S3UploadForm>(it)
+        })(sticker_upload_forms as Array<*>),
+    )
+}
+
 public object LinkedDeviceInternal_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -581,6 +628,37 @@ public object PaymentProvider_Braintree_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Braintree
+}
+
+public object S3UploadFormInternal_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    key: Any?,
+    credential: Any?,
+    acl: Any?,
+    algorithm: Any?,
+    date: Any?,
+    policy: Any?,
+    signature: Any?,
+  ): Any? =
+    org.signal.libsignal.net.S3UploadForm(
+      key =
+        identity(key as String),
+      credential =
+        identity(credential as String),
+      acl =
+        identity(acl as String),
+      algorithm =
+        identity(algorithm as String),
+      date =
+        identity(date as String),
+      policy =
+        identity(policy as String),
+      signature =
+        identity(signature as String),
+    )
 }
 
 @CalledFromNative
@@ -1056,6 +1134,26 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.net.PreKeyCounts>(it) }
+  }
+
+  public fun AuthenticatedChatConnection_get_sticker_upload_forms(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    numberOfStickers: Int,
+  ): CompletableFuture<org.signal.libsignal.net.GetStickerUploadFormsResponse> {
+    val ffi_chat = identity(chat)
+    val ffi_number_of_stickers = identity(numberOfStickers)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_sticker_upload_forms(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_number_of_stickers,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.net.GetStickerUploadFormsResponse>(it) }
   }
 
   public fun AuthenticatedChatConnection_redeem_backup_receipt(

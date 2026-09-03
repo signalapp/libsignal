@@ -776,6 +776,11 @@ internal enum GetMessageBackupInfoOut {
     case missingResponse
 }
 
+internal enum GetStickerUploadFormsOut {
+    case success(GetStickerUploadFormsResponse)
+    case invalid
+}
+
 internal enum GetSvrBCredentialsOut {
     case success(username: String, password: String)
     case credentialRejected
@@ -1421,6 +1426,30 @@ internal enum DerivedReturnConverterGetMessageBackupInfoOut: NiceReturnConverter
             return GetMessageBackupInfoOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for GetMessageBackupInfoOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetStickerUploadFormsOut: NiceReturnConverter {
+    typealias NiceReturn = GetStickerUploadFormsOut
+    typealias FfiReturn = SignalGetStickerUploadFormsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetStickerUploadFormsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetStickerUploadFormsOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterGetStickerUploadFormsResponse.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetStickerUploadFormsOut.success(try _0.get())
+        case SignalGetStickerUploadFormsOutFfiResultInvalid:
+            return GetStickerUploadFormsOut.invalid
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetStickerUploadFormsOut: \(ffiTag)")
         }
     }
 }
@@ -3167,6 +3196,20 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterBridgePreKeyCounts>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_GetStickerUploadFormTests() throws -> [GrpcTestCase<Int32, GetStickerUploadFormsOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            IdentityResultConverter<Int32>, DerivedReturnConverterGetStickerUploadFormsOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_sticker_upload_form_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            IdentityResultConverter<Int32>, DerivedReturnConverterGetStickerUploadFormsOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_LookUpUsernameLinkTests() throws -> [GrpcTestCase<

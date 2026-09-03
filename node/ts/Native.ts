@@ -407,6 +407,21 @@ export type ReturnFfiGetMessageBackupInfoOut =
       __type: 2;
     };
 
+export type ReturnFfiGetStickerUploadFormsOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiGetStickerUploadFormsResponse;
+    }
+  | {
+      __type: 1;
+    };
+
+export type ReturnFfiGetStickerUploadFormsResponse = {
+  pack_id: string;
+  manifest_upload_form: ReturnFfiS3UploadFormInternal;
+  sticker_upload_forms: Array<ReturnFfiS3UploadFormInternal>;
+};
+
 export type ReturnFfiGetSvrBCredentialsOut =
   | {
       __type: 0;
@@ -607,6 +622,16 @@ export type ReturnFfiReserveUsernameHashOut =
   | {
       __type: 1;
     };
+
+export type ReturnFfiS3UploadFormInternal = {
+  key: string;
+  credential: string;
+  acl: string;
+  algorithm: string;
+  date: string;
+  policy: string;
+  signature: string;
+};
 
 export type ReturnFfiServerPublicParamsSerialized = {
   bytes: Uint8Array<ArrayBuffer>;
@@ -913,6 +938,11 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgePreKeyCounts>;
+  AuthenticatedChatConnection_get_sticker_upload_forms: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    number_of_stickers: number
+  ) => CancellablePromise<ReturnFfiGetStickerUploadFormsResponse>;
   AuthenticatedChatConnection_get_upload_form: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -2999,6 +3029,9 @@ type NativeFunctions = {
   TESTING_GetPreKeyCountTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiBridgePreKeyCounts>
   >;
+  TESTING_GetStickerUploadFormTests: () => Array<
+    GrpcTestCaseFfi<number, ReturnFfiGetStickerUploadFormsOut>
+  >;
   TESTING_InputStreamReadIntoZeroLengthSlice: (
     caps_alphabet_input: InputStream
   ) => Promise<Uint8Array<ArrayBuffer>>;
@@ -3642,6 +3675,7 @@ const {
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_pre_key_count,
+  AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
@@ -4202,6 +4236,7 @@ const {
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
+  TESTING_GetStickerUploadFormTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,
@@ -4423,6 +4458,7 @@ export {
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_pre_key_count,
+  AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
   AuthenticatedChatConnection_init_listener,
@@ -4983,6 +5019,7 @@ export {
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
+  TESTING_GetStickerUploadFormTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
   TESTING_JoinStringArray,
   TESTING_KeyTransChatSendError,

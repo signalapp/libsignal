@@ -501,7 +501,9 @@ mod remote_derives {
     use ::zkgroup::ServerPublicParams;
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
-    use libsignal_bridge_types::net::chat::remote_derives::ListMediaResponse;
+    use libsignal_bridge_types::net::chat::remote_derives::{
+        GetStickerUploadFormsResponse, ListMediaResponse,
+    };
     use libsignal_bridge_types::net::chat::{
         BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem, BridgeMediaBackupInfo,
         BridgeMessageBackupInfo,
@@ -778,6 +780,15 @@ mod remote_derives {
         pub number: String,
         pub passwords: BridgeVec<String>,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::stickers::test_cases::GetStickerUploadFormsOut)]
+    #[bridge(arg = false)]
+    #[allow(clippy::large_enum_variant)]
+    pub enum GetStickerUploadFormsOut {
+        Success(GetStickerUploadFormsResponse),
+        Invalid,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -988,4 +999,14 @@ fn TESTING_CreateLoginReceiptCredentialTests() -> GrpcTestCases<
     remote_derives::CreateLoginReceiptCredentialOut,
 > {
     libsignal_net_chat::grpc::login_purchase::test_cases::create_login_receipt_credential_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetStickerUploadFormTests()
+-> GrpcTestCases<i32, remote_derives::GetStickerUploadFormsOut> {
+    GrpcTestCases::from_iter(
+        libsignal_net_chat::grpc::stickers::test_cases::get_sticker_upload_form_test_cases()
+            .into_iter()
+            .map(|next| next.map_request(|count| i32::try_from(count).expect("count fits in i32"))),
+    )
 }

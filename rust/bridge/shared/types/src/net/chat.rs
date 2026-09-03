@@ -1151,6 +1151,7 @@ bridge_as_handle!(
 pub mod remote_derives {
     use libsignal_bridge_macros::StructuralFrom;
     use libsignal_core::DeviceId;
+    use libsignal_net_chat::api::S3UploadForm;
     use libsignal_net_chat::grpc::payments::{Currency, CurrencyConversions};
 
     use super::*;
@@ -1401,6 +1402,36 @@ pub mod remote_derives {
         ProfilesV2,
         UsernameChangeSyncMessage,
         OptionalPhoneNumber,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::api::S3UploadForm,
+        ffi_nice_type = "S3UploadForm",
+        jni_nice_type = "org.signal.libsignal.net.S3UploadForm"
+    )]
+    #[allow(unused)]
+    struct S3UploadFormInternal {
+        pub key: String,
+        pub credential: String,
+        pub acl: String,
+        pub algorithm: String,
+        pub date: String,
+        pub policy: String,
+        pub signature: String,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::stickers::GetStickerUploadFormsResponse)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "GetStickerUploadFormsResponse",
+        jni_nice_type = "org.signal.libsignal.net.GetStickerUploadFormsResponse"
+    )]
+    pub struct GetStickerUploadFormsResponse {
+        pub pack_id: String,
+        pub manifest_upload_form: S3UploadForm,
+        pub sticker_upload_forms: BridgeVec<S3UploadForm>,
     }
 }
 

@@ -898,6 +898,21 @@ typedef struct {
 static_assert_64bit(sizeof(SignalGetMessageBackupInfoOutFfiResult) == 32);
 static_assert_64bit(alignof(SignalGetMessageBackupInfoOutFfiResult) == 8);
 typedef enum {
+  SignalGetStickerUploadFormsOutFfiResultSuccess,
+  SignalGetStickerUploadFormsOutFfiResultInvalid,
+} SignalGetStickerUploadFormsOutFfiResult_Tag;
+typedef struct {
+  SignalGetStickerUploadFormsResponseFfiResult _0;
+} SignalGetStickerUploadFormsOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetStickerUploadFormsOutFfiResult_Tag tag;
+  union {
+    SignalGetStickerUploadFormsOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetStickerUploadFormsOutFfiResult;
+static_assert_64bit(sizeof(SignalGetStickerUploadFormsOutFfiResult) == 96);
+static_assert_64bit(alignof(SignalGetStickerUploadFormsOutFfiResult) == 8);
+typedef enum {
   SignalGetSvrBCredentialsOutFfiResultSuccess,
   SignalGetSvrBCredentialsOutFfiResultCredentialRejected,
   SignalGetSvrBCredentialsOutFfiResultMissingResponse,
@@ -1838,6 +1853,9 @@ SignalFfiError* signal_testing_get_message_backup_info_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_pre_key_count_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_sticker_upload_form_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_handle_type_clone(

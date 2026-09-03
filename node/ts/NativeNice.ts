@@ -46,6 +46,8 @@ import type {
   ReturnFfiGetDevicesOut,
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
+  ReturnFfiGetStickerUploadFormsOut,
+  ReturnFfiGetStickerUploadFormsResponse,
   ReturnFfiGetSvrBCredentialsOut,
   ReturnFfiLinkedDeviceInternal,
   ReturnFfiListMediaArgs,
@@ -67,6 +69,7 @@ import type {
   ReturnFfiRemoveDeviceOut,
   ReturnFfiReserveUsernameHashArgs,
   ReturnFfiReserveUsernameHashOut,
+  ReturnFfiS3UploadFormInternal,
   ReturnFfiServerPublicParamsSerialized,
   ReturnFfiSetCapabilitiesArgs,
   ReturnFfiSetDeviceNameArgs,
@@ -284,6 +287,18 @@ export type GetMessageBackupInfoOut =
   | 'credentialRejected'
   | 'missingResponse';
 
+export type GetStickerUploadFormsOut =
+  | {
+      success: GetStickerUploadFormsResponse;
+    }
+  | 'invalid';
+
+export type GetStickerUploadFormsResponse = {
+  packId: string;
+  manifestUploadForm: S3UploadFormInternal;
+  stickerUploadForms: Array<S3UploadFormInternal>;
+};
+
 export type GetSvrBCredentialsOut =
   | {
       success: {
@@ -422,6 +437,16 @@ export type ReserveUsernameHashOut =
       success: Uint8Array<ArrayBuffer>;
     }
   | 'usernameNotAvailable';
+
+export type S3UploadFormInternal = {
+  key: string;
+  credential: string;
+  acl: string;
+  algorithm: string;
+  date: string;
+  policy: string;
+  signature: string;
+};
 
 export type ServerPublicParamsSerialized = {
   bytes: Uint8Array<ArrayBuffer>;
@@ -882,6 +907,40 @@ export function returnConverterGetMessageBackupInfoOut(
   }
 }
 
+export function returnConverterGetStickerUploadFormsOut(
+  ffiInput: Native.ReturnFfiGetStickerUploadFormsOut
+): GetStickerUploadFormsOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterGetStickerUploadFormsResponse(ffiInput._0),
+      };
+    case 1:
+      return 'invalid';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for GetStickerUploadFormsOut'
+      );
+  }
+}
+
+export function returnConverterGetStickerUploadFormsResponse(
+  ffiInput: Native.ReturnFfiGetStickerUploadFormsResponse
+): GetStickerUploadFormsResponse {
+  return {
+    packId: identity(ffiInput.pack_id),
+    manifestUploadForm: returnConverterS3UploadFormInternal(
+      ffiInput.manifest_upload_form
+    ),
+    stickerUploadForms: ((arr: Array<ReturnFfiS3UploadFormInternal>) =>
+      arr.map(returnConverterS3UploadFormInternal))(
+      ffiInput.sticker_upload_forms
+    ),
+  };
+}
+
 export function returnConverterGetSvrBCredentialsOut(
   ffiInput: Native.ReturnFfiGetSvrBCredentialsOut
 ): GetSvrBCredentialsOut {
@@ -1205,6 +1264,20 @@ export function returnConverterReserveUsernameHashOut(
         'Unknown FFI return enum type for ReserveUsernameHashOut'
       );
   }
+}
+
+export function returnConverterS3UploadFormInternal(
+  ffiInput: Native.ReturnFfiS3UploadFormInternal
+): S3UploadFormInternal {
+  return {
+    key: identity(ffiInput.key),
+    credential: identity(ffiInput.credential),
+    acl: identity(ffiInput.acl),
+    algorithm: identity(ffiInput.algorithm),
+    date: identity(ffiInput.date),
+    policy: identity(ffiInput.policy),
+    signature: identity(ffiInput.signature),
+  };
 }
 
 export function returnConverterServerPublicParamsSerialized(
@@ -1749,6 +1822,28 @@ export async function AuthenticatedChatConnection_get_pre_key_count({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_sticker_upload_forms({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  numberOfStickers: number_of_stickers,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  numberOfStickers: number;
+}): Promise<GetStickerUploadFormsResponse> {
+  return returnConverterGetStickerUploadFormsResponse(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_sticker_upload_forms(
+        asyncContext,
+        identity(chat),
+        identity(number_of_stickers)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_redeem_backup_receipt({
   asyncContext,
   abortSignal,
@@ -2219,6 +2314,15 @@ export function TESTING_GetPreKeyCountTests(): Array<
     identity,
     returnConverterBridgePreKeyCounts
   )(Native.TESTING_GetPreKeyCountTests());
+}
+
+export function TESTING_GetStickerUploadFormTests(): Array<
+  GrpcTestCase<number, GetStickerUploadFormsOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetStickerUploadFormsOut
+  )(Native.TESTING_GetStickerUploadFormTests());
 }
 
 export function TESTING_LookUpUsernameLinkTests(): Array<
