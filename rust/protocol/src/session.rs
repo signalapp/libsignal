@@ -98,7 +98,24 @@ async fn process_prekey_impl(
         message.message_version() as u32,
         &message.base_key().serialize(),
     )? {
-        // We've already set up a session for this message, we can exit early.
+        // We've already set up a session for this message, we can exit early as long as the
+        // identity key hasn't changed. (Note that this is a constant-time comparison as long as the
+        // keys have the same type: see PublicKey's PartialEq.)
+        if !session_record
+            .session_state()
+            .expect("just promoted a session")
+            .remote_identity_key()?
+            .is_some_and(|stored| *message.identity_key() == stored)
+        {
+            // We return this as InvalidMessage rather than any other error because there's no
+            // expected recovery; barring data corruption, the peer has just decided to send us the
+            // wrong identity key for no apparent reason. (Of course, it's possible it's the local
+            // state that's wrong, but that's true for the eventual MAC check as well.)
+            return Err(SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::PreKey,
+                "remote identity key not consistent with previously-established session".to_owned(),
+            ));
+        }
         return Ok(None);
     }
 

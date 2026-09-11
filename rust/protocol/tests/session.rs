@@ -2606,6 +2606,123 @@ fn prekey_message_to_archived_session() -> TestResult {
     .expect("sync")
 }
 
+#[test]
+fn prekey_message_must_not_have_changed_identity_key() -> TestResult {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let alice_address =
+            ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
+        let bob_address =
+            ProtocolAddress::new("+14151111112".to_owned(), DeviceId::new(1).unwrap());
+
+        let alice_store_builder = TestStoreBuilder::new()
+            .with_pre_key(0.into())
+            .with_signed_pre_key(0.into())
+            .with_kyber_pre_key(0.into());
+        let alice_pre_key_bundle =
+            alice_store_builder.make_bundle_with_latest_keys(DeviceId::new(1).unwrap());
+
+        let mut alice_store = alice_store_builder.store;
+
+        let mut bob_store = TestStoreBuilder::new().store;
+        process_prekey_bundle(
+            &alice_address,
+            &bob_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            &alice_pre_key_bundle,
+            SystemTime::UNIX_EPOCH,
+            &mut csprng,
+        )
+        .await
+        .expect("can receive bundle");
+
+        // Bob sends a (valid) pre-key message.
+        let message = message_encrypt(
+            "from Bob".as_bytes(),
+            &alice_address,
+            &bob_address,
+            &mut bob_store.session_store,
+            &mut bob_store.identity_store,
+            SystemTime::UNIX_EPOCH,
+            &mut csprng,
+        )
+        .await
+        .expect("can encrypt");
+        assert_matches!(message, CiphertextMessage::PreKeySignalMessage(_));
+        decrypt(&mut alice_store, &bob_address, &alice_address, &message)
+            .await
+            .expect("Alice can receive the message");
+
+        // Now Bob sends another message but with the identity key replaced.
+        let pre_key_message = {
+            let message = message_encrypt(
+                "from Bob 2".as_bytes(),
+                &alice_address,
+                &bob_address,
+                &mut bob_store.session_store,
+                &mut bob_store.identity_store,
+                SystemTime::UNIX_EPOCH,
+                &mut csprng,
+            )
+            .await;
+            let message =
+                assert_matches!(message, Ok(CiphertextMessage::PreKeySignalMessage(m)) => m);
+
+            PreKeySignalMessage::new(
+                message.message_version(),
+                message.registration_id(),
+                message.pre_key_id(),
+                message.signed_pre_key_id(),
+                message
+                    .kyber_pre_key_id()
+                    .zip(message.kyber_ciphertext())
+                    .map(|(id, ciphertext)| KyberPayload::new(id, ciphertext.clone())),
+                *message.base_key(),
+                *IdentityKeyPair::generate(&mut csprng).identity_key(),
+                message.message().clone(),
+            )
+            .unwrap()
+        };
+
+        // Clear the old identity key out of the identity key store.
+        // (InMemIdentityKeyStore is stricter in some ways than the app IdentityKeyStores,
+        // but also we shouldn't be relying on it for this check anyway.)
+        alice_store.identity_store.reset();
+
+        // The decryption fails, as expected.
+        assert_matches!(
+            decrypt(
+                &mut alice_store,
+                &bob_address,
+                &alice_address,
+                &CiphertextMessage::PreKeySignalMessage(pre_key_message),
+            )
+            .await,
+            Err(SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::PreKey,
+                msg,
+            ))
+            if msg == "remote identity key not consistent with previously-established session"
+        );
+
+        // Because the decryption failed, the identity store was not updated.
+        assert_eq!(
+            alice_store
+                .identity_store
+                .get_identity(&bob_address)
+                .await
+                .unwrap()
+                .as_ref(),
+            None,
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
 #[expect(clippy::needless_range_loop)]
 fn run_session_interaction(alice_session: SessionRecord, bob_session: SessionRecord) -> TestResult {
     async {
