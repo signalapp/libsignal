@@ -69,7 +69,7 @@ fn test_alice_and_bob_agree_on_chain_keys_with_kyber() -> Result<(), SignalProto
     assert_eq!(
         bob_record
             .get_sender_chain_key_bytes()
-            .expect("alice should have chain key"),
+            .expect("bob should have chain key"),
         alice_record
             .get_receiver_chain_key_bytes(&bob_ephemeral_key_pair.public_key)
             .expect("should have chain key")
