@@ -931,6 +931,35 @@ mod remote_derives {
     pub(super) enum RemoveMfaKeyOut {
         Success,
     }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct SetOneTimeEcPreKeysArgs {
+        pub identity: u8,
+        pub pre_keys: BridgeVec<(i32, Vec<u8>)>,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::SetOneTimeEcPreKeysArgs>
+        for SetOneTimeEcPreKeysArgs
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::keys::test_cases::SetOneTimeEcPreKeysArgs,
+        ) -> Self {
+            Self {
+                identity: value.identity.into(),
+                pre_keys: value
+                    .pre_keys
+                    .into_iter()
+                    .map(|(id, key)| {
+                        (
+                            i32::try_from(u32::from(id)).expect("pre-key IDs fit in i32"),
+                            key.serialize().into_vec(),
+                        )
+                    })
+                    .collect(),
+            }
+        }
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1175,4 +1204,10 @@ fn TESTING_GetStickerUploadFormTests()
             .into_iter()
             .map(|next| next.map_request(|count| i32::try_from(count).expect("count fits in i32"))),
     )
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetOneTimeEcPreKeysTests() -> GrpcTestCases<remote_derives::SetOneTimeEcPreKeysArgs, ()>
+{
+    libsignal_net_chat::grpc::keys::test_cases::set_one_time_ec_pre_keys_test_cases().into()
 }

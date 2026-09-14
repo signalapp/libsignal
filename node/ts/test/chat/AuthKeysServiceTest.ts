@@ -9,6 +9,7 @@ import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthKeysService } from '../../net.js';
 import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
+import { PublicKey } from '../../index.js';
 
 util.initLogger();
 config.truncateThreshold = 0;
@@ -25,6 +26,26 @@ describe('AuthKeysService', () => {
       ) => {
         const out = await chat.getPreKeyCount();
         expect(out).to.deep.equal(resp);
+      }
+    );
+  });
+
+  describe('setOneTimeEcPreKeys', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetOneTimeEcPreKeysTests(),
+      connectAuth<AuthKeysService>,
+      async (
+        chat: AuthKeysService,
+        { identity, preKeys }: NativeNice.SetOneTimeEcPreKeysArgs,
+        _resp: void
+      ) => {
+        await chat.setOneTimeEcPreKeys({
+          identity,
+          preKeys: preKeys.map(([keyId, publicKey]) => ({
+            keyId: keyId,
+            publicKey: PublicKey.deserialize(publicKey),
+          })),
+        });
       }
     );
   });

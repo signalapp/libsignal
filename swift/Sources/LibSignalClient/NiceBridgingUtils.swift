@@ -712,3 +712,17 @@ where FfiOptional.Contents == Inner.FfiReturn {
         }
     }
 }
+
+internal enum ServiceIdKindConverter: NiceArgConverter {
+    typealias NiceArg = ServiceIdKind
+    typealias FfiArg = UInt8
+    typealias KeepAlive = Never
+
+    static func convertArg(_ arg: ServiceIdKind) -> (UInt8, Never?) {
+        (arg.rawValue, nil)
+    }
+
+    static func convertArgBorrowed<Result>(_ arg: ServiceIdKind, _ thunk: (UInt8) throws -> Result) rethrows -> Result {
+        try thunk(arg.rawValue)
+    }
+}

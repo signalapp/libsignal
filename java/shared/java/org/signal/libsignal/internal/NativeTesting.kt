@@ -641,6 +641,9 @@ public object NativeTesting {
   public external fun TESTING_SetMfaKeyMetadataTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_SetOneTimeEcPreKeysTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_SetPushTokenFcmTests(): Array<Object>
 
   @JvmStatic

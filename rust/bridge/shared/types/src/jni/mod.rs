@@ -114,7 +114,7 @@ macro_rules! jni_custom_spellings {
                 $kt_spelling.to_string()
             }
         }
-        impl<'a> From<$ident<'a>> for ::jni::JValueOwned<'a> {
+        impl<'a> From<$ident<'a>> for ::jni::objects::JObject<'a> {
             fn from(value: $ident<'a>) -> Self {
                 value.0.into()
             }

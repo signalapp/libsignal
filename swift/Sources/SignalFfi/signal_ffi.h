@@ -3894,6 +3894,14 @@ SignalFfiError* signal_authenticated_chat_connection_set_mfa_key_metadata(
   const SignalType_FixedArray32_uint8_t* svr_key,
   int64_t rng
 );
+SignalFfiError* signal_authenticated_chat_connection_set_one_time_ec_pre_keys(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  uint8_t identity_type,
+  SignalBorrowedSliceOfu32 pre_key_ids,
+  SignalBorrowedSliceOfConstPointerPublicKey pre_key_data
+);
 SignalFfiError* signal_authenticated_chat_connection_set_push_token_apns(
   SignalCPromisebool* promise,
   SignalConstPointerTokioAsyncContext async_runtime,

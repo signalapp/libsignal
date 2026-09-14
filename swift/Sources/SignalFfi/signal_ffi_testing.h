@@ -581,6 +581,17 @@ typedef SignalPairOfi32CStringPtr* SignalType_MutPointer_SignalPairOfi32CStringP
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalPairOfi32CStringPtr) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalPairOfi32CStringPtr) == 8);
 typedef struct {
+  int32_t first;
+  SignalOwnedBuffer second;
+} SignalPairOfi32OwnedBuffer;
+static_assert_64bit(offsetof(SignalPairOfi32OwnedBuffer, first) == 0);
+static_assert_64bit(offsetof(SignalPairOfi32OwnedBuffer, second) == 8);
+static_assert_64bit(sizeof(SignalPairOfi32OwnedBuffer) == 24);
+static_assert_64bit(alignof(SignalPairOfi32OwnedBuffer) == 8);
+typedef SignalPairOfi32OwnedBuffer* SignalType_MutPointer_SignalPairOfi32OwnedBuffer;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalPairOfi32OwnedBuffer) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalPairOfi32OwnedBuffer) == 8);
+typedef struct {
   uint32_t first;
   uint32_t second;
 } SignalPairOfu32u32;
@@ -1123,6 +1134,24 @@ typedef enum {
 } SignalSetMfaKeyMetadataOutFfiResult;
 static_assert_64bit(sizeof(SignalSetMfaKeyMetadataOutFfiResult) == 4);
 static_assert_64bit(alignof(SignalSetMfaKeyMetadataOutFfiResult) == 4);
+typedef struct {
+  SignalPairOfi32OwnedBuffer* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer) == 8);
+typedef struct {
+  uint8_t identity;
+  SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer pre_keys;
+} SignalSetOneTimeEcPreKeysArgsFfiResult;
+static_assert_64bit(offsetof(SignalSetOneTimeEcPreKeysArgsFfiResult, identity) == 0);
+static_assert_64bit(offsetof(SignalSetOneTimeEcPreKeysArgsFfiResult, pre_keys) == 8);
+static_assert_64bit(sizeof(SignalSetOneTimeEcPreKeysArgsFfiResult) == 32);
+static_assert_64bit(alignof(SignalSetOneTimeEcPreKeysArgsFfiResult) == 8);
 typedef struct {
   SignalOwnedBuffer username_ciphertext;
   bool keep_link_handle;
@@ -2172,6 +2201,9 @@ SignalFfiError* signal_testing_set_discoverable_by_phone_number_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_set_mfa_key_metadata_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_set_one_time_ec_pre_keys_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_set_push_token_apns_tests(

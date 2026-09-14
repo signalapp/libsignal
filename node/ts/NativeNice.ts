@@ -89,6 +89,7 @@ import type {
   ReturnFfiSetDeviceNameOut,
   ReturnFfiSetMfaKeyMetadataArgs,
   ReturnFfiSetMfaKeyMetadataOut,
+  ReturnFfiSetOneTimeEcPreKeysArgs,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
   ReturnFfiSimpleBackupTestOut,
@@ -96,7 +97,7 @@ import type {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
-import { ServiceId } from './Address.js';
+import { ServiceId, ServiceIdKind } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -551,6 +552,11 @@ export type SetMfaKeyMetadataArgs = {
 };
 
 export type SetMfaKeyMetadataOut = 'success' | 'keyNotFound';
+
+export type SetOneTimeEcPreKeysArgs = {
+  identity: number;
+  preKeys: Array<[number, Uint8Array<ArrayBuffer>]>;
+};
 
 export type SetUsernameLinkArgs = {
   usernameCiphertext: Uint8Array<ArrayBuffer>;
@@ -1601,6 +1607,21 @@ export function returnConverterSetMfaKeyMetadataOut(
   }
 }
 
+export function returnConverterSetOneTimeEcPreKeysArgs(
+  ffiInput: Native.ReturnFfiSetOneTimeEcPreKeysArgs
+): SetOneTimeEcPreKeysArgs {
+  return {
+    identity: identity(ffiInput.identity),
+    preKeys: ((arr: Array<[number, Uint8Array<ArrayBuffer>]>) =>
+      arr.map(
+        ([a, b]: [number, Uint8Array<ArrayBuffer>]): [
+          number,
+          Uint8Array<ArrayBuffer>
+        ] => [identity(a), identity(b)]
+      ))(ffiInput.pre_keys),
+  };
+}
+
 export function returnConverterSetUsernameLinkArgs(
   ffiInput: Native.ReturnFfiSetUsernameLinkArgs
 ): SetUsernameLinkArgs {
@@ -2394,6 +2415,36 @@ export async function AuthenticatedChatConnection_set_mfa_key_metadata({
     )
   );
 }
+export async function AuthenticatedChatConnection_set_one_time_ec_pre_keys({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  identityType: identity_type,
+  preKeyIds: pre_key_ids,
+  preKeyData: pre_key_data,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  identityType: ServiceIdKind;
+  preKeyIds: Uint32Array<ArrayBuffer>;
+  preKeyData: Array<Native.Wrapper<Native.PublicKey>>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+        asyncContext,
+        identity(chat),
+        Number(identity_type),
+        identity(pre_key_ids),
+        ((arr: Array<Native.Wrapper<Native.PublicKey>>) => arr.map(identity))(
+          pre_key_data
+        )
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_registration_lock({
   asyncContext,
   abortSignal,
@@ -3087,6 +3138,15 @@ export function TESTING_SetMfaKeyMetadataTests(): Array<
     returnConverterSetMfaKeyMetadataArgs,
     returnConverterSetMfaKeyMetadataOut
   )(Native.TESTING_SetMfaKeyMetadataTests());
+}
+
+export function TESTING_SetOneTimeEcPreKeysTests(): Array<
+  GrpcTestCase<SetOneTimeEcPreKeysArgs, void>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetOneTimeEcPreKeysArgs,
+    identity
+  )(Native.TESTING_SetOneTimeEcPreKeysTests());
 }
 
 export function TESTING_SetRegistrationLockTests(): Array<

@@ -1541,6 +1541,34 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    identityType: org.signal.libsignal.protocol.ServiceId.Kind,
+    preKeyIds: IntArray,
+    preKeyData: List<org.signal.libsignal.protocol.ecc.ECPublicKey>,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_identity_type = (org.signal.libsignal.protocol.ServiceId.Kind::ordinal)(identityType)
+    val ffi_pre_key_ids = identity(preKeyIds)
+    val ffi_pre_key_data =
+      mapBridgeVecArg<org.signal.libsignal.protocol.ecc.ECPublicKey, org.signal.libsignal.protocol.ecc.ECPublicKey>({
+        identity(it)
+      })(preKeyData)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_identity_type,
+          ffi_pre_key_ids,
+          ffi_pre_key_data,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_set_push_token_fcm(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

@@ -11,6 +11,7 @@ use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
 
+use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::api::keys::DeviceSpecifier;
@@ -27,6 +28,7 @@ use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
     ChatListener, NodeChatListener, NodeProvisioningListener, PreKeysResponse, ProvisioningListener,
 };
+use crate::protocol::StrictPreKeyId;
 use crate::protocol::storage::{
     NodeBridgeIdentityKeyStore, NodeBridgeKyberPreKeyStore, NodeBridgePreKeyStore,
     NodeBridgeSenderKeyStore, NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
@@ -914,6 +916,38 @@ impl SimpleArgTypeInfo for Box<[u32]> {
         Ok(foreign.as_slice(cx).to_vec().into())
     }
     register_ts_ffi_type!("Uint32Array<ArrayBuffer>");
+}
+
+impl<T> SimpleArgTypeInfo for Vec<StrictPreKeyId<T>>
+where
+    T: From<u32> + 'static,
+{
+    type ArgType = JsUint32Array;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        let slice = foreign.as_slice(cx);
+        slice
+            .iter()
+            .copied()
+            .map(StrictPreKeyId::try_from)
+            .try_collect()
+            .or_else(|e| cx.throw_range_error(e.to_string()))
+    }
+    register_ts_ffi_type!("Uint32Array<ArrayBuffer>");
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for Vec<StrictPreKeyId<T>>
+where
+    T: From<u32> + 'static,
+{
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        let ty = <Self as ArgTypeInfo>::register_ts_ffi_type(ctx);
+        TsArgConverter {
+            nice_type: ty.clone(),
+            ffi_type: ty.clone(),
+            converter_function: "identity".into(),
+        }
+    }
 }
 
 impl SimpleArgTypeInfo for Box<[String]> {
@@ -2365,6 +2399,19 @@ where
     #[cfg(feature = "metadata")]
     fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
         P::register_ts_ffi_type(ctx)
+    }
+}
+
+// Note that we do *not* have a blanket NiceArgConverter impl for AsType;
+// the nice form of each type is going to be different.
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for AsType<ServiceIdKind, u8> {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "ServiceIdKind".to_owned(),
+            ffi_type: "number".to_owned(),
+            converter_function: "Number".to_owned(),
+        }
     }
 }
 

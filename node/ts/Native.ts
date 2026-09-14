@@ -756,6 +756,11 @@ export type ReturnFfiSetMfaKeyMetadataOut =
       __type: 1;
     };
 
+export type ReturnFfiSetOneTimeEcPreKeysArgs = {
+  identity: number;
+  pre_keys: Array<[number, Uint8Array<ArrayBuffer>]>;
+};
+
 export type ReturnFfiSetUsernameLinkArgs = {
   username_ciphertext: Uint8Array<ArrayBuffer>;
   keep_link_handle: boolean;
@@ -1149,6 +1154,13 @@ type NativeFunctions = {
     created_at: Timestamp,
     svr_key: Uint8Array<ArrayBuffer>,
     rng: RandomNumberGenerator
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_one_time_ec_pre_keys: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    identity_type: number,
+    pre_key_ids: Uint32Array<ArrayBuffer>,
+    pre_key_data: Array<Wrapper<PublicKey>>
   ) => CancellablePromise<void>;
   AuthenticatedChatConnection_set_registration_lock: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -3334,6 +3346,9 @@ type NativeFunctions = {
       ReturnFfiSetMfaKeyMetadataOut
     >
   >;
+  TESTING_SetOneTimeEcPreKeysTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetOneTimeEcPreKeysArgs, void>
+  >;
   TESTING_SetRegistrationLockTests: () => Array<
     GrpcTestCaseFfi<Uint8Array<ArrayBuffer>, void>
   >;
@@ -3840,6 +3855,7 @@ const {
   AuthenticatedChatConnection_set_device_name,
   AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_mfa_key_metadata,
+  AuthenticatedChatConnection_set_one_time_ec_pre_keys,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_username_link,
@@ -4460,6 +4476,7 @@ const {
   TESTING_SetDeviceNameTests,
   TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetMfaKeyMetadataTests,
+  TESTING_SetOneTimeEcPreKeysTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetUsernameLinkTests,
@@ -4633,6 +4650,7 @@ export {
   AuthenticatedChatConnection_set_device_name,
   AuthenticatedChatConnection_set_discoverable_by_phone_number,
   AuthenticatedChatConnection_set_mfa_key_metadata,
+  AuthenticatedChatConnection_set_one_time_ec_pre_keys,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_username_link,
@@ -5253,6 +5271,7 @@ export {
   TESTING_SetDeviceNameTests,
   TESTING_SetDiscoverableByPhoneNumberTests,
   TESTING_SetMfaKeyMetadataTests,
+  TESTING_SetOneTimeEcPreKeysTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetUsernameLinkTests,

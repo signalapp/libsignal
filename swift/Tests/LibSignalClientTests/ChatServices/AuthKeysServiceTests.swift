@@ -24,6 +24,26 @@ class AuthKeysServiceTests: AuthChatServiceTestBase<any AuthKeysService> {
             }
         )
     }
+
+    func testSetOneTimeEcPreKeys() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetOneTimeEcPreKeysTests(),
+            invoke: { api, args in
+                try await api.setOneTimeEcPreKeys(
+                    identity: ServiceIdKind(rawValue: args.identity)!,
+                    preKeys: args.preKeys.map {
+                        PublicEcPreKey(
+                            keyId: UInt32($0.0),
+                            publicKey: try PublicKey($0.1)
+                        )
+                    }
+                )
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
 }
 
 #endif

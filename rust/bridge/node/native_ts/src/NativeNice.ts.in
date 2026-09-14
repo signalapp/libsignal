@@ -18,7 +18,7 @@ import type {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
-import { ServiceId } from './Address.js';
+import { ServiceId, ServiceIdKind } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';

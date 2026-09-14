@@ -41,6 +41,29 @@ public struct PreKeyCounts: Equatable, Sendable {
     }
 }
 
+/// A one-time elliptic-curve pre-key, as uploaded to the server.
+///
+/// This is only the public half of the key; the private half never leaves the
+/// device.
+public struct PublicEcPreKey {
+    /// A locally-unique identifier for this key, which peers using this key to
+    /// encrypt messages will provide so the private key can be looked up.
+    ///
+    /// Must be less than `1 << 31` (`Int32.max`).
+    public let keyId: UInt32
+    /// The public key.
+    public let publicKey: PublicKey
+
+    public init(keyId: UInt32, publicKey: PublicKey) {
+        self.keyId = keyId
+        self.publicKey = publicKey
+    }
+
+    public init(_ record: PreKeyRecord) throws {
+        self.init(keyId: record.id, publicKey: try record.publicKey())
+    }
+}
+
 public protocol AuthKeysService: Sendable {
     /// Retrieves an approximate count of the number of the various kinds of
     /// one-time pre-keys stored for the authenticated device.
@@ -48,6 +71,15 @@ public protocol AuthKeysService: Sendable {
     /// - Throws:
     ///   - the standard Signal network errors
     func getPreKeyCount() async throws -> PreKeyCounts
+
+    /// Uploads a new set of one-time EC pre-keys for the authenticated device,
+    /// clearing any previously-stored one-time EC pre-keys for `identity`.
+    ///
+    /// - Parameters:
+    ///   - preKeys: Must contain between 1 and 100 keys
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func setOneTimeEcPreKeys(identity: ServiceIdKind, preKeys: [PublicEcPreKey]) async throws
 }
 
 extension AuthenticatedChatConnection: AuthKeysService {
@@ -58,6 +90,26 @@ extension AuthenticatedChatConnection: AuthKeysService {
                 asyncContext: self.tokioAsyncContext,
                 chat: self,
             )
+        )
+    }
+
+    public func setOneTimeEcPreKeys(identity: ServiceIdKind, preKeys: [PublicEcPreKey]) async throws {
+        var ids = [UInt32]()
+        ids.reserveCapacity(preKeys.count)
+        var keys = [PublicKey]()
+        keys.reserveCapacity(preKeys.count)
+
+        for next in preKeys {
+            ids.append(next.keyId)
+            keys.append(next.publicKey)
+        }
+
+        return try await NativeNice.AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            identityType: identity,
+            preKeyIds: ids,
+            preKeyData: keys,
         )
     }
 

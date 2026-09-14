@@ -8,6 +8,9 @@ package org.signal.libsignal.net
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
+import org.signal.libsignal.protocol.ServiceId
+import org.signal.libsignal.protocol.ecc.ECPublicKey
+import org.signal.libsignal.protocol.state.PreKeyRecord
 
 public data class PreKeyCounts(
   /**
@@ -31,6 +34,27 @@ public data class PreKeyCounts(
    */
   val pniKemPreKeyCount: Int,
 )
+
+/**
+ * A one-time elliptic-curve pre-key, as uploaded to the server.
+ *
+ * This is only the public half of the key; the private half never leaves the device.
+ */
+public data class PublicEcPreKey(
+  /**
+   * A locally-unique identifier for this key, which peers using this key to encrypt messages will
+   * provide so the private key can be looked up.
+   *
+   * Must not be negative.
+   */
+  public val keyId: Int,
+  /**
+   * The public key.
+   */
+  public val publicKey: ECPublicKey,
+) {
+  public constructor(record: PreKeyRecord) : this(record.id, record.keyPair.publicKey)
+}
 
 public class AuthKeysService(
   private val connection: AuthenticatedChatConnection,
@@ -61,4 +85,40 @@ public class AuthKeysService(
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
+
+  /**
+   * Uploads a new set of one-time EC pre-keys for the authenticated device, clearing any
+   * previously-stored one-time EC pre-keys for [identity].
+   *
+   * @param preKeys Must contain between 1 and 100 keys
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setOneTimeEcPreKeys(
+    identity: ServiceId.Kind,
+    preKeys: List<PublicEcPreKey>,
+  ): CompletableFuture<RequestResult<Unit, Nothing>> {
+    val ids = IntArray(preKeys.size)
+    val keys = ArrayList<ECPublicKey>(preKeys.size)
+    preKeys.forEachIndexed { i, next ->
+      ids[i] = next.keyId
+      keys.add(next.publicKey)
+    }
+    return try {
+      NativeNice
+        .AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          identityType = identity,
+          preKeyIds = ids,
+          preKeyData = keys,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+  }
 }

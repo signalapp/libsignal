@@ -428,6 +428,21 @@ where
     }
 }
 
+impl<T> FromIterator<T> for BridgeVec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Self(Vec::from_iter(iter))
+    }
+}
+
+impl<T> IntoIterator for BridgeVec<T> {
+    type Item = T;
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 /// Marker for returning an error as a value.
 #[derive(Debug, derive_more::From)]
 pub struct BridgedError<T>(pub T);

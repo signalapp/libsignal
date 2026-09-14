@@ -370,6 +370,11 @@ public sealed class SetMfaKeyMetadataOut {
   public data object KeyNotFound : SetMfaKeyMetadataOut()
 }
 
+public data class SetOneTimeEcPreKeysArgs(
+  public val identity: Int,
+  public val preKeys: List<Pair<Int, ByteArray>>,
+)
+
 public data class SetUsernameLinkArgs(
   public val usernameCiphertext: ByteArray,
   public val keepLinkHandle: Boolean,
@@ -1444,6 +1449,24 @@ public object SetMfaKeyMetadataOut_KeyNotFound_ReturnConverter {
   internal fun fromNative(): Any? = SetMfaKeyMetadataOut.KeyNotFound
 }
 
+public object SetOneTimeEcPreKeysArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    identity: Any?,
+    pre_keys: Any?,
+  ): Any? =
+    SetOneTimeEcPreKeysArgs(
+      identity =
+        identity(identity as Int),
+      preKeys =
+        mapBridgeVecReturn<Pair<Int, ByteArray>, Pair<Int, ByteArray>>({
+          mapPair<Int, ByteArray, Int, ByteArray>({ identity(it) }, { identity(it) })(it)
+        })(pre_keys as Array<*>),
+    )
+}
+
 public object SetUsernameLinkArgs_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -2330,6 +2353,16 @@ public object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.SetMfaKeyMetadataArgs, org.signal.libsignal.internal.SetMfaKeyMetadataOut>({
         downcastFromObject<org.signal.libsignal.internal.SetMfaKeyMetadataArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SetMfaKeyMetadataOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_SetOneTimeEcPreKeysTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetOneTimeEcPreKeysArgs, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetOneTimeEcPreKeysTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Void?, org.signal.libsignal.internal.SetOneTimeEcPreKeysArgs, Void?>({
+        downcastFromObject<org.signal.libsignal.internal.SetOneTimeEcPreKeysArgs>(it)
+      }, { identity(it) })(ffiOut)
   }
 
   public fun TESTING_SetPushTokenFcmTests(): List<org.signal.libsignal.net.GrpcTestCase<String, Void?>> {

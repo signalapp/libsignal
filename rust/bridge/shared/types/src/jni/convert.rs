@@ -31,6 +31,7 @@ use crate::net::chat::{
     JniProvisioningListener, PreKeysResponse, ProvisioningListener,
 };
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
+use crate::protocol::StrictPreKeyId;
 use crate::protocol::storage::{
     JavaIdentityKeyStore, JavaKyberPreKeyStore, JavaPreKeyStore, JavaSenderKeyStore,
     JavaSessionStore, JavaSignedPreKeyStore, JniBridgeIdentityKeyStore, JniBridgeKyberPreKeyStore,
@@ -812,6 +813,44 @@ impl<'a> SimpleArgTypeInfo<'a> for Box<[u32]> {
     }
 }
 
+impl<'a, T> SimpleArgTypeInfo<'a> for Vec<StrictPreKeyId<T>>
+where
+    T: From<u32>,
+{
+    type ArgType = JIntArray<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let len = foreign
+            .len(env)
+            .check_exceptions(env, "Vec<StrictPreKeyId>::convert_from")?;
+        let mut vec = vec![0u32; len];
+        foreign
+            .get_region(env, 0, zerocopy::transmute_mut!(&mut vec[..]))
+            .check_exceptions(env, "Vec<[StrictPreKeyId]>::convert_from")?;
+        vec.into_iter()
+            .map(StrictPreKeyId::try_from)
+            .try_collect()
+            .map_err(|e| BridgeLayerError::bad_argument(e.to_string()))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for Vec<StrictPreKeyId<T>>
+where
+    T: From<u32>,
+{
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "IntArray".into(),
+            ffi_type: "IntArray".into(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function: "identity".to_string(),
+        }
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for Box<[String]> {
     type ArgType = JObjectArray<'a>;
 
@@ -1050,8 +1089,8 @@ impl<'a> SimpleArgTypeInfo<'a> for Vec<Vec<u8>> {
 impl<'storage, 'param: 'storage, 'context: 'param, T: ArgTypeInfo<'storage, 'param, 'context>>
     ArgTypeInfo<'storage, 'param, 'context> for BridgeVec<T>
 where
-    // TODO: support primitives later
-    T::ArgType: Reference<Kind<'param> = T::ArgType> + Into<JObject<'param>>,
+    // TODO: support primitives later, which would have completely different array semantics.
+    T::ArgType: ConvertibleFromJValue<'context> + Into<JObject<'param>>,
 {
     type ArgType = JavaArrayStar<'context>;
     type StoredType = Vec<T::StoredType>;
@@ -1072,7 +1111,7 @@ where
             let elem = Auto::<T::ArgType>::new(
                 foreign
                     .get_element(env, i)
-                    .and_then(|obj| env.cast_local::<T::ArgType>(obj))
+                    .and_then(|obj| T::ArgType::try_convert(env, obj.into()))
                     .check_exceptions(env, "BridgeVec::borrow")?,
             );
             stored.push(T::borrow(env, elem.deref())?);
@@ -2431,6 +2470,21 @@ where
                 ))
             })
             .map(AsType::from)
+    }
+}
+
+// Note that we do *not* have a blanket NiceArgConverter impl for AsType;
+// the nice form of each type is going to be different.
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for AsType<ServiceIdKind, u8> {
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "org.signal.libsignal.protocol.ServiceId.Kind".to_owned(),
+            ffi_type: "Int".to_owned(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function: "(org.signal.libsignal.protocol.ServiceId.Kind::ordinal)"
+                .to_owned(),
+        }
     }
 }
 

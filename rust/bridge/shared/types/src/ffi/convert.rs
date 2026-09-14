@@ -31,6 +31,7 @@ use crate::net::chat::{
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
 };
+use crate::protocol::StrictPreKeyId;
 use crate::protocol::storage::{
     FfiIdentityKeyStoreStruct, FfiKyberPreKeyStoreStruct, FfiPreKeyStoreStruct,
     FfiSenderKeyStoreStruct, FfiSessionStoreStruct, FfiSignedPreKeyStoreStruct,
@@ -789,6 +790,39 @@ impl SimpleArgTypeInfo for Box<[u32]> {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let slice = unsafe { foreign.as_slice()? };
         Ok(slice.into())
+    }
+}
+
+impl<T> SimpleArgTypeInfo for Vec<StrictPreKeyId<T>>
+where
+    T: From<u32>,
+{
+    type ArgType = BorrowedSliceOf<u32>;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let slice = unsafe { foreign.as_slice()? };
+        slice
+            .iter()
+            .copied()
+            .map(StrictPreKeyId::try_from)
+            .try_collect()
+            .map_err(|e| IllegalArgumentError::new(e.to_string()).into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for Vec<StrictPreKeyId<T>>
+where
+    T: From<u32>,
+{
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let borrowed_slice = <BorrowedSliceOf<u32> as IsCType>::register_c_type(ctx);
+        SwiftArgConverter {
+            nice_type: "[UInt32]".to_string(),
+            converter_type: format!(
+                "ArrayArgConverter<IdentityArgConverter, {}>",
+                borrowed_slice.swift_name()
+            ),
+        }
     }
 }
 
@@ -1637,6 +1671,18 @@ where
                     .into()
             })
             .map(AsType::from)
+    }
+}
+
+// Note that we do *not* have a blanket NiceArgConverter impl for AsType;
+// the nice form of each type is going to be different.
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for AsType<ServiceIdKind, u8> {
+    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        SwiftArgConverter {
+            nice_type: "ServiceIdKind".to_owned(),
+            converter_type: "ServiceIdKindConverter".to_owned(),
+        }
     }
 }
 

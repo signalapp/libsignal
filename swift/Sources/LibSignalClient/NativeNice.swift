@@ -4482,6 +4482,43 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        identityType identity_type: ServiceIdKind,
+        preKeyIds pre_key_ids: [UInt32],
+        preKeyData pre_key_data: [PublicKey],
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ServiceIdKindConverter.convertArgBorrowed(identity_type) { identity_typeFfi in
+                            ArrayArgConverter<IdentityArgConverter, SignalBorrowedSliceOfu32>.convertArgBorrowed(
+                                pre_key_ids
+                            ) { pre_key_idsFfi in
+                                ArrayArgConverter<
+                                    BridgeHandleRefConverter<SignalMutPointerPublicKey, PublicKey>,
+                                    SignalBorrowedSliceOfConstPointerPublicKey
+                                >.convertArgBorrowed(pre_key_data) { pre_key_dataFfi in
+                                    SignalFfi.signal_authenticated_chat_connection_set_one_time_ec_pre_keys(
+                                        promiseFfi,
+                                        asyncContextFfi.const(),
+                                        chatFfi,
+                                        identity_typeFfi,
+                                        pre_key_idsFfi,
+                                        pre_key_dataFfi,
+                                    )
+                                }
+                            }
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_push_token_apns(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

@@ -466,6 +466,40 @@ extension SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult: SignalOwnedBuf
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer: SignalOwnedBufferOfMaxAligned {
+
+    public typealias Element = SignalPairOfi32OwnedBuffer
+
+    public init(
+        generic_base: SignalType_MutPointer_SignalPairOfi32OwnedBuffer?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    public var generic_base: SignalType_MutPointer_SignalPairOfi32OwnedBuffer? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    public var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalBridgeCopyBackupMediaItemFfiResult
@@ -591,6 +625,35 @@ extension SignalPairOfi32CStringPtr: SignalPairOf {
     }
 
     public var generic_second: SignalCStringPtr? {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfi32OwnedBuffer: SignalPairOf {
+
+    public typealias First = Int32
+
+    public typealias Second = SignalOwnedBuffer
+
+    public init(
+        generic_first: Int32,
+        generic_second: SignalOwnedBuffer,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: Int32 {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: SignalOwnedBuffer {
         get { self.second }
         set { second = newValue }
     }
@@ -958,6 +1021,12 @@ internal struct SetMfaKeyMetadataArgs {
 internal enum SetMfaKeyMetadataOut {
     case success
     case keyNotFound
+}
+
+internal struct SetOneTimeEcPreKeysArgs {
+    var identity: UInt8
+    var preKeys: [(Int32, Data)]
+
 }
 
 internal struct SetUsernameLinkArgs {
@@ -2205,6 +2274,26 @@ internal enum DerivedReturnConverterSetMfaKeyMetadataOut: NiceReturnConverter {
         default:
             throw SignalError.internalError("Unexpected enum tag for SetMfaKeyMetadataOut: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterSetOneTimeEcPreKeysArgs: NiceReturnConverter {
+    typealias NiceReturn = SetOneTimeEcPreKeysArgs
+    typealias FfiReturn = SignalSetOneTimeEcPreKeysArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetOneTimeEcPreKeysArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let identity = Result { try IdentityResultConverter<UInt8>.convertReturn(consuming: ffiValue.identity) }
+        let pre_keys = Result {
+            try ArrayReturnConverter<
+                PairOfResultConverter<IdentityResultConverter<Int32>, DataConverter, SignalPairOfi32OwnedBuffer>,
+                SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer
+            >.convertReturn(consuming: ffiValue.pre_keys)
+        }
+
+        return SetOneTimeEcPreKeysArgs(identity: try identity.get(), preKeys: try pre_keys.get())
     }
 }
 
@@ -3886,6 +3975,19 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<
             DerivedReturnConverterSetMfaKeyMetadataArgs, DerivedReturnConverterSetMfaKeyMetadataOut
         >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_SetOneTimeEcPreKeysTests() throws -> [GrpcTestCase<SetOneTimeEcPreKeysArgs, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<DerivedReturnConverterSetOneTimeEcPreKeysArgs, VoidConverter>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_one_time_ec_pre_keys_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterSetOneTimeEcPreKeysArgs, VoidConverter>.convertReturn(
+            consuming: rawOutput
+        )
 
     }
     internal static func TESTING_SetPushTokenApnsTests() throws -> [GrpcTestCase<String, Void>] {

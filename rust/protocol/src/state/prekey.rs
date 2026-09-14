@@ -14,6 +14,7 @@ use crate::{KeyPair, PrivateKey, PublicKey, Result, SignalProtocolError};
 #[derive(
     Copy, Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd, derive_more::From, derive_more::Into,
 )]
+#[repr(transparent)]
 pub struct PreKeyId(u32);
 
 impl fmt::Display for PreKeyId {

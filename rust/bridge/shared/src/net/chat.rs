@@ -23,9 +23,10 @@ use libsignal_bridge_types::net::chat::remote_derives::{
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
+use libsignal_bridge_types::protocol::StrictPreKeyId;
 use libsignal_bridge_types::support::AsType;
-use libsignal_core::curve::PrivateKey;
-use libsignal_core::{DeviceId, ServiceId};
+use libsignal_core::curve::{PrivateKey, PublicKey};
+use libsignal_core::{DeviceId, ServiceId, ServiceIdKind};
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 use libsignal_net_chat::api;
 use libsignal_net_chat::api::backups::{
@@ -49,11 +50,12 @@ use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 use libsignal_net_chat::grpc::devices::{
     DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
 };
+use libsignal_net_chat::grpc::keys::PublicEcPreKey;
 use libsignal_net_chat::grpc::login_purchase::{PaymentProvider, ReceiptCredentialError};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
-use libsignal_protocol::{CiphertextMessage, Timestamp};
+use libsignal_protocol::{CiphertextMessage, PreKeyId, Timestamp};
 use uuid::Uuid;
 
 use crate::support::*;
@@ -1282,6 +1284,28 @@ async fn AuthenticatedChatConnection_get_sticker_upload_forms(
         )
         .await
         .map(Into::into)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_one_time_ec_pre_keys(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    identity_type: AsType<ServiceIdKind, u8>,
+    pre_key_ids: Vec<StrictPreKeyId<PreKeyId>>,
+    pre_key_data: BridgeVec<BridgeHandleRef<'_, PublicKey>>,
+) -> Result<(), RequestError<Infallible>> {
+    // The lifetimes involved in the parameters make it simpler to pass them as separate arrays and
+    // stitch them back together.
+    let pre_keys = pre_key_ids
+        .into_iter()
+        .zip(pre_key_data)
+        .map(|(id, key)| PublicEcPreKey {
+            key_id: id.into_inner(),
+            public_key: &key,
+        });
+    chat.require_grpc()
+        .await
+        .set_one_time_ec_pre_keys(*identity_type, pre_keys)
+        .await
 }
 
 #[cfg(test)]
