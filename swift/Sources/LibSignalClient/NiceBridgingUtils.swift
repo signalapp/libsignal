@@ -584,7 +584,7 @@ internal enum FixedByteArrayConverter<Helper: FixedByteArrayHelper>: NiceArgConv
 }
 
 internal enum UuidNiceConverter: NiceArgConverter, NiceReturnConverter {
-    static func convertArg(_ arg: UUID) -> (SignalUuid, Unit?) {
+    static func convertArg(_ arg: UUID) -> (SignalUuid, Never?) {
         (SignalUuid(bytes: arg.uuid), nil)
     }
 
@@ -602,7 +602,7 @@ internal enum UuidNiceConverter: NiceArgConverter, NiceReturnConverter {
 
     typealias NiceArg = UUID
     typealias FfiArg = SignalUuid
-    typealias KeepAlive = Unit
+    typealias KeepAlive = Never
     typealias NiceReturn = UUID
     typealias FfiReturn = SignalUuid
 }
@@ -610,7 +610,7 @@ internal enum UuidNiceConverter: NiceArgConverter, NiceReturnConverter {
 internal enum DeviceIdConverter: NiceArgConverter, NiceReturnConverter {
     typealias NiceArg = DeviceId
     typealias FfiArg = UInt8
-    typealias KeepAlive = Unit
+    typealias KeepAlive = Never
     typealias NiceReturn = DeviceId
     typealias FfiReturn = UInt8
     static func convertArg(_ arg: NiceArg) -> (FfiArg, KeepAlive?) {
@@ -635,7 +635,7 @@ internal enum TimestampConverter: NiceArgConverter, NiceReturnConverter {
         UInt64(arg.timeIntervalSince1970 * 1000.0)
     }
 
-    static func convertArg(_ arg: Date) -> (UInt64, Unit?) {
+    static func convertArg(_ arg: Date) -> (UInt64, Never?) {
         (Self.convertDate(arg), nil)
     }
 
@@ -653,7 +653,7 @@ internal enum TimestampConverter: NiceArgConverter, NiceReturnConverter {
 
     typealias NiceArg = Date
     typealias FfiArg = UInt64
-    typealias KeepAlive = Unit
+    typealias KeepAlive = Never
     typealias NiceReturn = Date
     typealias FfiReturn = UInt64
 }
