@@ -5,8 +5,14 @@
 
 use std::convert::Infallible;
 
+use itertools::Itertools as _;
+use libsignal_core::ServiceIdKind;
+use libsignal_net_grpc::proto::chat::common::{EcPreKey as EcPreKeyProto, IdentityType};
 use libsignal_net_grpc::proto::chat::keys::keys_client::KeysClient;
-use libsignal_net_grpc::proto::chat::keys::{GetPreKeyCountRequest, GetPreKeyCountResponse};
+use libsignal_net_grpc::proto::chat::keys::{
+    GetPreKeyCountRequest, GetPreKeyCountResponse, SetOneTimeEcPreKeysRequest, SetPreKeyResponse,
+};
+use libsignal_protocol::{PreKeyId, PublicKey};
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::{GrpcServiceProvider, GrpcTestCase, log_and_send};
@@ -38,6 +44,44 @@ pub struct PreKeyCounts {
     pub pni_kem_pre_key_count: u32,
 }
 
+/// A one-time elliptic-curve pre-key, as uploaded to the server.
+///
+/// This is only the public half of the key; the private half never leaves the
+/// client.
+#[derive(Clone, Copy)]
+#[cfg_attr(test, derive(Debug))]
+pub struct PublicEcPreKey<'a> {
+    /// A locally-unique identifier for this key, which peers using this key to
+    /// encrypt messages will provide so the private key can be looked up.
+    pub key_id: PreKeyId,
+    /// The public key.
+    pub public_key: &'a PublicKey,
+}
+
+impl From<PublicEcPreKey<'_>> for EcPreKeyProto {
+    fn from(value: PublicEcPreKey<'_>) -> Self {
+        Self {
+            // The server's limits on pre-key IDs are far below i32::MAX, so
+            // anything out of range is a programmer error on the client side.
+            key_id: i32::try_from(u32::from(value.key_id)).expect("pre-key IDs fit in i32"),
+            public_key: value.public_key.serialize().into_vec(),
+        }
+    }
+}
+
+impl std::fmt::Display for Redact<SetOneTimeEcPreKeysRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetOneTimeEcPreKeysRequest {
+            identity_type,
+            pre_keys,
+        }) = self;
+        f.debug_struct("SetOneTimeEcPreKeysRequest")
+            .field("identity_type", identity_type)
+            .field("pre_keys_len", &pre_keys.len())
+            .finish()
+    }
+}
+
 impl<T: GrpcServiceProvider> Auth<T> {
     /// Retrieves an approximate count of the number of the various kinds of
     /// one-time pre-keys stored for the authenticated device.
@@ -59,6 +103,34 @@ impl<T: GrpcServiceProvider> Auth<T> {
             pni_ec_pre_key_count,
             pni_kem_pre_key_count,
         })
+    }
+
+    /// Uploads a new set of one-time EC pre-keys for the authenticated device,
+    /// clearing any previously-stored one-time EC pre-keys for `identity`.
+    ///
+    /// `pre_keys` must contain between 1 and 100 keys.
+    pub async fn set_one_time_ec_pre_keys(
+        &self,
+        identity: ServiceIdKind,
+        pre_keys: impl IntoIterator<Item = PublicEcPreKey<'_>>,
+    ) -> Result<(), RequestError<Infallible>> {
+        let pre_keys = pre_keys.into_iter().map(EcPreKeyProto::from).collect_vec();
+        assert!(!pre_keys.is_empty(), "cannot upload 0 pre-keys");
+        let mut client = KeysClient::new(self.0.service());
+        let request = SetOneTimeEcPreKeysRequest {
+            identity_type: match identity {
+                ServiceIdKind::Aci => IdentityType::Aci,
+                ServiceIdKind::Pni => IdentityType::Pni,
+            }
+            .into(),
+            pre_keys,
+        };
+        let desc = Redact(&request).to_string();
+        let SetPreKeyResponse {} =
+            log_and_send("auth", &desc, || client.set_one_time_ec_pre_keys(request))
+                .await?
+                .into_inner();
+        Ok(())
     }
 }
 
@@ -114,6 +186,69 @@ pub mod test_cases {
             },
         ]
     }
+
+    pub struct SetOneTimeEcPreKeysArgs {
+        pub identity: ServiceIdKind,
+        pub pre_keys: Vec<(PreKeyId, PublicKey)>,
+    }
+
+    pub fn set_one_time_ec_pre_keys_test_cases()
+    -> Vec<GrpcTestCase<SetOneTimeEcPreKeysArgs, SetOneTimeEcPreKeysRequest, SetPreKeyResponse, ()>>
+    {
+        fn test_pre_key(key_id: u32, key_byte: u8) -> (PreKeyId, PublicKey) {
+            (
+                key_id.into(),
+                PublicKey::from_djb_public_key_bytes(&[key_byte; 32]).expect("valid key bytes"),
+            )
+        }
+
+        fn test_pre_key_proto(key_id: i32, key_byte: u8) -> EcPreKeyProto {
+            // 0x05 is the serialization format tag for Curve25519 public keys.
+            let mut public_key = vec![0x05];
+            public_key.extend_from_slice(&[key_byte; 32]);
+            EcPreKeyProto { key_id, public_key }
+        }
+
+        let method = "/org.signal.chat.keys.Keys/SetOneTimeEcPreKeys";
+        vec![
+            GrpcTestCase {
+                name: "one ACI key".to_string(),
+                method: method.to_string(),
+                request: SetOneTimeEcPreKeysArgs {
+                    identity: ServiceIdKind::Aci,
+                    pre_keys: vec![test_pre_key(42, 0x10)],
+                },
+                request_grpc: SetOneTimeEcPreKeysRequest {
+                    identity_type: IdentityType::Aci.into(),
+                    pre_keys: vec![test_pre_key_proto(42, 0x10)],
+                },
+                response_grpc: SetPreKeyResponse {},
+                response: (),
+            },
+            GrpcTestCase {
+                name: "several PNI keys".to_string(),
+                method: method.to_string(),
+                request: SetOneTimeEcPreKeysArgs {
+                    identity: ServiceIdKind::Pni,
+                    pre_keys: vec![
+                        test_pre_key(100, 0x20),
+                        test_pre_key(101, 0x21),
+                        test_pre_key(102, 0x22),
+                    ],
+                },
+                request_grpc: SetOneTimeEcPreKeysRequest {
+                    identity_type: IdentityType::Pni.into(),
+                    pre_keys: vec![
+                        test_pre_key_proto(100, 0x20),
+                        test_pre_key_proto(101, 0x21),
+                        test_pre_key_proto(102, 0x22),
+                    ],
+                },
+                response_grpc: SetPreKeyResponse {},
+                response: (),
+            },
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -128,6 +263,22 @@ mod test {
             get_pre_key_count_test_cases(),
             |chat: Auth<_>, ()| async move { chat.get_pre_key_count().await },
             |resp, result| assert_eq!(resp, result.expect("success")),
+        );
+    }
+
+    #[test]
+    fn test_set_one_time_ec_pre_keys() {
+        use test_cases::*;
+        run_tests(
+            set_one_time_ec_pre_keys_test_cases(),
+            |chat: Auth<_>, SetOneTimeEcPreKeysArgs { identity, pre_keys }| async move {
+                let pre_keys = pre_keys.iter().map(|(id, key)| PublicEcPreKey {
+                    key_id: *id,
+                    public_key: key,
+                });
+                chat.set_one_time_ec_pre_keys(identity, pre_keys).await
+            },
+            |(), result| result.expect("success"),
         );
     }
 }
