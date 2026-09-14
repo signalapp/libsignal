@@ -537,6 +537,9 @@ impl<T: GrpcServiceProvider> Auth<T> {
                     // that didn't set the field at all decodes as `Unspecified`.
                     let kind = match GrpcMfaKeyType::try_from(r#type) {
                         Ok(GrpcMfaKeyType::Totp) => MfaKeyKind::Totp,
+                        // TODO: report WebAuthn keys as their own kind once libsignal exposes
+                        // the WebAuthn registration endpoints.
+                        Ok(GrpcMfaKeyType::Webauthn) => MfaKeyKind::Unknown,
                         Ok(GrpcMfaKeyType::Unspecified) | Err(_) => MfaKeyKind::Unknown,
                     };
                     Ok(ConfirmedMfaKey {
@@ -575,7 +578,7 @@ impl<T: GrpcServiceProvider> Auth<T> {
         match response.ok_or_else(|| RequestError::Unexpected {
             log_safe: "missing response".to_string(),
         })? {
-            set_mfa_key_metadata_response::Response::MetadataUpdated(
+            set_mfa_key_metadata_response::Response::Success(
                 set_mfa_key_metadata_response::MetadataUpdated {},
             ) => Ok(()),
             set_mfa_key_metadata_response::Response::KeyNotFound(errors::NotFound {}) => {
@@ -1081,7 +1084,7 @@ pub mod test_cases {
                     metadata_ciphertext: TEST_ENCRYPTED_METADATA.to_vec(),
                 },
                 response_grpc: SetMfaKeyMetadataResponse {
-                    response: Some(set_mfa_key_metadata_response::Response::MetadataUpdated(
+                    response: Some(set_mfa_key_metadata_response::Response::Success(
                         set_mfa_key_metadata_response::MetadataUpdated {},
                     )),
                 },
