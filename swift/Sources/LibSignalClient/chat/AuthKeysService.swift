@@ -45,7 +45,7 @@ public struct PreKeyCounts: Equatable, Sendable {
 ///
 /// This is only the public half of the key; the private half never leaves the
 /// device.
-public struct PublicEcPreKey {
+public struct PublicEcPreKey: Sendable {
     /// A locally-unique identifier for this key, which peers using this key to
     /// encrypt messages will provide so the private key can be looked up.
     ///
@@ -68,7 +68,7 @@ public struct PublicEcPreKey {
 ///
 /// This is only the public half of the key; the private half never leaves the
 /// device.
-public struct PublicSignedEcPreKey {
+public struct PublicSignedEcPreKey: Sendable {
     /// A locally-unique identifier for this key, which peers using this key to
     /// encrypt messages will provide so the private key can be looked up.
     ///
@@ -94,7 +94,7 @@ public struct PublicSignedEcPreKey {
 ///
 /// This is only the public half of the key; the private half never leaves the
 /// device.
-public struct PublicKemPreKey {
+public struct PublicKemPreKey: Sendable {
     /// A locally-unique identifier for this key, which peers using this key to
     /// encrypt messages will provide so the private key can be looked up.
     ///
