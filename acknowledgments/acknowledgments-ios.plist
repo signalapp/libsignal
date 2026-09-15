@@ -3275,7 +3275,7 @@ third-party/chromium/LICENSE.
 			<key>License</key>
 			<string>ISC License</string>
 			<key>Title</key>
-			<string>rustls-webpki 0.103.13</string>
+			<string>rustls-webpki 0.103.15</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -4281,7 +4281,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>rustls 0.23.41</string>
+			<string>rustls 0.23.45</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
