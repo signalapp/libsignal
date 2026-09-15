@@ -44,6 +44,27 @@ class AuthKeysServiceTests: AuthChatServiceTestBase<any AuthKeysService> {
             }
         )
     }
+
+    func testSetOneTimeKemPreKeys() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetOneTimeKemPreKeysTests(),
+            invoke: { api, args in
+                try await api.setOneTimeKemPreKeys(
+                    identity: ServiceIdKind(rawValue: args.identity)!,
+                    preKeys: args.preKeys.map {
+                        PublicKemPreKey(
+                            keyId: UInt32($0.id),
+                            publicKey: try KEMPublicKey($0.key),
+                            signature: $0.sig,
+                        )
+                    }
+                )
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
 }
 
 #endif

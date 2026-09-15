@@ -10,6 +10,8 @@ import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.protocol.ecc.ECPublicKey
+import org.signal.libsignal.protocol.kem.KEMPublicKey
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord
 import org.signal.libsignal.protocol.state.PreKeyRecord
 
 public data class PreKeyCounts(
@@ -54,6 +56,31 @@ public data class PublicEcPreKey(
   public val publicKey: ECPublicKey,
 ) {
   public constructor(record: PreKeyRecord) : this(record.id, record.keyPair.publicKey)
+}
+
+/**
+ * A one-time KEM pre-key, as uploaded to the server.
+ *
+ * This is only the public half of the key; the private half never leaves the device.
+ */
+public data class PublicKemPreKey(
+  /**
+   * A locally-unique identifier for this key, which peers using this key to encrypt messages will
+   * provide so the private key can be looked up.
+   *
+   * Must not be negative.
+   */
+  public val keyId: Int,
+  /**
+   * The public key.
+   */
+  public val publicKey: KEMPublicKey,
+  /**
+   * The signature of the public key by the appropriate identity key.
+   */
+  public val signature: ByteArray,
+) {
+  public constructor(record: KyberPreKeyRecord) : this(record.id, record.keyPair.publicKey, record.signature)
 }
 
 public class AuthKeysService(
@@ -113,6 +140,45 @@ public class AuthKeysService(
           identityType = identity,
           preKeyIds = ids,
           preKeyData = keys,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+  }
+
+  /**
+   * Uploads a new set of one-time KEM pre-keys for the authenticated device, clearing any
+   * previously-stored one-time KEM pre-keys for [identity].
+   *
+   * @param preKeys Must contain between 1 and 100 keys
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setOneTimeKemPreKeys(
+    identity: ServiceId.Kind,
+    preKeys: List<PublicKemPreKey>,
+  ): CompletableFuture<RequestResult<Unit, Nothing>> {
+    val ids = IntArray(preKeys.size)
+    val keys = ArrayList<KEMPublicKey>(preKeys.size)
+    val signatures = ArrayList<ByteArray>(preKeys.size)
+    preKeys.forEachIndexed { i, next ->
+      ids[i] = next.keyId
+      keys.add(next.publicKey)
+      signatures.add(next.signature)
+    }
+    return try {
+      NativeNice
+        .AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          identityType = identity,
+          preKeyIds = ids,
+          preKeyData = keys,
+          preKeySignatures = signatures,
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(Unit) },
           onError = { err -> err.toRequestResult() },

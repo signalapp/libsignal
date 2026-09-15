@@ -51,11 +51,12 @@ use libsignal_net_chat::grpc::devices::{
     DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
 };
 use libsignal_net_chat::grpc::keys::PublicEcPreKey;
+use libsignal_net_chat::grpc::keys::PublicKemPreKey;
 use libsignal_net_chat::grpc::login_purchase::{PaymentProvider, ReceiptCredentialError};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
-use libsignal_protocol::{CiphertextMessage, PreKeyId, Timestamp};
+use libsignal_protocol::{CiphertextMessage, KyberPreKeyId, PreKeyId, Timestamp, kem};
 use uuid::Uuid;
 
 use crate::support::*;
@@ -1295,6 +1296,7 @@ async fn AuthenticatedChatConnection_set_one_time_ec_pre_keys(
 ) -> Result<(), RequestError<Infallible>> {
     // The lifetimes involved in the parameters make it simpler to pass them as separate arrays and
     // stitch them back together.
+    assert_eq!(pre_key_ids.len(), pre_key_data.len());
     let pre_keys = pre_key_ids
         .into_iter()
         .zip(pre_key_data)
@@ -1305,6 +1307,33 @@ async fn AuthenticatedChatConnection_set_one_time_ec_pre_keys(
     chat.require_grpc()
         .await
         .set_one_time_ec_pre_keys(*identity_type, pre_keys)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    identity_type: AsType<ServiceIdKind, u8>,
+    pre_key_ids: Vec<StrictPreKeyId<KyberPreKeyId>>,
+    pre_key_data: BridgeVec<BridgeHandleRef<'_, kem::PublicKey>>,
+    pre_key_signatures: BridgeVec<Vec<u8>>,
+) -> Result<(), RequestError<Infallible>> {
+    // The lifetimes involved in the parameters make it simpler to pass them as separate arrays and
+    // stitch them back together.
+    assert_eq!(pre_key_ids.len(), pre_key_data.len());
+    assert_eq!(pre_key_ids.len(), pre_key_signatures.len());
+    let pre_keys = pre_key_ids
+        .into_iter()
+        .zip(pre_key_data)
+        .zip(pre_key_signatures)
+        .map(|((id, key), sig)| PublicKemPreKey {
+            key_id: id.into_inner(),
+            public_key: &key,
+            signature: Cow::Owned(sig),
+        });
+    chat.require_grpc()
+        .await
+        .set_one_time_kem_pre_keys(*identity_type, pre_keys)
         .await
 }
 

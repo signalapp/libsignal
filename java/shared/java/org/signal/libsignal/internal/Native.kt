@@ -495,6 +495,16 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    identityType: Int,
+    preKeyIds: IntArray,
+    preKeyData: Array<*>,
+    preKeySignatures: Array<*>,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_push_token_fcm(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

@@ -432,6 +432,40 @@ extension SignalOwnedBufferOfMaxAlignedDeleteBackupMediaOutFfiResult: SignalOwne
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    public typealias Element = SignalTestingKemPreKeyFfiResult
+
+    public init(
+        generic_base: SignalType_MutPointer_SignalTestingKemPreKeyFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    public var generic_base: SignalType_MutPointer_SignalTestingKemPreKeyFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    public var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalMySimpleTestEnumFfiResult
@@ -1029,6 +1063,12 @@ internal struct SetOneTimeEcPreKeysArgs {
 
 }
 
+internal struct SetOneTimeKemPreKeysArgs {
+    var identity: UInt8
+    var preKeys: [TestingKemPreKey]
+
+}
+
 internal struct SetUsernameLinkArgs {
     var usernameCiphertext: Data
     var keepLinkHandle: Bool
@@ -1049,6 +1089,13 @@ internal enum SimpleBackupTestOut {
 internal struct TestStreamChunk {
     var chunk: [String]
     var termination: BulkPolledStreamTermination?
+
+}
+
+internal struct TestingKemPreKey {
+    var id: Int32
+    var key: Data
+    var sig: Data
 
 }
 
@@ -2297,6 +2344,25 @@ internal enum DerivedReturnConverterSetOneTimeEcPreKeysArgs: NiceReturnConverter
     }
 }
 
+internal enum DerivedReturnConverterSetOneTimeKemPreKeysArgs: NiceReturnConverter {
+    typealias NiceReturn = SetOneTimeKemPreKeysArgs
+    typealias FfiReturn = SignalSetOneTimeKemPreKeysArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetOneTimeKemPreKeysArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let identity = Result { try IdentityResultConverter<UInt8>.convertReturn(consuming: ffiValue.identity) }
+        let pre_keys = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterTestingKemPreKey, SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult
+            >.convertReturn(consuming: ffiValue.pre_keys)
+        }
+
+        return SetOneTimeKemPreKeysArgs(identity: try identity.get(), preKeys: try pre_keys.get())
+    }
+}
+
 internal enum DerivedReturnConverterSetUsernameLinkArgs: NiceReturnConverter {
     typealias NiceReturn = SetUsernameLinkArgs
     typealias FfiReturn = SignalSetUsernameLinkArgsFfiResult
@@ -2380,6 +2446,22 @@ internal enum DerivedReturnConverterTestStreamChunk: NiceReturnConverter {
         }
 
         return TestStreamChunk(chunk: try chunk.get(), termination: try termination.get())
+    }
+}
+
+internal enum DerivedReturnConverterTestingKemPreKey: NiceReturnConverter {
+    typealias NiceReturn = TestingKemPreKey
+    typealias FfiReturn = SignalTestingKemPreKeyFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalTestingKemPreKeyFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let id = Result { try IdentityResultConverter<Int32>.convertReturn(consuming: ffiValue.id) }
+        let key = Result { try DataConverter.convertReturn(consuming: ffiValue.key) }
+        let sig = Result { try DataConverter.convertReturn(consuming: ffiValue.sig) }
+
+        return TestingKemPreKey(id: try id.get(), key: try key.get(), sig: try sig.get())
     }
 }
 
@@ -3988,6 +4070,18 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<DerivedReturnConverterSetOneTimeEcPreKeysArgs, VoidConverter>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_SetOneTimeKemPreKeysTests() throws -> [GrpcTestCase<SetOneTimeKemPreKeysArgs, Void>] {
+        var rawOutput = GrpcTestCaseVecConverter<DerivedReturnConverterSetOneTimeKemPreKeysArgs, VoidConverter>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_one_time_kem_pre_keys_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterSetOneTimeKemPreKeysArgs, VoidConverter>
+            .convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_SetPushTokenApnsTests() throws -> [GrpcTestCase<String, Void>] {

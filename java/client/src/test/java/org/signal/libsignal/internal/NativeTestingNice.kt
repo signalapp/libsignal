@@ -375,6 +375,11 @@ public data class SetOneTimeEcPreKeysArgs(
   public val preKeys: List<Pair<Int, ByteArray>>,
 )
 
+public data class SetOneTimeKemPreKeysArgs(
+  public val identity: Int,
+  public val preKeys: List<org.signal.libsignal.internal.TestingKemPreKey>,
+)
+
 public data class SetUsernameLinkArgs(
   public val usernameCiphertext: ByteArray,
   public val keepLinkHandle: Boolean,
@@ -399,6 +404,12 @@ public sealed class SimpleBackupTestOut {
 public data class TestStreamChunk(
   public val chunk: List<String>,
   public val termination: Any?,
+)
+
+public data class TestingKemPreKey(
+  public val id: Int,
+  public val key: ByteArray,
+  public val sig: ByteArray,
 )
 
 public object BridgeCopyBackupMediaItem_ReturnConverter {
@@ -1467,6 +1478,24 @@ public object SetOneTimeEcPreKeysArgs_ReturnConverter {
     )
 }
 
+public object SetOneTimeKemPreKeysArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    identity: Any?,
+    pre_keys: Any?,
+  ): Any? =
+    SetOneTimeKemPreKeysArgs(
+      identity =
+        identity(identity as Int),
+      preKeys =
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.TestingKemPreKey>({
+          downcastFromObject<org.signal.libsignal.internal.TestingKemPreKey>(it)
+        })(pre_keys as Array<*>),
+    )
+}
+
 public object SetUsernameLinkArgs_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1535,6 +1564,25 @@ public object TestStreamChunk_ReturnConverter {
         mapBridgeVecReturn<String, String>({ identity(it) })(chunk as Array<*>),
       termination =
         identity(termination as Object?),
+    )
+}
+
+public object TestingKemPreKey_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    id: Any?,
+    key: Any?,
+    sig: Any?,
+  ): Any? =
+    TestingKemPreKey(
+      id =
+        identity(id as Int),
+      key =
+        identity(key as ByteArray),
+      sig =
+        identity(sig as ByteArray),
     )
 }
 
@@ -2362,6 +2410,16 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase
       .resultConverter<Object, Void?, org.signal.libsignal.internal.SetOneTimeEcPreKeysArgs, Void?>({
         downcastFromObject<org.signal.libsignal.internal.SetOneTimeEcPreKeysArgs>(it)
+      }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_SetOneTimeKemPreKeysTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetOneTimeKemPreKeysArgs, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetOneTimeKemPreKeysTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Void?, org.signal.libsignal.internal.SetOneTimeKemPreKeysArgs, Void?>({
+        downcastFromObject<org.signal.libsignal.internal.SetOneTimeKemPreKeysArgs>(it)
       }, { identity(it) })(ffiOut)
   }
 

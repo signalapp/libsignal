@@ -3,16 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::borrow::Cow;
 use std::convert::Infallible;
 
 use itertools::Itertools as _;
 use libsignal_core::ServiceIdKind;
-use libsignal_net_grpc::proto::chat::common::{EcPreKey as EcPreKeyProto, IdentityType};
+use libsignal_net_grpc::proto::chat::common::{
+    EcPreKey as EcPreKeyProto, IdentityType, KemSignedPreKey as KemPreKeyProto,
+};
 use libsignal_net_grpc::proto::chat::keys::keys_client::KeysClient;
 use libsignal_net_grpc::proto::chat::keys::{
-    GetPreKeyCountRequest, GetPreKeyCountResponse, SetOneTimeEcPreKeysRequest, SetPreKeyResponse,
+    GetPreKeyCountRequest, GetPreKeyCountResponse, SetOneTimeEcPreKeysRequest,
+    SetOneTimeKemSignedPreKeysRequest, SetPreKeyResponse,
 };
-use libsignal_protocol::{PreKeyId, PublicKey};
+use libsignal_protocol::{KyberPreKeyId, PreKeyId, PublicKey, kem};
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::{GrpcServiceProvider, GrpcTestCase, log_and_send};
@@ -69,6 +73,33 @@ impl From<PublicEcPreKey<'_>> for EcPreKeyProto {
     }
 }
 
+/// A KEM pre-key (one-time or last-resort), as uploaded to the server.
+///
+/// This is only the public half of the key; the private half never leaves the client.
+#[derive(Clone)]
+#[cfg_attr(test, derive(Debug))]
+pub struct PublicKemPreKey<'a> {
+    /// A locally-unique identifier for this key, which peers using this key to
+    /// encrypt messages will provide so the private key can be looked up.
+    pub key_id: KyberPreKeyId,
+    /// The public key.
+    pub public_key: &'a kem::PublicKey,
+    /// The signature.
+    pub signature: Cow<'a, [u8]>,
+}
+
+impl From<PublicKemPreKey<'_>> for KemPreKeyProto {
+    fn from(value: PublicKemPreKey<'_>) -> Self {
+        Self {
+            // The server's limits on pre-key IDs are far below i32::MAX, so
+            // anything out of range is a programmer error on the client side.
+            key_id: i32::try_from(u32::from(value.key_id)).expect("pre-key IDs fit in i32"),
+            public_key: value.public_key.serialize().into_vec(),
+            signature: value.signature.into_owned(),
+        }
+    }
+}
+
 impl std::fmt::Display for Redact<SetOneTimeEcPreKeysRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(SetOneTimeEcPreKeysRequest {
@@ -76,6 +107,19 @@ impl std::fmt::Display for Redact<SetOneTimeEcPreKeysRequest> {
             pre_keys,
         }) = self;
         f.debug_struct("SetOneTimeEcPreKeysRequest")
+            .field("identity_type", identity_type)
+            .field("pre_keys_len", &pre_keys.len())
+            .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<SetOneTimeKemSignedPreKeysRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(SetOneTimeKemSignedPreKeysRequest {
+            identity_type,
+            pre_keys,
+        }) = self;
+        f.debug_struct("SetOneTimeKemSignedPreKeysRequest")
             .field("identity_type", identity_type)
             .field("pre_keys_len", &pre_keys.len())
             .finish()
@@ -126,10 +170,40 @@ impl<T: GrpcServiceProvider> Auth<T> {
             pre_keys,
         };
         let desc = Redact(&request).to_string();
-        let SetPreKeyResponse {} =
-            log_and_send("auth", &desc, || client.set_one_time_ec_pre_keys(request))
-                .await?
-                .into_inner();
+        let SetPreKeyResponse {} = log_and_send(Self::LOG_TAG, &desc, || {
+            client.set_one_time_ec_pre_keys(request)
+        })
+        .await?
+        .into_inner();
+        Ok(())
+    }
+
+    /// Uploads a new set of one-time KEM pre-keys for the authenticated device,
+    /// clearing any previously-stored one-time KEM pre-keys for `identity`.
+    ///
+    /// `pre_keys` must contain between 1 and 100 keys.
+    pub async fn set_one_time_kem_pre_keys(
+        &self,
+        identity: ServiceIdKind,
+        pre_keys: impl IntoIterator<Item = PublicKemPreKey<'_>>,
+    ) -> Result<(), RequestError<Infallible>> {
+        let pre_keys = pre_keys.into_iter().map(KemPreKeyProto::from).collect_vec();
+        assert!(!pre_keys.is_empty(), "cannot upload 0 pre-keys");
+        let mut client = KeysClient::new(self.0.service());
+        let request = SetOneTimeKemSignedPreKeysRequest {
+            identity_type: match identity {
+                ServiceIdKind::Aci => IdentityType::Aci,
+                ServiceIdKind::Pni => IdentityType::Pni,
+            }
+            .into(),
+            pre_keys,
+        };
+        let desc = Redact(&request).to_string();
+        let SetPreKeyResponse {} = log_and_send(Self::LOG_TAG, &desc, || {
+            client.set_one_time_kem_signed_pre_keys(request)
+        })
+        .await?
+        .into_inner();
         Ok(())
     }
 }
@@ -249,6 +323,85 @@ pub mod test_cases {
             },
         ]
     }
+
+    pub struct SetOneTimeKemPreKeysArgs {
+        pub identity: ServiceIdKind,
+        pub pre_keys: Vec<(KyberPreKeyId, kem::PublicKey, Box<[u8]>)>,
+    }
+
+    pub fn set_one_time_kem_pre_keys_test_cases() -> Vec<
+        GrpcTestCase<
+            SetOneTimeKemPreKeysArgs,
+            SetOneTimeKemSignedPreKeysRequest,
+            SetPreKeyResponse,
+            (),
+        >,
+    > {
+        fn test_pre_key(
+            key_id: u32,
+            key_byte: u8,
+            signature_byte: u8,
+        ) -> (KyberPreKeyId, kem::PublicKey, Box<[u8]>) {
+            // 0x08 is the serialization format tag for Kyber1024 keys.
+            let mut kem_bytes = vec![0x08];
+            kem_bytes.extend(std::iter::repeat_n(key_byte, 1568));
+            (
+                key_id.into(),
+                kem::PublicKey::deserialize(&kem_bytes).expect("valid key bytes"),
+                Box::new([signature_byte; 64]),
+            )
+        }
+
+        fn test_pre_key_proto(key_id: i32, key_byte: u8, signature_byte: u8) -> KemPreKeyProto {
+            let mut kem_bytes = vec![0x08];
+            kem_bytes.extend(std::iter::repeat_n(key_byte, 1568));
+            KemPreKeyProto {
+                key_id,
+                public_key: kem_bytes,
+                signature: vec![signature_byte; 64],
+            }
+        }
+
+        let method = "/org.signal.chat.keys.Keys/SetOneTimeKemSignedPreKeys";
+        vec![
+            GrpcTestCase {
+                name: "one ACI key".to_string(),
+                method: method.to_string(),
+                request: SetOneTimeKemPreKeysArgs {
+                    identity: ServiceIdKind::Aci,
+                    pre_keys: vec![test_pre_key(42, 0x10, 0x55)],
+                },
+                request_grpc: SetOneTimeKemSignedPreKeysRequest {
+                    identity_type: IdentityType::Aci.into(),
+                    pre_keys: vec![test_pre_key_proto(42, 0x10, 0x55)],
+                },
+                response_grpc: SetPreKeyResponse {},
+                response: (),
+            },
+            GrpcTestCase {
+                name: "several PNI keys".to_string(),
+                method: method.to_string(),
+                request: SetOneTimeKemPreKeysArgs {
+                    identity: ServiceIdKind::Pni,
+                    pre_keys: vec![
+                        test_pre_key(100, 0x20, 0x50),
+                        test_pre_key(101, 0x21, 0x51),
+                        test_pre_key(102, 0x22, 0x52),
+                    ],
+                },
+                request_grpc: SetOneTimeKemSignedPreKeysRequest {
+                    identity_type: IdentityType::Pni.into(),
+                    pre_keys: vec![
+                        test_pre_key_proto(100, 0x20, 0x50),
+                        test_pre_key_proto(101, 0x21, 0x51),
+                        test_pre_key_proto(102, 0x22, 0x52),
+                    ],
+                },
+                response_grpc: SetPreKeyResponse {},
+                response: (),
+            },
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -277,6 +430,23 @@ mod test {
                     public_key: key,
                 });
                 chat.set_one_time_ec_pre_keys(identity, pre_keys).await
+            },
+            |(), result| result.expect("success"),
+        );
+    }
+
+    #[test]
+    fn test_set_one_time_kem_pre_keys() {
+        use test_cases::*;
+        run_tests(
+            set_one_time_kem_pre_keys_test_cases(),
+            |chat: Auth<_>, SetOneTimeKemPreKeysArgs { identity, pre_keys }| async move {
+                let pre_keys = pre_keys.iter().map(|(id, key, sig)| PublicKemPreKey {
+                    key_id: *id,
+                    public_key: key,
+                    signature: Cow::Borrowed(sig),
+                });
+                chat.set_one_time_kem_pre_keys(identity, pre_keys).await
             },
             |(), result| result.expect("success"),
         );

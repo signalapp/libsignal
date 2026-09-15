@@ -960,6 +960,41 @@ mod remote_derives {
             }
         }
     }
+
+    #[derive(BridgedAsValue)]
+    struct TestingKemPreKey {
+        id: i32,
+        key: Vec<u8>,
+        sig: Vec<u8>,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct SetOneTimeKemPreKeysArgs {
+        identity: u8,
+        pre_keys: BridgeVec<TestingKemPreKey>,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::SetOneTimeKemPreKeysArgs>
+        for SetOneTimeKemPreKeysArgs
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::keys::test_cases::SetOneTimeKemPreKeysArgs,
+        ) -> Self {
+            Self {
+                identity: value.identity.into(),
+                pre_keys: value
+                    .pre_keys
+                    .into_iter()
+                    .map(|(id, key, sig)| TestingKemPreKey {
+                        id: i32::try_from(u32::from(id)).expect("pre-key IDs fit in i32"),
+                        key: key.serialize().into_vec(),
+                        sig: sig.into_vec(),
+                    })
+                    .collect(),
+            }
+        }
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1210,4 +1245,10 @@ fn TESTING_GetStickerUploadFormTests()
 fn TESTING_SetOneTimeEcPreKeysTests() -> GrpcTestCases<remote_derives::SetOneTimeEcPreKeysArgs, ()>
 {
     libsignal_net_chat::grpc::keys::test_cases::set_one_time_ec_pre_keys_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetOneTimeKemPreKeysTests() -> GrpcTestCases<remote_derives::SetOneTimeKemPreKeysArgs, ()>
+{
+    libsignal_net_chat::grpc::keys::test_cases::set_one_time_kem_pre_keys_test_cases().into()
 }

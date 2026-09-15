@@ -1569,6 +1569,37 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    identityType: org.signal.libsignal.protocol.ServiceId.Kind,
+    preKeyIds: IntArray,
+    preKeyData: List<org.signal.libsignal.protocol.kem.KEMPublicKey>,
+    preKeySignatures: List<ByteArray>,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_identity_type = (org.signal.libsignal.protocol.ServiceId.Kind::ordinal)(identityType)
+    val ffi_pre_key_ids = identity(preKeyIds)
+    val ffi_pre_key_data =
+      mapBridgeVecArg<org.signal.libsignal.protocol.kem.KEMPublicKey, org.signal.libsignal.protocol.kem.KEMPublicKey>({
+        identity(it)
+      })(preKeyData)
+    val ffi_pre_key_signatures = mapBridgeVecArg<ByteArray, ByteArray>({ identity(it) })(preKeySignatures)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_identity_type,
+          ffi_pre_key_ids,
+          ffi_pre_key_data,
+          ffi_pre_key_signatures,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_set_push_token_fcm(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

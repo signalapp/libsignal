@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.runTest
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.protocol.ecc.ECPublicKey
+import org.signal.libsignal.protocol.kem.KEMPublicKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -44,6 +45,25 @@ class AuthKeysServiceTest {
           chat.setOneTimeEcPreKeys(
             identity = ServiceId.Kind.values()[req.identity],
             preKeys = req.preKeys.map { PublicEcPreKey(it.first, ECPublicKey(it.second)) },
+          )
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
+
+  @Test
+  fun testSetOneTimeKemPreKeys() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetOneTimeKemPreKeysTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthKeysService,
+        invoke = { chat, req ->
+          chat.setOneTimeKemPreKeys(
+            identity = ServiceId.Kind.values()[req.identity],
+            preKeys = req.preKeys.map { PublicKemPreKey(it.id, KEMPublicKey(it.key), it.sig) },
           )
         },
         check = { _, actual ->

@@ -152,6 +152,33 @@ extension SignalBorrowedSliceOfConstPointerPublicKey: SignalBorrowedSliceOf {
 
 }
 
+extension SignalBorrowedSliceOfConstPointerKyberPublicKey: SignalBorrowedSliceOf {
+
+    typealias Element = SignalConstPointerKyberPublicKey
+
+    init(
+        generic_base: SignalType_ConstPointer_SignalConstPointerKyberPublicKey?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    var generic_base: SignalType_ConstPointer_SignalConstPointerKyberPublicKey? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
 extension SignalBorrowedSliceOfConstPointerCiphertextMessage: SignalBorrowedSliceOf {
 
     typealias Element = SignalConstPointerCiphertextMessage
@@ -4511,6 +4538,49 @@ internal enum NativeNice {
                                         pre_key_idsFfi,
                                         pre_key_dataFfi,
                                     )
+                                }
+                            }
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        identityType identity_type: ServiceIdKind,
+        preKeyIds pre_key_ids: [UInt32],
+        preKeyData pre_key_data: [KEMPublicKey],
+        preKeySignatures pre_key_signatures: [Data],
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ServiceIdKindConverter.convertArgBorrowed(identity_type) { identity_typeFfi in
+                            ArrayArgConverter<IdentityArgConverter, SignalBorrowedSliceOfu32>.convertArgBorrowed(
+                                pre_key_ids
+                            ) { pre_key_idsFfi in
+                                ArrayArgConverter<
+                                    BridgeHandleRefConverter<SignalMutPointerKyberPublicKey, KEMPublicKey>,
+                                    SignalBorrowedSliceOfConstPointerKyberPublicKey
+                                >.convertArgBorrowed(pre_key_data) { pre_key_dataFfi in
+                                    ArrayArgConverter<DataConverter, SignalBorrowedSliceOfBuffers>.convertArgBorrowed(
+                                        pre_key_signatures
+                                    ) { pre_key_signaturesFfi in
+                                        SignalFfi.signal_authenticated_chat_connection_set_one_time_kem_pre_keys(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            identity_typeFfi,
+                                            pre_key_idsFfi,
+                                            pre_key_dataFfi,
+                                            pre_key_signaturesFfi,
+                                        )
+                                    }
                                 }
                             }
                         }

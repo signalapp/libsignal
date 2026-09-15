@@ -90,10 +90,12 @@ import type {
   ReturnFfiSetMfaKeyMetadataArgs,
   ReturnFfiSetMfaKeyMetadataOut,
   ReturnFfiSetOneTimeEcPreKeysArgs,
+  ReturnFfiSetOneTimeKemPreKeysArgs,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
   ReturnFfiSimpleBackupTestOut,
   ReturnFfiTestStreamChunk,
+  ReturnFfiTestingKemPreKey,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
@@ -558,6 +560,11 @@ export type SetOneTimeEcPreKeysArgs = {
   preKeys: Array<[number, Uint8Array<ArrayBuffer>]>;
 };
 
+export type SetOneTimeKemPreKeysArgs = {
+  identity: number;
+  preKeys: Array<TestingKemPreKey>;
+};
+
 export type SetUsernameLinkArgs = {
   usernameCiphertext: Uint8Array<ArrayBuffer>;
   keepLinkHandle: boolean;
@@ -577,6 +584,12 @@ export type SimpleBackupTestOut =
 export type TestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
+};
+
+export type TestingKemPreKey = {
+  id: number;
+  key: Uint8Array<ArrayBuffer>;
+  sig: Uint8Array<ArrayBuffer>;
 };
 
 export function returnConverterAuthCheckResult(
@@ -1622,6 +1635,16 @@ export function returnConverterSetOneTimeEcPreKeysArgs(
   };
 }
 
+export function returnConverterSetOneTimeKemPreKeysArgs(
+  ffiInput: Native.ReturnFfiSetOneTimeKemPreKeysArgs
+): SetOneTimeKemPreKeysArgs {
+  return {
+    identity: identity(ffiInput.identity),
+    preKeys: ((arr: Array<ReturnFfiTestingKemPreKey>) =>
+      arr.map(returnConverterTestingKemPreKey))(ffiInput.pre_keys),
+  };
+}
+
 export function returnConverterSetUsernameLinkArgs(
   ffiInput: Native.ReturnFfiSetUsernameLinkArgs
 ): SetUsernameLinkArgs {
@@ -1671,6 +1694,16 @@ export function returnConverterTestStreamChunk(
   return {
     chunk: ((arr: Array<string>) => arr.map(identity))(ffiInput.chunk),
     termination: liftNull(identity)(ffiInput.termination),
+  };
+}
+
+export function returnConverterTestingKemPreKey(
+  ffiInput: Native.ReturnFfiTestingKemPreKey
+): TestingKemPreKey {
+  return {
+    id: identity(ffiInput.id),
+    key: identity(ffiInput.key),
+    sig: identity(ffiInput.sig),
   };
 }
 
@@ -2445,6 +2478,40 @@ export async function AuthenticatedChatConnection_set_one_time_ec_pre_keys({
     )
   );
 }
+export async function AuthenticatedChatConnection_set_one_time_kem_pre_keys({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  identityType: identity_type,
+  preKeyIds: pre_key_ids,
+  preKeyData: pre_key_data,
+  preKeySignatures: pre_key_signatures,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  identityType: ServiceIdKind;
+  preKeyIds: Uint32Array<ArrayBuffer>;
+  preKeyData: Array<Native.Wrapper<Native.KyberPublicKey>>;
+  preKeySignatures: Array<Uint8Array<ArrayBuffer>>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_one_time_kem_pre_keys(
+        asyncContext,
+        identity(chat),
+        Number(identity_type),
+        identity(pre_key_ids),
+        ((arr: Array<Native.Wrapper<Native.KyberPublicKey>>) =>
+          arr.map(identity))(pre_key_data),
+        ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+          pre_key_signatures
+        )
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_registration_lock({
   asyncContext,
   abortSignal,
@@ -3147,6 +3214,15 @@ export function TESTING_SetOneTimeEcPreKeysTests(): Array<
     returnConverterSetOneTimeEcPreKeysArgs,
     identity
   )(Native.TESTING_SetOneTimeEcPreKeysTests());
+}
+
+export function TESTING_SetOneTimeKemPreKeysTests(): Array<
+  GrpcTestCase<SetOneTimeKemPreKeysArgs, void>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetOneTimeKemPreKeysArgs,
+    identity
+  )(Native.TESTING_SetOneTimeKemPreKeysTests());
 }
 
 export function TESTING_SetRegistrationLockTests(): Array<

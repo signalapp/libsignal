@@ -52,7 +52,11 @@ bridge_as_handle!(KyberPreKeyRecord);
 bridge_as_handle!(UnidentifiedSenderMessageContent);
 bridge_as_handle!(SealedSenderDecryptionResult, ffi = false, jni = false);
 bridge_as_handle!(KyberKeyPair);
-bridge_as_handle!(KyberPublicKey);
+bridge_as_handle!(
+    KyberPublicKey,
+    swift_type = "KEMPublicKey",
+    jni_class = "org.signal.libsignal.protocol.kem.KEMPublicKey"
+);
 bridge_as_handle!(KyberSecretKey);
 
 pub use libsignal_protocol::Timestamp;

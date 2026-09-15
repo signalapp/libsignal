@@ -9,7 +9,7 @@ import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthKeysService } from '../../net.js';
 import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
-import { PublicKey } from '../../index.js';
+import { KEMPublicKey, PublicKey } from '../../index.js';
 
 util.initLogger();
 config.truncateThreshold = 0;
@@ -44,6 +44,27 @@ describe('AuthKeysService', () => {
           preKeys: preKeys.map(([keyId, publicKey]) => ({
             keyId: keyId,
             publicKey: PublicKey.deserialize(publicKey),
+          })),
+        });
+      }
+    );
+  });
+
+  describe('setOneTimeKemPreKeys', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetOneTimeKemPreKeysTests(),
+      connectAuth<AuthKeysService>,
+      async (
+        chat: AuthKeysService,
+        { identity, preKeys }: NativeNice.SetOneTimeKemPreKeysArgs,
+        _resp: void
+      ) => {
+        await chat.setOneTimeKemPreKeys({
+          identity,
+          preKeys: preKeys.map((next) => ({
+            keyId: next.id,
+            publicKey: KEMPublicKey.deserialize(next.key),
+            signature: next.sig,
           })),
         });
       }
