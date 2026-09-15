@@ -784,6 +784,28 @@ impl NiceArgConverter for DeviceId {
     }
 }
 
+impl<T> SimpleArgTypeInfo for StrictPreKeyId<T>
+where
+    T: From<u32> + 'static,
+{
+    type ArgType = JsNumber;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        StrictPreKeyId::try_from(u32::convert_from(cx, foreign)?)
+            .or_else(|e| cx.throw_range_error(e.to_string()))
+    }
+    register_ts_ffi_type!("number");
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for StrictPreKeyId<T>
+where
+    T: From<u32> + 'static,
+{
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        u32::register_ts_arg_converter(ctx)
+    }
+}
+
 impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization {
     type ArgType = JsValue;
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {

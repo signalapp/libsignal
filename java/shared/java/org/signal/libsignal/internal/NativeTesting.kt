@@ -638,6 +638,9 @@ public object NativeTesting {
   public external fun TESTING_SetDiscoverableByPhoneNumberTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_SetLastResortKemPreKeyTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_SetMfaKeyMetadataTests(): Array<Object>
 
   @JvmStatic
@@ -654,6 +657,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_SetRegistrationRecoveryPasswordTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_SetSignedEcPreKeyTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_SetUsernameLinkTests(): Array<Object>

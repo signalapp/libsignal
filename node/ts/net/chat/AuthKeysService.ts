@@ -59,7 +59,31 @@ export type PublicEcPreKey = {
 };
 
 /**
- * A one-time KEM pre-key, as uploaded to the server.
+ * A signed EC pre-key, as uploaded to the server.
+ *
+ * This is only the public half of the key; the private half never leaves the
+ * device.
+ */
+export type PublicSignedEcPreKey = {
+  /**
+   * A locally-unique identifier for this key, which peers using this key to
+   * encrypt messages will provide so the private key can be looked up.
+   *
+   * Must be non-negative and less than `1 << 31`.
+   */
+  keyId: number;
+  /**
+   * The public key.
+   */
+  publicKey: PublicKey;
+  /**
+   * The signature of the public key by the appropriate identity key.
+   */
+  signature: Uint8Array<ArrayBuffer>;
+};
+
+/**
+ * A KEM pre-key, as uploaded to the server.
  *
  * This is only the public half of the key; the private half never leaves the
  * device.
@@ -109,7 +133,7 @@ export interface AuthKeysService {
 
   /**
    * Uploads a new set of one-time KEM pre-keys for the authenticated device,
-   * clearing any previously-stored one-time EC pre-keys for `identity`.
+   * clearing any previously-stored one-time KEM pre-keys for `identity`.
    *
    * `preKeys` must contain between 1 and 100 keys.
    *
@@ -119,6 +143,34 @@ export interface AuthKeysService {
     request: {
       identity: ServiceIdKind;
       preKeys: ReadonlyArray<PublicKemPreKey>;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
+
+  /**
+   * Uploads a new signed EC pre-key for the authenticated device,
+   * clearing the previously-stored signed EC pre-key for `identity`.
+   *
+   * @throws {StandardNetworkError}
+   */
+  setSignedEcPreKey: (
+    request: {
+      identity: ServiceIdKind;
+      preKey: PublicSignedEcPreKey;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
+
+  /**
+   * Uploads a new last-resort KEM pre-key for the authenticated device,
+   * clearing the previously-stored last-resort KEM pre-key for `identity`.
+   *
+   * @throws {StandardNetworkError}
+   */
+  setLastResortKemPreKey: (
+    request: {
+      identity: ServiceIdKind;
+      preKey: PublicKemPreKey;
     },
     options?: RequestOptions
   ) => Promise<void>;
@@ -177,6 +229,38 @@ AuthenticatedChatConnection.prototype.setOneTimeKemPreKeys = async function (
       preKeyIds: ids,
       preKeyData: keys,
       preKeySignatures: signatures,
+    }
+  );
+};
+
+AuthenticatedChatConnection.prototype.setSignedEcPreKey = async function (
+  { identity, preKey: { keyId, publicKey, signature } },
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_set_signed_ec_pre_key({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    identityType: identity,
+    id: keyId,
+    key: publicKey,
+    signature,
+  });
+};
+
+AuthenticatedChatConnection.prototype.setLastResortKemPreKey = async function (
+  { identity, preKey: { keyId, publicKey, signature } },
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+    {
+      asyncContext: this.asyncContext,
+      abortSignal: options?.abortSignal,
+      chat: this.chatService,
+      identityType: identity,
+      id: keyId,
+      key: publicKey,
+      signature,
     }
   );
 };

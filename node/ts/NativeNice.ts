@@ -87,15 +87,17 @@ import type {
   ReturnFfiSetCapabilitiesArgs,
   ReturnFfiSetDeviceNameArgs,
   ReturnFfiSetDeviceNameOut,
+  ReturnFfiSetLastResortKemPreKeyArgs,
   ReturnFfiSetMfaKeyMetadataArgs,
   ReturnFfiSetMfaKeyMetadataOut,
   ReturnFfiSetOneTimeEcPreKeysArgs,
   ReturnFfiSetOneTimeKemPreKeysArgs,
+  ReturnFfiSetSignedEcPreKeyArgs,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
   ReturnFfiSimpleBackupTestOut,
   ReturnFfiTestStreamChunk,
-  ReturnFfiTestingKemPreKey,
+  ReturnFfiTestingAnySignedPreKey,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
@@ -546,6 +548,11 @@ export type SetDeviceNameArgs = {
 
 export type SetDeviceNameOut = 'success' | 'deviceNotFound';
 
+export type SetLastResortKemPreKeyArgs = {
+  identity: number;
+  preKey: TestingAnySignedPreKey;
+};
+
 export type SetMfaKeyMetadataArgs = {
   keyId: number;
   name: string;
@@ -562,7 +569,12 @@ export type SetOneTimeEcPreKeysArgs = {
 
 export type SetOneTimeKemPreKeysArgs = {
   identity: number;
-  preKeys: Array<TestingKemPreKey>;
+  preKeys: Array<TestingAnySignedPreKey>;
+};
+
+export type SetSignedEcPreKeyArgs = {
+  identity: number;
+  preKey: TestingAnySignedPreKey;
 };
 
 export type SetUsernameLinkArgs = {
@@ -586,7 +598,7 @@ export type TestStreamChunk = {
   termination: ('finished' | Error) | null;
 };
 
-export type TestingKemPreKey = {
+export type TestingAnySignedPreKey = {
   id: number;
   key: Uint8Array<ArrayBuffer>;
   sig: Uint8Array<ArrayBuffer>;
@@ -1594,6 +1606,15 @@ export function returnConverterSetDeviceNameOut(
   }
 }
 
+export function returnConverterSetLastResortKemPreKeyArgs(
+  ffiInput: Native.ReturnFfiSetLastResortKemPreKeyArgs
+): SetLastResortKemPreKeyArgs {
+  return {
+    identity: identity(ffiInput.identity),
+    preKey: returnConverterTestingAnySignedPreKey(ffiInput.pre_key),
+  };
+}
+
 export function returnConverterSetMfaKeyMetadataArgs(
   ffiInput: Native.ReturnFfiSetMfaKeyMetadataArgs
 ): SetMfaKeyMetadataArgs {
@@ -1640,8 +1661,17 @@ export function returnConverterSetOneTimeKemPreKeysArgs(
 ): SetOneTimeKemPreKeysArgs {
   return {
     identity: identity(ffiInput.identity),
-    preKeys: ((arr: Array<ReturnFfiTestingKemPreKey>) =>
-      arr.map(returnConverterTestingKemPreKey))(ffiInput.pre_keys),
+    preKeys: ((arr: Array<ReturnFfiTestingAnySignedPreKey>) =>
+      arr.map(returnConverterTestingAnySignedPreKey))(ffiInput.pre_keys),
+  };
+}
+
+export function returnConverterSetSignedEcPreKeyArgs(
+  ffiInput: Native.ReturnFfiSetSignedEcPreKeyArgs
+): SetSignedEcPreKeyArgs {
+  return {
+    identity: identity(ffiInput.identity),
+    preKey: returnConverterTestingAnySignedPreKey(ffiInput.pre_key),
   };
 }
 
@@ -1697,9 +1727,9 @@ export function returnConverterTestStreamChunk(
   };
 }
 
-export function returnConverterTestingKemPreKey(
-  ffiInput: Native.ReturnFfiTestingKemPreKey
-): TestingKemPreKey {
+export function returnConverterTestingAnySignedPreKey(
+  ffiInput: Native.ReturnFfiTestingAnySignedPreKey
+): TestingAnySignedPreKey {
   return {
     id: identity(ffiInput.id),
     key: identity(ffiInput.key),
@@ -2414,6 +2444,37 @@ export async function AuthenticatedChatConnection_set_discoverable_by_phone_numb
     )
   );
 }
+export async function AuthenticatedChatConnection_set_last_resort_kem_pre_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  identityType: identity_type,
+  id: id,
+  key: key,
+  signature: signature,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  identityType: ServiceIdKind;
+  id: number;
+  key: Native.Wrapper<Native.KyberPublicKey>;
+  signature: Uint8Array<ArrayBuffer>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+        asyncContext,
+        identity(chat),
+        Number(identity_type),
+        identity(id),
+        identity(key),
+        identity(signature)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_mfa_key_metadata({
   asyncContext,
   abortSignal,
@@ -2552,6 +2613,37 @@ export async function AuthenticatedChatConnection_set_registration_recovery_pass
         asyncContext,
         identity(chat),
         identity(svr_key)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_signed_ec_pre_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  identityType: identity_type,
+  id: id,
+  key: key,
+  signature: signature,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  identityType: ServiceIdKind;
+  id: number;
+  key: Native.Wrapper<Native.PublicKey>;
+  signature: Uint8Array<ArrayBuffer>;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_signed_ec_pre_key(
+        asyncContext,
+        identity(chat),
+        Number(identity_type),
+        identity(id),
+        identity(key),
+        identity(signature)
       )
     )
   );
@@ -3198,6 +3290,15 @@ export function TESTING_SetDiscoverableByPhoneNumberTests(): Array<
   )(Native.TESTING_SetDiscoverableByPhoneNumberTests());
 }
 
+export function TESTING_SetLastResortKemPreKeyTests(): Array<
+  GrpcTestCase<SetLastResortKemPreKeyArgs, void>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetLastResortKemPreKeyArgs,
+    identity
+  )(Native.TESTING_SetLastResortKemPreKeyTests());
+}
+
 export function TESTING_SetMfaKeyMetadataTests(): Array<
   GrpcTestCase<SetMfaKeyMetadataArgs, SetMfaKeyMetadataOut>
 > {
@@ -3241,6 +3342,15 @@ export function TESTING_SetRegistrationRecoveryPasswordTests(): Array<
     identity,
     identity
   )(Native.TESTING_SetRegistrationRecoveryPasswordTests());
+}
+
+export function TESTING_SetSignedEcPreKeyTests(): Array<
+  GrpcTestCase<SetSignedEcPreKeyArgs, void>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetSignedEcPreKeyArgs,
+    identity
+  )(Native.TESTING_SetSignedEcPreKeyTests());
 }
 
 export function TESTING_SetUsernameLinkTests(): Array<

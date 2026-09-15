@@ -3895,6 +3895,15 @@ SignalFfiError* signal_authenticated_chat_connection_set_discoverable_by_phone_n
   SignalConstPointerAuthenticatedChatConnection chat,
   bool discoverable
 );
+SignalFfiError* signal_authenticated_chat_connection_set_last_resort_kem_pre_key(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  uint8_t identity_type,
+  uint32_t id,
+  SignalConstPointerKyberPublicKey key,
+  SignalBorrowedBuffer signature
+);
 SignalFfiError* signal_authenticated_chat_connection_set_mfa_key_metadata(
   SignalCPromisebool* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
@@ -3939,6 +3948,15 @@ SignalFfiError* signal_authenticated_chat_connection_set_registration_recovery_p
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat,
   const SignalType_FixedArray32_uint8_t* svr_key
+);
+SignalFfiError* signal_authenticated_chat_connection_set_signed_ec_pre_key(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  uint8_t identity_type,
+  uint32_t id,
+  SignalConstPointerPublicKey key,
+  SignalBorrowedBuffer signature
 );
 SignalFfiError* signal_authenticated_chat_connection_set_username_link(
   SignalCPromiseUuid* promise,

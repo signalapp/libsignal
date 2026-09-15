@@ -254,15 +254,15 @@ typedef struct {
   int32_t id;
   SignalOwnedBuffer key;
   SignalOwnedBuffer sig;
-} SignalTestingKemPreKeyFfiResult;
-static_assert_64bit(offsetof(SignalTestingKemPreKeyFfiResult, id) == 0);
-static_assert_64bit(offsetof(SignalTestingKemPreKeyFfiResult, key) == 8);
-static_assert_64bit(offsetof(SignalTestingKemPreKeyFfiResult, sig) == 24);
-static_assert_64bit(sizeof(SignalTestingKemPreKeyFfiResult) == 40);
-static_assert_64bit(alignof(SignalTestingKemPreKeyFfiResult) == 8);
-typedef SignalTestingKemPreKeyFfiResult* SignalType_MutPointer_SignalTestingKemPreKeyFfiResult;
-static_assert_64bit(sizeof(SignalType_MutPointer_SignalTestingKemPreKeyFfiResult) == 8);
-static_assert_64bit(alignof(SignalType_MutPointer_SignalTestingKemPreKeyFfiResult) == 8);
+} SignalTestingAnySignedPreKeyFfiResult;
+static_assert_64bit(offsetof(SignalTestingAnySignedPreKeyFfiResult, id) == 0);
+static_assert_64bit(offsetof(SignalTestingAnySignedPreKeyFfiResult, key) == 8);
+static_assert_64bit(offsetof(SignalTestingAnySignedPreKeyFfiResult, sig) == 24);
+static_assert_64bit(sizeof(SignalTestingAnySignedPreKeyFfiResult) == 40);
+static_assert_64bit(alignof(SignalTestingAnySignedPreKeyFfiResult) == 8);
+typedef SignalTestingAnySignedPreKeyFfiResult* SignalType_MutPointer_SignalTestingAnySignedPreKeyFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalTestingAnySignedPreKeyFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalTestingAnySignedPreKeyFfiResult) == 8);
 typedef enum {
   SignalMyNiceTypeEnumNotFfiResultUnit,
   SignalMyNiceTypeEnumNotFfiResultSingle,
@@ -1130,6 +1130,14 @@ typedef enum {
 static_assert_64bit(sizeof(SignalSetDeviceNameOutFfiResult) == 4);
 static_assert_64bit(alignof(SignalSetDeviceNameOutFfiResult) == 4);
 typedef struct {
+  uint8_t identity;
+  SignalTestingAnySignedPreKeyFfiResult pre_key;
+} SignalSetLastResortKemPreKeyArgsFfiResult;
+static_assert_64bit(offsetof(SignalSetLastResortKemPreKeyArgsFfiResult, identity) == 0);
+static_assert_64bit(offsetof(SignalSetLastResortKemPreKeyArgsFfiResult, pre_key) == 8);
+static_assert_64bit(sizeof(SignalSetLastResortKemPreKeyArgsFfiResult) == 48);
+static_assert_64bit(alignof(SignalSetLastResortKemPreKeyArgsFfiResult) == 8);
+typedef struct {
   int32_t key_id;
   const int8_t* name;
   uint64_t created_at;
@@ -1166,23 +1174,31 @@ static_assert_64bit(offsetof(SignalSetOneTimeEcPreKeysArgsFfiResult, pre_keys) =
 static_assert_64bit(sizeof(SignalSetOneTimeEcPreKeysArgsFfiResult) == 32);
 static_assert_64bit(alignof(SignalSetOneTimeEcPreKeysArgsFfiResult) == 8);
 typedef struct {
-  SignalTestingKemPreKeyFfiResult* base;
+  SignalTestingAnySignedPreKeyFfiResult* base;
   size_t length;
   size_t size_bytes;
-} SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult;
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult, base) == 0);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult, length) == 8);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult, size_bytes) == 16);
-static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult) == 24);
-static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult) == 8);
+} SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult) == 8);
 typedef struct {
   uint8_t identity;
-  SignalOwnedBufferOfMaxAlignedTestingKemPreKeyFfiResult pre_keys;
+  SignalOwnedBufferOfMaxAlignedTestingAnySignedPreKeyFfiResult pre_keys;
 } SignalSetOneTimeKemPreKeysArgsFfiResult;
 static_assert_64bit(offsetof(SignalSetOneTimeKemPreKeysArgsFfiResult, identity) == 0);
 static_assert_64bit(offsetof(SignalSetOneTimeKemPreKeysArgsFfiResult, pre_keys) == 8);
 static_assert_64bit(sizeof(SignalSetOneTimeKemPreKeysArgsFfiResult) == 32);
 static_assert_64bit(alignof(SignalSetOneTimeKemPreKeysArgsFfiResult) == 8);
+typedef struct {
+  uint8_t identity;
+  SignalTestingAnySignedPreKeyFfiResult pre_key;
+} SignalSetSignedEcPreKeyArgsFfiResult;
+static_assert_64bit(offsetof(SignalSetSignedEcPreKeyArgsFfiResult, identity) == 0);
+static_assert_64bit(offsetof(SignalSetSignedEcPreKeyArgsFfiResult, pre_key) == 8);
+static_assert_64bit(sizeof(SignalSetSignedEcPreKeyArgsFfiResult) == 48);
+static_assert_64bit(alignof(SignalSetSignedEcPreKeyArgsFfiResult) == 8);
 typedef struct {
   SignalOwnedBuffer username_ciphertext;
   bool keep_link_handle;
@@ -2231,6 +2247,9 @@ SignalFfiError* signal_testing_set_device_name_tests(
 SignalFfiError* signal_testing_set_discoverable_by_phone_number_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_set_last_resort_kem_pre_key_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_set_mfa_key_metadata_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
@@ -2247,6 +2266,9 @@ SignalFfiError* signal_testing_set_registration_lock_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_set_registration_recovery_password_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_set_signed_ec_pre_key_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_set_username_link_tests(

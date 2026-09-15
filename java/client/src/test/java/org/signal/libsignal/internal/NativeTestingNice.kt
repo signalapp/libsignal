@@ -357,6 +357,11 @@ public sealed class SetDeviceNameOut {
   public data object DeviceNotFound : SetDeviceNameOut()
 }
 
+public data class SetLastResortKemPreKeyArgs(
+  public val identity: Int,
+  public val preKey: org.signal.libsignal.internal.TestingAnySignedPreKey,
+)
+
 public data class SetMfaKeyMetadataArgs(
   public val keyId: Int,
   public val name: String,
@@ -377,7 +382,12 @@ public data class SetOneTimeEcPreKeysArgs(
 
 public data class SetOneTimeKemPreKeysArgs(
   public val identity: Int,
-  public val preKeys: List<org.signal.libsignal.internal.TestingKemPreKey>,
+  public val preKeys: List<org.signal.libsignal.internal.TestingAnySignedPreKey>,
+)
+
+public data class SetSignedEcPreKeyArgs(
+  public val identity: Int,
+  public val preKey: org.signal.libsignal.internal.TestingAnySignedPreKey,
 )
 
 public data class SetUsernameLinkArgs(
@@ -406,7 +416,7 @@ public data class TestStreamChunk(
   public val termination: Any?,
 )
 
-public data class TestingKemPreKey(
+public data class TestingAnySignedPreKey(
   public val id: Int,
   public val key: ByteArray,
   public val sig: ByteArray,
@@ -1424,6 +1434,22 @@ public object SetDeviceNameOut_DeviceNotFound_ReturnConverter {
   internal fun fromNative(): Any? = SetDeviceNameOut.DeviceNotFound
 }
 
+public object SetLastResortKemPreKeyArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    identity: Any?,
+    pre_key: Any?,
+  ): Any? =
+    SetLastResortKemPreKeyArgs(
+      identity =
+        identity(identity as Int),
+      preKey =
+        downcastFromObject<org.signal.libsignal.internal.TestingAnySignedPreKey>(pre_key as Object),
+    )
+}
+
 public object SetMfaKeyMetadataArgs_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1490,9 +1516,25 @@ public object SetOneTimeKemPreKeysArgs_ReturnConverter {
       identity =
         identity(identity as Int),
       preKeys =
-        mapBridgeVecReturn<Object, org.signal.libsignal.internal.TestingKemPreKey>({
-          downcastFromObject<org.signal.libsignal.internal.TestingKemPreKey>(it)
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.TestingAnySignedPreKey>({
+          downcastFromObject<org.signal.libsignal.internal.TestingAnySignedPreKey>(it)
         })(pre_keys as Array<*>),
+    )
+}
+
+public object SetSignedEcPreKeyArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    identity: Any?,
+    pre_key: Any?,
+  ): Any? =
+    SetSignedEcPreKeyArgs(
+      identity =
+        identity(identity as Int),
+      preKey =
+        downcastFromObject<org.signal.libsignal.internal.TestingAnySignedPreKey>(pre_key as Object),
     )
 }
 
@@ -1567,7 +1609,7 @@ public object TestStreamChunk_ReturnConverter {
     )
 }
 
-public object TestingKemPreKey_ReturnConverter {
+public object TestingAnySignedPreKey_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
@@ -1576,7 +1618,7 @@ public object TestingKemPreKey_ReturnConverter {
     key: Any?,
     sig: Any?,
   ): Any? =
-    TestingKemPreKey(
+    TestingAnySignedPreKey(
       id =
         identity(id as Int),
       key =
@@ -2393,6 +2435,16 @@ public object NativeTestingNice {
     }, { identity(it) })(ffiOut)
   }
 
+  public fun TESTING_SetLastResortKemPreKeyTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetLastResortKemPreKeyArgs, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetLastResortKemPreKeyTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Void?, org.signal.libsignal.internal.SetLastResortKemPreKeyArgs, Void?>({
+        downcastFromObject<org.signal.libsignal.internal.SetLastResortKemPreKeyArgs>(it)
+      }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_SetMfaKeyMetadataTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetMfaKeyMetadataArgs, org.signal.libsignal.internal.SetMfaKeyMetadataOut>> {
     val ffiOut =
       NativeTesting.TESTING_SetMfaKeyMetadataTests()
@@ -2448,6 +2500,16 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase.resultConverter<ByteArray, Void?, ByteArray, Void?>({
       identity(it)
     }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_SetSignedEcPreKeyTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetSignedEcPreKeyArgs, Void?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetSignedEcPreKeyTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Void?, org.signal.libsignal.internal.SetSignedEcPreKeyArgs, Void?>({
+        downcastFromObject<org.signal.libsignal.internal.SetSignedEcPreKeyArgs>(it)
+      }, { identity(it) })(ffiOut)
   }
 
   public fun TESTING_SetUsernameLinkTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>> {

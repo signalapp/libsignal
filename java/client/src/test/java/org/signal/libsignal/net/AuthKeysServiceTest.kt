@@ -71,4 +71,42 @@ class AuthKeysServiceTest {
         },
       )
     }
+
+  @Test
+  fun testSetSignedEcPreKey() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetSignedEcPreKeyTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthKeysService,
+        invoke = { chat, req ->
+          chat.setSignedEcPreKey(
+            identity = ServiceId.Kind.values()[req.identity],
+            preKey = PublicSignedEcPreKey(req.preKey.id, ECPublicKey(req.preKey.key), req.preKey.sig),
+          )
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
+
+  @Test
+  fun testSetLastResortKemPreKey() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetLastResortKemPreKeyTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthKeysService,
+        invoke = { chat, req ->
+          chat.setLastResortKemPreKey(
+            identity = ServiceId.Kind.values()[req.identity],
+            preKey = PublicKemPreKey(req.preKey.id, KEMPublicKey(req.preKey.key), req.preKey.sig),
+          )
+        },
+        check = { _, actual ->
+          assertIs<RequestResult.Success<Unit>>(actual)
+        },
+      )
+    }
 }

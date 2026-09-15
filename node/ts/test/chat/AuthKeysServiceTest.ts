@@ -70,4 +70,52 @@ describe('AuthKeysService', () => {
       }
     );
   });
+
+  describe('setSignedEcPreKey', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetSignedEcPreKeyTests(),
+      connectAuth<AuthKeysService>,
+      async (
+        chat: AuthKeysService,
+        {
+          identity,
+          preKey: { id, key, sig },
+        }: NativeNice.SetSignedEcPreKeyArgs,
+        _resp: void
+      ) => {
+        await chat.setSignedEcPreKey({
+          identity,
+          preKey: {
+            keyId: id,
+            publicKey: PublicKey.deserialize(key),
+            signature: sig,
+          },
+        });
+      }
+    );
+  });
+
+  describe('setLastResortKemPreKey', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetLastResortKemPreKeyTests(),
+      connectAuth<AuthKeysService>,
+      async (
+        chat: AuthKeysService,
+        {
+          identity,
+          preKey: { id, key, sig },
+        }: NativeNice.SetLastResortKemPreKeyArgs,
+        _resp: void
+      ) => {
+        await chat.setLastResortKemPreKey({
+          identity,
+          preKey: {
+            keyId: id,
+            publicKey: KEMPublicKey.deserialize(key),
+            signature: sig,
+          },
+        });
+      }
+    );
+  });
 });

@@ -656,6 +656,30 @@ impl<'a> SimpleArgTypeInfo<'a> for AccountEntropyPool {
     }
 }
 
+impl<'a, T> SimpleArgTypeInfo<'a> for StrictPreKeyId<T>
+where
+    T: From<u32>,
+{
+    type ArgType = jint;
+
+    fn convert_from(
+        _env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        StrictPreKeyId::try_from(*foreign as u32)
+            .map_err(|e| BridgeLayerError::bad_argument(e.to_string()))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for StrictPreKeyId<T>
+where
+    T: From<u32>,
+{
+    fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter {
+        i32::register_kt_arg_converter(ctx)
+    }
+}
+
 impl<'a> SimpleArgTypeInfo<'a> for Vec<u8> {
     type ArgType = JByteArray<'a>;
 

@@ -1508,6 +1508,34 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    identityType: org.signal.libsignal.protocol.ServiceId.Kind,
+    id: Int,
+    key: org.signal.libsignal.protocol.kem.KEMPublicKey,
+    signature: ByteArray,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_identity_type = (org.signal.libsignal.protocol.ServiceId.Kind::ordinal)(identityType)
+    val ffi_id = identity(id)
+    val ffi_key = identity(key)
+    val ffi_signature = identity(signature)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_identity_type,
+          ffi_id,
+          ffi_key,
+          ffi_signature,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_set_mfa_key_metadata(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
@@ -1651,6 +1679,34 @@ public object NativeNice {
           asyncCtxHandle.nativeHandle(),
           ffi_chat,
           ffi_svr_key,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_set_signed_ec_pre_key(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    identityType: org.signal.libsignal.protocol.ServiceId.Kind,
+    id: Int,
+    key: org.signal.libsignal.protocol.ecc.ECPublicKey,
+    signature: ByteArray,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_identity_type = (org.signal.libsignal.protocol.ServiceId.Kind::ordinal)(identityType)
+    val ffi_id = identity(id)
+    val ffi_key = identity(key)
+    val ffi_signature = identity(signature)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_signed_ec_pre_key(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_identity_type,
+          ffi_id,
+          ffi_key,
+          ffi_signature,
         )
       }
     return ffiOut

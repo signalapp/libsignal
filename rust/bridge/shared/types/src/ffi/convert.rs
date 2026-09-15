@@ -692,6 +692,27 @@ impl SimpleArgTypeInfo for AccountEntropyPool {
     }
 }
 
+impl<T> SimpleArgTypeInfo for StrictPreKeyId<T>
+where
+    T: From<u32>,
+{
+    type ArgType = u32;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        StrictPreKeyId::try_from(foreign)
+            .map_err(|e| IllegalArgumentError::new(e.to_string()).into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T> NiceArgConverter for StrictPreKeyId<T>
+where
+    T: From<u32>,
+{
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        u32::register_swift_arg_converter(ctx)
+    }
+}
+
 impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSendAuthorization {
     type ArgType = BorrowedSliceOf<c_uchar>;
 

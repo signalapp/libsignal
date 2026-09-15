@@ -475,6 +475,16 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    identityType: Int,
+    id: Int,
+    key: SimpleOwner,
+    signature: ByteArray,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_mfa_key_metadata(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -523,6 +533,16 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
     svrKey: ByteArray,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_set_signed_ec_pre_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    identityType: Int,
+    id: Int,
+    key: SimpleOwner,
+    signature: ByteArray,
   ): CompletableFuture<Void?>
 
   @JvmStatic

@@ -962,7 +962,7 @@ mod remote_derives {
     }
 
     #[derive(BridgedAsValue)]
-    struct TestingKemPreKey {
+    struct TestingAnySignedPreKey {
         id: i32,
         key: Vec<u8>,
         sig: Vec<u8>,
@@ -972,7 +972,7 @@ mod remote_derives {
     #[bridge(arg = false)]
     pub(super) struct SetOneTimeKemPreKeysArgs {
         identity: u8,
-        pre_keys: BridgeVec<TestingKemPreKey>,
+        pre_keys: BridgeVec<TestingAnySignedPreKey>,
     }
 
     impl From<libsignal_net_chat::grpc::keys::test_cases::SetOneTimeKemPreKeysArgs>
@@ -986,12 +986,60 @@ mod remote_derives {
                 pre_keys: value
                     .pre_keys
                     .into_iter()
-                    .map(|(id, key, sig)| TestingKemPreKey {
+                    .map(|(id, key, sig)| TestingAnySignedPreKey {
                         id: i32::try_from(u32::from(id)).expect("pre-key IDs fit in i32"),
                         key: key.serialize().into_vec(),
                         sig: sig.into_vec(),
                     })
                     .collect(),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct SetSignedEcPreKeyArgs {
+        identity: u8,
+        pre_key: TestingAnySignedPreKey,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::SetSignedEcPreKeyArgs>
+        for SetSignedEcPreKeyArgs
+    {
+        fn from(value: libsignal_net_chat::grpc::keys::test_cases::SetSignedEcPreKeyArgs) -> Self {
+            let (id, key, sig) = value.pre_key;
+            Self {
+                identity: value.identity.into(),
+                pre_key: TestingAnySignedPreKey {
+                    id: i32::try_from(u32::from(id)).expect("pre-key IDs fit in i32"),
+                    key: key.serialize().into_vec(),
+                    sig: sig.into_vec(),
+                },
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct SetLastResortKemPreKeyArgs {
+        identity: u8,
+        pre_key: TestingAnySignedPreKey,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::SetLastResortKemPreKeyArgs>
+        for SetLastResortKemPreKeyArgs
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::keys::test_cases::SetLastResortKemPreKeyArgs,
+        ) -> Self {
+            let (id, key, sig) = value.pre_key;
+            Self {
+                identity: value.identity.into(),
+                pre_key: TestingAnySignedPreKey {
+                    id: i32::try_from(u32::from(id)).expect("pre-key IDs fit in i32"),
+                    key: key.serialize().into_vec(),
+                    sig: sig.into_vec(),
+                },
             }
         }
     }
@@ -1251,4 +1299,15 @@ fn TESTING_SetOneTimeEcPreKeysTests() -> GrpcTestCases<remote_derives::SetOneTim
 fn TESTING_SetOneTimeKemPreKeysTests() -> GrpcTestCases<remote_derives::SetOneTimeKemPreKeysArgs, ()>
 {
     libsignal_net_chat::grpc::keys::test_cases::set_one_time_kem_pre_keys_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetSignedEcPreKeyTests() -> GrpcTestCases<remote_derives::SetSignedEcPreKeyArgs, ()> {
+    libsignal_net_chat::grpc::keys::test_cases::set_signed_ec_pre_key_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetLastResortKemPreKeyTests()
+-> GrpcTestCases<remote_derives::SetLastResortKemPreKeyArgs, ()> {
+    libsignal_net_chat::grpc::keys::test_cases::set_last_resort_kem_pre_key_test_cases().into()
 }

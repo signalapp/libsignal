@@ -4468,6 +4468,43 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        identityType identity_type: ServiceIdKind,
+        id: UInt32,
+        key: KEMPublicKey,
+        signature: Data,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ServiceIdKindConverter.convertArgBorrowed(identity_type) { identity_typeFfi in
+                            IdentityArgConverter<UInt32>.convertArgBorrowed(id) { idFfi in
+                                BridgeHandleRefConverter<SignalMutPointerKyberPublicKey, KEMPublicKey>
+                                    .convertArgBorrowed(key) { keyFfi in
+                                        DataConverter.convertArgBorrowed(signature) { signatureFfi in
+                                            SignalFfi.signal_authenticated_chat_connection_set_last_resort_kem_pre_key(
+                                                promiseFfi,
+                                                asyncContextFfi.const(),
+                                                chatFfi,
+                                                identity_typeFfi,
+                                                idFfi,
+                                                keyFfi,
+                                                signatureFfi,
+                                            )
+                                        }
+                                    }
+                            }
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_mfa_key_metadata(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -4655,6 +4692,43 @@ internal enum NativeNice {
                                 chatFfi,
                                 svr_keyFfi,
                             )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_set_signed_ec_pre_key(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        identityType identity_type: ServiceIdKind,
+        id: UInt32,
+        key: PublicKey,
+        signature: Data,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ServiceIdKindConverter.convertArgBorrowed(identity_type) { identity_typeFfi in
+                            IdentityArgConverter<UInt32>.convertArgBorrowed(id) { idFfi in
+                                BridgeHandleRefConverter<SignalMutPointerPublicKey, PublicKey>.convertArgBorrowed(key) {
+                                    keyFfi in
+                                    DataConverter.convertArgBorrowed(signature) { signatureFfi in
+                                        SignalFfi.signal_authenticated_chat_connection_set_signed_ec_pre_key(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            identity_typeFfi,
+                                            idFfi,
+                                            keyFfi,
+                                            signatureFfi,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
             }

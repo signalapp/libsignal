@@ -50,13 +50,14 @@ use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 use libsignal_net_chat::grpc::devices::{
     DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
 };
-use libsignal_net_chat::grpc::keys::PublicEcPreKey;
-use libsignal_net_chat::grpc::keys::PublicKemPreKey;
+use libsignal_net_chat::grpc::keys::{PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey};
 use libsignal_net_chat::grpc::login_purchase::{PaymentProvider, ReceiptCredentialError};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
 use libsignal_net_chat::ws::OverWs;
-use libsignal_protocol::{CiphertextMessage, KyberPreKeyId, PreKeyId, Timestamp, kem};
+use libsignal_protocol::{
+    CiphertextMessage, KyberPreKeyId, PreKeyId, SignedPreKeyId, Timestamp, kem,
+};
 use uuid::Uuid;
 
 use crate::support::*;
@@ -1334,6 +1335,48 @@ async fn AuthenticatedChatConnection_set_one_time_kem_pre_keys(
     chat.require_grpc()
         .await
         .set_one_time_kem_pre_keys(*identity_type, pre_keys)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_signed_ec_pre_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    identity_type: AsType<ServiceIdKind, u8>,
+    id: StrictPreKeyId<SignedPreKeyId>,
+    key: BridgeHandleRef<'_, PublicKey>,
+    signature: Vec<u8>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_signed_ec_pre_key(
+            *identity_type,
+            PublicSignedEcPreKey {
+                key_id: id.into_inner(),
+                public_key: &key,
+                signature: Cow::Owned(signature),
+            },
+        )
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_last_resort_kem_pre_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    identity_type: AsType<ServiceIdKind, u8>,
+    id: StrictPreKeyId<KyberPreKeyId>,
+    key: BridgeHandleRef<'_, kem::PublicKey>,
+    signature: Vec<u8>,
+) -> Result<(), RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .set_last_resort_kem_pre_key(
+            *identity_type,
+            PublicKemPreKey {
+                key_id: id.into_inner(),
+                public_key: &key,
+                signature: Cow::Owned(signature),
+            },
+        )
         .await
 }
 

@@ -65,6 +65,44 @@ class AuthKeysServiceTests: AuthChatServiceTestBase<any AuthKeysService> {
             }
         )
     }
+
+    func testSetSignedEcPreKey() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetSignedEcPreKeyTests(),
+            invoke: { api, args in
+                try await api.setSignedEcPreKey(
+                    identity: ServiceIdKind(rawValue: args.identity)!,
+                    preKey: PublicSignedEcPreKey(
+                        keyId: UInt32(args.preKey.id),
+                        publicKey: try PublicKey(args.preKey.key),
+                        signature: args.preKey.sig,
+                    )
+                )
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
+
+    func testSetLastResortKemPreKey() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetLastResortKemPreKeyTests(),
+            invoke: { api, args in
+                try await api.setLastResortKemPreKey(
+                    identity: ServiceIdKind(rawValue: args.identity)!,
+                    preKey: PublicKemPreKey(
+                        keyId: UInt32(args.preKey.id),
+                        publicKey: try KEMPublicKey(args.preKey.key),
+                        signature: args.preKey.sig,
+                    )
+                )
+            },
+            check: { _, actual in
+                try actual.get()
+            }
+        )
+    }
 }
 
 #endif
