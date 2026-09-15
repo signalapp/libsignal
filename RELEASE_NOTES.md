@@ -1,7 +1,2 @@
-v0.102.3
+v0.102.4
 
-- New typed APIs:
-  - AuthKeysService.setOneTimeEcPreKeys
-  - AuthKeysService.setOneTimeKemPreKeys
-  - AuthKeysService.setSignedEcPreKey
-  - AuthKeysService.setLastResortKemPreKey
