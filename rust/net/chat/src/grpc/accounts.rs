@@ -4,6 +4,7 @@
 //
 
 use std::convert::Infallible;
+use std::time::Duration;
 
 use libsignal_account_keys::{EncryptedMfaMetadata, InvalidMfaMetadata, MfaMetadata, SvrKey};
 use libsignal_core::LogSafeDisplay;
@@ -13,12 +14,14 @@ use libsignal_net_grpc::proto::chat::account::start_web_authn_registration_respo
 use libsignal_net_grpc::proto::chat::account::{
     ClearRegistrationLockRequest, ClearRegistrationLockResponse, ConfirmTotpKeyRequest,
     ConfirmTotpKeyResponse, DeleteAccountRequest, DeleteAccountResponse,
-    FinishWebAuthnRegistrationRequest, FinishWebAuthnRegistrationResponse, GenerateTotpKeyRequest,
-    GenerateTotpKeyResponse, ListMfaKeysRequest, ListMfaKeysResponse, RemoveMfaKeyRequest,
-    RemoveMfaKeyResponse, SetDiscoverableByPhoneNumberRequest,
-    SetDiscoverableByPhoneNumberResponse, SetMfaKeyMetadataRequest, SetMfaKeyMetadataResponse,
-    SetRegistrationLockRequest, SetRegistrationLockResponse,
-    SetRegistrationRecoveryPasswordRequest, SetRegistrationRecoveryPasswordResponse,
+    FinishMfaVerificationRequest, FinishMfaVerificationResponse, FinishWebAuthnRegistrationRequest,
+    FinishWebAuthnRegistrationResponse, GenerateTotpKeyRequest, GenerateTotpKeyResponse,
+    ListMfaKeysRequest, ListMfaKeysResponse, RemoveMfaKeyRequest, RemoveMfaKeyResponse,
+    SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
+    SetMfaKeyMetadataRequest, SetMfaKeyMetadataResponse, SetRegistrationLockRequest,
+    SetRegistrationLockResponse, SetRegistrationRecoveryPasswordRequest,
+    SetRegistrationRecoveryPasswordResponse, StartMfaVerificationRequest,
+    StartMfaVerificationResponse as StartMfaVerificationResponseProto,
     StartWebAuthnRegistrationRequest, StartWebAuthnRegistrationResponse,
     TotpParameters as GrpcTotpParameters, confirm_totp_key_response,
     finish_web_authn_registration_response, generate_totp_key_response, list_mfa_keys_response,
@@ -180,6 +183,44 @@ impl LogSafeDisplay for FinishWebAuthnRegistrationError {}
 pub struct MfaKeyNotFound;
 impl LogSafeDisplay for MfaKeyNotFound {}
 
+#[derive(Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+pub struct StartMfaVerificationResponse {
+    pub has_totp: bool,
+    pub webauthn_params: Option<WebAuthnAuthenticationParameters>,
+}
+
+#[derive(Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+pub struct WebAuthnAuthenticationParameters {
+    pub challenge: Vec<u8>,
+    pub timeout: Duration,
+    pub allowed_credential_ids: Vec<Vec<u8>>,
+}
+
+pub enum MfaVerificationCredential {
+    Totp { password: u32 },
+    WebAuthn { json: String },
+}
+
+impl From<MfaVerificationCredential>
+    for libsignal_net_grpc::proto::chat::account::finish_mfa_verification_request::Credential
+{
+    fn from(value: MfaVerificationCredential) -> Self {
+        match value {
+            MfaVerificationCredential::Totp { password } => Self::TotpPassword(password),
+            MfaVerificationCredential::WebAuthn { json } => {
+                Self::WebauthnAuthenticationResponseJson(json)
+            }
+        }
+    }
+}
+
+#[derive(displaydoc::Display, Debug)]
+/// The provided verification was not accepted.
+pub struct MfaVerificationFailed;
+impl LogSafeDisplay for MfaVerificationFailed {}
+
 fn parse_mfa_key_id<E>(key_id: u32) -> Result<MfaKeyId, RequestError<E>> {
     MfaKeyId::try_from(key_id).map_err(|e| RequestError::Unexpected {
         log_safe: e.to_string(),
@@ -329,6 +370,22 @@ impl std::fmt::Display for Redact<FinishWebAuthnRegistrationRequest> {
             )
             .field("metadata_ciphertext.len", &metadata_ciphertext.len())
             .finish()
+    }
+}
+
+impl std::fmt::Display for Redact<StartMfaVerificationRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(StartMfaVerificationRequest {}) = self;
+        f.debug_struct("StartMfaVerificationRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<FinishMfaVerificationRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(FinishMfaVerificationRequest { credential: _ }) = self;
+        // We don't include which credential was used because that's unnecessarily identifying.
+        f.debug_struct("FinishMfaVerificationRequest")
+            .finish_non_exhaustive()
     }
 }
 
@@ -711,6 +768,62 @@ impl<T: GrpcServiceProvider> Auth<T> {
         }
     }
 
+    pub async fn start_mfa_verification(
+        &self,
+    ) -> Result<StartMfaVerificationResponse, RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = StartMfaVerificationRequest {};
+        let desc = Redact(&request).to_string();
+        let StartMfaVerificationResponseProto {
+            has_totp,
+            webauthn_authentication_parameters,
+        } = log_and_send(Self::LOG_TAG, &desc, || {
+            client.start_mfa_verification(request)
+        })
+        .await?
+        .into_inner();
+
+        Ok(StartMfaVerificationResponse {
+            has_totp,
+            webauthn_params: webauthn_authentication_parameters
+                .map(|params| {
+                    if params.allowed_credential_ids.is_empty() {
+                        return Err(RequestError::Unexpected {
+                            log_safe: "missing allowed_credential_ids".to_owned(),
+                        });
+                    }
+                    Ok(WebAuthnAuthenticationParameters {
+                        challenge: params.challenge,
+                        timeout: Duration::from_secs(params.timeout_seconds.into()),
+                        allowed_credential_ids: params.allowed_credential_ids,
+                    })
+                })
+                .transpose()?,
+        })
+    }
+
+    pub async fn finish_mfa_verification(
+        &self,
+        credential: MfaVerificationCredential,
+    ) -> Result<(), RequestError<MfaVerificationFailed>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = FinishMfaVerificationRequest {
+            credential: Some(credential.into()),
+        };
+        let desc = Redact(&request).to_string();
+        let FinishMfaVerificationResponse { success } = log_and_send(Self::LOG_TAG, &desc, || {
+            client.finish_mfa_verification(request)
+        })
+        .await?
+        .into_inner();
+
+        if success {
+            Ok(())
+        } else {
+            Err(RequestError::Other(MfaVerificationFailed))
+        }
+    }
+
     /// Lists the confirmed MFA keys for the authenticated account.
     ///
     /// If the metadata for a given key cannot be decrypted using the provided [`SvrKey`] (e.g.
@@ -822,6 +935,9 @@ impl<T: GrpcServiceProvider> Auth<T> {
 // These tests will get pruned via LTO tree shaking.
 pub mod test_cases {
     use libsignal_account_keys::MFA_METADATA_CIPHERTEXT_LEN;
+    use libsignal_net_grpc::proto::chat::account::{
+        finish_mfa_verification_request, start_mfa_verification_response,
+    };
     use libsignal_protocol::Timestamp;
 
     use super::*;
@@ -1311,6 +1427,151 @@ pub mod test_cases {
                 },
                 FinishWebAuthnRegistrationOut::TooManyMfaKeys,
             ),
+        ]
+    }
+
+    pub enum StartMfaVerificationOut {
+        Success(StartMfaVerificationResponse),
+        Malformed,
+    }
+
+    pub fn start_mfa_verification_test_cases() -> Vec<
+        GrpcTestCase<
+            (),
+            StartMfaVerificationRequest,
+            StartMfaVerificationResponseProto,
+            StartMfaVerificationOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/StartMfaVerification";
+        let web_authn_params_proto =
+            start_mfa_verification_response::WebAuthnAuthenticationParameters {
+                challenge: b"challenge".to_vec(),
+                timeout_seconds: 5,
+                allowed_credential_ids: vec![b"first".to_vec(), b"second".to_vec()],
+            };
+        let web_authn_params = WebAuthnAuthenticationParameters {
+            challenge: b"challenge".to_vec(),
+            timeout: Duration::from_secs(5),
+            allowed_credential_ids: vec![b"first".to_vec(), b"second".to_vec()],
+        };
+        vec![
+            GrpcTestCase {
+                name: "both".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: StartMfaVerificationRequest {},
+                response_grpc: StartMfaVerificationResponseProto {
+                    has_totp: true,
+                    webauthn_authentication_parameters: Some(web_authn_params_proto.clone()),
+                },
+                response: StartMfaVerificationOut::Success(StartMfaVerificationResponse {
+                    has_totp: true,
+                    webauthn_params: Some(web_authn_params.clone()),
+                }),
+            },
+            GrpcTestCase {
+                name: "just TOTP".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: StartMfaVerificationRequest {},
+                response_grpc: StartMfaVerificationResponseProto {
+                    has_totp: true,
+                    webauthn_authentication_parameters: None,
+                },
+                response: StartMfaVerificationOut::Success(StartMfaVerificationResponse {
+                    has_totp: true,
+                    webauthn_params: None,
+                }),
+            },
+            GrpcTestCase {
+                name: "just WebAuthn".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: StartMfaVerificationRequest {},
+                response_grpc: StartMfaVerificationResponseProto {
+                    has_totp: false,
+                    webauthn_authentication_parameters: Some(web_authn_params_proto.clone()),
+                },
+                response: StartMfaVerificationOut::Success(StartMfaVerificationResponse {
+                    has_totp: false,
+                    webauthn_params: Some(web_authn_params.clone()),
+                }),
+            },
+            GrpcTestCase {
+                name: "malformed WebAuthn (missing credential IDs)".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: StartMfaVerificationRequest {},
+                response_grpc: StartMfaVerificationResponseProto {
+                    has_totp: false,
+                    webauthn_authentication_parameters: Some(
+                        start_mfa_verification_response::WebAuthnAuthenticationParameters {
+                            allowed_credential_ids: vec![],
+                            ..web_authn_params_proto
+                        },
+                    ),
+                },
+                response: StartMfaVerificationOut::Malformed,
+            },
+            GrpcTestCase {
+                name: "no MFA available".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: StartMfaVerificationRequest {},
+                response_grpc: StartMfaVerificationResponseProto {
+                    has_totp: false,
+                    webauthn_authentication_parameters: None,
+                },
+                response: StartMfaVerificationOut::Success(StartMfaVerificationResponse {
+                    has_totp: false,
+                    webauthn_params: None,
+                }),
+            },
+        ]
+    }
+
+    pub enum FinishMfaVerificationOut {
+        Success,
+        FailedToVerify,
+    }
+
+    pub fn finish_mfa_verification_test_cases() -> Vec<
+        GrpcTestCase<
+            MfaVerificationCredential,
+            FinishMfaVerificationRequest,
+            FinishMfaVerificationResponse,
+            FinishMfaVerificationOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/FinishMfaVerification";
+        vec![
+            GrpcTestCase {
+                name: "TOTP success".to_string(),
+                method: method.to_string(),
+                request: MfaVerificationCredential::Totp { password: 123456 },
+                request_grpc: FinishMfaVerificationRequest {
+                    credential: Some(finish_mfa_verification_request::Credential::TotpPassword(
+                        123456,
+                    )),
+                },
+                response_grpc: FinishMfaVerificationResponse { success: true },
+                response: FinishMfaVerificationOut::Success,
+            },
+            GrpcTestCase {
+                name: "WebAuthn failure".to_string(),
+                method: method.to_string(),
+                request: MfaVerificationCredential::WebAuthn {
+                    json: "{}".to_owned(),
+                },
+                request_grpc: FinishMfaVerificationRequest {
+                    credential: Some(finish_mfa_verification_request::Credential::WebauthnAuthenticationResponseJson(
+                        "{}".to_owned(),
+                    )),
+                },
+                response_grpc: FinishMfaVerificationResponse { success: false },
+                response: FinishMfaVerificationOut::FailedToVerify,
+            },
         ]
     }
 
@@ -2032,6 +2293,40 @@ mod test {
                     )
                 } else {
                     assert_matches!(result, Err(RequestError::Unexpected { .. }))
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_start_mfa_verification() {
+        use test_cases::*;
+        run_tests(
+            start_mfa_verification_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.start_mfa_verification().await },
+            |resp, result| match resp {
+                StartMfaVerificationOut::Success(expected) => {
+                    assert_eq!(expected, result.expect("success"));
+                }
+                StartMfaVerificationOut::Malformed => {
+                    assert_matches!(result, Err(RequestError::Unexpected { .. }));
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_finish_mfa_verification() {
+        use test_cases::*;
+        run_tests(
+            finish_mfa_verification_test_cases(),
+            |chat: Auth<_>, cred| async move { chat.finish_mfa_verification(cred).await },
+            |resp, result| match resp {
+                FinishMfaVerificationOut::Success => {
+                    () = result.expect("success");
+                }
+                FinishMfaVerificationOut::FailedToVerify => {
+                    assert_matches!(result, Err(RequestError::Other(MfaVerificationFailed)));
                 }
             },
         );
