@@ -1094,7 +1094,6 @@ dependencies = [
  "curve25519-dalek-derive",
  "digest 0.11.3",
  "fiat-crypto 0.3.0",
- "rand_core 0.10.1",
  "rustc_version",
  "serde",
  "subtle",
@@ -5266,12 +5265,10 @@ checksum = "19f58d7b0190c7f12df7e8be6b79767a0836059159811b869d5ab55721fe14d0"
 
 [[package]]
 name = "spqr"
-version = "1.5.3"
-source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.5.3#fd320484dcec89004021e6fdc7481825f5f261fa"
+version = "1.6.0"
+source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.6.0#06959b4708f9b7b1e94d0f8cc835f3958c077e94"
 dependencies = [
  "cpufeatures 0.3.0",
- "curve25519-dalek 5.0.0",
- "displaydoc",
  "hax-lib",
  "hkdf",
  "libcrux-hmac",

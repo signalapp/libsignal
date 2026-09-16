@@ -93,7 +93,7 @@ signal-neon-futures = { path = "rust/bridge/node/futures" }
 # that want to use the real things can depend on those directly.
 
 boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.2.0", package = "boring", default-features = false }
-spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.5.3" }
+spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.6.0" }
 tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.2.0", package = "tokio-boring" }
 
 aes = "0.9.1"
