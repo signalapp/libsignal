@@ -8,7 +8,7 @@ import * as NativeNice from '../../NativeNice.js';
 import { LibSignalErrorBase } from '../../Errors.js';
 import type {
   GenericError,
-  OneTimePasswordNotVerified,
+  MfaNotVerified,
   StandardNetworkError,
   TooManyMfaKeys,
   TooManyTotpKeys,
@@ -244,7 +244,7 @@ export interface AuthAccountsService {
    * {@link GenericError}.
    *
    * @param rng should be omitted in production
-   * @throws {OneTimePasswordNotVerified} if the one-time password was not accepted for any reason
+   * @throws {MfaNotVerified} if the one-time password was not accepted for any reason
    * @throws {TooManyMfaKeys} if the account filled up with MFA keys between generating and
    * confirming this one
    * @throws {StandardNetworkError}

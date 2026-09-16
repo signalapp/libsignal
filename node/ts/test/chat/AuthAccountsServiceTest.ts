@@ -142,7 +142,7 @@ describe('AuthAccountsService', () => {
             await expect(out)
               .to.eventually.be.rejectedWith(LibSignalErrorBase)
               .and.deep.include({
-                code: ErrorCode.OneTimePasswordNotVerified,
+                code: ErrorCode.MfaNotVerified,
               });
             break;
           case 'tooManyMfaKeys':

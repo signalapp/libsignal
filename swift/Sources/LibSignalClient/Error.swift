@@ -92,10 +92,13 @@ public enum SignalError: Error {
     case ReceiptCredentialErrorReceiptAlreadyIssued(String)
     case tooManyTotpKeys(String)
     case tooManyMfaKeys(String)
-    case oneTimePasswordNotVerified(String)
+    case mfaNotVerified(String)
     case mfaKeyNotFound(String)
 
     case unknown(UInt32, String)
+
+    @available(*, unavailable, renamed: "mfaNotVerified(_:)")
+    public static func oneTimePasswordNotVerified() {}
 }
 
 internal typealias SignalFfiErrorRef = OpaquePointer
@@ -399,8 +402,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.tooManyTotpKeys(errStr)
     case SignalErrorCodeTooManyMfaKeys:
         throw SignalError.tooManyMfaKeys(errStr)
-    case SignalErrorCodeOneTimePasswordNotVerified:
-        throw SignalError.oneTimePasswordNotVerified(errStr)
+    case SignalErrorCodeMfaNotVerified:
+        throw SignalError.mfaNotVerified(errStr)
     case SignalErrorCodeMfaKeyNotFound:
         throw SignalError.mfaKeyNotFound(errStr)
     default:

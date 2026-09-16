@@ -1202,7 +1202,7 @@ impl SimpleNodeError for libsignal_net_chat::grpc::accounts::GenerateTotpKeyErro
 impl SimpleNodeError for libsignal_net_chat::grpc::accounts::ConfirmTotpKeyError {
     fn js_error_name(&self) -> Option<&'static str> {
         Some(match self {
-            Self::OneTimePasswordNotVerified => "OneTimePasswordNotVerified",
+            Self::OneTimePasswordNotVerified => "MfaNotVerified",
             Self::TooManyMfaKeys => "TooManyMfaKeys",
         })
     }

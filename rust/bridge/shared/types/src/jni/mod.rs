@@ -2032,7 +2032,7 @@ impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::Confir
     fn exception_class(&self) -> ClassName<'static> {
         match self {
             Self::OneTimePasswordNotVerified => {
-                ClassName("org.signal.libsignal.net.OneTimePasswordNotVerifiedException")
+                ClassName("org.signal.libsignal.net.MfaNotVerifiedException")
             }
             Self::TooManyMfaKeys => ClassName("org.signal.libsignal.net.TooManyMfaKeysException"),
         }

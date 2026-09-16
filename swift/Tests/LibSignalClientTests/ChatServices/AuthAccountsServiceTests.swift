@@ -246,7 +246,7 @@ class AuthAccountsServiceImplTests: AuthChatServiceTestBase<any AuthAccountsServ
                     do {
                         _ = try actual.get()
                         XCTFail("Expected exception")
-                    } catch SignalError.oneTimePasswordNotVerified(_) {}
+                    } catch SignalError.mfaNotVerified(_) {}
                 case .tooManyMfaKeys:
                     do {
                         _ = try actual.get()

@@ -13,10 +13,13 @@ import java.io.IOException
  *
  * See the specific request docs for more information.
  */
-public class OneTimePasswordNotVerifiedException :
+public class MfaNotVerifiedException :
   IOException,
   ConfirmTotpKeyError {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }
 }
+
+@Deprecated(message = "renamed to MfaNotVerifiedException", replaceWith = ReplaceWith("MfaNotVerifiedException"))
+public typealias OneTimePasswordNotVerifiedException = MfaNotVerifiedException

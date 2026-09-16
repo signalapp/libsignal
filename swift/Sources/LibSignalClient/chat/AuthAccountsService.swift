@@ -226,7 +226,7 @@ public protocol AuthAccountsService: Sendable {
     ///   - svrKey: The account's SVR key
     /// - Returns: The account-specific identifier assigned to the newly-confirmed key
     /// - Throws:
-    ///   - ``SignalError/oneTimePasswordNotVerified(_:)`` if the one-time password was not
+    ///   - ``SignalError/mfaNotVerified(_:)`` if the one-time password was not
     ///     accepted for any reason
     ///   - ``SignalError/tooManyMfaKeys(_:)`` if the account filled up with MFA keys between
     ///     generating and confirming this one

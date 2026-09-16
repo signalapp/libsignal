@@ -162,7 +162,7 @@ pub enum SignalErrorCode {
     ReceiptCredentialErrorReceiptAlreadyIssued = 233,
     TooManyTotpKeys = 234,
     TooManyMfaKeys = 235,
-    OneTimePasswordNotVerified = 236,
+    MfaNotVerified = 236,
     MfaKeyNotFound = 237,
 }
 
@@ -1427,7 +1427,7 @@ impl IntoFfiError for libsignal_net_chat::grpc::accounts::GenerateTotpKeyError {
 impl IntoFfiError for libsignal_net_chat::grpc::accounts::ConfirmTotpKeyError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let code = match self {
-            Self::OneTimePasswordNotVerified => SignalErrorCode::OneTimePasswordNotVerified,
+            Self::OneTimePasswordNotVerified => SignalErrorCode::MfaNotVerified,
             Self::TooManyMfaKeys => SignalErrorCode::TooManyMfaKeys,
         };
         SimpleError::new(code, self.to_string())

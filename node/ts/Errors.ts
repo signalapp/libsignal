@@ -111,7 +111,9 @@ export enum ErrorCode {
   ReceiptCredentialErrorReceiptAlreadyIssued,
   TooManyTotpKeys,
   TooManyMfaKeys,
-  OneTimePasswordNotVerified,
+  MfaNotVerified,
+  /** @deprecated Use {@link MfaNotVerified} instead. */
+  OneTimePasswordNotVerified = MfaNotVerified,
   MfaKeyNotFound,
 }
 
@@ -608,9 +610,11 @@ export type TooManyMfaKeys = LibSignalErrorCommon & {
   code: ErrorCode.TooManyMfaKeys;
 };
 
-export type OneTimePasswordNotVerified = LibSignalErrorCommon & {
-  code: ErrorCode.OneTimePasswordNotVerified;
+export type MfaNotVerified = LibSignalErrorCommon & {
+  code: ErrorCode.MfaNotVerified;
 };
+/** @deprecated Use {@link MfaNotVerified} instead. */
+export type OneTimePasswordNotVerified = MfaNotVerified;
 
 export type MfaKeyNotFound = LibSignalErrorCommon & {
   code: ErrorCode.MfaKeyNotFound;
@@ -697,5 +701,5 @@ export type LibSignalError =
   | ReceiptCredentialErrorReceiptAlreadyIssued
   | TooManyTotpKeys
   | TooManyMfaKeys
-  | OneTimePasswordNotVerified
+  | MfaNotVerified
   | MfaKeyNotFound;

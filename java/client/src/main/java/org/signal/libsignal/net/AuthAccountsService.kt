@@ -368,7 +368,7 @@ public class AuthAccountsService(
    * A TOTP key must be confirmed within 24 hours of its generation.
    *
    * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
-   * [RequestResult.ApplicationError]. A [OneTimePasswordNotVerifiedException] indicates the
+   * [RequestResult.ApplicationError]. An [MfaNotVerifiedException] indicates the
    * one-time password was not accepted for any reason. A [TooManyMfaKeysException] indicates
    * the account filled up with MFA keys between generating and confirming this one.
    *

@@ -3467,7 +3467,7 @@ typedef enum {
   SignalErrorCodeReceiptCredentialErrorReceiptAlreadyIssued = 233,
   SignalErrorCodeTooManyTotpKeys = 234,
   SignalErrorCodeTooManyMfaKeys = 235,
-  SignalErrorCodeOneTimePasswordNotVerified = 236,
+  SignalErrorCodeMfaNotVerified = 236,
   SignalErrorCodeMfaKeyNotFound = 237,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);

@@ -155,7 +155,7 @@ class AuthAccountsServiceTest {
                 assertIs<RequestResult.Success<Int>>(actual).result,
               )
             ConfirmTotpKeyOut.OneTimePasswordNotVerified ->
-              actual.assertNonSuccess<_, _, OneTimePasswordNotVerifiedException>()
+              actual.assertNonSuccess<_, _, MfaNotVerifiedException>()
             ConfirmTotpKeyOut.TooManyMfaKeys ->
               actual.assertNonSuccess<_, _, TooManyMfaKeysException>()
           }
