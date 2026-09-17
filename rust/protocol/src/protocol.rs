@@ -169,18 +169,7 @@ impl SignalMessage {
             .expect("length checked at construction");
         let our_mac =
             Self::compute_mac(sender_identity_key, receiver_identity_key, mac_key, content)?;
-        let result: bool = our_mac.ct_eq(their_mac).into();
-        if !result {
-            // A warning instead of an error because we try multiple sessions.
-            log::warn!(
-                "Bad Mac! Their Mac: {} Our Mac: {}",
-                hex::encode(their_mac),
-                hex::encode(our_mac)
-            );
-            return Ok(false);
-        }
-
-        Ok(true)
+        Ok(our_mac.ct_eq(their_mac).into())
     }
 
     pub fn verify_mac_with_addresses(
