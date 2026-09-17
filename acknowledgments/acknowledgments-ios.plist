@@ -6029,7 +6029,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>downcast-rs 1.2.1</string>
+			<string>downcast-rs 2.0.2</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -6332,7 +6332,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>mediasan-common 0.5.3, mp4san-derive 0.5.3, mp4san 0.5.3, webpsan 0.5.3</string>
+			<string>mediasan-common 0.5.4, mp4san-derive 0.5.4, mp4san 0.5.4, webpsan 0.5.4</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -7100,7 +7100,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>convert_case 0.10.0, convert_case 0.4.0</string>
+			<string>convert_case 0.10.0</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
@@ -7782,7 +7782,7 @@ SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>derive_more-impl 2.1.1, derive_more 0.99.20, derive_more 2.1.1</string>
+			<string>derive_more-impl 2.1.1, derive_more 2.1.1</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>

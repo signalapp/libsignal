@@ -161,12 +161,12 @@ libcrux-ml-kem = { version = "0.0.10", default-features = false }
 linkme = "0.3.33"
 log = "0.4.21"
 macro_rules_attribute = "0.2.0"
-mediasan-common = "0.5.3"
+mediasan-common = "0.5.4"
 minidump = { version = "0.27.0", default-features = false }
 minidump-processor = { version = "0.27.0", default-features = false }
 minidump-unwind = { version = "0.27.0", default-features = false }
 minijinja = "2.19.0"
-mp4san = "0.5.3"
+mp4san = "0.5.4"
 neon = { version = "1.1.0", default-features = false }
 nonzero_ext = "0.3.0"
 once_cell = "1.20.0"
@@ -233,7 +233,7 @@ url = "2.5.4"
 uuid = "1.5"
 visibility = "0.1.1"
 warp = "0.4.2"
-webpsan = { version = "0.5.3", default-features = false }
+webpsan = { version = "0.5.4", default-features = false }
 x25519-dalek = "3.0"
 zerocopy = "0.8.33"
 zeroize = "1.8.2"

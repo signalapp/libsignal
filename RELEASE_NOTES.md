@@ -6,3 +6,4 @@ v0.103.0
 - New typed APIs:
     - Accounts/StartWebAuthnRegistration
     - Accounts/FinishWebAuthnRegistration
+- Upgrade {webp,mp4}san to 0.5.4

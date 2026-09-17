@@ -5638,7 +5638,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## downcast-rs 1.2.1
+## downcast-rs 2.0.2
 
 ```
 Copyright (c) 2020 Ashish Myles and contributors
@@ -5911,7 +5911,7 @@ SOFTWARE.
 
 ```
 
-## mediasan-common 0.5.3, mp4san-derive 0.5.3, mp4san 0.5.3, webpsan 0.5.3
+## mediasan-common 0.5.4, mp4san-derive 0.5.4, mp4san 0.5.4, webpsan 0.5.4
 
 ```
 Copyright (c) 2022 jessa0
@@ -6581,7 +6581,7 @@ SOFTWARE.
 
 ```
 
-## convert_case 0.10.0, convert_case 0.4.0
+## convert_case 0.10.0
 
 ```
 MIT License
@@ -7227,7 +7227,7 @@ SOFTWARE.
 
 ```
 
-## derive_more-impl 2.1.1, derive_more 0.99.20, derive_more 2.1.1
+## derive_more-impl 2.1.1, derive_more 2.1.1
 
 ```
 The MIT License (MIT)
