@@ -52,16 +52,14 @@ public class GroupSendEndorsement: ByteArray, @unchecked Sendable {
         // concatenate all the endorsements into one big buffer and then chop that up into borrowed
         // slices.
         var concatenated: [UInt8] = []
-        var lengths: [Int] = []
-        lengths.reserveCapacity(endorsements.count)
+        var lengths: [Int] = Array(reservingCapacity: endorsements.count)
         for next in endorsements {
             let serializedNext = next.serialize()
             concatenated.append(contentsOf: serializedNext)
             lengths.append(serializedNext.count)
         }
         return concatenated.withUnsafeBytes { concatenated in
-            var slices: [SignalBorrowedBuffer] = []
-            slices.reserveCapacity(endorsements.count)
+            var slices: [SignalBorrowedBuffer] = Array(reservingCapacity: endorsements.count)
             var offset = 0
             for length in lengths {
                 let slice = UnsafeRawBufferPointer(rebasing: concatenated[offset...].prefix(length))

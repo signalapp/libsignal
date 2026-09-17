@@ -169,10 +169,8 @@ extension AuthenticatedChatConnection: AuthKeysService {
     }
 
     public func setOneTimeEcPreKeys(identity: ServiceIdKind, preKeys: [PublicEcPreKey]) async throws {
-        var ids = [UInt32]()
-        ids.reserveCapacity(preKeys.count)
-        var keys = [PublicKey]()
-        keys.reserveCapacity(preKeys.count)
+        var ids = [UInt32](reservingCapacity: preKeys.count)
+        var keys = [PublicKey](reservingCapacity: preKeys.count)
 
         for next in preKeys {
             ids.append(next.keyId)
@@ -189,12 +187,9 @@ extension AuthenticatedChatConnection: AuthKeysService {
     }
 
     public func setOneTimeKemPreKeys(identity: ServiceIdKind, preKeys: [PublicKemPreKey]) async throws {
-        var ids = [UInt32]()
-        ids.reserveCapacity(preKeys.count)
-        var keys = [KEMPublicKey]()
-        keys.reserveCapacity(preKeys.count)
-        var signatures = [Data]()
-        signatures.reserveCapacity(preKeys.count)
+        var ids = [UInt32](reservingCapacity: preKeys.count)
+        var keys = [KEMPublicKey](reservingCapacity: preKeys.count)
+        var signatures = [Data](reservingCapacity: preKeys.count)
 
         for next in preKeys {
             ids.append(next.keyId)

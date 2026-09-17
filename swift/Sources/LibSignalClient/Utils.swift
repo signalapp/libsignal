@@ -316,6 +316,13 @@ extension Optional where Wrapped: StringProtocol {
     }
 }
 
+extension Array {
+    internal init(reservingCapacity capacity: Int) {
+        self.init()
+        reserveCapacity(capacity)
+    }
+}
+
 extension Array where Element == UInt8 {
     /// Converts these bytes to (lowercase) hexadecimal.
     public func toHex() -> String {

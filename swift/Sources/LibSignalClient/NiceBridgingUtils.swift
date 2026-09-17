@@ -375,8 +375,7 @@ where BorrowedSlice.Element == Converter.FfiArg {
 
     private static func convertArgCore(_ arg: [Converter.NiceArg]) -> ([Converter.FfiArg], [Converter.KeepAlive]) {
         var keepAlives: [Converter.KeepAlive] = []
-        var contents: [Converter.FfiArg] = []
-        contents.reserveCapacity(arg.count)
+        var contents: [Converter.FfiArg] = Array(reservingCapacity: arg.count)
         // We don't reserve capacity for keepAlives, since we might not add to it for many types
         for item in arg {
             let (ffi, ka) = Converter.convertArg(item)
@@ -451,8 +450,7 @@ where Buffer.Element == Converter.FfiReturn {
             SignalFfi.signal_free_owned_buffer_of_max_aligned(value.typeErased())
         }
         let buffer = value.buffer()
-        var out: NiceReturn = []
-        out.reserveCapacity(buffer.count)
+        var out: NiceReturn = Array(reservingCapacity: buffer.count)
         var err: (any Error)? = nil
         for x in buffer {
             // We want to consume all return values, even if there's an intermediate failure, to
