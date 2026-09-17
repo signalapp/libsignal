@@ -11,6 +11,7 @@ import org.signal.libsignal.internal.BridgeMfaKeyKind
 import org.signal.libsignal.internal.BridgeMfaMetadata
 import org.signal.libsignal.internal.BridgePendingTotpKey
 import org.signal.libsignal.internal.BridgeTotpParameters
+import org.signal.libsignal.internal.BridgeWebAuthnCreateParameters
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.mapWithCancellation
@@ -126,6 +127,62 @@ public data class PendingTotpKey(
 }
 
 /**
+ * The parameters a WebAuthn authenticator needs to create a new credential for the account.
+ *
+ * Returned by [AuthAccountsService.startWebAuthnRegistration]; the caller passes these to the
+ * platform's WebAuthn API to run a registration ceremony, then reports the outcome via
+ * [AuthAccountsService.finishWebAuthnRegistration].
+ */
+public data class WebAuthnCreateParameters(
+  /**
+   * The "user handle" (`user.id`) that should be handed to the authenticator.
+   */
+  val userHandle: ByteArray,
+  /**
+   * The COSE IDs (https://www.iana.org/assignments/cose#algorithms) of acceptable algorithms for
+   * the created key, as WebAuthn `COSEAlgorithmIdentifier`s.
+   */
+  val allowedAlgorithms: List<Int>,
+  /**
+   * The credential IDs already registered for this account.
+   *
+   * These can be passed to candidate authenticators to tell them not to create a new key if they
+   * already have a private key matching one of these.
+   */
+  val excludeCredentialIds: List<ByteArray>,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as WebAuthnCreateParameters
+
+    if (!userHandle.contentEquals(other.userHandle)) return false
+    if (allowedAlgorithms != other.allowedAlgorithms) return false
+    if (excludeCredentialIds.size != other.excludeCredentialIds.size) return false
+    if (!excludeCredentialIds.zip(other.excludeCredentialIds).all { (a, b) -> a.contentEquals(b) }) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = userHandle.contentHashCode()
+    result = 31 * result + allowedAlgorithms.hashCode()
+    result = excludeCredentialIds.fold(result) { acc, id -> 31 * acc + id.contentHashCode() }
+    return result
+  }
+
+  public companion object {
+    public fun fromInternal(it: BridgeWebAuthnCreateParameters): WebAuthnCreateParameters =
+      WebAuthnCreateParameters(
+        userHandle = it.userHandle,
+        allowedAlgorithms = it.allowedAlgorithms,
+        excludeCredentialIds = it.excludeCredentialIds,
+      )
+  }
+}
+
+/**
  * The kind of a confirmed MFA key.
  */
 public enum class MfaKeyKind {
@@ -133,6 +190,11 @@ public enum class MfaKeyKind {
    * A TOTP key; see [AuthAccountsService.generateTotpKey].
    */
   TOTP,
+
+  /**
+   * A WebAuthn credential (passkey); see [AuthAccountsService.startWebAuthnRegistration].
+   */
+  WEB_AUTHN,
 
   /**
    * A kind of key this version of libsignal doesn't know about; see
@@ -145,6 +207,7 @@ public enum class MfaKeyKind {
     internal fun fromInternal(it: BridgeMfaKeyKind): MfaKeyKind =
       when (it) {
         BridgeMfaKeyKind.Totp -> TOTP
+        BridgeMfaKeyKind.WebAuthn -> WEB_AUTHN
         BridgeMfaKeyKind.Unknown -> UNKNOWN
       }
   }
@@ -194,6 +257,18 @@ public sealed interface GenerateTotpKeyError : BadRequestError
  * request errors.
  */
 public sealed interface ConfirmTotpKeyError : BadRequestError
+
+/**
+ * Errors that [AuthAccountsService.startWebAuthnRegistration] can produce, in addition to the
+ * generic request errors.
+ */
+public sealed interface StartWebAuthnRegistrationError : BadRequestError
+
+/**
+ * Errors that [AuthAccountsService.finishWebAuthnRegistration] can produce, in addition to the
+ * generic request errors.
+ */
+public sealed interface FinishWebAuthnRegistrationError : BadRequestError
 
 public class AuthAccountsService(
   private val connection: AuthenticatedChatConnection,
@@ -404,6 +479,84 @@ public class AuthAccountsService(
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult<ConfirmTotpKeyError>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Starts a WebAuthn registration ceremony, returning the parameters the authenticator needs to
+   * create a new credential (passkey) for the authenticated account.
+   *
+   * The caller passes the returned [WebAuthnCreateParameters] to the platform's WebAuthn API to
+   * run the ceremony, and then reports its outcome via [finishWebAuthnRegistration]. No MFA key is
+   * added until the ceremony is finished, so a started registration that is never finished leaves
+   * the account's keys unchanged.
+   *
+   * WebAuthn credentials may only be registered for accounts without phone numbers.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [TooManyMfaKeysException] indicates the account already
+   * has too many MFA keys of all kinds, and one must be removed before adding more.
+   */
+  public fun startWebAuthnRegistration():
+    CompletableFuture<RequestResult<WebAuthnCreateParameters, StartWebAuthnRegistrationError>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_start_web_authn_registration(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(WebAuthnCreateParameters.fromInternal(it)) },
+          onError = { err -> err.toRequestResult<StartWebAuthnRegistrationError>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Concludes a WebAuthn registration ceremony (see [startWebAuthnRegistration]), adding the new
+   * credential (passkey) to the authenticated account.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. A [WebAuthnRegistrationUnsuccessfulException] indicates the
+   * ceremony's response was not verified successfully, for any reason. A [TooManyMfaKeysException]
+   * indicates the account filled up with MFA keys while the ceremony was running.
+   *
+   * A [metadata] name longer than [MfaMetadata.NAME_MAX_LENGTH] bytes of UTF-8 or containing
+   * U+0000, or a metadata creation date before the Unix epoch, is a programmer error, reported as
+   * an [IllegalArgumentException] wrapped in [RequestResult.ApplicationError].
+   *
+   * @param attestationObject The attestation object from the completed ceremony, serialized as
+   * specified in https://www.w3.org/TR/webauthn/#attestation-object
+   * @param collectedClientDataJson The "collected client data" map used in the ceremony, as the
+   * exact JSON map that was hashed for the authenticator; it is passed through unchanged
+   * @param metadata Metadata (name, creation time) to attach to the newly-registered key; stored
+   * encrypted, so that it may not be read by the server
+   * @param svrKey The account's SVR key to encrypt metadata with
+   * @return The account-specific identifier assigned to the newly-registered key
+   */
+  public fun finishWebAuthnRegistration(
+    attestationObject: ByteArray,
+    collectedClientDataJson: String,
+    metadata: MfaMetadata,
+    svrKey: SvrKey,
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Int, FinishWebAuthnRegistrationError>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_finish_web_authn_registration(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          attestationObject = attestationObject,
+          collectedClientDataJson = collectedClientDataJson,
+          name = metadata.name,
+          createdAt = metadata.createdAt,
+          svrKey = svrKey.internalContentsForJNI,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult<FinishWebAuthnRegistrationError>() },
         )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))

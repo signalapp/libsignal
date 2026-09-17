@@ -40,7 +40,7 @@ use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagl
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
 use libsignal_net_chat::grpc::accounts::{
-    ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters,
+    ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters, WebAuthnCreateParameters,
 };
 use libsignal_net_chat::grpc::backups::{
     CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
@@ -1028,7 +1028,19 @@ pub enum BridgeConfirmedMfaKeyMetadata {
 #[bridge(arg = false)]
 pub enum BridgeMfaKeyKind {
     Totp,
+    WebAuthn,
     Unknown,
+}
+
+#[derive(BridgedAsValue, StructuralFrom)]
+#[structural_from(WebAuthnCreateParameters)]
+#[bridge(arg = false)]
+pub struct BridgeWebAuthnCreateParameters {
+    pub user_handle: Vec<u8>,
+    // This will be bridged as List<Object> to Java, which is less efficient than it could be, but
+    // in practice, the list will contain only a handful of elements.
+    pub allowed_algorithms: BridgeVec<i32>,
+    pub exclude_credential_ids: BridgeVec<Vec<u8>>,
 }
 
 #[derive(BridgedAsValue)]

@@ -9,15 +9,11 @@ import org.signal.libsignal.internal.CalledFromNative
 import java.io.IOException
 
 /**
- * The account already has too many MFA keys of all kinds; one must be removed before adding more.
+ * The WebAuthn registration ceremony's response was not verified successfully.
  *
- * See the specific request docs for more information.
  */
-public class TooManyMfaKeysException :
+public class WebAuthnRegistrationUnsuccessfulException :
   IOException,
-  GenerateTotpKeyError,
-  ConfirmTotpKeyError,
-  StartWebAuthnRegistrationError,
   FinishWebAuthnRegistrationError {
   @CalledFromNative
   public constructor(message: String) : super(message) {

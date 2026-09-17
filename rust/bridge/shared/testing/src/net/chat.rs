@@ -507,6 +507,7 @@ mod remote_derives {
     use libsignal_bridge_types::net::chat::{
         BridgeConfirmedMfaKey, BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem,
         BridgeMediaBackupInfo, BridgeMessageBackupInfo, BridgeMfaMetadata, BridgePendingTotpKey,
+        BridgeWebAuthnCreateParameters,
     };
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::login_purchase::{
@@ -849,6 +850,70 @@ mod remote_derives {
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::StartWebAuthnRegistrationOut)]
+    #[bridge(arg = false)]
+    pub(super) enum StartWebAuthnRegistrationOut {
+        Success(BridgeWebAuthnCreateParameters),
+        TooManyMfaKeys,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) struct FinishWebAuthnRegistrationArgs {
+        pub attestation_object: Vec<u8>,
+        pub collected_client_data_json: String,
+        pub name: String,
+        pub created_at: Timestamp,
+        pub svr_key: [u8; 32],
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::FinishWebAuthnRegistrationArgs>
+        for FinishWebAuthnRegistrationArgs
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::accounts::test_cases::FinishWebAuthnRegistrationArgs,
+        ) -> Self {
+            let libsignal_net_chat::grpc::accounts::test_cases::FinishWebAuthnRegistrationArgs {
+                attestation_object,
+                collected_client_data_json,
+                metadata,
+                svr_key,
+            } = value;
+            let BridgeMfaMetadata { name, created_at } = metadata.into();
+            Self {
+                attestation_object,
+                collected_client_data_json,
+                name,
+                created_at,
+                svr_key,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub(super) enum FinishWebAuthnRegistrationOut {
+        Success(i32),
+        WebAuthnRegistrationUnsuccessful,
+        TooManyMfaKeys,
+    }
+    impl From<libsignal_net_chat::grpc::accounts::test_cases::FinishWebAuthnRegistrationOut>
+        for FinishWebAuthnRegistrationOut
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::accounts::test_cases::FinishWebAuthnRegistrationOut,
+        ) -> Self {
+            use libsignal_net_chat::grpc::accounts::test_cases::FinishWebAuthnRegistrationOut as Remote;
+            match value {
+                Remote::Success(key_id) => {
+                    Self::Success(u32::from(key_id).try_into().expect("key IDs are small"))
+                }
+                Remote::WebAuthnRegistrationUnsuccessful => Self::WebAuthnRegistrationUnsuccessful,
+                Remote::TooManyMfaKeys => Self::TooManyMfaKeys,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::ListMfaKeysArgs)]
     #[bridge(arg = false)]
     pub(super) struct ListMfaKeysArgs {
@@ -1133,6 +1198,19 @@ fn TESTING_GenerateTotpKeyTests() -> GrpcTestCases<(), remote_derives::GenerateT
 fn TESTING_ConfirmTotpKeyTests()
 -> GrpcTestCases<remote_derives::ConfirmTotpKeyArgs, remote_derives::ConfirmTotpKeyOut> {
     libsignal_net_chat::grpc::accounts::test_cases::confirm_totp_key_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_StartWebAuthnRegistrationTests()
+-> GrpcTestCases<(), remote_derives::StartWebAuthnRegistrationOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::start_web_authn_registration_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_FinishWebAuthnRegistrationTests() -> GrpcTestCases<
+    remote_derives::FinishWebAuthnRegistrationArgs,
+    remote_derives::FinishWebAuthnRegistrationOut,
+> {
+    libsignal_net_chat::grpc::accounts::test_cases::finish_web_authn_registration_test_cases()
+        .into()
 }
 #[bridge_fn(nice = true)]
 fn TESTING_ListMfaKeysTests()

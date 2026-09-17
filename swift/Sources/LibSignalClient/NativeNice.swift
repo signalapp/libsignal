@@ -1541,6 +1541,43 @@ extension SignalCPromiseBridgePreKeyCountsFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseBridgeWebAuthnCreateParametersFfiResult: SignalCPromise {
+
+    typealias Result = SignalBridgeWebAuthnCreateParametersFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeWebAuthnCreateParametersFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeWebAuthnCreateParametersFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseCopyBackupMediaNextChunkFfiResult: SignalCPromise {
 
     typealias Result = SignalCopyBackupMediaNextChunkFfiResult
@@ -1803,6 +1840,74 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
     var generic_value: MaybeUninitOfChargeFailureFfiResult {
         get { self.value }
         set { value = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedi32: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = Int32
+
+    init(
+        generic_base: SignalType_MutPointer_int32_t?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_int32_t? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedOwnedBuffer: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalOwnedBuffer
+
+    init(
+        generic_base: SignalType_MutPointer_SignalOwnedBuffer?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalOwnedBuffer? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
     }
 
 }
@@ -2556,6 +2661,7 @@ internal struct BridgeMessageBackupInfo {
 
 internal enum BridgeMfaKeyKind {
     case totp
+    case webAuthn
     case unknown
 }
 
@@ -2583,6 +2689,13 @@ internal struct BridgeTotpParameters {
     var algorithm: String
     var passwordLength: Int32
     var timeStepSeconds: Int32
+
+}
+
+internal struct BridgeWebAuthnCreateParameters {
+    var userHandle: Data
+    var allowedAlgorithms: [Int32]
+    var excludeCredentialIds: [Data]
 
 }
 
@@ -2913,6 +3026,8 @@ internal enum DerivedReturnConverterBridgeMfaKeyKind: NiceReturnConverter {
         switch ffiTag {
         case SignalBridgeMfaKeyKindFfiResultTotp:
             return BridgeMfaKeyKind.totp
+        case SignalBridgeMfaKeyKindFfiResultWebAuthn:
+            return BridgeMfaKeyKind.webAuthn
         case SignalBridgeMfaKeyKindFfiResultUnknown:
             return BridgeMfaKeyKind.unknown
         default:
@@ -3003,6 +3118,34 @@ internal enum DerivedReturnConverterBridgeTotpParameters: NiceReturnConverter {
             algorithm: try algorithm.get(),
             passwordLength: try password_length.get(),
             timeStepSeconds: try time_step_seconds.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterBridgeWebAuthnCreateParameters: NiceReturnConverter {
+    typealias NiceReturn = BridgeWebAuthnCreateParameters
+    typealias FfiReturn = SignalBridgeWebAuthnCreateParametersFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeWebAuthnCreateParametersFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let user_handle = Result { try DataConverter.convertReturn(consuming: ffiValue.user_handle) }
+        let allowed_algorithms = Result {
+            try ArrayReturnConverter<IdentityResultConverter<Int32>, SignalOwnedBufferOfMaxAlignedi32>.convertReturn(
+                consuming: ffiValue.allowed_algorithms
+            )
+        }
+        let exclude_credential_ids = Result {
+            try ArrayReturnConverter<DataConverter, SignalOwnedBufferOfMaxAlignedOwnedBuffer>.convertReturn(
+                consuming: ffiValue.exclude_credential_ids
+            )
+        }
+
+        return BridgeWebAuthnCreateParameters(
+            userHandle: try user_handle.get(),
+            allowedAlgorithms: try allowed_algorithms.get(),
+            excludeCredentialIds: try exclude_credential_ids.get()
         )
     }
 }
@@ -4152,6 +4295,53 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_finish_web_authn_registration(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        attestationObject attestation_object: Data,
+        collectedClientDataJson collected_client_data_json: String,
+        name: String,
+        createdAt created_at: Date,
+        svrKey svr_key: Data,
+        rng: Int64,
+    ) async throws -> Int32 {
+        let rawOutput: IdentityResultConverter<Int32>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        DataConverter.convertArgBorrowed(attestation_object) { attestation_objectFfi in
+                            StringConverter.convertArgBorrowed(collected_client_data_json) {
+                                collected_client_data_jsonFfi in
+                                StringConverter.convertArgBorrowed(name) { nameFfi in
+                                    TimestampConverter.convertArgBorrowed(created_at) { created_atFfi in
+                                        FixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(svr_key) {
+                                            svr_keyFfi in
+                                            IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                                                SignalFfi
+                                                    .signal_authenticated_chat_connection_finish_web_authn_registration(
+                                                        promiseFfi,
+                                                        asyncContextFfi.const(),
+                                                        chatFfi,
+                                                        attestation_objectFfi,
+                                                        collected_client_data_jsonFfi,
+                                                        nameFfi,
+                                                        created_atFfi,
+                                                        svr_keyFfi,
+                                                        rngFfi,
+                                                    )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try IdentityResultConverter<Int32>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_generate_totp_key(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -4761,6 +4951,26 @@ internal enum NativeNice {
                     }
             }
         return try UuidNiceConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_start_web_authn_registration(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> BridgeWebAuthnCreateParameters {
+        let rawOutput: DerivedReturnConverterBridgeWebAuthnCreateParameters.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_start_web_authn_registration(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterBridgeWebAuthnCreateParameters.convertReturn(consuming: rawOutput)
 
     }
     internal static func CopyBackupMediaStream_next(

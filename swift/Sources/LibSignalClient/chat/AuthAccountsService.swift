@@ -82,10 +82,44 @@ public struct PendingTotpKey: Sendable, Equatable {
     }
 }
 
+/// The parameters a WebAuthn authenticator needs to create a new credential for the account.
+///
+/// Returned by ``AuthAccountsService/startWebAuthnRegistration()``; the caller passes these to the
+/// platform's WebAuthn API to run a registration ceremony, then reports the outcome via
+/// ``AuthAccountsService/finishWebAuthnRegistration(attestationObject:collectedClientDataJson:metadata:svrKey:)``.
+public struct WebAuthnCreateParameters: Sendable, Equatable {
+    /// The "user handle" (`user.id`) that should be handed to the authenticator.
+    public var userHandle: Data
+    /// The COSE IDs (<https://www.iana.org/assignments/cose#algorithms>) of acceptable algorithms
+    /// for the created key, as WebAuthn `COSEAlgorithmIdentifier`s.
+    public var allowedAlgorithms: [Int32]
+    /// The credential IDs already registered for this account.
+    ///
+    /// These can be passed to candidate authenticators to tell them not to create a new key if
+    /// they already have a private key matching one of these.
+    public var excludeCredentialIds: [Data]
+
+    public init(userHandle: Data, allowedAlgorithms: [Int32], excludeCredentialIds: [Data]) {
+        self.userHandle = userHandle
+        self.allowedAlgorithms = allowedAlgorithms
+        self.excludeCredentialIds = excludeCredentialIds
+    }
+
+    internal static func fromInternal(_ it: BridgeWebAuthnCreateParameters) -> WebAuthnCreateParameters {
+        WebAuthnCreateParameters(
+            userHandle: it.userHandle,
+            allowedAlgorithms: it.allowedAlgorithms,
+            excludeCredentialIds: it.excludeCredentialIds,
+        )
+    }
+}
+
 /// The kind of a confirmed MFA key.
 public enum MfaKeyKind: Sendable, Equatable {
     /// A TOTP key; see ``AuthAccountsService/generateTotpKey()``.
     case totp
+    /// A WebAuthn credential (passkey); see ``AuthAccountsService/startWebAuthnRegistration()``.
+    case webAuthn
     /// A kind of key this version of libsignal doesn't know about; see
     /// ``AuthAccountsService/listMfaKeys(svrKey:)``.
     case unknown
@@ -93,6 +127,7 @@ public enum MfaKeyKind: Sendable, Equatable {
     internal static func fromInternal(_ it: BridgeMfaKeyKind) -> MfaKeyKind {
         switch it {
         case .totp: .totp
+        case .webAuthn: .webAuthn
         case .unknown: .unknown
         }
     }
@@ -241,6 +276,51 @@ public protocol AuthAccountsService: Sendable {
         svrKey: SvrKey
     ) async throws -> Int
 
+    /// Starts a WebAuthn registration ceremony, returning the parameters the authenticator needs
+    /// to create a new credential (passkey) for the authenticated account.
+    ///
+    /// The caller passes the returned ``WebAuthnCreateParameters`` to the platform's WebAuthn API
+    /// to run the ceremony, and then reports its outcome via
+    /// ``finishWebAuthnRegistration(attestationObject:collectedClientDataJson:metadata:svrKey:)``.
+    /// No MFA key is added until the ceremony is finished, so a started registration that is
+    /// never finished leaves the account's keys unchanged.
+    ///
+    /// WebAuthn credentials may only be registered for accounts without phone numbers.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/tooManyMfaKeys(_:)`` if the account already has too many MFA keys of all
+    ///     kinds, and one must be removed before adding more
+    ///   - the standard Signal network errors
+    func startWebAuthnRegistration() async throws -> WebAuthnCreateParameters
+
+    /// Concludes a WebAuthn registration ceremony (see ``startWebAuthnRegistration()``), adding
+    /// the new credential (passkey) to the authenticated account.
+    ///
+    /// - Parameters:
+    ///   - attestationObject: The attestation object from the completed ceremony, serialized as
+    ///     specified in <https://www.w3.org/TR/webauthn/#attestation-object>
+    ///   - collectedClientDataJson: The "collected client data" map used in the ceremony, as the
+    ///     exact JSON map that was hashed for the authenticator; it is passed through unchanged
+    ///   - metadata: Metadata (name, creation time) to attach to the newly-registered key; stored
+    ///     encrypted, so that it may not be read by the server
+    ///   - svrKey: The account's SVR key to encrypt metadata with
+    /// - Returns: The account-specific identifier assigned to the newly-registered key
+    /// - Throws:
+    ///   - ``SignalError/webAuthnRegistrationUnsuccessful(_:)`` if the ceremony's response was not
+    ///     verified successfully, for any reason
+    ///   - ``SignalError/tooManyMfaKeys(_:)`` if the account filled up with MFA keys while the
+    ///     ceremony was running
+    ///   - ``SignalError/invalidArgument(_:)`` if any of the arguments are invalid, such as if
+    ///     the metadata's name exceeds ``MfaMetadata/nameMaxLength`` bytes of UTF-8 or contains
+    ///     U+0000, or its creation date is not valid
+    ///   - the standard Signal network errors
+    func finishWebAuthnRegistration(
+        attestationObject: Data,
+        collectedClientDataJson: String,
+        metadata: MfaMetadata,
+        svrKey: SvrKey
+    ) async throws -> Int
+
     /// Lists the confirmed MFA keys for the authenticated account.
     ///
     /// An item with a `nil` ``ConfirmedMfaKey/metadata`` indicates that the metadata attached to
@@ -344,6 +424,30 @@ extension AuthenticatedChatConnection: AuthAccountsService {
         )
     }
 
+    public func startWebAuthnRegistration() async throws -> WebAuthnCreateParameters {
+        return WebAuthnCreateParameters.fromInternal(
+            try await NativeNice.AuthenticatedChatConnection_start_web_authn_registration(
+                asyncContext: self.tokioAsyncContext,
+                chat: self,
+            )
+        )
+    }
+
+    public func finishWebAuthnRegistration(
+        attestationObject: Data,
+        collectedClientDataJson: String,
+        metadata: MfaMetadata,
+        svrKey: SvrKey
+    ) async throws -> Int {
+        return try await self.finishWebAuthnRegistration(
+            attestationObject: attestationObject,
+            collectedClientDataJson: collectedClientDataJson,
+            metadata: metadata,
+            svrKey: svrKey,
+            rngForTesting: -1,
+        )
+    }
+
     public func listMfaKeys(svrKey: SvrKey) async throws -> [ConfirmedMfaKey] {
         return try await NativeNice.AuthenticatedChatConnection_list_mfa_keys(
             asyncContext: self.tokioAsyncContext,
@@ -377,6 +481,14 @@ extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthAc
 internal protocol AuthAccountsServiceImpl: Sendable {
     func confirmTotpKey(
         oneTimePassword: Int,
+        metadata: MfaMetadata,
+        svrKey: SvrKey,
+        rngForTesting: Int64,
+    ) async throws -> Int
+
+    func finishWebAuthnRegistration(
+        attestationObject: Data,
+        collectedClientDataJson: String,
         metadata: MfaMetadata,
         svrKey: SvrKey,
         rngForTesting: Int64,
@@ -436,6 +548,26 @@ extension AuthenticatedChatConnection: AuthAccountsServiceImpl {
             asyncContext: self.tokioAsyncContext,
             chat: self,
             oneTimePassword: try bridgeInt32(oneTimePassword, "oneTimePassword"),
+            name: try bridgeMfaKeyName(metadata.name),
+            createdAt: try bridgeTimestamp(metadata.createdAt, "metadata.createdAt"),
+            svrKey: svrKey.serialize(),
+            rng: rngForTesting,
+        )
+        return Int(keyId)
+    }
+
+    func finishWebAuthnRegistration(
+        attestationObject: Data,
+        collectedClientDataJson: String,
+        metadata: MfaMetadata,
+        svrKey: SvrKey,
+        rngForTesting: Int64,
+    ) async throws -> Int {
+        let keyId = try await NativeNice.AuthenticatedChatConnection_finish_web_authn_registration(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            attestationObject: attestationObject,
+            collectedClientDataJson: collectedClientDataJson,
             name: try bridgeMfaKeyName(metadata.name),
             createdAt: try bridgeTimestamp(metadata.createdAt, "metadata.createdAt"),
             svrKey: svrKey.serialize(),

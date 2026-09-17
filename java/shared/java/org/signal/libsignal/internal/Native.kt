@@ -336,6 +336,18 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_finish_web_authn_registration(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    attestationObject: ByteArray,
+    collectedClientDataJson: String,
+    name: String,
+    createdAt: Long,
+    svrKey: ByteArray,
+    rng: Long,
+  ): CompletableFuture<Int>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_generate_totp_key(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -552,6 +564,12 @@ internal object Native {
     usernameCiphertext: ByteArray,
     keepLinkHandle: Boolean,
   ): CompletableFuture<UUID>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_start_web_authn_registration(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
 
   @JvmStatic
   @Throws(Exception::class)

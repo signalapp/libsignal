@@ -43,7 +43,8 @@ use libsignal_net_chat::api::profiles::UnauthenticatedAccountExistenceApi;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::accounts::{
-    ConfirmTotpKeyError, GenerateTotpKeyError, MAX_MFA_KEY_ID, MfaKeyId, MfaKeyNotFound,
+    ConfirmTotpKeyError, FinishWebAuthnRegistrationError, GenerateTotpKeyError, MAX_MFA_KEY_ID,
+    MfaKeyId, MfaKeyNotFound, StartWebAuthnRegistrationError,
 };
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
@@ -1074,6 +1075,45 @@ async fn AuthenticatedChatConnection_confirm_totp_key(
         .await
         .confirm_totp_key(
             one_time_password,
+            &metadata,
+            &SvrKey::new(svr_key),
+            &mut rng,
+        )
+        .await?;
+    Ok(u32::from(key_id)
+        .try_into()
+        .expect("validated by libsignal-net-chat"))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_start_web_authn_registration(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgeWebAuthnCreateParameters, RequestError<StartWebAuthnRegistrationError>> {
+    chat.require_grpc()
+        .await
+        .start_web_authn_registration()
+        .await
+        .map(Into::into)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_finish_web_authn_registration(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    attestation_object: Vec<u8>,
+    collected_client_data_json: String,
+    name: String,
+    created_at: Timestamp,
+    svr_key: [u8; 32],
+    rng: RandomNumberGenerator,
+) -> Result<i32, RequestOrArgumentError<FinishWebAuthnRegistrationError>> {
+    let metadata = mfa_metadata(name, created_at)?;
+    let mut rng = rng.create();
+    let key_id = chat
+        .require_grpc()
+        .await
+        .finish_web_authn_registration(
+            attestation_object,
+            collected_client_data_json,
             &metadata,
             &SvrKey::new(svr_key),
             &mut rng,

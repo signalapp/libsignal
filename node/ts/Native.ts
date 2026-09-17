@@ -230,6 +230,9 @@ export type ReturnFfiBridgeMfaKeyKind =
     }
   | {
       __type: 1;
+    }
+  | {
+      __type: 2;
     };
 
 export type ReturnFfiBridgeMfaMetadata = {
@@ -253,6 +256,12 @@ export type ReturnFfiBridgeTotpParameters = {
   algorithm: string;
   password_length: number;
   time_step_seconds: number;
+};
+
+export type ReturnFfiBridgeWebAuthnCreateParameters = {
+  user_handle: Uint8Array<ArrayBuffer>;
+  allowed_algorithms: Array<number>;
+  exclude_credential_ids: Array<Uint8Array<ArrayBuffer>>;
 };
 
 export type ReturnFfiCallQualitySurveyInternal = {
@@ -423,6 +432,26 @@ export type ReturnFfiDeviceCapabilityInternal =
     }
   | {
       __type: 6;
+    };
+
+export type ReturnFfiFinishWebAuthnRegistrationArgs = {
+  attestation_object: Uint8Array<ArrayBuffer>;
+  collected_client_data_json: string;
+  name: string;
+  created_at: Timestamp;
+  svr_key: Uint8Array<ArrayBuffer>;
+};
+
+export type ReturnFfiFinishWebAuthnRegistrationOut =
+  | {
+      __type: 0;
+      _0: number;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
     };
 
 export type ReturnFfiGenerateTotpKeyOut =
@@ -801,6 +830,15 @@ export type ReturnFfiSimpleBackupTestOut =
       __type: 2;
     };
 
+export type ReturnFfiStartWebAuthnRegistrationOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeWebAuthnCreateParameters;
+    }
+  | {
+      __type: 1;
+    };
+
 export type ReturnFfiTestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -1063,6 +1101,16 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_finish_web_authn_registration: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    attestation_object: Uint8Array<ArrayBuffer>,
+    collected_client_data_json: string,
+    name: string,
+    created_at: Timestamp,
+    svr_key: Uint8Array<ArrayBuffer>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<number>;
   AuthenticatedChatConnection_generate_totp_key: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -1223,6 +1271,10 @@ type NativeFunctions = {
     username_ciphertext: Uint8Array<ArrayBuffer>,
     keep_link_handle: boolean
   ) => CancellablePromise<Uuid>;
+  AuthenticatedChatConnection_start_web_authn_registration: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiBridgeWebAuthnCreateParameters>;
   AvatarUploadCredentialPresentation_CheckValidContents: (
     presentation_bytes: Uint8Array<ArrayBuffer>
   ) => void;
@@ -3175,6 +3227,12 @@ type NativeFunctions = {
     create_session: RegistrationCreateSessionRequest,
     chat: Wrapper<FakeChatServer>
   ) => CancellablePromise<RegistrationService>;
+  TESTING_FinishWebAuthnRegistrationTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiFinishWebAuthnRegistrationArgs,
+      ReturnFfiFinishWebAuthnRegistrationOut
+    >
+  >;
   TESTING_FutureCancellationCounter_Create: (
     initial_value: number
   ) => TestingFutureCancellationCounter;
@@ -3416,6 +3474,9 @@ type NativeFunctions = {
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  TESTING_StartWebAuthnRegistrationTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiStartWebAuthnRegistrationOut>
+  >;
   TESTING_SubmitCallQualitySurveyTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiCallQualitySurveyInternal, void>
   >;
@@ -3888,6 +3949,7 @@ const {
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -3916,6 +3978,7 @@ const {
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_start_web_authn_registration,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -4448,6 +4511,7 @@ const {
   TESTING_FakeChatServer_Create,
   TESTING_FakeChatServer_GetNextRemote,
   TESTING_FakeRegistrationSession_CreateSession,
+  TESTING_FinishWebAuthnRegistrationTests,
   TESTING_FutureCancellationCounter_Create,
   TESTING_FutureCancellationCounter_WaitForCount,
   TESTING_FutureFailure,
@@ -4541,6 +4605,7 @@ const {
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_StartWebAuthnRegistrationTests,
   TESTING_SubmitCallQualitySurveyTests,
   TESTING_Svr2MasterKeyRestoreError,
   TESTING_TestStreamChunk_return,
@@ -4689,6 +4754,7 @@ export {
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -4717,6 +4783,7 @@ export {
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_start_web_authn_registration,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -5249,6 +5316,7 @@ export {
   TESTING_FakeChatServer_Create,
   TESTING_FakeChatServer_GetNextRemote,
   TESTING_FakeRegistrationSession_CreateSession,
+  TESTING_FinishWebAuthnRegistrationTests,
   TESTING_FutureCancellationCounter_Create,
   TESTING_FutureCancellationCounter_WaitForCount,
   TESTING_FutureFailure,
@@ -5342,6 +5410,7 @@ export {
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_StartWebAuthnRegistrationTests,
   TESTING_SubmitCallQualitySurveyTests,
   TESTING_Svr2MasterKeyRestoreError,
   TESTING_TestStreamChunk_return,

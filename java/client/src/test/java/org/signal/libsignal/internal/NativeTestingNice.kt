@@ -107,6 +107,24 @@ public sealed class DeleteBackupMediaOut {
   public data object CredentialRejectedWithoutAppropriateServerInfo : DeleteBackupMediaOut()
 }
 
+public data class FinishWebAuthnRegistrationArgs(
+  public val attestationObject: ByteArray,
+  public val collectedClientDataJson: String,
+  public val name: String,
+  public val createdAt: java.time.Instant,
+  public val svrKey: ByteArray,
+)
+
+public sealed class FinishWebAuthnRegistrationOut {
+  public data class Success(
+    public val _0: Int,
+  ) : FinishWebAuthnRegistrationOut()
+
+  public data object WebAuthnRegistrationUnsuccessful : FinishWebAuthnRegistrationOut()
+
+  public data object TooManyMfaKeys : FinishWebAuthnRegistrationOut()
+}
+
 public sealed class GenerateTotpKeyOut {
   public data class Success(
     public val _0: org.signal.libsignal.internal.BridgePendingTotpKey,
@@ -409,6 +427,14 @@ public sealed class SimpleBackupTestOut {
   public data object CredentialRejected : SimpleBackupTestOut()
 
   public data object MissingResponse : SimpleBackupTestOut()
+}
+
+public sealed class StartWebAuthnRegistrationOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.internal.BridgeWebAuthnCreateParameters,
+  ) : StartWebAuthnRegistrationOut()
+
+  public data object TooManyMfaKeys : StartWebAuthnRegistrationOut()
 }
 
 public data class TestStreamChunk(
@@ -808,6 +834,56 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
+}
+
+public object FinishWebAuthnRegistrationArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    attestation_object: Any?,
+    collected_client_data_json: Any?,
+    name: Any?,
+    created_at: Any?,
+    svr_key: Any?,
+  ): Any? =
+    FinishWebAuthnRegistrationArgs(
+      attestationObject =
+        identity(attestation_object as ByteArray),
+      collectedClientDataJson =
+        identity(collected_client_data_json as String),
+      name =
+        identity(name as String),
+      createdAt =
+        (java.time.Instant::ofEpochMilli)(created_at as Long),
+      svrKey =
+        identity(svr_key as ByteArray),
+    )
+}
+
+public object FinishWebAuthnRegistrationOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    FinishWebAuthnRegistrationOut.Success(
+      _0 =
+        identity(_0 as Int),
+    )
+}
+
+public object FinishWebAuthnRegistrationOut_WebAuthnRegistrationUnsuccessful_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = FinishWebAuthnRegistrationOut.WebAuthnRegistrationUnsuccessful
+}
+
+public object FinishWebAuthnRegistrationOut_TooManyMfaKeys_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = FinishWebAuthnRegistrationOut.TooManyMfaKeys
 }
 
 public object GenerateTotpKeyOut_Success_ReturnConverter {
@@ -1593,6 +1669,24 @@ public object SimpleBackupTestOut_MissingResponse_ReturnConverter {
   internal fun fromNative(): Any? = SimpleBackupTestOut.MissingResponse
 }
 
+public object StartWebAuthnRegistrationOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    StartWebAuthnRegistrationOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeWebAuthnCreateParameters>(_0 as Object),
+    )
+}
+
+public object StartWebAuthnRegistrationOut_TooManyMfaKeys_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = StartWebAuthnRegistrationOut.TooManyMfaKeys
+}
+
 public object TestStreamChunk_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -2051,6 +2145,16 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
       identity(it)
     }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_FinishWebAuthnRegistrationTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.FinishWebAuthnRegistrationArgs, org.signal.libsignal.internal.FinishWebAuthnRegistrationOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_FinishWebAuthnRegistrationTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.FinishWebAuthnRegistrationArgs, org.signal.libsignal.internal.FinishWebAuthnRegistrationOut>({
+        downcastFromObject<org.signal.libsignal.internal.FinishWebAuthnRegistrationArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.FinishWebAuthnRegistrationOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GenerateTotpKeyTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GenerateTotpKeyOut>> {
@@ -2520,6 +2624,16 @@ public object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>({
         downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_StartWebAuthnRegistrationTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.StartWebAuthnRegistrationOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_StartWebAuthnRegistrationTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.StartWebAuthnRegistrationOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.StartWebAuthnRegistrationOut>(it) })(ffiOut)
   }
 
   public fun TESTING_SubmitCallQualitySurveyTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.net.CallQualitySurvey, Void?>> {

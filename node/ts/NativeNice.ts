@@ -34,6 +34,7 @@ import type {
   ReturnFfiBridgePendingTotpKey,
   ReturnFfiBridgePreKeyCounts,
   ReturnFfiBridgeTotpParameters,
+  ReturnFfiBridgeWebAuthnCreateParameters,
   ReturnFfiCallQualitySurveyInternal,
   ReturnFfiChargeFailure,
   ReturnFfiCheckSvrCredentialsArgs,
@@ -50,6 +51,8 @@ import type {
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiDeviceCapabilityInternal,
+  ReturnFfiFinishWebAuthnRegistrationArgs,
+  ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
@@ -96,6 +99,7 @@ import type {
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
   ReturnFfiSimpleBackupTestOut,
+  ReturnFfiStartWebAuthnRegistrationOut,
   ReturnFfiTestStreamChunk,
   ReturnFfiTestingAnySignedPreKey,
   /* eslint-enable @typescript-eslint/no-unused-vars */
@@ -172,7 +176,7 @@ export type BridgeMessageBackupInfo = {
   backupName: string;
 };
 
-export type BridgeMfaKeyKind = 'totp' | 'unknown';
+export type BridgeMfaKeyKind = 'totp' | 'webAuthn' | 'unknown';
 
 export type BridgeMfaMetadata = {
   name: string;
@@ -195,6 +199,12 @@ export type BridgeTotpParameters = {
   algorithm: string;
   passwordLength: number;
   timeStepSeconds: number;
+};
+
+export type BridgeWebAuthnCreateParameters = {
+  userHandle: Uint8Array<ArrayBuffer>;
+  allowedAlgorithms: Array<number>;
+  excludeCredentialIds: Array<Uint8Array<ArrayBuffer>>;
 };
 
 export type CallQualitySurveyInternal = {
@@ -325,6 +335,21 @@ export type DeviceCapabilityInternal =
   | 'profilesV2'
   | 'usernameChangeSyncMessage'
   | 'optionalPhoneNumber';
+
+export type FinishWebAuthnRegistrationArgs = {
+  attestationObject: Uint8Array<ArrayBuffer>;
+  collectedClientDataJson: string;
+  name: string;
+  createdAt: Timestamp;
+  svrKey: Uint8Array<ArrayBuffer>;
+};
+
+export type FinishWebAuthnRegistrationOut =
+  | {
+      success: number;
+    }
+  | 'webAuthnRegistrationUnsuccessful'
+  | 'tooManyMfaKeys';
 
 export type GenerateTotpKeyOut =
   | {
@@ -593,6 +618,12 @@ export type SimpleBackupTestOut =
   | 'credentialRejected'
   | 'missingResponse';
 
+export type StartWebAuthnRegistrationOut =
+  | {
+      success: BridgeWebAuthnCreateParameters;
+    }
+  | 'tooManyMfaKeys';
+
 export type TestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -730,6 +761,8 @@ export function returnConverterBridgeMfaKeyKind(
     case 0:
       return 'totp';
     case 1:
+      return 'webAuthn';
+    case 2:
       return 'unknown';
 
     default:
@@ -774,6 +807,19 @@ export function returnConverterBridgeTotpParameters(
     algorithm: identity(ffiInput.algorithm),
     passwordLength: identity(ffiInput.password_length),
     timeStepSeconds: identity(ffiInput.time_step_seconds),
+  };
+}
+
+export function returnConverterBridgeWebAuthnCreateParameters(
+  ffiInput: Native.ReturnFfiBridgeWebAuthnCreateParameters
+): BridgeWebAuthnCreateParameters {
+  return {
+    userHandle: identity(ffiInput.user_handle),
+    allowedAlgorithms: ((arr: Array<number>) => arr.map(identity))(
+      ffiInput.allowed_algorithms
+    ),
+    excludeCredentialIds: ((arr: Array<Uint8Array<ArrayBuffer>>) =>
+      arr.map(identity))(ffiInput.exclude_credential_ids),
   };
 }
 
@@ -1057,6 +1103,39 @@ export function returnConverterDeviceCapabilityInternal(
       ffiInput satisfies never;
       throw new Error(
         'Unknown FFI return enum type for DeviceCapabilityInternal'
+      );
+  }
+}
+
+export function returnConverterFinishWebAuthnRegistrationArgs(
+  ffiInput: Native.ReturnFfiFinishWebAuthnRegistrationArgs
+): FinishWebAuthnRegistrationArgs {
+  return {
+    attestationObject: identity(ffiInput.attestation_object),
+    collectedClientDataJson: identity(ffiInput.collected_client_data_json),
+    name: identity(ffiInput.name),
+    createdAt: identity(ffiInput.created_at),
+    svrKey: identity(ffiInput.svr_key),
+  };
+}
+
+export function returnConverterFinishWebAuthnRegistrationOut(
+  ffiInput: Native.ReturnFfiFinishWebAuthnRegistrationOut
+): FinishWebAuthnRegistrationOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput._0),
+      };
+    case 1:
+      return 'webAuthnRegistrationUnsuccessful';
+    case 2:
+      return 'tooManyMfaKeys';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for FinishWebAuthnRegistrationOut'
       );
   }
 }
@@ -1718,6 +1797,25 @@ export function returnConverterSimpleBackupTestOut(
   }
 }
 
+export function returnConverterStartWebAuthnRegistrationOut(
+  ffiInput: Native.ReturnFfiStartWebAuthnRegistrationOut
+): StartWebAuthnRegistrationOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterBridgeWebAuthnCreateParameters(ffiInput._0),
+      };
+    case 1:
+      return 'tooManyMfaKeys';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for StartWebAuthnRegistrationOut'
+      );
+  }
+}
+
 export function returnConverterTestStreamChunk(
   ffiInput: Native.ReturnFfiTestStreamChunk
 ): TestStreamChunk {
@@ -2158,6 +2256,43 @@ export async function AuthenticatedChatConnection_delete_username_link({
       Native.AuthenticatedChatConnection_delete_username_link(
         asyncContext,
         identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_finish_web_authn_registration({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  attestationObject: attestation_object,
+  collectedClientDataJson: collected_client_data_json,
+  name: name,
+  createdAt: created_at,
+  svrKey: svr_key,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  attestationObject: Uint8Array<ArrayBuffer>;
+  collectedClientDataJson: string;
+  name: string;
+  createdAt: Timestamp;
+  svrKey: Uint8Array<ArrayBuffer>;
+  rng: Rng | undefined;
+}): Promise<number> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_finish_web_authn_registration(
+        asyncContext,
+        identity(chat),
+        identity(attestation_object),
+        identity(collected_client_data_json),
+        identity(name),
+        identity(created_at),
+        identity(svr_key),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )
   );
@@ -2673,6 +2808,25 @@ export async function AuthenticatedChatConnection_set_username_link({
     )
   );
 }
+export async function AuthenticatedChatConnection_start_web_authn_registration({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<BridgeWebAuthnCreateParameters> {
+  return returnConverterBridgeWebAuthnCreateParameters(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_start_web_authn_registration(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function CopyBackupMediaStream_next({
   asyncContext,
   abortSignal,
@@ -2882,6 +3036,15 @@ export function TESTING_DeleteUsernameLinkTests(): Array<
     identity,
     identity
   )(Native.TESTING_DeleteUsernameLinkTests());
+}
+
+export function TESTING_FinishWebAuthnRegistrationTests(): Array<
+  GrpcTestCase<FinishWebAuthnRegistrationArgs, FinishWebAuthnRegistrationOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterFinishWebAuthnRegistrationArgs,
+    returnConverterFinishWebAuthnRegistrationOut
+  )(Native.TESTING_FinishWebAuthnRegistrationTests());
 }
 
 export function TESTING_GenerateTotpKeyTests(): Array<
@@ -3360,6 +3523,15 @@ export function TESTING_SetUsernameLinkTests(): Array<
     returnConverterSetUsernameLinkArgs,
     returnConverterSetUsernameLinkOut
   )(Native.TESTING_SetUsernameLinkTests());
+}
+
+export function TESTING_StartWebAuthnRegistrationTests(): Array<
+  GrpcTestCase<void, StartWebAuthnRegistrationOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterStartWebAuthnRegistrationOut
+  )(Native.TESTING_StartWebAuthnRegistrationTests());
 }
 
 export function TESTING_SubmitCallQualitySurveyTests(): Array<

@@ -159,6 +159,76 @@ describe('AuthAccountsService', () => {
     );
   });
 
+  describe('startWebAuthnRegistration', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_StartWebAuthnRegistrationTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _args: void,
+        resp: NativeNice.StartWebAuthnRegistrationOut
+      ) => {
+        const out = chat.startWebAuthnRegistration();
+        switch (resp) {
+          case 'tooManyMfaKeys':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.TooManyMfaKeys,
+              });
+            break;
+          default:
+            expect(await out).to.deep.equal(resp.success);
+        }
+      }
+    );
+  });
+
+  describe('finishWebAuthnRegistration', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_FinishWebAuthnRegistrationTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        {
+          attestationObject,
+          collectedClientDataJson,
+          name,
+          createdAt,
+          svrKey,
+        }: NativeNice.FinishWebAuthnRegistrationArgs,
+        resp: NativeNice.FinishWebAuthnRegistrationOut
+      ) => {
+        Native.TESTING_EnableDeterministicRngForTesting();
+        const out = chat.finishWebAuthnRegistration({
+          attestationObject,
+          collectedClientDataJson,
+          metadata: { name, createdAt },
+          svrKey: new SvrKey(svrKey),
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        switch (resp) {
+          case 'webAuthnRegistrationUnsuccessful':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.WebAuthnRegistrationUnsuccessful,
+              });
+            break;
+          case 'tooManyMfaKeys':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.TooManyMfaKeys,
+              });
+            break;
+          default:
+            expect(await out).to.equal(resp.success);
+        }
+      }
+    );
+  });
+
   describe('listMfaKeys', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_ListMfaKeysTests(),
@@ -236,6 +306,16 @@ describe('AuthAccountsService', () => {
         await expect(chat.setMfaKeyMetadata({ keyId: 0, metadata, svrKey }))
           .to.eventually.be.rejectedWith(LibSignalErrorBase)
           .and.deep.include({ code: ErrorCode.Generic });
+        await expect(
+          chat.finishWebAuthnRegistration({
+            attestationObject: new Uint8Array(0),
+            collectedClientDataJson: '{}',
+            metadata,
+            svrKey,
+          })
+        )
+          .to.eventually.be.rejectedWith(LibSignalErrorBase)
+          .and.deep.include({ code: ErrorCode.Generic });
       });
     }
 
@@ -246,7 +326,7 @@ describe('AuthAccountsService', () => {
       ['a fractional', 0.5],
       ['an unsafe', Number.MAX_SAFE_INTEGER + 1],
     ] as const) {
-      it(`rejects ${description} creation timestamp from both metadata APIs`, async () => {
+      it(`rejects ${description} creation timestamp from every metadata API`, async () => {
         const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
         const [chat] = connectAuth<AuthAccountsService>(tokio);
         const metadata = { name: 'Work laptop', createdAt };
@@ -261,6 +341,16 @@ describe('AuthAccountsService', () => {
           .to.eventually.be.rejectedWith(LibSignalErrorBase)
           .and.deep.include({ code: ErrorCode.Generic });
         await expect(chat.setMfaKeyMetadata({ keyId: 0, metadata, svrKey }))
+          .to.eventually.be.rejectedWith(LibSignalErrorBase)
+          .and.deep.include({ code: ErrorCode.Generic });
+        await expect(
+          chat.finishWebAuthnRegistration({
+            attestationObject: new Uint8Array(0),
+            collectedClientDataJson: '{}',
+            metadata,
+            svrKey,
+          })
+        )
           .to.eventually.be.rejectedWith(LibSignalErrorBase)
           .and.deep.include({ code: ErrorCode.Generic });
       });

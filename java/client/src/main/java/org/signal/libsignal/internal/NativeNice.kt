@@ -116,6 +116,8 @@ public data class BridgeMessageBackupInfo(
 public sealed class BridgeMfaKeyKind {
   public data object Totp : BridgeMfaKeyKind()
 
+  public data object WebAuthn : BridgeMfaKeyKind()
+
   public data object Unknown : BridgeMfaKeyKind()
 }
 
@@ -145,6 +147,12 @@ public data class BridgeTotpParameters(
   public val algorithm: String,
   public val passwordLength: Int,
   public val timeStepSeconds: Int,
+)
+
+public data class BridgeWebAuthnCreateParameters(
+  public val userHandle: ByteArray,
+  public val allowedAlgorithms: List<Int>,
+  public val excludeCredentialIds: List<ByteArray>,
 )
 
 /*
@@ -471,6 +479,13 @@ public object BridgeMfaKeyKind_Totp_ReturnConverter {
   internal fun fromNative(): Any? = BridgeMfaKeyKind.Totp
 }
 
+public object BridgeMfaKeyKind_WebAuthn_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = BridgeMfaKeyKind.WebAuthn
+}
+
 public object BridgeMfaKeyKind_Unknown_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -548,6 +563,25 @@ public object BridgeTotpParameters_ReturnConverter {
         identity(password_length as Int),
       timeStepSeconds =
         identity(time_step_seconds as Int),
+    )
+}
+
+public object BridgeWebAuthnCreateParameters_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    user_handle: Any?,
+    allowed_algorithms: Any?,
+    exclude_credential_ids: Any?,
+  ): Any? =
+    BridgeWebAuthnCreateParameters(
+      userHandle =
+        identity(user_handle as ByteArray),
+      allowedAlgorithms =
+        mapBridgeVecReturn<Int, Int>({ identity(it) })(allowed_algorithms as Array<*>),
+      excludeCredentialIds =
+        mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(exclude_credential_ids as Array<*>),
     )
 }
 
@@ -1252,6 +1286,42 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_finish_web_authn_registration(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    attestationObject: ByteArray,
+    collectedClientDataJson: String,
+    name: String,
+    createdAt: java.time.Instant,
+    svrKey: ByteArray,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<Int> {
+    val ffi_chat = identity(chat)
+    val ffi_attestation_object = identity(attestationObject)
+    val ffi_collected_client_data_json = identity(collectedClientDataJson)
+    val ffi_name = identity(name)
+    val ffi_created_at = (java.time.Instant::toEpochMilli)(createdAt)
+    val ffi_svr_key = identity(svrKey)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_finish_web_authn_registration(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_attestation_object,
+          ffi_collected_client_data_json,
+          ffi_name,
+          ffi_created_at,
+          ffi_svr_key,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_generate_totp_key(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
@@ -1733,6 +1803,23 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_start_web_authn_registration(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.internal.BridgeWebAuthnCreateParameters> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_start_web_authn_registration(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeWebAuthnCreateParameters>(it) }
   }
 
   public fun CopyBackupMediaStream_next(

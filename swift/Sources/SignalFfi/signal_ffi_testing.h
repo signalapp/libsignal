@@ -876,6 +876,36 @@ typedef struct {
 } SignalCreateLoginReceiptCredentialOutFfiResult;
 static_assert_64bit(sizeof(SignalCreateLoginReceiptCredentialOutFfiResult) == 40);
 static_assert_64bit(alignof(SignalCreateLoginReceiptCredentialOutFfiResult) == 8);
+typedef struct {
+  SignalOwnedBuffer attestation_object;
+  const int8_t* collected_client_data_json;
+  const int8_t* name;
+  uint64_t created_at;
+  SignalType_FixedArray32_uint8_t svr_key;
+} SignalFinishWebAuthnRegistrationArgsFfiResult;
+static_assert_64bit(offsetof(SignalFinishWebAuthnRegistrationArgsFfiResult, attestation_object) == 0);
+static_assert_64bit(offsetof(SignalFinishWebAuthnRegistrationArgsFfiResult, collected_client_data_json) == 16);
+static_assert_64bit(offsetof(SignalFinishWebAuthnRegistrationArgsFfiResult, name) == 24);
+static_assert_64bit(offsetof(SignalFinishWebAuthnRegistrationArgsFfiResult, created_at) == 32);
+static_assert_64bit(offsetof(SignalFinishWebAuthnRegistrationArgsFfiResult, svr_key) == 40);
+static_assert_64bit(sizeof(SignalFinishWebAuthnRegistrationArgsFfiResult) == 72);
+static_assert_64bit(alignof(SignalFinishWebAuthnRegistrationArgsFfiResult) == 8);
+typedef enum {
+  SignalFinishWebAuthnRegistrationOutFfiResultSuccess,
+  SignalFinishWebAuthnRegistrationOutFfiResultWebAuthnRegistrationUnsuccessful,
+  SignalFinishWebAuthnRegistrationOutFfiResultTooManyMfaKeys,
+} SignalFinishWebAuthnRegistrationOutFfiResult_Tag;
+typedef struct {
+  int32_t _0;
+} SignalFinishWebAuthnRegistrationOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalFinishWebAuthnRegistrationOutFfiResult_Tag tag;
+  union {
+    SignalFinishWebAuthnRegistrationOutFfiResultSignalSuccess_Body success;
+  };
+} SignalFinishWebAuthnRegistrationOutFfiResult;
+static_assert_64bit(sizeof(SignalFinishWebAuthnRegistrationOutFfiResult) == 8);
+static_assert_64bit(alignof(SignalFinishWebAuthnRegistrationOutFfiResult) == 4);
 typedef enum {
   SignalGenerateTotpKeyOutFfiResultSuccess,
   SignalGenerateTotpKeyOutFfiResultTooManyTotpKeys,
@@ -1229,6 +1259,21 @@ typedef enum {
 } SignalSimpleBackupTestOutFfiResult;
 static_assert_64bit(sizeof(SignalSimpleBackupTestOutFfiResult) == 4);
 static_assert_64bit(alignof(SignalSimpleBackupTestOutFfiResult) == 4);
+typedef enum {
+  SignalStartWebAuthnRegistrationOutFfiResultSuccess,
+  SignalStartWebAuthnRegistrationOutFfiResultTooManyMfaKeys,
+} SignalStartWebAuthnRegistrationOutFfiResult_Tag;
+typedef struct {
+  SignalBridgeWebAuthnCreateParametersFfiResult _0;
+} SignalStartWebAuthnRegistrationOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalStartWebAuthnRegistrationOutFfiResult_Tag tag;
+  union {
+    SignalStartWebAuthnRegistrationOutFfiResultSignalSuccess_Body success;
+  };
+} SignalStartWebAuthnRegistrationOutFfiResult;
+static_assert_64bit(sizeof(SignalStartWebAuthnRegistrationOutFfiResult) == 72);
+static_assert_64bit(alignof(SignalStartWebAuthnRegistrationOutFfiResult) == 8);
 typedef enum {
   SignalMyNiceTypeEnumNotFfiArgUnit,
   SignalMyNiceTypeEnumNotFfiArgSingle,
@@ -1949,6 +1994,9 @@ SignalFfiError* signal_testing_fingerprint_version_mismatch_error(
   uint32_t theirs,
   uint32_t ours
 );
+SignalFfiError* signal_testing_finish_web_authn_registration_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_future_cancellation_counter_create(
   SignalMutPointerTestingFutureCancellationCounter* out,
   uint8_t initial_value
@@ -2277,6 +2325,9 @@ SignalFfiError* signal_testing_set_username_link_tests(
 SignalFfiError* signal_testing_signed_public_pre_key_check_bridges_correctly(
   SignalConstPointerPublicKey source_public_key,
   SignalFfiSignedPublicPreKey signed_pre_key
+);
+SignalFfiError* signal_testing_start_web_authn_registration_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_submit_call_quality_survey_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out

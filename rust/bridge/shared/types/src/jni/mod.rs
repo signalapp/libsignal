@@ -2039,6 +2039,29 @@ impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::Confir
     }
 }
 
+impl MessageOnlyExceptionJniError
+    for libsignal_net_chat::grpc::accounts::StartWebAuthnRegistrationError
+{
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            Self::TooManyMfaKeys => ClassName("org.signal.libsignal.net.TooManyMfaKeysException"),
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError
+    for libsignal_net_chat::grpc::accounts::FinishWebAuthnRegistrationError
+{
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            Self::WebAuthnRegistrationUnsuccessful => {
+                ClassName("org.signal.libsignal.net.WebAuthnRegistrationUnsuccessfulException")
+            }
+            Self::TooManyMfaKeys => ClassName("org.signal.libsignal.net.TooManyMfaKeysException"),
+        }
+    }
+}
+
 impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::MfaKeyNotFound {
     fn exception_class(&self) -> ClassName<'static> {
         ClassName("org.signal.libsignal.net.MfaKeyNotFoundException")

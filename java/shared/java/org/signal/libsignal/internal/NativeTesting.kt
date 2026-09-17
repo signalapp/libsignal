@@ -332,6 +332,9 @@ public object NativeTesting {
   ): CompletableFuture<ObjectHandle>
 
   @JvmStatic
+  public external fun TESTING_FinishWebAuthnRegistrationTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_FutureCancellationCounter_Create(initialValue: Int): ObjectHandle
 
   @JvmStatic
@@ -669,6 +672,9 @@ public object NativeTesting {
     sourcePublicKey: ObjectHandle,
     signedPreKey: SignedPublicPreKey<*>,
   ): Unit
+
+  @JvmStatic
+  public external fun TESTING_StartWebAuthnRegistrationTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_SubmitCallQualitySurveyTests(): Array<Object>

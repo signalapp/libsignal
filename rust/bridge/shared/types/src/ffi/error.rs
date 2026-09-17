@@ -164,6 +164,7 @@ pub enum SignalErrorCode {
     TooManyMfaKeys = 235,
     MfaNotVerified = 236,
     MfaKeyNotFound = 237,
+    WebAuthnRegistrationUnsuccessful = 238,
 }
 
 pub trait UpcastAsAny {
@@ -1428,6 +1429,27 @@ impl IntoFfiError for libsignal_net_chat::grpc::accounts::ConfirmTotpKeyError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let code = match self {
             Self::OneTimePasswordNotVerified => SignalErrorCode::MfaNotVerified,
+            Self::TooManyMfaKeys => SignalErrorCode::TooManyMfaKeys,
+        };
+        SimpleError::new(code, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::accounts::StartWebAuthnRegistrationError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            Self::TooManyMfaKeys => SignalErrorCode::TooManyMfaKeys,
+        };
+        SimpleError::new(code, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::accounts::FinishWebAuthnRegistrationError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            Self::WebAuthnRegistrationUnsuccessful => {
+                SignalErrorCode::WebAuthnRegistrationUnsuccessful
+            }
             Self::TooManyMfaKeys => SignalErrorCode::TooManyMfaKeys,
         };
         SimpleError::new(code, self.to_string())
