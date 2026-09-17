@@ -9,7 +9,7 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use itertools::Itertools as _;
 use sha2::{Digest, Sha256};
 
-use crate::commitments::verify as verify_commitment;
+use crate::commitments::{self, verify as verify_commitment};
 use crate::guide::{InvalidState, ProofGuide};
 use crate::implicit::{full_monitoring_path, monitoring_path};
 use crate::log::{evaluate_batch_proof, verify_consistency_proof};
@@ -78,6 +78,12 @@ impl From<guide::InvalidState> for Error {
 impl From<MalformedProof> for Error {
     fn from(err: MalformedProof) -> Self {
         Self::VerificationFailed(err.to_string())
+    }
+}
+
+impl From<commitments::Error> for Error {
+    fn from(err: commitments::Error) -> Self {
+        Self::BadData(err.to_string())
     }
 }
 
@@ -541,7 +547,7 @@ fn verify_search_internal(
         .try_into()
         .map_err(|_| Error::VerificationFailed("malformed opening".to_string()))?;
 
-    if !verify_commitment(&search_key, &result_step.commitment, &value, opening) {
+    if !verify_commitment(&search_key, &result_step.commitment, &value, opening)? {
         return Err(Error::VerificationFailed(
             "failed to verify commitment opening".to_string(),
         ));
