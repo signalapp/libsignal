@@ -10,6 +10,7 @@ use anyhow::anyhow;
 use base64::prelude::{BASE64_URL_SAFE_NO_PAD, Engine as _};
 use clap::{Parser, ValueEnum};
 use libsignal_net::certs::SIGNAL_ROOT_CERTIFICATES;
+use libsignal_net::chat::GrpcOverride;
 use libsignal_net::chat::test_support::simple_chat_connection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
 use libsignal_net::env::Env;
@@ -26,6 +27,7 @@ use libsignal_net::infra::utils::no_network_change_events;
 use libsignal_net::infra::{EnableDomainFronting, OverrideNagleAlgorithm};
 use libsignal_net_chat::api::Unauth;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi;
+use libsignal_net_grpc::proto::chat::services;
 use nonzero_ext::nonzero;
 use static_assertions::assert_impl_all;
 
@@ -90,7 +92,16 @@ async fn main() -> anyhow::Result<()> {
             EnableDomainFronting::No,
             DirectOrProxyMode::DirectOnly,
             |_route| true,
-            [],
+            [
+                (
+                    services::AccountsAnonymous::LookupUsernameHash.into(),
+                    GrpcOverride::UseWs,
+                ),
+                (
+                    services::AccountsAnonymous::LookupUsernameLink.into(),
+                    GrpcOverride::UseWs,
+                ),
+            ],
         )
         .await?;
         grpc_connection = chat_connection.shared_h2_connection().map(Unauth);
