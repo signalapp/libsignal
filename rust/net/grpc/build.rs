@@ -27,6 +27,7 @@ fn main() {
         "proto/org/signal/chat/profile.proto",
         "proto/org/signal/chat/remote_configuration.proto",
         "proto/org/signal/chat/subscriptions.proto",
+        "proto/KeyTransparencyService.proto",
         "proto/TextSecure.proto",
     ];
     println!("cargo:rerun-if-changed=proto/");
@@ -52,6 +53,16 @@ fn main() {
         // We could box the Envelope, but by far the most common GetMessagesResponse is an Envelope.
         .type_attribute(
             ".org.signal.chat.messages.GetMessagesResponse.response",
+            "#[expect(clippy::large_enum_variant)]",
+        )
+        // Same here: the other variant is PermissionDenied, an empty message, so boxing would only
+        // add an allocation to the path we actually care about.
+        .type_attribute(
+            ".kt_query.SearchResponseV2.response",
+            "#[expect(clippy::large_enum_variant)]",
+        )
+        .type_attribute(
+            ".kt_query.MonitorResponseV2.response",
             "#[expect(clippy::large_enum_variant)]",
         )
         // Similarly, fetching subscription information is likely to be done by active subscribers.

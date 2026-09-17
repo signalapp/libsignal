@@ -208,8 +208,11 @@ async fn test_connection(
     dry_run: bool,
 ) -> Result<(), ConnectError> {
     use libsignal_net::chat::test_support::simple_chat_connection;
-    let chat_connection =
-        simple_chat_connection(env, EnableDomainFronting::No, proxy_mode, |route| {
+    let chat_connection = simple_chat_connection(
+        env,
+        EnableDomainFronting::No,
+        proxy_mode,
+        |route| {
             let chat_sni = match &route.inner.fragment.sni {
                 Host::Domain(domain) => domain,
                 Host::Ip(_) => panic!("unexpected IP address as a chat SNI"),
@@ -229,8 +232,10 @@ async fn test_connection(
             }
             log::debug!("{route:#?}");
             !dry_run
-        })
-        .await;
+        },
+        [],
+    )
+    .await;
 
     match chat_connection {
         Ok(connection) => {

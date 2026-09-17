@@ -998,6 +998,7 @@ export const NetRemoteConfigKeys = [
   'grpc.AttachmentsGetUploadForm',
   'grpc.MessagesSendMessage',
   'grpc.BackupsAnonymousGetUploadForm',
+  'grpc.KeyTransparencyQueryServiceSearchV2',
 ] as const;
 
 import load from 'node-gyp-build';

@@ -14,12 +14,14 @@ use http::uri::PathAndQuery;
 use libsignal_core::{Aci, E164};
 use libsignal_keytrans::{AccountData, LastTreeHead};
 use libsignal_net::chat;
+use libsignal_net_grpc::proto::chat::services;
 use libsignal_protocol::PublicKey;
 use serde::{Deserialize, Serialize};
 
 use super::{CONTENT_TYPE_JSON, CustomError, TryIntoResponse as _, WsConnection};
 use crate::api::keytrans::*;
 use crate::api::{AllowRateLimitChallenges, RequestError, Unauth};
+use crate::grpc::keytrans::KtOverGrpc;
 use crate::logging::DebugAsStrOrBytes;
 
 const SEARCH_PATH: &str = "/v1/key-transparency/search";
@@ -295,6 +297,11 @@ impl<T: WsConnection> Unauth<T> {
     }
 }
 
+/// The gRPC request name *all three* KT methods look up, not just `search`.
+fn kt_grpc_message() -> &'static str {
+    services::KeyTransparencyQueryService::SearchV2.into()
+}
+
 #[async_trait]
 impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
     async fn search(
@@ -306,6 +313,19 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
         stored_account_data: Option<&AccountData>,
         distinguished_tree_head: &LastTreeHead,
     ) -> Result<Vec<u8>, RequestError<Error>> {
+        if let Some(grpc) = self.grpc_service_to_use_instead(kt_grpc_message()) {
+            return KtOverGrpc(grpc)
+                .search(
+                    aci,
+                    aci_identity_key,
+                    e164,
+                    username_hash,
+                    stored_account_data,
+                    distinguished_tree_head,
+                )
+                .await;
+        }
+
         let raw_request = RawChatSearchRequest::new(
             aci,
             aci_identity_key,
@@ -321,6 +341,10 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
         &self,
         last_distinguished: Option<&LastTreeHead>,
     ) -> Result<Vec<u8>, RequestError<Error>> {
+        if let Some(grpc) = self.grpc_service_to_use_instead(kt_grpc_message()) {
+            return KtOverGrpc(grpc).distinguished(last_distinguished).await;
+        }
+
         let distinguished_size =
             last_distinguished.map(|last_tree_head| last_tree_head.0.tree_size);
 
@@ -338,6 +362,18 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
         account_data: &AccountData,
         last_distinguished_tree_head: &LastTreeHead,
     ) -> Result<Vec<u8>, RequestError<Error>> {
+        if let Some(grpc) = self.grpc_service_to_use_instead(kt_grpc_message()) {
+            return KtOverGrpc(grpc)
+                .monitor(
+                    aci,
+                    e164,
+                    username_hash,
+                    account_data,
+                    last_distinguished_tree_head,
+                )
+                .await;
+        }
+
         let raw_request = RawChatMonitorRequest::new(
             aci,
             e164.cloned(),
@@ -351,31 +387,51 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
 }
 
 #[cfg(test)]
+mod grpc_dispatch_test {
+    use futures_util::FutureExt as _;
+    use prost::Message as _;
+
+    use super::test_support::test_distinguished_tree;
+    use super::*;
+
+    // The opposite of the dispatch tests in [`crate::grpc::keytrans`].
+    #[test]
+    fn distinguished_dispatches_to_ws() {
+        let payload = libsignal_keytrans::ChatDistinguishedResponse {
+            tree_head: None,
+            distinguished: None,
+        }
+        .encode_to_vec();
+        let body = serde_json::json!({
+            "serializedResponse": BASE64_STANDARD_NO_PAD.encode(&payload),
+        });
+
+        let chat = Unauth(crate::ws::testutil::ProduceResponse(chat::Response {
+            status: http::StatusCode::OK,
+            message: None,
+            headers: common_headers(),
+            body: Some(serde_json::to_vec(&body).expect("can serialize").into()),
+        }));
+
+        let result = chat
+            .distinguished(Some(&test_distinguished_tree()))
+            .now_or_never()
+            .expect("sync")
+            .expect("success");
+
+        assert_eq!(result, payload);
+    }
+}
+
+#[cfg(test)]
 mod test_support {
     use std::time::SystemTime;
 
     use libsignal_keytrans::ChatSearchResponse;
-    use libsignal_net::chat::ChatConnection;
-    use libsignal_net::env;
-    use libsignal_net::infra::EnableDomainFronting;
-    use libsignal_net::infra::route::DirectOrProxyMode;
     use prost::Message as _;
 
     use super::*;
     pub use crate::api::keytrans::test_support::*;
-
-    pub(super) async fn make_chat() -> Unauth<ChatConnection> {
-        use libsignal_net::chat::test_support::simple_chat_connection;
-        let chat = simple_chat_connection(
-            &env::STAGING,
-            EnableDomainFronting::OneDomainPerProxy,
-            DirectOrProxyMode::DirectOnly,
-            |_| true,
-        )
-        .await
-        .expect("can connect to chat");
-        Unauth(chat)
-    }
 
     #[allow(dead_code)]
     // This function automates the collection of the test data.
@@ -511,244 +567,5 @@ mod test_support {
         const PATH: &str = "/tmp/chat_search_response.dat";
         println!("Response written to '{PATH}'");
         std::fs::write(PATH, &response_bytes).unwrap()
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::cmp::Ordering;
-
-    use assert_matches::assert_matches;
-    use libsignal_keytrans::LocalStateUpdate;
-    use libsignal_protocol::IdentityKeyPair;
-    use rand::TryRngCore;
-    use rand::rngs::OsRng;
-    use test_case::test_case;
-
-    use super::test_support::{
-        NETWORK_RETRY_COUNT, make_chat, make_kt, retry_n, should_retry, test_account,
-        test_account_data, test_distinguished_tree,
-    };
-    use super::*;
-
-    fn kt_integration_enabled() -> bool {
-        let run_nonhermetic = std::env::var_os("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS").is_some();
-        let ignore_tests = std::env::var_os("LIBSIGNAL_TESTING_IGNORE_KT_TESTS").is_some();
-        run_nonhermetic && !ignore_tests
-    }
-
-    #[tokio::test]
-    #[test_case(false, false; "ACI")]
-    #[test_case(true, false; "ACI + E164")]
-    #[test_case(false, true; "ACI + Username Hash")]
-    #[test_case(true, true; "ACI + E164 + Username Hash")]
-    async fn search_permutations_integration_test(use_e164: bool, use_username_hash: bool) {
-        if !kt_integration_enabled() {
-            println!("SKIPPED: running integration tests is not enabled");
-            return;
-        }
-        retry_n(
-            NETWORK_RETRY_COUNT,
-            || async {
-                let chat = make_chat().await;
-                let kt = make_kt(&chat);
-
-                let aci = test_account::aci();
-                let aci_identity_key = test_account::aci_identity_key();
-                let e164 = (
-                    test_account::PHONE_NUMBER,
-                    test_account::UNIDENTIFIED_ACCESS_KEY.to_vec(),
-                );
-                let username_hash = test_account::username_hash();
-
-                let known_account_data = test_account_data();
-
-                kt.search(
-                    &aci,
-                    &aci_identity_key,
-                    use_e164.then_some(e164),
-                    use_username_hash.then_some(username_hash),
-                    Some(known_account_data),
-                    &test_distinguished_tree(),
-                )
-                .await
-            },
-            should_retry,
-        )
-        .await
-        .expect("can search");
-    }
-
-    #[tokio::test]
-    async fn search_with_version_integration_test() {
-        if !kt_integration_enabled() {
-            println!("SKIPPED: running integration tests is not enabled");
-            return;
-        }
-        retry_n(
-            NETWORK_RETRY_COUNT,
-            || async {
-                let chat = make_chat().await;
-                let kt = make_kt(&chat);
-
-                kt.search(
-                    &test_account::aci(),
-                    &test_account::aci_identity_key(),
-                    Some(test_account::e164_pair()),
-                    Some(test_account::username_hash()),
-                    None,
-                    &test_distinguished_tree(),
-                )
-                .await
-            },
-            should_retry,
-        )
-        .await
-        .expect("can search with version");
-    }
-
-    #[tokio::test]
-    #[test_case(false; "unknown_distinguished")]
-    #[test_case(true; "known_distinguished")]
-    async fn distinguished_integration_test(have_last_distinguished: bool) {
-        if !kt_integration_enabled() {
-            println!("SKIPPED: running integration tests is not enabled");
-            return;
-        }
-
-        let result = retry_n(
-            NETWORK_RETRY_COUNT,
-            || async {
-                let chat = make_chat().await;
-                let kt = make_kt(&chat);
-
-                kt.distinguished(have_last_distinguished.then_some(test_distinguished_tree()))
-                    .await
-            },
-            should_retry,
-        )
-        .await;
-
-        assert_matches!(result, Ok( LocalStateUpdate {tree_head, ..}) => assert_ne!(tree_head.tree_size, 0));
-    }
-
-    #[tokio::test]
-    #[test_case(false, false; "ACI")]
-    #[test_case(true, false; "ACI + E164")]
-    #[test_case(false, true; "ACI + Username Hash")]
-    #[test_case(true, true; "ACI + E164 + Username Hash")]
-    async fn monitor_permutations_integration_test(use_e164: bool, use_username_hash: bool) {
-        if !kt_integration_enabled() {
-            println!("SKIPPED: running integration tests is not enabled");
-            return;
-        }
-
-        let aci = test_account::aci();
-        let e164 = test_account::PHONE_NUMBER;
-        let username_hash = test_account::username_hash();
-
-        let account_data = {
-            let mut data = test_account_data();
-            if !use_e164 {
-                data.e164 = None;
-            }
-            if !use_username_hash {
-                data.username_hash = None;
-            }
-            data
-        };
-
-        let updated_account_data = retry_n(
-            NETWORK_RETRY_COUNT,
-            || async {
-                let chat = make_chat().await;
-                let kt = make_kt(&chat);
-
-                kt.monitor(
-                    &aci,
-                    use_e164.then_some(e164),
-                    use_username_hash.then_some(username_hash.clone()),
-                    account_data.clone(),
-                    &test_distinguished_tree(),
-                )
-                .await
-            },
-            should_retry,
-        )
-        .await
-        .expect("can monitor");
-        match Ord::cmp(
-            &updated_account_data.last_tree_head.0.tree_size,
-            &account_data.last_tree_head.0.tree_size,
-        ) {
-            Ordering::Less => panic!("The tree is shrinking"),
-            Ordering::Equal => assert_eq!(&updated_account_data, &account_data),
-            Ordering::Greater => {
-                // verify that the initial position of the ACI in the tree has not changed, at least
-                assert_eq!(&updated_account_data.aci.pos, &account_data.aci.pos)
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn search_with_wrong_identity_key_integration() {
-        if !kt_integration_enabled() {
-            println!("SKIPPED: running integration tests is not enabled");
-            return;
-        }
-
-        let chat = make_chat().await;
-        let kt = make_kt(&chat);
-
-        let wrong_identity_key = {
-            let mut rng = OsRng.unwrap_err();
-            let key_pair = IdentityKeyPair::generate(&mut rng);
-            *key_pair.public_key()
-        };
-
-        let result = kt
-            .search(
-                &test_account::aci(),
-                &wrong_identity_key,
-                None,
-                None,
-                None,
-                &test_distinguished_tree(),
-            )
-            .await;
-        assert_matches!(
-            result,
-            Err(RequestError::Unexpected { log_safe: msg }) if msg == "unexpected response status 403 Forbidden"
-        );
-    }
-
-    #[tokio::test]
-    async fn search_for_account_that_isnt() {
-        if !kt_integration_enabled() {
-            println!("SKIPPED: running integration tests is not enabled");
-            return;
-        }
-
-        let chat = make_chat().await;
-        let kt = make_kt(&chat);
-
-        let aci = Aci::from(uuid::uuid!("00000000-0000-0000-0000-000000000000"));
-
-        let wrong_identity_key = test_account::aci_identity_key();
-
-        let result = kt
-            .search(
-                &aci,
-                &wrong_identity_key,
-                None,
-                None,
-                None,
-                &test_distinguished_tree(),
-            )
-            .await;
-        assert_matches!(
-            result,
-            Err(RequestError::Unexpected { log_safe: msg }) if msg == "unexpected response status 403 Forbidden"
-        );
     }
 }

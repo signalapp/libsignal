@@ -512,6 +512,8 @@ pub mod test_support {
         enable_domain_fronting: EnableDomainFronting,
         proxy_mode: DirectOrProxyMode,
         filter_routes: impl Fn(&UnresolvedHttpsServiceRoute) -> bool,
+        // Like elsewhere, missing value means "use gRPC"
+        grpc_overrides: impl IntoIterator<Item = (&'static str, GrpcOverride)>,
     ) -> Result<ChatConnection, ConnectError> {
         let dns_resolver = DnsResolver::new_with_static_fallback(
             env.static_fallback(StaticIpOrder::HARDCODED),
@@ -567,8 +569,12 @@ pub mod test_support {
         let listener: ws::EventListener = Box::new(|_event| {});
 
         let tokio_runtime = tokio::runtime::Handle::try_current().expect("can get tokio runtime");
-        let chat_connection =
-            ChatConnection::finish_connect(tokio_runtime, pending, Default::default(), listener);
+        let chat_connection = ChatConnection::finish_connect(
+            tokio_runtime,
+            pending,
+            HashMap::from_iter(grpc_overrides),
+            listener,
+        );
 
         Ok(chat_connection)
     }

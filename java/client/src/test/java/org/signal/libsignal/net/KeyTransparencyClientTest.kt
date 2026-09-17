@@ -134,6 +134,7 @@ class KeyTransparencyClientTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokio,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -169,6 +170,7 @@ class KeyTransparencyClientTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokio,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -200,6 +202,7 @@ class KeyTransparencyClientTest {
       UnauthenticatedChatConnection.fakeConnect(
         tokio,
         NoOpListener(),
+        GRPC_OVERRIDES,
         Network.Environment.STAGING,
       )
 
@@ -236,6 +239,8 @@ class KeyTransparencyClientTest {
   }
 
   companion object {
+    // Use WS implementation
+    val GRPC_OVERRIDES = arrayOf("KeyTransparencyQueryServiceSearchV2")
     private const val USER_AGENT = "test"
     private val INTEGRATION_TESTS_ENABLED =
       TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS") != null &&

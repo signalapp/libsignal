@@ -60,6 +60,15 @@ pub mod proto {
 
     pub use org::signal::chat;
 
+    // Key transparency is served by chat, but its protos are in their own top-level
+    // package rather than under org.signal.chat.
+    //
+    // The doc comments in this proto use bulleted lists that aren't valid Markdown.
+    #[expect(clippy::doc_lazy_continuation)]
+    pub mod kt_query {
+        tonic::include_proto!("kt_query");
+    }
+
     pub mod textsecure {
         tonic::include_proto!("textsecure");
     }

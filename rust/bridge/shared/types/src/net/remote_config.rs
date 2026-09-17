@@ -115,6 +115,8 @@ pub enum RemoteConfigKey {
     AttachmentsGetUploadForm => "grpc.AttachmentsGetUploadForm",
     MessagesSendMessage => "grpc.MessagesSendMessage",
     BackupsAnonymousGetUploadForm => "grpc.BackupsAnonymousGetUploadForm",
+    /// Picks the transport for **all** key transparency requests, not just `SearchV2`.
+    KeyTransparencyQueryServiceSearchV2 => "grpc.KeyTransparencyQueryServiceSearchV2",
 }
 }
 
@@ -297,6 +299,7 @@ mod tests {
             .chain(services::Attachments::iter().map(|x| x.into()))
             .chain(services::BackupsAnonymous::iter().map(|x| x.into()))
             .chain(services::KeysAnonymous::iter().map(|x| x.into()))
+            .chain(services::KeyTransparencyQueryService::iter().map(|x| x.into()))
             .chain(services::MessagesAnonymous::iter().map(|x| x.into()))
             .chain(services::Messages::iter().map(|x| x.into()))
             .collect();

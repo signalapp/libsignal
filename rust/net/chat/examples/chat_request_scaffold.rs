@@ -59,6 +59,7 @@ async fn main() -> anyhow::Result<()> {
         EnableDomainFronting::No,
         DirectOrProxyMode::DirectOnly,
         |_route| true,
+        [],
     )
     .await?;
 

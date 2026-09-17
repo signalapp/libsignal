@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+#[cfg(test)]
+mod integration_tests;
 mod maybe_partial;
 mod monitor_and_search;
 mod verify_ext;
@@ -19,7 +21,7 @@ use libsignal_keytrans::{
     AccountData, ChatDistinguishedResponse, ChatMonitorResponse, ChatSearchResponse,
     CondensedTreeSearchResponse, FullSearchResponse, FullTreeHead, KeyTransparency, LastTreeHead,
     LocalStateUpdate, MonitorContext, MonitorKey, MonitorProof, MonitorRequest, MonitorResponse,
-    SearchContext, SearchStateUpdate, SlimSearchRequest, StoredAccountData,
+    MonitoringData, SearchContext, SearchStateUpdate, SlimSearchRequest, StoredAccountData,
 };
 use libsignal_net::env::KeyTransConfig;
 use libsignal_protocol::PublicKey;
@@ -76,6 +78,45 @@ pub trait LowLevelChatApi {
         account_data: &AccountData,
         last_distinguished_tree_head: &LastTreeHead,
     ) -> Result<Vec<u8>, RequestError<Error>>; // Expected to be a ChatMonitorResponse proto
+}
+
+/// One identifier to monitor, with the log position and commitment index that go
+/// with it already looked up in the stored [`AccountData`].
+pub(crate) struct ResolvedMonitor<V> {
+    pub(crate) value: V,
+    pub(crate) entry_position: u64,
+    pub(crate) commitment_index: [u8; 32],
+}
+
+/// Pairs an identifier the caller asked to monitor with the stored monitoring
+/// data that its log position and commitment index come from.
+///
+/// A monitor request has to send an entry position and commitment index for each
+/// identifier, and those come from [`AccountData`] rather than from the caller's
+/// arguments. That means two independent `Option`s have to agree: the requested
+/// identifier, and the stored entry to read from. Matching on the pair *is* the
+/// check, so there is no state where a caller holds a value but no position to go
+/// with it, and callers need no `expect`.
+///
+/// This logic is extracted from the websocket implementation, and is in a separate
+/// function for reuse.
+pub(crate) fn resolve_monitor<V>(
+    value: Option<V>,
+    stored: Option<&MonitoringData>,
+) -> Result<Option<ResolvedMonitor<V>>, Error> {
+    match (value, stored) {
+        (None, None) => Ok(None),
+        (Some(value), Some(stored)) => Ok(Some(ResolvedMonitor {
+            value,
+            entry_position: stored.latest_log_position(),
+            commitment_index: stored.index,
+        })),
+        // Keep this message identical to the one `RawChatMonitorRequest::new` produces, so both
+        // transports report a mismatch the same way.
+        _ => Err(Error::InvalidRequest(
+            "account data does not match the monitor request",
+        )),
+    }
 }
 
 // Differs from [`ChatSearchResponse`] by establishing proper optionality of fields.
@@ -560,10 +601,12 @@ pub(crate) mod test_support {
     use assert_matches::assert_matches;
     use const_str::hex;
     use libsignal_keytrans::{StoredAccountData, TreeHead};
+    use libsignal_net::chat::ChatConnection;
     use libsignal_net::env;
     use prost::Message as _;
 
     use super::*;
+    use crate::api::Unauth;
 
     pub const KEYTRANS_CONFIG_STAGING: env::KeyTransConfig = env::STAGING.keytrans_config;
 
@@ -625,6 +668,31 @@ pub(crate) mod test_support {
 
     pub fn should_retry<T>(res: &Result<T, RequestError<Error>>) -> bool {
         matches!(res, Err(RequestError::Disconnected(_)))
+    }
+
+    /// Connects to the staging chat server.
+    ///
+    /// The connection is set up as if it was established over WebSocket transport.
+    pub async fn make_chat() -> Unauth<ChatConnection> {
+        use libsignal_net::chat::GrpcOverride;
+        use libsignal_net::chat::test_support::simple_chat_connection;
+        use libsignal_net::infra::EnableDomainFronting;
+        use libsignal_net::infra::route::DirectOrProxyMode;
+        use libsignal_net_grpc::proto::chat::services;
+
+        let chat = simple_chat_connection(
+            &env::STAGING,
+            EnableDomainFronting::No,
+            DirectOrProxyMode::DirectOnly,
+            |_| true,
+            [(
+                services::KeyTransparencyQueryService::SearchV2.into(),
+                GrpcOverride::UseWs,
+            )],
+        )
+        .await
+        .expect("can connect to chat");
+        Unauth(chat)
     }
 
     pub fn make_kt(chat: &(dyn LowLevelChatApi + Sync)) -> KeyTransparencyClient<'_> {

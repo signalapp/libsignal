@@ -90,6 +90,7 @@ async fn main() -> anyhow::Result<()> {
             EnableDomainFronting::No,
             DirectOrProxyMode::DirectOnly,
             |_route| true,
+            [],
         )
         .await?;
         grpc_connection = chat_connection.shared_h2_connection().map(Unauth);

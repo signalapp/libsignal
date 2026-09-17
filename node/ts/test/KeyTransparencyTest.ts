@@ -128,7 +128,9 @@ describe('KeyTransparency network errors', () => {
           onIncomingMessage: () => {},
           onReceivedAlerts: () => {},
           onQueueEmpty: () => {},
-        }
+        },
+        // Use WS implementation
+        ['KeyTransparencyQueryServiceSearchV2']
       );
       const client = new KT.ClientImpl(
         tokio,

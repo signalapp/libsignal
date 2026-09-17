@@ -1,0 +1,417 @@
+/*
+ * Copyright 2024 Signal Messenger, LLC
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "org.signal.keytransparency.client";
+
+package kt_query;
+
+import "org/signal/chat/require.proto";
+
+/**
+ * An external-facing, read-only key transparency service used by Signal's chat server
+ * to look up and monitor identifiers.
+ * There are three types of identifier mappings stored by the key transparency log:
+ * - An ACI which maps to an ACI identity key
+ * - An E164-formatted phone number which maps to an ACI
+ * - A username hash which also maps to an ACI
+ * Separately, the log also stores and periodically updates a fixed value known as the `distinguished` key.
+ * Clients use the verified tree head from looking up this key for future calls to the Search and Monitor endpoints.
+ *
+ * Note that this service definition is used in two different contexts:
+ *   1. Implementing the endpoints with rate-limiting and request validation
+ *   2. Using the generated client stub to forward requests to the remote key transparency service
+ */
+service KeyTransparencyQueryService {
+  option (org.signal.chat.require.auth) = AUTH_ONLY_ANONYMOUS;
+  /**
+   * An endpoint used by clients to retrieve the most recent distinguished tree
+   * head, which should be used to derive consistency parameters for
+   * subsequent Search and Monitor requests. It should be the first key
+   * transparency RPC a client calls.
+   */
+  rpc DistinguishedV2(DistinguishedRequest) returns (DistinguishedResponse) {}
+  /**
+   * An endpoint used by clients to search for one or more identifiers in the transparency log.
+   * The server returns proof that the identifier(s) exist in the log.
+   */
+  rpc SearchV2(SearchRequest) returns (SearchResponseV2) {}
+  /**
+   * An endpoint that allows users to monitor a group of identifiers by returning proof that the log continues to be
+   * constructed correctly in later entries for those identifiers.
+   */
+  rpc MonitorV2(MonitorRequest) returns (MonitorResponseV2) {}
+}
+
+message SearchRequest {
+  /**
+   * The ACI to look up in the log.
+   */
+  bytes aci = 1 [(org.signal.chat.require.exactlySize) = 16];
+  /**
+   * The ACI identity key that the client thinks the ACI maps to in the log.
+   */
+  bytes aci_identity_key = 2 [(org.signal.chat.require.nonEmpty) = true];
+  /**
+   * The username hash to look up in the log.
+   */
+  optional bytes username_hash = 3 [(org.signal.chat.require.exactlySize) = 0, (org.signal.chat.require.exactlySize) = 32];
+  /**
+   * The E164 to look up in the log along with associated data.
+   */
+  optional E164SearchRequest e164_search_request = 4;
+  /**
+   * The tree head size(s) to prove consistency against.
+   */
+  ConsistencyParameters consistency = 5 [(org.signal.chat.require.present) = true];
+}
+
+/**
+ * E164SearchRequest contains the data that the user must provide when looking up an E164.
+ */
+message E164SearchRequest {
+  /**
+   * The E164 that the client wishes to look up in the transparency log.
+   */
+  optional string e164 = 1 [(org.signal.chat.require.e164) = true];
+  /**
+   * The unidentified access key of the account associated with the provided E164.
+   */
+  bytes unidentified_access_key = 2;
+}
+
+/**
+ * SearchResponse contains search proofs for each of the requested identifiers.
+ */
+message SearchResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * The ACI search response is always provided.
+   */
+  CondensedTreeSearchResponse aci = 2;
+  /**
+   * This response is only provided if all of the conditions are met:
+   * - the E164 exists in the log
+   * - its mapped ACI matches the one provided in the request
+   * - the account associated with the ACI is discoverable
+   * - the unidentified access key provided in E164SearchRequest matches the one on the account
+   */
+  optional CondensedTreeSearchResponse e164 = 3;
+  /**
+   * This response is only provided if the username hash exists in the log and
+   * its mapped ACI matches the one provided in the request.
+   */
+  optional CondensedTreeSearchResponse username_hash = 4;
+}
+
+/**
+ * Indicates that the client is not authorized to make the request because
+ * it did not provide the correct set of data.
+ */
+message PermissionDenied {}
+
+message SearchResponseV2 {
+  oneof response {
+    SearchResponse search_response = 1;
+    PermissionDenied permission_denied = 2;
+  }
+}
+
+/**
+ * The tree head size(s) to prove consistency against. A client's very first
+ * key transparency request should be looking up the "distinguished" key;
+ * in this case, both fields will be omitted since the client has no previous
+ * tree heads to prove consistency against.
+ */
+message ConsistencyParameters {
+  /**
+   * The non-distinguished tree head size to prove consistency against.
+   * This field may be omitted if the client is looking up an identifier
+   * for the first time.
+   */
+  optional uint64 last = 1 [(org.signal.chat.require.range) = {min: 1}];
+  /**
+   * The distinguished tree head size to prove consistency against.
+   */
+  uint64 distinguished = 2 [(org.signal.chat.require.range) = {min: 1}];
+}
+
+/**
+ * DistinguishedRequest looks up the most recent distinguished key in the
+ * transparency log.
+ */
+message DistinguishedRequest {
+  /**
+   * The tree size of the client's last verified distinguished request. With the
+   * exception of a client's very first request, this field should always be
+   * set.
+   */
+  optional uint64 last = 1 [(org.signal.chat.require.range) = {min: 1}];
+}
+
+/**
+ * DistinguishedResponse contains the tree head and search proof for the most
+ * recent `distinguished` key in the log.
+ */
+message DistinguishedResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * This search response is always provided.
+   */
+  CondensedTreeSearchResponse distinguished = 2;
+}
+
+message CondensedTreeSearchResponse {
+  /**
+   * A proof that is combined with the original requested identifier and the VRF public key
+   * and outputs whether the proof is valid, and if so, the commitment index.
+   */
+  bytes vrf_proof = 1;
+  /**
+   * A proof that the binary search for the given identifier was done correctly.
+   */
+  SearchProof search = 2;
+  /**
+   * A 32-byte value computed based on the log position of the identifier
+   * and a random 32 byte key that is only known by the key transparency service.
+   * It is provided so that clients can recompute and verify the commitment.
+   */
+  bytes opening = 3;
+  /**
+   * The new or updated value that the identifier maps to.
+   */
+  UpdateValue value = 4;
+}
+
+message FullTreeHead {
+  /**
+   * A representation of the log tree's current state signed by the key transparency service.
+   */
+  TreeHead tree_head = 1;
+  /**
+   * A consistency proof between the current tree size and the requested tree size.
+   */
+  repeated bytes last = 2;
+  /**
+   * A consistency proof between the current tree size and the requested distinguished tree size.
+   */
+  repeated bytes distinguished = 3;
+  /**
+   * A list of tree heads signed by third-party auditors.
+   */
+  repeated FullAuditorTreeHead full_auditor_tree_heads = 4;
+}
+
+/**
+ * TreeHead represents the key transparency service's view of the transparency log.
+ */
+message TreeHead {
+  /**
+   * The number of entries in the log tree.
+   */
+  uint64 tree_size = 1;
+  /**
+   * The time in milliseconds since epoch when the tree head signature was generated.
+   */
+  int64 timestamp = 2;
+  /**
+   * A list of the key transparency service's signatures over the transparency log. Since the
+   * signed data structure assumes one auditor, the key transparency service generates
+   * one signature per auditor.
+   */
+  repeated Signature signatures = 3;
+}
+
+/**
+ * The key transparency service provides one Signature per auditor.
+ */
+message Signature {
+  /**
+   * The public component of the Ed25519 key pair that the auditor used to sign its view
+   * of the transparency log. This value allows clients to identify the corresponding signature.
+   */
+  bytes auditor_public_key = 1;
+  /**
+   * The key transparency service's signature over the transparency log using the
+   * the given public auditor key.
+   */
+  bytes signature = 2;
+}
+
+/**
+ * AuditorTreeHead represents an auditor's view of the transparency log.
+ */
+message AuditorTreeHead {
+  /**
+   * The number of entries in the auditor's view of the transparency log.
+   */
+  uint64 tree_size = 1;
+  /**
+   * The time in milliseconds since epoch when the auditor's signature was generated.
+   */
+  int64 timestamp = 2;
+  /**
+   * The auditor's signature computed over its view of the transparency log's current state
+   * and long-term log configuration.
+   */
+  bytes signature = 3;
+}
+
+message FullAuditorTreeHead {
+  /**
+   * A representation of the log tree state signed by a third-party auditor.
+   */
+  AuditorTreeHead tree_head = 1;
+  /**
+   * The root hash of the log tree when the auditor produced the tree head signature.
+   * Provided if the auditor tree head size is smaller than the size of the most recent
+   * tree head provided to the user.
+   */
+  optional bytes root_value = 2;
+  /**
+   * A consistency proof between the auditor tree head and the most recent tree head.
+   * Provided if the auditor tree head size is smaller than the size of the most recent
+   * tree head provided by the key transparency service to the user.
+   */
+  repeated bytes consistency = 3;
+  /**
+   * The public component of the Ed25519 key pair that the third-party auditor used to generate
+   * a signature. This value allows clients to identify the auditor tree head and signature.
+   */
+  bytes public_key = 4;
+}
+
+/**
+ * A ProofStep represents one "step" or log entry in the binary search
+ * and can be used to calculate a log tree leaf hash.
+ */
+message ProofStep {
+  /**
+   * Provides the data needed to recompute the prefix tree root hash corresponding to the given log entry.
+   */
+  PrefixSearchResult prefix = 1;
+  /**
+   * A cryptographic hash of the update used to calculate the log tree leaf hash.
+   */
+  bytes commitment = 2;
+}
+
+message SearchProof {
+  /**
+   * The position in the log tree of the first occurrence of the requested identifier.
+   */
+  uint64 pos = 1;
+  /**
+   * The steps of a binary search through the entries of the log tree for the given identifier version.
+   * Each ProofStep corresponds to a log entry and provides the information necessary to recompute a log tree
+   * leaf hash.
+   */
+  repeated ProofStep steps = 2;
+  /**
+   * A batch inclusion proof for all log tree leaves involved in the binary search for the given identifier.
+   */
+  repeated bytes inclusion = 3;
+}
+
+
+message UpdateValue {
+  /**
+   * The new mapped value for an identifier or the "distinguished" key.
+   */
+  bytes value = 1;
+}
+
+message PrefixSearchResult {
+  /**
+   * A proof from a prefix tree that indicates a search was done correctly for a given identifier.
+   * The elements of this array are the copath of the prefix tree leaf node in bottom-to-top order.
+   */
+  repeated bytes proof = 1;
+  /**
+   * The version of the requested identifier in the prefix tree.
+   */
+  uint32 counter = 2;
+}
+
+message MonitorRequest {
+  AciMonitorRequest aci = 1 [(org.signal.chat.require.present) = true];
+  optional UsernameHashMonitorRequest username_hash = 2;
+  optional E164MonitorRequest e164 = 3;
+  ConsistencyParameters consistency = 4 [(org.signal.chat.require.present) = true];
+}
+
+message AciMonitorRequest {
+  bytes aci = 1 [(org.signal.chat.require.exactlySize) = 16];
+  uint64 entry_position = 2 [(org.signal.chat.require.range) = {min: 1}];
+  bytes commitment_index = 3 [(org.signal.chat.require.exactlySize) = 32];
+}
+
+message UsernameHashMonitorRequest {
+  bytes username_hash = 1 [(org.signal.chat.require.exactlySize) = 32];
+  uint64 entry_position = 2 [(org.signal.chat.require.range) = {min: 1}];
+  bytes commitment_index = 3 [(org.signal.chat.require.exactlySize) = 32];
+}
+
+message E164MonitorRequest {
+  string e164 = 1 [(org.signal.chat.require.e164) = true];
+  uint64 entry_position = 2 [(org.signal.chat.require.range) = {min: 1}];
+  bytes commitment_index = 3 [(org.signal.chat.require.exactlySize) = 32];
+}
+
+message MonitorProof {
+  /**
+   * Generated based on the monitored entry provided in MonitorRequest.entries. Each ProofStep
+   * corresponds to a log tree entry that exists in the search path to each monitored entry
+   * and that came *after* that monitored entry. It proves that the log tree has been constructed
+   * correctly at that later entry. This list also includes any remaining entries
+   * along the "frontier" of the log tree which proves that the very last entry in the log
+   * has been constructed correctly.
+   */
+  repeated ProofStep steps = 1;
+}
+
+message MonitorResponse {
+  /**
+   * A signed representation of the log tree's current state along with some
+   * additional information necessary for validation such as a consistency proof and an auditor-signed tree head.
+   */
+  FullTreeHead tree_head = 1;
+  /**
+   * A proof that the MonitorRequest's ACI continues to be constructed correctly in later entries of the log tree.
+   */
+  MonitorProof aci = 2;
+  /**
+   * A proof that the username hash continues to be constructed correctly in later entries of the log tree.
+   * Will be absent if the request did not include a UsernameHashMonitorRequest.
+   */
+  optional MonitorProof username_hash = 3;
+  /**
+   * A proof that the e164 continues to be constructed correctly in later entries of the log tree.
+   * Will be absent if the request did not include a E164MonitorRequest.
+   */
+  optional MonitorProof e164 = 4;
+  /**
+   * A batch inclusion proof that the log entries involved in the binary search for each of the entries
+   * being monitored in the request are included in the current log tree.
+   */
+  repeated bytes inclusion = 5;
+}
+
+message MonitorResponseV2 {
+  oneof response {
+    MonitorResponse monitor_response = 1;
+    PermissionDenied permission_denied = 2;
+  }
+}

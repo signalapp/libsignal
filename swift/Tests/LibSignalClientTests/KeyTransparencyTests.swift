@@ -206,7 +206,9 @@ final class KeyTransparencyTests: TestCaseBase {
         let tokio = TokioAsyncContext()
         let (chat, remote) = UnauthenticatedChatConnection.fakeConnect(
             tokioAsyncContext: tokio,
-            listener: NoOpListener()
+            listener: NoOpListener(),
+            // Use WS implementation
+            grpcOverrides: ["KeyTransparencyQueryServiceSearchV2"]
         )
         defer { withExtendedLifetime(chat) {} }
 

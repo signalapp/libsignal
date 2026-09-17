@@ -78,6 +78,7 @@ impl ConnectUnauthChat for ConnectChat {
                 EnableDomainFronting::No,
                 DirectOrProxyMode::DirectOnly,
                 |_route| true,
+                [],
             )
             .await?;
             // Intentional leak to let connection outlive a single request we send over it.
