@@ -1712,6 +1712,28 @@ impl ResultTypeInfo<'_> for crate::zkgroup::Timestamp {
     }
 }
 
+macro_rules! impl_result_type_info_for_option {
+    ($typ:ty, $result_ty:ty) => {
+        impl<'a> ResultTypeInfo<'a> for Option<$typ> {
+            type ResultType = Nullable<$result_ty>;
+            // Nullability is not reflected in the JNI signature.
+            const JNI_SIGNATURE: &'static str = <$typ as ResultTypeInfo<'a>>::JNI_SIGNATURE;
+            fn convert_into(
+                self,
+                env: &mut jni::Env<'a>,
+            ) -> Result<Self::ResultType, BridgeLayerError> {
+                match self {
+                    None => Ok(Nullable::default()),
+                    Some(inner) => inner.convert_into(env).map(Nullable),
+                }
+            }
+        }
+    };
+    ($typ:ty) => {
+        impl_result_type_info_for_option!($typ, <$typ as ResultTypeInfo<'a>>::ResultType);
+    };
+}
+
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JString<'a>;
     const JNI_SIGNATURE: &'static str = jni_sig_str!(java.lang.String);
@@ -1720,17 +1742,7 @@ impl<'a> ResultTypeInfo<'a> for String {
     }
 }
 nice_identity_result_converter!(String, "String");
-
-impl<'a> ResultTypeInfo<'a> for Option<String> {
-    type ResultType = Nullable<JString<'a>>;
-    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        match self {
-            Some(s) => s.convert_into(env).map(Nullable),
-            None => Ok(Nullable(JString::null())),
-        }
-    }
-}
-nice_identity_result_converter!(Option<String>, "String?");
+impl_result_type_info_for_option!(String);
 
 impl<'a> ResultTypeInfo<'a> for &str {
     type ResultType = JString<'a>;
@@ -1739,16 +1751,7 @@ impl<'a> ResultTypeInfo<'a> for &str {
             .check_exceptions(env, "<&str>::convert_into")
     }
 }
-
-impl<'a> ResultTypeInfo<'a> for Option<&str> {
-    type ResultType = Nullable<JString<'a>>;
-    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        match self {
-            Some(s) => s.convert_into(env).map(Nullable),
-            None => Ok(Default::default()),
-        }
-    }
-}
+impl_result_type_info_for_option!(&str, JString<'a>);
 
 impl<'a> ResultTypeInfo<'a> for DeviceId {
     type ResultType = <u8 as ResultTypeInfo<'a>>::ResultType;
@@ -1766,17 +1769,7 @@ impl<'a> ResultTypeInfo<'a> for &[u8] {
             .check_exceptions(env, "<&[u8]>::convert_into")
     }
 }
-
-impl<'a> ResultTypeInfo<'a> for Option<&[u8]> {
-    type ResultType = Nullable<JByteArray<'a>>;
-    const JNI_SIGNATURE: &'static str = <&'static [u8]>::JNI_SIGNATURE;
-    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        match self {
-            Some(s) => s.convert_into(env).map(Nullable),
-            None => Ok(Default::default()),
-        }
-    }
-}
+impl_result_type_info_for_option!(&[u8], JByteArray<'a>);
 
 impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     type ResultType = JByteArray<'a>;
@@ -1786,6 +1779,7 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     }
 }
 nice_identity_result_converter!(Vec<u8>, "ByteArray");
+impl_result_type_info_for_option!(Vec<u8>);
 
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JByteArray<'a>;
@@ -1794,14 +1788,6 @@ impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
         self.deref().convert_into(env)
     }
 }
-
-impl<'a> ResultTypeInfo<'a> for Option<Vec<u8>> {
-    type ResultType = Nullable<JByteArray<'a>>;
-    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        self.as_deref().convert_into(env)
-    }
-}
-nice_identity_result_converter!(Option<Vec<u8>>, "ByteArray?");
 
 impl<'a> SimpleArgTypeInfo<'a> for Option<Vec<u8>> {
     type ArgType = Nullable<JByteArray<'a>>;
@@ -1933,15 +1919,7 @@ impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
     }
 }
 nice_identity_result_converter!(uuid::Uuid, "java.util.UUID");
-
-impl<'a> ResultTypeInfo<'a> for Option<uuid::Uuid> {
-    type ResultType = Nullable<JavaUUID<'a>>;
-    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        self.map(|uuid| uuid.convert_into(env))
-            .unwrap_or(Ok(Default::default()))
-            .map(Nullable)
-    }
-}
+impl_result_type_info_for_option!(uuid::Uuid);
 
 /// A translation to a Java interface where the implementing class wraps the Rust handle.
 impl<'a> ResultTypeInfo<'a> for CiphertextMessage {
@@ -2386,23 +2364,6 @@ impl<'a> ResultTypeInfo<'a> for Pni {
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
         ServiceId::from(self).convert_into(env)
     }
-}
-
-macro_rules! impl_result_type_info_for_option {
-    ($typ:ty) => {
-        impl<'a> ResultTypeInfo<'a> for Option<$typ> {
-            type ResultType = <$typ as ResultTypeInfo<'a>>::ResultType;
-            fn convert_into(
-                self,
-                env: &mut jni::Env<'a>,
-            ) -> Result<Self::ResultType, BridgeLayerError> {
-                match self {
-                    None => Ok(Self::ResultType::default()),
-                    Some(inner) => inner.convert_into(env),
-                }
-            }
-        }
-    };
 }
 
 impl_result_type_info_for_option!(Aci);
@@ -3187,16 +3148,6 @@ impl<'a, T: JniError + Send + 'static> ResultTypeInfo<'a>
         }
     }
 }
-#[cfg(feature = "metadata")]
-impl<T> NiceResultConverter for Option<crate::support::BridgedError<T>> {
-    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
-        KtReturnConverter {
-            nice_type: "Throwable?".to_string(),
-            ffi_type: "Throwable?".to_string(),
-            converter_function: "identity".to_string(),
-        }
-    }
-}
 
 impl<'a, T: JniError + Send + 'static> ResultTypeInfo<'a>
     for Option<BulkPolledStreamTerminationReason<T>>
@@ -3558,3 +3509,23 @@ impl ResultTypeInfo<'_> for i64 {
 }
 nice_identity_result_converter!(i64, "Long");
 nice_identity_arg_converter!(i64, "Long");
+
+#[cfg(feature = "metadata")]
+impl<T, U> NiceResultConverter for Option<T>
+where
+    Self: ResultTypeInfo<'static, ResultType = Nullable<U>>,
+    T: NiceResultConverter,
+    U: IsNullableReference,
+{
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let non_optional = T::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: format!("{}?", non_optional.nice_type),
+            ffi_type: format!("{}?", non_optional.ffi_type),
+            converter_function: format!(
+                "({{ x: {}? -> x?.let {{ {}(it) }} }})",
+                non_optional.ffi_type, non_optional.converter_function
+            ),
+        }
+    }
+}

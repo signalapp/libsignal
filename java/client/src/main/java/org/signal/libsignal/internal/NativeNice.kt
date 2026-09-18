@@ -605,11 +605,11 @@ public object ChargeFailure_ReturnConverter {
       message =
         identity(message as String),
       outcomeNetworkStatus =
-        identity(outcome_network_status as String?),
+        ({ x: String? -> x?.let { identity(it) } })(outcome_network_status as String?),
       outcomeReason =
-        identity(outcome_reason as String?),
+        ({ x: String? -> x?.let { identity(it) } })(outcome_reason as String?),
       outcomeType =
-        identity(outcome_type as String?),
+        ({ x: String? -> x?.let { identity(it) } })(outcome_type as String?),
     )
 }
 
@@ -770,7 +770,7 @@ public object ListMediaResponse_ReturnConverter {
       mediaDir =
         identity(media_dir as String),
       cursor =
-        identity(cursor as String?),
+        ({ x: String? -> x?.let { identity(it) } })(cursor as String?),
     )
 }
 

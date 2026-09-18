@@ -507,9 +507,9 @@ public object CallQualitySurveyInternal_ReturnConverter {
       callQualityIssues =
         mapBridgeVecReturn<String, String>({ identity(it) })(call_quality_issues as Array<*>),
       additionalIssuesDescription =
-        identity(additional_issues_description as String?),
+        ({ x: String? -> x?.let { identity(it) } })(additional_issues_description as String?),
       debugLogUrl =
-        identity(debug_log_url as String?),
+        ({ x: String? -> x?.let { identity(it) } })(debug_log_url as String?),
       startTimestamp =
         (java.time.Instant::ofEpochMilli)(start_timestamp as Long),
       endTimestamp =
@@ -543,9 +543,9 @@ public object CallQualitySurveyInternal_ReturnConverter {
       videoSendPacketLossFraction =
         identity(video_send_packet_loss_fraction as Float?),
       callTelemetry =
-        identity(call_telemetry as ByteArray?),
+        ({ x: ByteArray? -> x?.let { identity(it) } })(call_telemetry as ByteArray?),
       callIdHash =
-        identity(call_id_hash as ByteArray?),
+        ({ x: ByteArray? -> x?.let { identity(it) } })(call_id_hash as ByteArray?),
     )
 }
 
@@ -1058,7 +1058,7 @@ public object ListMediaArgs_ReturnConverter {
   ): Any? =
     ListMediaArgs(
       cursor =
-        identity(cursor as String?),
+        ({ x: String? -> x?.let { identity(it) } })(cursor as String?),
       limit =
         identity(limit as Int),
     )
@@ -2507,7 +2507,7 @@ public object NativeTestingNice {
         ffi_present,
       )
 
-    return identity(ffiOut)
+    return ({ x: Throwable? -> x?.let { identity(it) } })(ffiOut)
   }
 
   public fun TESTING_SetCapabilitiesTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetCapabilitiesArgs, Void?>> {
@@ -2828,7 +2828,7 @@ public object NativeTestingNice {
         ffi_x,
       )
 
-    return identity(ffiOut)
+    return ({ x: ByteArray? -> x?.let { identity(it) } })(ffiOut)
   }
 
   public fun TESTING_conversion_OptionalBytes_to_string(x: ByteArray?): String {
@@ -2868,7 +2868,7 @@ public object NativeTestingNice {
         ffi_x,
       )
 
-    return identity(ffiOut)
+    return ({ x: String? -> x?.let { identity(it) } })(ffiOut)
   }
 
   public fun TESTING_conversion_OptionalString_to_string(x: String?): String {
