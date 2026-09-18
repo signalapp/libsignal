@@ -1,5 +1,5 @@
 import chaiExpect from 'eslint-plugin-chai-expect';
-import header from 'eslint-plugin-header';
+import header from '@tony.ganchev/eslint-plugin-header';
 import _import from 'eslint-plugin-import';
 import jsdoc from 'eslint-plugin-jsdoc';
 import mocha from 'eslint-plugin-mocha';
@@ -7,10 +7,6 @@ import tsEslint from 'typescript-eslint';
 import { defineConfig } from 'eslint/config';
 import eslintJs from '@eslint/js';
 import promise from 'eslint-plugin-promise';
-
-// Work around eslint 9 compatibility issue; see
-// https://github.com/Stuk/eslint-plugin-header/issues/57
-header.rules.header.meta.schema = false;
 
 const config = defineConfig(
   eslintJs.configs.recommended,
@@ -34,9 +30,7 @@ const config = defineConfig(
         'line',
         [
           '',
-          {
-            pattern: ' Copyright \\d{4}(-\\d{4})? Signal Messenger, LLC.',
-          },
+          / Copyright \d{4}(-\d{4})? Signal Messenger, LLC\./,
           ' SPDX-License-Identifier: AGPL-3.0-only',
           '',
         ],
