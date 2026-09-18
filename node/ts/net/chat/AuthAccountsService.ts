@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { EmptyObject } from 'type-fest';
+
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import { LibSignalErrorBase } from '../../Errors.js';
@@ -141,6 +143,49 @@ export type ConfirmedMfaKey = {
   /** What kind of MFA key this is. */
   kind: MfaKeyKind;
 };
+
+/**
+ * Information necessary to run an MFA verification, returned by
+ * {@link AuthAccountsService#startMfaVerification}.
+ *
+ * Note that it is possible for no methods of verification to be available; this occurs when the
+ * account has no MFA keys, or when all registered keys are of a type this version of libsignal
+ * does not support.
+ */
+export type StartMfaVerificationResponse = {
+  /**
+   * If true, the account has one or more TOTP keys registered and can complete verification with
+   * {@link MfaVerificationCredentialTotp}.
+   */
+  hasTotp: boolean;
+  /**
+   * If present, the account has one or more WebAuthn keys registered and can complete
+   * verification with {@link MfaVerificationCredentialWebAuthn} using the parameters
+   * provided.
+   */
+  webauthnParams?: WebAuthnAuthenticationParameters;
+};
+
+export type WebAuthnAuthenticationParameters = {
+  challenge: Uint8Array<ArrayBuffer>;
+  /** After this interval, verification may fail even if everything else is done correctly. */
+  timeoutSeconds: number;
+  allowedCredentialIds: Uint8Array<ArrayBuffer>[];
+};
+
+/** @see MfaVerificationCredential */
+export type MfaVerificationCredentialTotp = { totpPassword: number };
+/** @see MfaVerificationCredential */
+export type MfaVerificationCredentialWebAuthn = { webauthnJson: string };
+/**
+ * A credential used to demonstrate ownership of an MFA method.
+ *
+ * @see AuthAccountsService#startMfaVerification
+ * @see AuthAccountsService#finishMfaVerification
+ */
+export type MfaVerificationCredential =
+  | MfaVerificationCredentialTotp
+  | MfaVerificationCredentialWebAuthn;
 
 export interface AuthAccountsService {
   /**
@@ -339,6 +384,46 @@ export interface AuthAccountsService {
     },
     options?: RequestOptions
   ) => Promise<number>;
+
+  /**
+   * Starts a verification check for any of the MFA keys on the authenticated account.
+   *
+   * WebAuthn verification is necessarily two-phase; this checks which MFA methods are available
+   * and provides the necessary data to run a check for any of them.
+   *
+   * Note that it is possible for the returned {@link StartMfaVerificationResponse} to
+   * not include any verification methods; this occurs when the account has no MFA keys,
+   * or when all registered keys are of a type this version of libsignal does not support.
+   *
+   * If {@link StartMfaVerificationResponse#webauthnParams} are returned, the set of valid
+   * {@link WebAuthnAuthenticationParameters#allowedCredentialIds} will be non-empty.
+   *
+   * @throws {StandardNetworkError}
+   *
+   * @see AuthAccountsService#finishMfaVerification
+   */
+  startMfaVerification: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<StartMfaVerificationResponse>;
+
+  /**
+   * Completes a verification check for any of the MFA keys on the authenticated account.
+   *
+   * WebAuthn verification is necessarily two-phase; this passes the response back to the chat
+   * server to verify.
+   *
+   * @throws {MfaNotVerified} if the verification fails for any reason
+   * @throws {StandardNetworkError}
+   *
+   * @see [startMfaVerification]
+   */
+  finishMfaVerification: (
+    request: {
+      credential: Readonly<MfaVerificationCredential>;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
 
   /**
    * Lists the confirmed MFA keys for the authenticated account.
@@ -543,6 +628,35 @@ AuthenticatedChatConnection.prototype.finishWebAuthnRegistration =
       }
     );
   };
+
+AuthenticatedChatConnection.prototype.startMfaVerification = async function (
+  _request,
+  options?
+): Promise<StartMfaVerificationResponse> {
+  const { hasTotp, webauthnParams } =
+    await NativeNice.AuthenticatedChatConnection_start_mfa_verification({
+      asyncContext: this.asyncContext,
+      abortSignal: options?.abortSignal,
+      chat: this.chatService,
+    });
+  return { hasTotp, ...(webauthnParams !== null ? { webauthnParams } : {}) };
+};
+
+AuthenticatedChatConnection.prototype.finishMfaVerification = async function (
+  { credential },
+  options?
+): Promise<void> {
+  const bridgeCred: NativeNice.BridgeMfaVerificationCredential =
+    'totpPassword' in credential
+      ? { totp: credential.totpPassword }
+      : { webAuthn: credential.webauthnJson };
+  return NativeNice.AuthenticatedChatConnection_finish_mfa_verification({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    credential: bridgeCred,
+  });
+};
 
 AuthenticatedChatConnection.prototype.listMfaKeys = async function (
   { svrKey },

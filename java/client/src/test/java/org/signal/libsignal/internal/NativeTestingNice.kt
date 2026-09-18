@@ -107,6 +107,12 @@ public sealed class DeleteBackupMediaOut {
   public data object CredentialRejectedWithoutAppropriateServerInfo : DeleteBackupMediaOut()
 }
 
+public sealed class FinishMfaVerificationOut {
+  public data object Success : FinishMfaVerificationOut()
+
+  public data object FailedToVerify : FinishMfaVerificationOut()
+}
+
 public data class FinishWebAuthnRegistrationArgs(
   public val attestationObject: ByteArray,
   public val collectedClientDataJson: String,
@@ -429,6 +435,14 @@ public sealed class SimpleBackupTestOut {
   public data object MissingResponse : SimpleBackupTestOut()
 }
 
+public sealed class StartMfaVerificationOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.net.StartMfaVerificationResponse,
+  ) : StartMfaVerificationOut()
+
+  public data object Malformed : StartMfaVerificationOut()
+}
+
 public sealed class StartWebAuthnRegistrationOut {
   public data class Success(
     public val _0: org.signal.libsignal.internal.BridgeWebAuthnCreateParameters,
@@ -470,6 +484,28 @@ public object BridgeCopyBackupMediaItem_ReturnConverter {
         identity(media_id as ByteArray),
       encryptionKey =
         identity(encryption_key as ByteArray),
+    )
+}
+
+public object BridgeMfaVerificationCredential_Totp_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(password: Any?): Any? =
+    org.signal.libsignal.net.MfaVerificationCredential.Totp(
+      password =
+        identity(password as Int),
+    )
+}
+
+public object BridgeMfaVerificationCredential_WebAuthn_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(json: Any?): Any? =
+    org.signal.libsignal.net.MfaVerificationCredential.WebAuthn(
+      json =
+        identity(json as String),
     )
 }
 
@@ -834,6 +870,20 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
+}
+
+public object FinishMfaVerificationOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = FinishMfaVerificationOut.Success
+}
+
+public object FinishMfaVerificationOut_FailedToVerify_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = FinishMfaVerificationOut.FailedToVerify
 }
 
 public object FinishWebAuthnRegistrationArgs_ReturnConverter {
@@ -1669,6 +1719,24 @@ public object SimpleBackupTestOut_MissingResponse_ReturnConverter {
   internal fun fromNative(): Any? = SimpleBackupTestOut.MissingResponse
 }
 
+public object StartMfaVerificationOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    StartMfaVerificationOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.net.StartMfaVerificationResponse>(_0 as Object),
+    )
+}
+
+public object StartMfaVerificationOut_Malformed_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = StartMfaVerificationOut.Malformed
+}
+
 public object StartWebAuthnRegistrationOut_Success_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -2145,6 +2213,16 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
       identity(it)
     }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_FinishMfaVerificationTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.net.MfaVerificationCredential, org.signal.libsignal.internal.FinishMfaVerificationOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_FinishMfaVerificationTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.net.MfaVerificationCredential, org.signal.libsignal.internal.FinishMfaVerificationOut>({
+        downcastFromObject<org.signal.libsignal.net.MfaVerificationCredential>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.FinishMfaVerificationOut>(it) })(ffiOut)
   }
 
   public fun TESTING_FinishWebAuthnRegistrationTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.FinishWebAuthnRegistrationArgs, org.signal.libsignal.internal.FinishWebAuthnRegistrationOut>> {
@@ -2624,6 +2702,16 @@ public object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.SetUsernameLinkArgs, org.signal.libsignal.internal.SetUsernameLinkOut>({
         downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_StartMfaVerificationTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.StartMfaVerificationOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_StartMfaVerificationTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.StartMfaVerificationOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.StartMfaVerificationOut>(it) })(ffiOut)
   }
 
   public fun TESTING_StartWebAuthnRegistrationTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.StartWebAuthnRegistrationOut>> {

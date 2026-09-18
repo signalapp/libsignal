@@ -11,6 +11,7 @@ import type {
   GrpcTestCase,
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
+  ArgFfiBridgeMfaVerificationCredential,
   ArgFfiCallQualitySurveyInternal,
   ArgFfiDeviceCapabilityInternal,
   ArgFfiMyRemoteDeriveEnum,
@@ -31,9 +32,11 @@ import type {
   ReturnFfiBridgeMessageBackupInfo,
   ReturnFfiBridgeMfaKeyKind,
   ReturnFfiBridgeMfaMetadata,
+  ReturnFfiBridgeMfaVerificationCredential,
   ReturnFfiBridgePendingTotpKey,
   ReturnFfiBridgePreKeyCounts,
   ReturnFfiBridgeTotpParameters,
+  ReturnFfiBridgeWebAuthnAuthenticationParameters,
   ReturnFfiBridgeWebAuthnCreateParameters,
   ReturnFfiCallQualitySurveyInternal,
   ReturnFfiChargeFailure,
@@ -51,6 +54,7 @@ import type {
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiDeviceCapabilityInternal,
+  ReturnFfiFinishMfaVerificationOut,
   ReturnFfiFinishWebAuthnRegistrationArgs,
   ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
@@ -99,6 +103,8 @@ import type {
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
   ReturnFfiSimpleBackupTestOut,
+  ReturnFfiStartMfaVerificationOut,
+  ReturnFfiStartMfaVerificationResponse,
   ReturnFfiStartWebAuthnRegistrationOut,
   ReturnFfiTestStreamChunk,
   ReturnFfiTestingAnySignedPreKey,
@@ -183,6 +189,14 @@ export type BridgeMfaMetadata = {
   createdAt: Timestamp;
 };
 
+export type BridgeMfaVerificationCredential =
+  | {
+      totp: number;
+    }
+  | {
+      webAuthn: string;
+    };
+
 export type BridgePendingTotpKey = {
   key: Uint8Array<ArrayBuffer>;
   parameters: BridgeTotpParameters;
@@ -199,6 +213,12 @@ export type BridgeTotpParameters = {
   algorithm: string;
   passwordLength: number;
   timeStepSeconds: number;
+};
+
+export type BridgeWebAuthnAuthenticationParameters = {
+  challenge: Uint8Array<ArrayBuffer>;
+  timeoutSeconds: number;
+  allowedCredentialIds: Array<Uint8Array<ArrayBuffer>>;
 };
 
 export type BridgeWebAuthnCreateParameters = {
@@ -335,6 +355,8 @@ export type DeviceCapabilityInternal =
   | 'profilesV2'
   | 'usernameChangeSyncMessage'
   | 'optionalPhoneNumber';
+
+export type FinishMfaVerificationOut = 'success' | 'failedToVerify';
 
 export type FinishWebAuthnRegistrationArgs = {
   attestationObject: Uint8Array<ArrayBuffer>;
@@ -618,6 +640,17 @@ export type SimpleBackupTestOut =
   | 'credentialRejected'
   | 'missingResponse';
 
+export type StartMfaVerificationOut =
+  | {
+      success: StartMfaVerificationResponse;
+    }
+  | 'malformed';
+
+export type StartMfaVerificationResponse = {
+  hasTotp: boolean;
+  webauthnParams: BridgeWebAuthnAuthenticationParameters | null;
+};
+
 export type StartWebAuthnRegistrationOut =
   | {
       success: BridgeWebAuthnCreateParameters;
@@ -780,6 +813,26 @@ export function returnConverterBridgeMfaMetadata(
   };
 }
 
+export function returnConverterBridgeMfaVerificationCredential(
+  ffiInput: Native.ReturnFfiBridgeMfaVerificationCredential
+): BridgeMfaVerificationCredential {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        totp: identity(ffiInput.password),
+      };
+    case 1:
+      return {
+        webAuthn: identity(ffiInput.json),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for BridgeMfaVerificationCredential'
+      );
+  }
+}
+
 export function returnConverterBridgePendingTotpKey(
   ffiInput: Native.ReturnFfiBridgePendingTotpKey
 ): BridgePendingTotpKey {
@@ -807,6 +860,17 @@ export function returnConverterBridgeTotpParameters(
     algorithm: identity(ffiInput.algorithm),
     passwordLength: identity(ffiInput.password_length),
     timeStepSeconds: identity(ffiInput.time_step_seconds),
+  };
+}
+
+export function returnConverterBridgeWebAuthnAuthenticationParameters(
+  ffiInput: Native.ReturnFfiBridgeWebAuthnAuthenticationParameters
+): BridgeWebAuthnAuthenticationParameters {
+  return {
+    challenge: identity(ffiInput.challenge),
+    timeoutSeconds: identity(ffiInput.timeout_seconds),
+    allowedCredentialIds: ((arr: Array<Uint8Array<ArrayBuffer>>) =>
+      arr.map(identity))(ffiInput.allowed_credential_ids),
   };
 }
 
@@ -1103,6 +1167,23 @@ export function returnConverterDeviceCapabilityInternal(
       ffiInput satisfies never;
       throw new Error(
         'Unknown FFI return enum type for DeviceCapabilityInternal'
+      );
+  }
+}
+
+export function returnConverterFinishMfaVerificationOut(
+  ffiInput: Native.ReturnFfiFinishMfaVerificationOut
+): FinishMfaVerificationOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+    case 1:
+      return 'failedToVerify';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for FinishMfaVerificationOut'
       );
   }
 }
@@ -1797,6 +1878,36 @@ export function returnConverterSimpleBackupTestOut(
   }
 }
 
+export function returnConverterStartMfaVerificationOut(
+  ffiInput: Native.ReturnFfiStartMfaVerificationOut
+): StartMfaVerificationOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterStartMfaVerificationResponse(ffiInput._0),
+      };
+    case 1:
+      return 'malformed';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for StartMfaVerificationOut'
+      );
+  }
+}
+
+export function returnConverterStartMfaVerificationResponse(
+  ffiInput: Native.ReturnFfiStartMfaVerificationResponse
+): StartMfaVerificationResponse {
+  return {
+    hasTotp: identity(ffiInput.has_totp),
+    webauthnParams: liftNull(
+      returnConverterBridgeWebAuthnAuthenticationParameters
+    )(ffiInput.webauthn_params),
+  };
+}
+
 export function returnConverterStartWebAuthnRegistrationOut(
   ffiInput: Native.ReturnFfiStartWebAuthnRegistrationOut
 ): StartWebAuthnRegistrationOut {
@@ -1859,6 +1970,27 @@ export function argConverterBridgeDeleteBackupMediaItem(
 ): Native.ArgFfiBridgeDeleteBackupMediaItem {
   const { mediaId: media_id, cdn: cdn } = niceInput;
   return { media_id: identity(media_id), cdn: identity(cdn) };
+}
+
+export function argConverterBridgeMfaVerificationCredential(
+  niceInput: BridgeMfaVerificationCredential
+): Native.ArgFfiBridgeMfaVerificationCredential {
+  if ('totp' in niceInput) {
+    return {
+      __type: 0,
+      password: identity(niceInput.totp),
+    };
+  }
+
+  if ('webAuthn' in niceInput) {
+    return {
+      __type: 1,
+      json: identity(niceInput.webAuthn),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on BridgeMfaVerificationCredential argument');
 }
 
 export function argConverterCallQualitySurveyInternal(
@@ -2256,6 +2388,28 @@ export async function AuthenticatedChatConnection_delete_username_link({
       Native.AuthenticatedChatConnection_delete_username_link(
         asyncContext,
         identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_finish_mfa_verification({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  credential: BridgeMfaVerificationCredential;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_finish_mfa_verification(
+        asyncContext,
+        identity(chat),
+        argConverterBridgeMfaVerificationCredential(credential)
       )
     )
   );
@@ -2808,6 +2962,25 @@ export async function AuthenticatedChatConnection_set_username_link({
     )
   );
 }
+export async function AuthenticatedChatConnection_start_mfa_verification({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<StartMfaVerificationResponse> {
+  return returnConverterStartMfaVerificationResponse(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_start_mfa_verification(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_start_web_authn_registration({
   asyncContext,
   abortSignal,
@@ -3036,6 +3209,15 @@ export function TESTING_DeleteUsernameLinkTests(): Array<
     identity,
     identity
   )(Native.TESTING_DeleteUsernameLinkTests());
+}
+
+export function TESTING_FinishMfaVerificationTests(): Array<
+  GrpcTestCase<BridgeMfaVerificationCredential, FinishMfaVerificationOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterBridgeMfaVerificationCredential,
+    returnConverterFinishMfaVerificationOut
+  )(Native.TESTING_FinishMfaVerificationTests());
 }
 
 export function TESTING_FinishWebAuthnRegistrationTests(): Array<
@@ -3523,6 +3705,15 @@ export function TESTING_SetUsernameLinkTests(): Array<
     returnConverterSetUsernameLinkArgs,
     returnConverterSetUsernameLinkOut
   )(Native.TESTING_SetUsernameLinkTests());
+}
+
+export function TESTING_StartMfaVerificationTests(): Array<
+  GrpcTestCase<void, StartMfaVerificationOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterStartMfaVerificationOut
+  )(Native.TESTING_StartMfaVerificationTests());
 }
 
 export function TESTING_StartWebAuthnRegistrationTests(): Array<

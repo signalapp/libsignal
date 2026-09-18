@@ -4,6 +4,8 @@ v0.103.0
 - Renamed OneTimePasswordNotVerified error to MfaNotVerified in preparation for broader use.
 - Key transparency is now available over gRPC
 - New typed APIs:
-    - Accounts/StartWebAuthnRegistration
-    - Accounts/FinishWebAuthnRegistration
+    - AuthAccountsService.startWebAuthnRegistration
+    - AuthAccountsService.finishWebAuthnRegistration
+    - AuthAccountsService.startMfaVerification
+    - AuthAccountsService.finishMfaVerification
 - Upgrade {webp,mp4}san to 0.5.4

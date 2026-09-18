@@ -259,6 +259,59 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
             }
         )
     }
+
+    func testStartMfaVerification() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_StartMfaVerificationTests(),
+            invoke: { api, _ in
+                try await api.startMfaVerification()
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let expectedResponse):
+                    let response = try actual.get()
+                    XCTAssertEqual(response.hasTotp, expectedResponse.hasTotp)
+                    XCTAssertEqual(response.webauthnParams?.challenge, expectedResponse.webauthnParams?.challenge)
+                    XCTAssertEqual(response.webauthnParams?.timeout, expectedResponse.webauthnParams?.timeout)
+                    XCTAssertEqual(
+                        response.webauthnParams?.allowedCredentialIds,
+                        expectedResponse.webauthnParams?.allowedCredentialIds
+                    )
+                case .malformed:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
+    }
+
+    func testFinishMfaVerification() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_FinishMfaVerificationTests(),
+            invoke: { api, cred in
+                let apiCred: MfaVerificationCredential =
+                    switch cred {
+                    case .totp(let password): .totp(password: UInt32(password))
+                    case .webAuthn(let json): .webAuthn(json: json)
+                    }
+                try await api.finishMfaVerification(apiCred)
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success:
+                    () = try actual.get()
+                case .failedToVerify:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.mfaNotVerified(_) {}
+                }
+            }
+        )
+
+    }
 }
 
 // Uses the internal Impl protocol so the test can pin the RNG seed; the public methods simply

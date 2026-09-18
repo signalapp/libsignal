@@ -7,14 +7,13 @@ use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use itertools::Itertools;
 use libsignal_bridge_types::net::TokioAsyncContext;
-#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
-use libsignal_bridge_types::net::chat::BridgeDeleteBackupMediaItem;
 use libsignal_bridge_types::net::chat::remote_derives::{
-    CallQualitySurveyInternal, CurrencyConversionsInternal,
+    BridgeMfaVerificationCredential, CallQualitySurveyInternal, CurrencyConversionsInternal,
 };
 use libsignal_bridge_types::net::chat::{
-    AuthenticatedChatConnection, BridgeCopyBackupMediaItem, BridgePreKeyCounts, ChatListener,
-    HttpRequest, ProvisioningChatConnection, ProvisioningListener, UnauthenticatedChatConnection,
+    AuthenticatedChatConnection, BridgeCopyBackupMediaItem, BridgeDeleteBackupMediaItem,
+    BridgePreKeyCounts, ChatListener, HttpRequest, ProvisioningChatConnection,
+    ProvisioningListener, UnauthenticatedChatConnection,
 };
 use libsignal_net::chat::fake::{BodyWithTrailers, FakeChatRemote};
 use libsignal_net::chat::{
@@ -502,7 +501,7 @@ mod remote_derives {
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::{
-        GetStickerUploadFormsResponse, ListMediaResponse,
+        GetStickerUploadFormsResponse, ListMediaResponse, StartMfaVerificationResponse,
     };
     use libsignal_bridge_types::net::chat::{
         BridgeConfirmedMfaKey, BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem,
@@ -1108,6 +1107,22 @@ mod remote_derives {
             }
         }
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::StartMfaVerificationOut)]
+    #[bridge(arg = false)]
+    pub enum StartMfaVerificationOut {
+        Success(StartMfaVerificationResponse),
+        Malformed,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::FinishMfaVerificationOut)]
+    #[bridge(arg = false)]
+    pub enum FinishMfaVerificationOut {
+        Success,
+        FailedToVerify,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1388,4 +1403,16 @@ fn TESTING_SetSignedEcPreKeyTests() -> GrpcTestCases<remote_derives::SetSignedEc
 fn TESTING_SetLastResortKemPreKeyTests()
 -> GrpcTestCases<remote_derives::SetLastResortKemPreKeyArgs, ()> {
     libsignal_net_chat::grpc::keys::test_cases::set_last_resort_kem_pre_key_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_StartMfaVerificationTests() -> GrpcTestCases<(), remote_derives::StartMfaVerificationOut>
+{
+    libsignal_net_chat::grpc::accounts::test_cases::start_mfa_verification_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_FinishMfaVerificationTests()
+-> GrpcTestCases<BridgeMfaVerificationCredential, remote_derives::FinishMfaVerificationOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::finish_mfa_verification_test_cases().into()
 }

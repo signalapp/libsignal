@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.runTest
 import org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata
 import org.signal.libsignal.internal.BridgeMfaKeyKind
 import org.signal.libsignal.internal.ConfirmTotpKeyOut
+import org.signal.libsignal.internal.FinishMfaVerificationOut
 import org.signal.libsignal.internal.FinishWebAuthnRegistrationOut
 import org.signal.libsignal.internal.GenerateTotpKeyOut
 import org.signal.libsignal.internal.ListMfaKeysOut
@@ -16,6 +17,7 @@ import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.RemoveMfaKeyOut
 import org.signal.libsignal.internal.SetMfaKeyMetadataOut
+import org.signal.libsignal.internal.StartMfaVerificationOut
 import org.signal.libsignal.internal.StartWebAuthnRegistrationOut
 import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.internal.await
@@ -396,6 +398,55 @@ class AuthAccountsServiceTest {
         check = { expected, actual ->
           when (expected) {
             RemoveMfaKeyOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
+          }
+        },
+      )
+    }
+
+  @Test
+  fun testStartMfaVerification() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_StartMfaVerificationTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, req ->
+          chat.startMfaVerification()
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is StartMfaVerificationOut.Success -> {
+              val response = assertIs<RequestResult.Success<StartMfaVerificationResponse>>(actual).result
+              assertEquals(expected._0, response)
+            }
+            StartMfaVerificationOut.Malformed -> {
+              assertIs<UnexpectedResponseException>(
+                assertIs<RequestResult.ApplicationError>(actual).cause,
+              )
+            }
+          }
+        },
+      )
+    }
+
+  @Test
+  fun testFinishMfaVerification() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_FinishMfaVerificationTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, req ->
+          chat.finishMfaVerification(req)
+        },
+        check = { expected, actual ->
+          when (expected) {
+            FinishMfaVerificationOut.Success -> {
+              assertIs<RequestResult.Success<Unit>>(actual)
+            }
+            FinishMfaVerificationOut.FailedToVerify -> {
+              actual.assertNonSuccess<_, _, MfaNotVerifiedException>()
+            }
           }
         },
       )

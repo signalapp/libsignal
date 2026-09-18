@@ -247,6 +247,72 @@ public data class ConfirmedMfaKey(
 }
 
 /**
+ * Information necessary to run an MFA verification, returned by
+ * [AuthAccountsService.startMfaVerification].
+ *
+ * Note that it is possible for no methods of verification to be available; this occurs when the
+ * account has no MFA keys, or when all registered keys are of a type this version of libsignal
+ * does not support.
+ */
+public data class StartMfaVerificationResponse(
+  /**
+   * If true, the account has one or more TOTP keys registered and can complete verification with
+   * [MfaVerificationCredential.Totp].
+   */
+  public val hasTotp: Boolean,
+  /**
+   * If present, the account has one or more WebAuthn keys registered and can complete
+   * verification with [MfaVerificationCredential.WebAuthn] using the parameters
+   * provided.
+   */
+  public val webauthnParams: WebAuthnAuthenticationParameters?,
+)
+
+public data class WebAuthnAuthenticationParameters(
+  public val challenge: ByteArray,
+  /** After this interval, verification may fail even if everything else is done correctly. */
+  public val timeoutSeconds: Int,
+  public val allowedCredentialIds: List<ByteArray>,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as WebAuthnAuthenticationParameters
+
+    if (!challenge.contentEquals(other.challenge)) return false
+    if (timeoutSeconds != other.timeoutSeconds) return false
+    if (allowedCredentialIds.size != other.allowedCredentialIds.size) return false
+    if (!allowedCredentialIds.zip(other.allowedCredentialIds).all { (a, b) -> a.contentEquals(b) }) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = challenge.contentHashCode()
+    result = 31 * result + timeoutSeconds.hashCode()
+    result = allowedCredentialIds.fold(result) { acc, id -> 31 * acc + id.contentHashCode() }
+    return result
+  }
+}
+
+/**
+ * A credential used to demonstrate ownership of an MFA method.
+ *
+ * @see AuthAccountsService.startMfaVerification
+ * @see AuthAccountsService.finishMfaVerification
+ */
+public sealed class MfaVerificationCredential {
+  public data class Totp(
+    public val password: Int,
+  ) : MfaVerificationCredential()
+
+  public data class WebAuthn(
+    public val json: String,
+  ) : MfaVerificationCredential()
+}
+
+/**
  * Errors that [AuthAccountsService.generateTotpKey] can produce, in addition to the generic
  * request errors.
  */
@@ -557,6 +623,67 @@ public class AuthAccountsService(
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult<FinishWebAuthnRegistrationError>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Starts a verification check for any of the MFA keys on the authenticated account.
+   *
+   * WebAuthn verification is necessarily two-phase; this checks which MFA methods are available
+   * and provides the necessary data to run a check for any of them.
+   *
+   * Note that it is possible for the returned [StartMfaVerificationResponse] to
+   * not include any verification methods; this occurs when the account has no MFA keys,
+   * or when all registered keys are of a type this version of libsignal does not support.
+   *
+   * If [StartMfaVerificationResponse.webauthnParams] are returned, the set of valid
+   * [WebAuthnAuthenticationParameters.allowedCredentialIds] will be non-empty.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   *
+   * @see [finishMfaVerification]
+   */
+  public fun startMfaVerification(): CompletableFuture<RequestResult<StartMfaVerificationResponse, Nothing>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_start_mfa_verification(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Completes a verification check for any of the MFA keys on the authenticated account.
+   *
+   * WebAuthn verification is necessarily two-phase; this passes the response back to the chat
+   * server to verify.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. An [MfaNotVerifiedException] will be produced if the
+   * verification fails for any reason.
+   *
+   * @see [startMfaVerification]
+   */
+  public fun finishMfaVerification(
+    credential: MfaVerificationCredential,
+  ): CompletableFuture<RequestResult<Unit, MfaNotVerifiedException>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_finish_mfa_verification(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = credential,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err -> err.toRequestResult<MfaNotVerifiedException>() },
         )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))

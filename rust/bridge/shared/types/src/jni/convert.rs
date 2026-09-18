@@ -26,6 +26,7 @@ use super::*;
 use crate::crypto::RandomNumberGenerator;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
+use crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters;
 use crate::net::chat::{
     ChatListener, JavaBridgeChatListener, JavaBridgeProvisioningListener, JniChatListener,
     JniProvisioningListener, PreKeysResponse, ProvisioningListener,
@@ -3509,6 +3510,8 @@ impl ResultTypeInfo<'_> for i64 {
 }
 nice_identity_result_converter!(i64, "Long");
 nice_identity_arg_converter!(i64, "Long");
+
+impl_result_type_info_for_option!(BridgeWebAuthnAuthenticationParameters);
 
 #[cfg(feature = "metadata")]
 impl<T, U> NiceResultConverter for Option<T>

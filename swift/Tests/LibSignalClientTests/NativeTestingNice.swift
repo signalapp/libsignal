@@ -827,6 +827,11 @@ internal enum DeleteBackupMediaOut {
     case credentialRejectedWithoutAppropriateServerInfo
 }
 
+internal enum FinishMfaVerificationOut {
+    case success
+    case failedToVerify
+}
+
 internal struct FinishWebAuthnRegistrationArgs {
     var attestationObject: Data
     var collectedClientDataJson: String
@@ -1113,6 +1118,11 @@ internal enum SimpleBackupTestOut {
     case missingResponse
 }
 
+internal enum StartMfaVerificationOut {
+    case success(StartMfaVerificationResponse)
+    case malformed
+}
+
 internal enum StartWebAuthnRegistrationOut {
     case success(BridgeWebAuthnCreateParameters)
     case tooManyMfaKeys
@@ -1162,6 +1172,35 @@ internal enum DerivedReturnConverterBridgeCopyBackupMediaItem: NiceReturnConvert
             mediaId: try media_id.get(),
             encryptionKey: try encryption_key.get()
         )
+    }
+}
+
+internal enum DerivedReturnConverterBridgeMfaVerificationCredential: NiceReturnConverter {
+    typealias NiceReturn = BridgeMfaVerificationCredential
+    typealias FfiReturn = SignalBridgeMfaVerificationCredentialFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeMfaVerificationCredentialFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalBridgeMfaVerificationCredentialFfiResultTotp:
+            let password = Result {
+                try IdentityResultConverter<Int32>.convertReturn(
+                    consuming: ffiValue.totp.password
+                )
+            }
+            return BridgeMfaVerificationCredential.totp(password: try password.get())
+        case SignalBridgeMfaVerificationCredentialFfiResultWebAuthn:
+            let json = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.web_authn.json
+                )
+            }
+            return BridgeMfaVerificationCredential.webAuthn(json: try json.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for BridgeMfaVerificationCredential: \(ffiTag)")
+        }
     }
 }
 
@@ -1544,6 +1583,25 @@ internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverte
             return DeviceCapabilityInternal.optionalPhoneNumber
         default:
             throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterFinishMfaVerificationOut: NiceReturnConverter {
+    typealias NiceReturn = FinishMfaVerificationOut
+    typealias FfiReturn = SignalFinishMfaVerificationOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalFinishMfaVerificationOutFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalFinishMfaVerificationOutFfiResultSuccess:
+            return FinishMfaVerificationOut.success
+        case SignalFinishMfaVerificationOutFfiResultFailedToVerify:
+            return FinishMfaVerificationOut.failedToVerify
+        default:
+            throw SignalError.internalError("Unexpected enum tag for FinishMfaVerificationOut: \(ffiTag)")
         }
     }
 }
@@ -2545,6 +2603,30 @@ internal enum DerivedReturnConverterSimpleBackupTestOut: NiceReturnConverter {
             return SimpleBackupTestOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for SimpleBackupTestOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterStartMfaVerificationOut: NiceReturnConverter {
+    typealias NiceReturn = StartMfaVerificationOut
+    typealias FfiReturn = SignalStartMfaVerificationOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalStartMfaVerificationOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalStartMfaVerificationOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterStartMfaVerificationResponse.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return StartMfaVerificationOut.success(try _0.get())
+        case SignalStartMfaVerificationOutFfiResultMalformed:
+            return StartMfaVerificationOut.malformed
+        default:
+            throw SignalError.internalError("Unexpected enum tag for StartMfaVerificationOut: \(ffiTag)")
         }
     }
 }
@@ -3644,6 +3726,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_FinishMfaVerificationTests() throws -> [GrpcTestCase<
+        BridgeMfaVerificationCredential, FinishMfaVerificationOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterBridgeMfaVerificationCredential, DerivedReturnConverterFinishMfaVerificationOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_finish_mfa_verification_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterBridgeMfaVerificationCredential, DerivedReturnConverterFinishMfaVerificationOut
+        >.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_FinishWebAuthnRegistrationTests() throws -> [GrpcTestCase<
         FinishWebAuthnRegistrationArgs, FinishWebAuthnRegistrationOut
     >] {
@@ -4320,6 +4418,19 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<
             DerivedReturnConverterSetUsernameLinkArgs, DerivedReturnConverterSetUsernameLinkOut
         >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_StartMfaVerificationTests() throws -> [GrpcTestCase<Void, StartMfaVerificationOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterStartMfaVerificationOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_start_mfa_verification_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterStartMfaVerificationOut>.convertReturn(
+            consuming: rawOutput
+        )
 
     }
     internal static func TESTING_StartWebAuthnRegistrationTests() throws -> [GrpcTestCase<

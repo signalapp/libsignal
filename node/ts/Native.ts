@@ -240,6 +240,16 @@ export type ReturnFfiBridgeMfaMetadata = {
   created_at: Timestamp;
 };
 
+export type ReturnFfiBridgeMfaVerificationCredential =
+  | {
+      __type: 0;
+      password: number;
+    }
+  | {
+      __type: 1;
+      json: string;
+    };
+
 export type ReturnFfiBridgePendingTotpKey = {
   key: Uint8Array<ArrayBuffer>;
   parameters: ReturnFfiBridgeTotpParameters;
@@ -256,6 +266,12 @@ export type ReturnFfiBridgeTotpParameters = {
   algorithm: string;
   password_length: number;
   time_step_seconds: number;
+};
+
+export type ReturnFfiBridgeWebAuthnAuthenticationParameters = {
+  challenge: Uint8Array<ArrayBuffer>;
+  timeout_seconds: number;
+  allowed_credential_ids: Array<Uint8Array<ArrayBuffer>>;
 };
 
 export type ReturnFfiBridgeWebAuthnCreateParameters = {
@@ -432,6 +448,14 @@ export type ReturnFfiDeviceCapabilityInternal =
     }
   | {
       __type: 6;
+    };
+
+export type ReturnFfiFinishMfaVerificationOut =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
     };
 
 export type ReturnFfiFinishWebAuthnRegistrationArgs = {
@@ -830,6 +854,20 @@ export type ReturnFfiSimpleBackupTestOut =
       __type: 2;
     };
 
+export type ReturnFfiStartMfaVerificationOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiStartMfaVerificationResponse;
+    }
+  | {
+      __type: 1;
+    };
+
+export type ReturnFfiStartMfaVerificationResponse = {
+  has_totp: boolean;
+  webauthn_params: ReturnFfiBridgeWebAuthnAuthenticationParameters | null;
+};
+
 export type ReturnFfiStartWebAuthnRegistrationOut =
   | {
       __type: 0;
@@ -862,6 +900,16 @@ export type ArgFfiBridgeDeleteBackupMediaItem = {
   media_id: Uint8Array<ArrayBuffer>;
   cdn: number;
 };
+
+export type ArgFfiBridgeMfaVerificationCredential =
+  | {
+      __type: 0;
+      password: number;
+    }
+  | {
+      __type: 1;
+      json: string;
+    };
 
 export type ArgFfiCallQualitySurveyInternal = {
   user_satisfied: boolean;
@@ -1102,6 +1150,11 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_finish_mfa_verification: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    credential: ArgFfiBridgeMfaVerificationCredential
+  ) => CancellablePromise<void>;
   AuthenticatedChatConnection_finish_web_authn_registration: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -1272,6 +1325,10 @@ type NativeFunctions = {
     username_ciphertext: Uint8Array<ArrayBuffer>,
     keep_link_handle: boolean
   ) => CancellablePromise<Uuid>;
+  AuthenticatedChatConnection_start_mfa_verification: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiStartMfaVerificationResponse>;
   AuthenticatedChatConnection_start_web_authn_registration: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3228,6 +3285,12 @@ type NativeFunctions = {
     create_session: RegistrationCreateSessionRequest,
     chat: Wrapper<FakeChatServer>
   ) => CancellablePromise<RegistrationService>;
+  TESTING_FinishMfaVerificationTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiBridgeMfaVerificationCredential,
+      ReturnFfiFinishMfaVerificationOut
+    >
+  >;
   TESTING_FinishWebAuthnRegistrationTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiFinishWebAuthnRegistrationArgs,
@@ -3475,6 +3538,9 @@ type NativeFunctions = {
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
   ) => void;
+  TESTING_StartMfaVerificationTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiStartMfaVerificationOut>
+  >;
   TESTING_StartWebAuthnRegistrationTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiStartWebAuthnRegistrationOut>
   >;
@@ -3950,6 +4016,7 @@ const {
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_currency_conversions,
@@ -3979,6 +4046,7 @@ const {
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_start_mfa_verification,
   AuthenticatedChatConnection_start_web_authn_registration,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
@@ -4512,6 +4580,7 @@ const {
   TESTING_FakeChatServer_Create,
   TESTING_FakeChatServer_GetNextRemote,
   TESTING_FakeRegistrationSession_CreateSession,
+  TESTING_FinishMfaVerificationTests,
   TESTING_FinishWebAuthnRegistrationTests,
   TESTING_FutureCancellationCounter_Create,
   TESTING_FutureCancellationCounter_WaitForCount,
@@ -4606,6 +4675,7 @@ const {
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_StartMfaVerificationTests,
   TESTING_StartWebAuthnRegistrationTests,
   TESTING_SubmitCallQualitySurveyTests,
   TESTING_Svr2MasterKeyRestoreError,
@@ -4755,6 +4825,7 @@ export {
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
   AuthenticatedChatConnection_disconnect,
+  AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_currency_conversions,
@@ -4784,6 +4855,7 @@ export {
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_start_mfa_verification,
   AuthenticatedChatConnection_start_web_authn_registration,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
@@ -5317,6 +5389,7 @@ export {
   TESTING_FakeChatServer_Create,
   TESTING_FakeChatServer_GetNextRemote,
   TESTING_FakeRegistrationSession_CreateSession,
+  TESTING_FinishMfaVerificationTests,
   TESTING_FinishWebAuthnRegistrationTests,
   TESTING_FutureCancellationCounter_Create,
   TESTING_FutureCancellationCounter_WaitForCount,
@@ -5411,6 +5484,7 @@ export {
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
+  TESTING_StartMfaVerificationTests,
   TESTING_StartWebAuthnRegistrationTests,
   TESTING_SubmitCallQualitySurveyTests,
   TESTING_Svr2MasterKeyRestoreError,

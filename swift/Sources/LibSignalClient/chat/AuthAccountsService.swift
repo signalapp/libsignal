@@ -114,6 +114,58 @@ public struct WebAuthnCreateParameters: Sendable, Equatable {
     }
 }
 
+/// Information necessary to run an MFA verification, returned by
+/// ``AuthAccountsService/startMfaVerification()``.
+///
+/// Note that it is possible for no methods of verification to be available; this occurs when the
+/// account has no MFA keys, or when all registered keys are of a type this version of libsignal
+/// does not support.
+public struct StartMfaVerificationResponse: Sendable {
+    /// If true, the account has one or more TOTP keys registered and can complete verification with
+    /// ``MfaVerificationCredential/totp(password:)``.
+    public var hasTotp: Bool
+    /// If present, the account has one or more WebAuthn keys registered and can complete
+    /// verification with ``MfaVerificationCredential/webAuthn(json:)`` using the parameters
+    /// provided.
+    public var webauthnParams: WebAuthnAuthenticationParameters?
+
+    public init(hasTotp: Bool = false, webauthnParams: WebAuthnAuthenticationParameters? = nil) {
+        self.hasTotp = hasTotp
+        self.webauthnParams = webauthnParams
+    }
+}
+
+public struct WebAuthnAuthenticationParameters: Sendable {
+    public var challenge: Data
+    /// After this interval, verification may fail even if everything else is done correctly.
+    public var timeout: TimeInterval
+    public var allowedCredentialIds: [Data]
+
+    public init(challenge: Data, timeout: TimeInterval, allowedCredentialIds: [Data]) {
+        self.challenge = challenge
+        self.timeout = timeout
+        self.allowedCredentialIds = allowedCredentialIds
+    }
+
+    // For bridging.
+    internal init(challenge: Data, timeoutSeconds: Int32, allowedCredentialIds: [Data]) {
+        self.init(
+            challenge: challenge,
+            timeout: TimeInterval(timeoutSeconds),
+            allowedCredentialIds: allowedCredentialIds
+        )
+    }
+}
+
+/// A credential used to demonstrate ownership of an MFA method.
+///
+/// - SeeAlso: ``AuthAccountsService/startMfaVerification()`` and
+///   ``AuthAccountsService/finishMfaVerification(_:)``.
+public enum MfaVerificationCredential: Sendable {
+    case totp(password: UInt32)
+    case webAuthn(json: String)
+}
+
 /// The kind of a confirmed MFA key.
 public enum MfaKeyKind: Sendable, Equatable {
     /// A TOTP key; see ``AuthAccountsService/generateTotpKey()``.
@@ -321,6 +373,34 @@ public protocol AuthAccountsService: Sendable {
         svrKey: SvrKey
     ) async throws -> Int
 
+    /// Starts a verification check for any of the MFA keys on the authenticated account.
+    ///
+    /// WebAuthn verification is necessarily two-phase; this checks which MFA methods are available
+    /// and provides the necessary data to run a check for any of them.
+    ///
+    /// Note that it is possible for the returned ``StartMfaVerificationResponse`` to
+    /// not include any verification methods; this occurs when the account has no MFA keys,
+    /// or when all registered keys are of a type this version of libsignal does not support.
+    ///
+    /// If ``StartMfaVerificationResponse/webauthnParams`` are returned, the set of valid
+    /// ``WebAuthnAuthenticationParameters/allowedCredentialIds`` will be non-empty.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    /// - SeeAlso: ``finishMfaVerification(_:)``
+    func startMfaVerification() async throws -> StartMfaVerificationResponse
+
+    /// Completes a verification check for any of the MFA keys on the authenticated account.
+    ///
+    /// WebAuthn verification is necessarily two-phase; this passes the response back to the chat
+    /// server to verify.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/mfaNotVerified(_:)`` if the verification fails for any reason
+    ///   - the standard Signal network errors
+    /// - SeeAlso: ``startMfaVerification()``
+    func finishMfaVerification(_ credential: MfaVerificationCredential) async throws
+
     /// Lists the confirmed MFA keys for the authenticated account.
     ///
     /// An item with a `nil` ``ConfirmedMfaKey/metadata`` indicates that the metadata attached to
@@ -445,6 +525,26 @@ extension AuthenticatedChatConnection: AuthAccountsService {
             metadata: metadata,
             svrKey: svrKey,
             rngForTesting: -1,
+        )
+    }
+
+    public func startMfaVerification() async throws -> StartMfaVerificationResponse {
+        return try await NativeNice.AuthenticatedChatConnection_start_mfa_verification(
+            asyncContext: self.tokioAsyncContext,
+            chat: self
+        )
+    }
+
+    public func finishMfaVerification(_ credential: MfaVerificationCredential) async throws {
+        let bridgeCred: BridgeMfaVerificationCredential =
+            switch credential {
+            case .totp(let password): .totp(password: Int32(password))
+            case .webAuthn(let json): .webAuthn(json: json)
+            }
+        return try await NativeNice.AuthenticatedChatConnection_finish_mfa_verification(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            credential: bridgeCred
         )
     }
 

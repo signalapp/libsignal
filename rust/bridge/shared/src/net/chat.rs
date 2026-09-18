@@ -18,8 +18,8 @@ use libsignal_account_keys::{MfaMetadata, SvrKey};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
-    CallQualitySurveyInternal, CurrencyConversionsInternal, GetStickerUploadFormsResponse,
-    ListMediaResponse,
+    BridgeMfaVerificationCredential, CallQualitySurveyInternal, CurrencyConversionsInternal,
+    GetStickerUploadFormsResponse, ListMediaResponse, StartMfaVerificationResponse,
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -44,7 +44,7 @@ use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
 use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::accounts::{
     ConfirmTotpKeyError, FinishWebAuthnRegistrationError, GenerateTotpKeyError, MAX_MFA_KEY_ID,
-    MfaKeyId, MfaKeyNotFound, StartWebAuthnRegistrationError,
+    MfaKeyId, MfaKeyNotFound, MfaVerificationFailed, StartWebAuthnRegistrationError,
 };
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
@@ -1417,6 +1417,29 @@ async fn AuthenticatedChatConnection_set_last_resort_kem_pre_key(
                 signature: Cow::Owned(signature),
             },
         )
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_start_mfa_verification(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<StartMfaVerificationResponse, RequestError<Infallible>> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .start_mfa_verification()
+        .await?
+        .into())
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_finish_mfa_verification(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    credential: BridgeMfaVerificationCredential,
+) -> Result<(), RequestError<MfaVerificationFailed>> {
+    chat.require_grpc()
+        .await
+        .finish_mfa_verification(credential.into())
         .await
 }
 

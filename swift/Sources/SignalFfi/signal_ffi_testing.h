@@ -876,6 +876,12 @@ typedef struct {
 } SignalCreateLoginReceiptCredentialOutFfiResult;
 static_assert_64bit(sizeof(SignalCreateLoginReceiptCredentialOutFfiResult) == 40);
 static_assert_64bit(alignof(SignalCreateLoginReceiptCredentialOutFfiResult) == 8);
+typedef enum {
+  SignalFinishMfaVerificationOutFfiResultSuccess,
+  SignalFinishMfaVerificationOutFfiResultFailedToVerify,
+} SignalFinishMfaVerificationOutFfiResult;
+static_assert_64bit(sizeof(SignalFinishMfaVerificationOutFfiResult) == 4);
+static_assert_64bit(alignof(SignalFinishMfaVerificationOutFfiResult) == 4);
 typedef struct {
   SignalOwnedBuffer attestation_object;
   const int8_t* collected_client_data_json;
@@ -1260,6 +1266,21 @@ typedef enum {
 static_assert_64bit(sizeof(SignalSimpleBackupTestOutFfiResult) == 4);
 static_assert_64bit(alignof(SignalSimpleBackupTestOutFfiResult) == 4);
 typedef enum {
+  SignalStartMfaVerificationOutFfiResultSuccess,
+  SignalStartMfaVerificationOutFfiResultMalformed,
+} SignalStartMfaVerificationOutFfiResult_Tag;
+typedef struct {
+  SignalStartMfaVerificationResponseFfiResult _0;
+} SignalStartMfaVerificationOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalStartMfaVerificationOutFfiResult_Tag tag;
+  union {
+    SignalStartMfaVerificationOutFfiResultSignalSuccess_Body success;
+  };
+} SignalStartMfaVerificationOutFfiResult;
+static_assert_64bit(sizeof(SignalStartMfaVerificationOutFfiResult) == 72);
+static_assert_64bit(alignof(SignalStartMfaVerificationOutFfiResult) == 8);
+typedef enum {
   SignalStartWebAuthnRegistrationOutFfiResultSuccess,
   SignalStartWebAuthnRegistrationOutFfiResultTooManyMfaKeys,
 } SignalStartWebAuthnRegistrationOutFfiResult_Tag;
@@ -1511,6 +1532,25 @@ static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaI
 static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult, size_bytes) == 16);
 static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult) == 24);
 static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult) == 8);
+typedef enum {
+  SignalBridgeMfaVerificationCredentialFfiResultTotp,
+  SignalBridgeMfaVerificationCredentialFfiResultWebAuthn,
+} SignalBridgeMfaVerificationCredentialFfiResult_Tag;
+typedef struct {
+  int32_t password;
+} SignalBridgeMfaVerificationCredentialFfiResultSignalTotp_Body;
+typedef struct {
+  const int8_t* json;
+} SignalBridgeMfaVerificationCredentialFfiResultSignalWebAuthn_Body;
+typedef struct {
+  SignalBridgeMfaVerificationCredentialFfiResult_Tag tag;
+  union {
+    SignalBridgeMfaVerificationCredentialFfiResultSignalTotp_Body totp;
+    SignalBridgeMfaVerificationCredentialFfiResultSignalWebAuthn_Body web_authn;
+  };
+} SignalBridgeMfaVerificationCredentialFfiResult;
+static_assert_64bit(sizeof(SignalBridgeMfaVerificationCredentialFfiResult) == 16);
+static_assert_64bit(alignof(SignalBridgeMfaVerificationCredentialFfiResult) == 8);
 typedef struct {
   bool user_satisfied;
   SignalOwnedBufferOfMaxAlignedCStringPtr call_quality_issues;
@@ -1994,6 +2034,9 @@ SignalFfiError* signal_testing_fingerprint_version_mismatch_error(
   uint32_t theirs,
   uint32_t ours
 );
+SignalFfiError* signal_testing_finish_mfa_verification_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_finish_web_authn_registration_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
@@ -2325,6 +2368,9 @@ SignalFfiError* signal_testing_set_username_link_tests(
 SignalFfiError* signal_testing_signed_public_pre_key_check_bridges_correctly(
   SignalConstPointerPublicKey source_public_key,
   SignalFfiSignedPublicPreKey signed_pre_key
+);
+SignalFfiError* signal_testing_start_mfa_verification_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_start_web_authn_registration_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out

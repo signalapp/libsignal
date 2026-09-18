@@ -332,6 +332,9 @@ public object NativeTesting {
   ): CompletableFuture<ObjectHandle>
 
   @JvmStatic
+  public external fun TESTING_FinishMfaVerificationTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_FinishWebAuthnRegistrationTests(): Array<Object>
 
   @JvmStatic
@@ -672,6 +675,9 @@ public object NativeTesting {
     sourcePublicKey: ObjectHandle,
     signedPreKey: SignedPublicPreKey<*>,
   ): Unit
+
+  @JvmStatic
+  public external fun TESTING_StartMfaVerificationTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_StartWebAuthnRegistrationTests(): Array<Object>

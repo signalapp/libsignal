@@ -1462,6 +1462,12 @@ impl IntoFfiError for libsignal_net_chat::grpc::accounts::MfaKeyNotFound {
     }
 }
 
+impl IntoFfiError for libsignal_net_chat::grpc::accounts::MfaVerificationFailed {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(SignalErrorCode::MfaNotVerified, self.to_string())
+    }
+}
+
 impl<E> IntoFfiError for crate::support::RequestOrArgumentError<E>
 where
     libsignal_net_chat::api::RequestError<E>: IntoFfiError,

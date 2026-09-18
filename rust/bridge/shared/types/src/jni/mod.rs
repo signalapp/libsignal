@@ -2068,6 +2068,12 @@ impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::MfaKey
     }
 }
 
+impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::accounts::MfaVerificationFailed {
+    fn exception_class(&self) -> ClassName<'static> {
+        ClassName("org.signal.libsignal.net.MfaNotVerifiedException")
+    }
+}
+
 impl<E: JniError> JniError for crate::support::RequestOrArgumentError<E> {
     fn to_throwable_impl<'a>(
         &self,

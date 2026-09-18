@@ -1544,6 +1544,98 @@ pub mod remote_derives {
         pub manifest_upload_form: S3UploadForm,
         pub sticker_upload_forms: BridgeVec<S3UploadForm>,
     }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        // TODO: no ffi_nice_type because we want to use UInt32 for the TOTP password there.
+        jni_nice_type = "org.signal.libsignal.net.MfaVerificationCredential"
+    )]
+    pub enum BridgeMfaVerificationCredential {
+        Totp { password: i32 },
+        WebAuthn { json: String },
+    }
+    impl From<BridgeMfaVerificationCredential>
+        for libsignal_net_chat::grpc::accounts::MfaVerificationCredential
+    {
+        fn from(value: BridgeMfaVerificationCredential) -> Self {
+            match value {
+                BridgeMfaVerificationCredential::Totp { password } => Self::Totp {
+                    password: password.try_into().expect("TOTP passwords are 6 digits"),
+                },
+                BridgeMfaVerificationCredential::WebAuthn { json } => Self::WebAuthn { json },
+            }
+        }
+    }
+    impl From<libsignal_net_chat::grpc::accounts::MfaVerificationCredential>
+        for BridgeMfaVerificationCredential
+    {
+        fn from(value: libsignal_net_chat::grpc::accounts::MfaVerificationCredential) -> Self {
+            type OriginalCredential = libsignal_net_chat::grpc::accounts::MfaVerificationCredential;
+            match value {
+                OriginalCredential::Totp { password } => Self::Totp {
+                    password: password.try_into().expect("TOTP passwords are 6 digits"),
+                },
+                OriginalCredential::WebAuthn { json } => Self::WebAuthn { json },
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "StartMfaVerificationResponse",
+        jni_nice_type = "org.signal.libsignal.net.StartMfaVerificationResponse"
+    )]
+    pub struct StartMfaVerificationResponse {
+        pub has_totp: bool,
+        pub webauthn_params: Option<BridgeWebAuthnAuthenticationParameters>,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::StartMfaVerificationResponse>
+        for StartMfaVerificationResponse
+    {
+        fn from(value: libsignal_net_chat::grpc::accounts::StartMfaVerificationResponse) -> Self {
+            let libsignal_net_chat::grpc::accounts::StartMfaVerificationResponse {
+                has_totp,
+                webauthn_params,
+            } = value;
+            Self {
+                has_totp,
+                webauthn_params: webauthn_params.map(Into::into),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "WebAuthnAuthenticationParameters",
+        jni_nice_type = "org.signal.libsignal.net.WebAuthnAuthenticationParameters"
+    )]
+    pub struct BridgeWebAuthnAuthenticationParameters {
+        pub challenge: Vec<u8>,
+        pub timeout_seconds: i32,
+        pub allowed_credential_ids: BridgeVec<Vec<u8>>,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::WebAuthnAuthenticationParameters>
+        for BridgeWebAuthnAuthenticationParameters
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::accounts::WebAuthnAuthenticationParameters,
+        ) -> Self {
+            let libsignal_net_chat::grpc::accounts::WebAuthnAuthenticationParameters {
+                challenge,
+                timeout,
+                allowed_credential_ids,
+            } = value;
+            Self {
+                challenge,
+                timeout_seconds: timeout.as_secs().try_into().expect("timeouts are short"),
+                allowed_credential_ids: allowed_credential_ids.into(),
+            }
+        }
+    }
 }
 
 #[cfg(test)]

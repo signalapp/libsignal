@@ -388,4 +388,67 @@ describe('AuthAccountsService', () => {
       }
     );
   });
+
+  describe('startMfaVerification', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_StartMfaVerificationTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _noArgs,
+        resp: NativeNice.StartMfaVerificationOut
+      ) => {
+        const out = chat.startMfaVerification({});
+        switch (resp) {
+          case 'malformed':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.IoError,
+              });
+            break;
+          default: {
+            const result = await out;
+            expect(result.hasTotp).equals(resp.success.hasTotp);
+            if (resp.success.webauthnParams !== null) {
+              expect(result.webauthnParams).deep.equals(
+                resp.success.webauthnParams
+              );
+            } else {
+              expect(result).does.not.haveOwnProperty('webauthnParams');
+            }
+          }
+        }
+      }
+    );
+  });
+
+  describe('finishMfaVerification', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_FinishMfaVerificationTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        args: NativeNice.BridgeMfaVerificationCredential,
+        resp: NativeNice.FinishMfaVerificationOut
+      ) => {
+        const credential =
+          'totp' in args
+            ? { totpPassword: args.totp }
+            : { webauthnJson: args.webAuthn };
+        const out = chat.finishMfaVerification({ credential });
+        switch (resp) {
+          case 'failedToVerify':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.MfaNotVerified,
+              });
+            break;
+          default:
+            await out;
+        }
+      }
+    );
+  });
 });

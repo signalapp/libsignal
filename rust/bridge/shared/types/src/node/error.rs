@@ -1231,6 +1231,12 @@ impl SimpleNodeError for libsignal_net_chat::grpc::accounts::MfaKeyNotFound {
     }
 }
 
+impl SimpleNodeError for libsignal_net_chat::grpc::accounts::MfaVerificationFailed {
+    fn js_error_name(&self) -> Option<&'static str> {
+        Some("MfaNotVerified")
+    }
+}
+
 impl<E> SignalNodeError for crate::support::RequestOrArgumentError<E>
 where
     libsignal_net_chat::api::RequestError<E>: SignalNodeError,

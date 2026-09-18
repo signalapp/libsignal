@@ -126,6 +126,21 @@ public data class BridgeMfaMetadata(
   public val createdAt: java.time.Instant,
 )
 
+/*
+// org.signal.libsignal.net.MfaVerificationCredential
+
+public sealed class BridgeMfaVerificationCredential {
+  public data class Totp(
+    public val password: Int,
+  ) : BridgeMfaVerificationCredential()
+
+  public data class WebAuthn(
+    public val json: String,
+  ) : BridgeMfaVerificationCredential()
+}
+
+*/
+
 public data class BridgePendingTotpKey(
   public val key: ByteArray,
   public val parameters: org.signal.libsignal.internal.BridgeTotpParameters,
@@ -148,6 +163,17 @@ public data class BridgeTotpParameters(
   public val passwordLength: Int,
   public val timeStepSeconds: Int,
 )
+
+/*
+// org.signal.libsignal.net.WebAuthnAuthenticationParameters
+
+public data class BridgeWebAuthnAuthenticationParameters(
+  public val challenge: ByteArray,
+  public val timeoutSeconds: Int,
+  public val allowedCredentialIds: List<ByteArray>,
+)
+
+*/
 
 public data class BridgeWebAuthnCreateParameters(
   public val userHandle: ByteArray,
@@ -308,6 +334,16 @@ public data class S3UploadFormInternal(
   public val date: String,
   public val policy: String,
   public val signature: String,
+)
+
+*/
+
+/*
+// org.signal.libsignal.net.StartMfaVerificationResponse
+
+public data class StartMfaVerificationResponse(
+  public val hasTotp: Boolean,
+  public val webauthnParams: org.signal.libsignal.net.WebAuthnAuthenticationParameters?,
 )
 
 */
@@ -563,6 +599,25 @@ public object BridgeTotpParameters_ReturnConverter {
         identity(password_length as Int),
       timeStepSeconds =
         identity(time_step_seconds as Int),
+    )
+}
+
+public object BridgeWebAuthnAuthenticationParameters_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    challenge: Any?,
+    timeout_seconds: Any?,
+    allowed_credential_ids: Any?,
+  ): Any? =
+    org.signal.libsignal.net.WebAuthnAuthenticationParameters(
+      challenge =
+        identity(challenge as ByteArray),
+      timeoutSeconds =
+        identity(timeout_seconds as Int),
+      allowedCredentialIds =
+        mapBridgeVecReturn<ByteArray, ByteArray>({ identity(it) })(allowed_credential_ids as Array<*>),
     )
 }
 
@@ -833,6 +888,26 @@ public object S3UploadFormInternal_ReturnConverter {
     )
 }
 
+public object StartMfaVerificationResponse_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    has_totp: Any?,
+    webauthn_params: Any?,
+  ): Any? =
+    org.signal.libsignal.net.StartMfaVerificationResponse(
+      hasTotp =
+        identity(has_totp as Boolean),
+      webauthnParams =
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.WebAuthnAuthenticationParameters>(it) }
+          }
+        )(webauthn_params as Object?),
+    )
+}
+
 @CalledFromNative
 @Suppress("ktlint:standard:backing-property-naming")
 public class BridgeCopyBackupMediaItem_FfiArgType {
@@ -902,6 +977,50 @@ public fun org.signal.libsignal.net.DeleteBackupMediaItem.toFfiArgType(): Bridge
 
 public fun org.signal.libsignal.net.DeleteBackupMediaItem.toFfiArgTypeObject(): Object =
   convertToObject(this.toFfiArgType())
+
+public sealed class BridgeMfaVerificationCredential_FfiArgType
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class BridgeMfaVerificationCredential_Totp_FfiArgType : BridgeMfaVerificationCredential_FfiArgType {
+  @CalledFromNative
+  internal val password: Int
+  internal constructor(
+    password: Int,
+  ) {
+    this.password = password
+  }
+}
+
+public fun org.signal.libsignal.net.MfaVerificationCredential.Totp.toFfiArgType(): BridgeMfaVerificationCredential_Totp_FfiArgType =
+  BridgeMfaVerificationCredential_Totp_FfiArgType(
+    password = identity(password),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class BridgeMfaVerificationCredential_WebAuthn_FfiArgType : BridgeMfaVerificationCredential_FfiArgType {
+  @CalledFromNative
+  internal val json: Any?
+  internal constructor(
+    json: Any?,
+  ) {
+    this.json = json
+  }
+}
+
+public fun org.signal.libsignal.net.MfaVerificationCredential.WebAuthn.toFfiArgType(): BridgeMfaVerificationCredential_WebAuthn_FfiArgType =
+  BridgeMfaVerificationCredential_WebAuthn_FfiArgType(
+    json = identity(json),
+  )
+
+public fun org.signal.libsignal.net.MfaVerificationCredential.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is org.signal.libsignal.net.MfaVerificationCredential.Totp -> this.toFfiArgType()
+      is org.signal.libsignal.net.MfaVerificationCredential.WebAuthn -> this.toFfiArgType()
+    },
+  )
 
 @CalledFromNative
 @Suppress("ktlint:standard:backing-property-naming")
@@ -1280,6 +1399,25 @@ public object NativeNice {
         Native.AuthenticatedChatConnection_delete_username_link(
           asyncCtxHandle.nativeHandle(),
           ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_finish_mfa_verification(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    credential: org.signal.libsignal.net.MfaVerificationCredential,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_credential = (org.signal.libsignal.net.MfaVerificationCredential::toFfiArgTypeObject)(credential)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_finish_mfa_verification(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_credential,
         )
       }
     return ffiOut
@@ -1803,6 +1941,23 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_start_mfa_verification(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.net.StartMfaVerificationResponse> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_start_mfa_verification(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.net.StartMfaVerificationResponse>(it) }
   }
 
   public fun AuthenticatedChatConnection_start_web_authn_registration(

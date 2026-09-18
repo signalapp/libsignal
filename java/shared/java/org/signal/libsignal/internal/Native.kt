@@ -336,6 +336,13 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_finish_mfa_verification(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: Object,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_finish_web_authn_registration(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -564,6 +571,12 @@ internal object Native {
     usernameCiphertext: ByteArray,
     keepLinkHandle: Boolean,
   ): CompletableFuture<UUID>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_start_mfa_verification(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
 
   @JvmStatic
   public external fun AuthenticatedChatConnection_start_web_authn_registration(
