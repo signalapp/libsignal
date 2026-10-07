@@ -47,6 +47,60 @@ extension SignalBorrowedSliceOfMySimpleTestEnumFfiArg: SignalBorrowedSliceOf {
 
 }
 
+extension SignalBorrowedSliceOfPairOfCStringPtrCStringPtr: SignalBorrowedSliceOf {
+
+    public typealias Element = SignalPairOfCStringPtrCStringPtr
+
+    public init(
+        generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrCStringPtr?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    public var generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrCStringPtr? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg: SignalBorrowedSliceOf {
+
+    public typealias Element = SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+
+    public init(
+        generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    public var generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
 extension SignalCPromiseRawPointer: SignalCPromise {
 
     public typealias Result = SignalType_ConstPointer_void?
@@ -500,6 +554,40 @@ extension SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult: SignalOwnedBuf
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    public typealias Element = SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+
+    public init(
+        generic_base: SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    public var generic_base: SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    public var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalPairOfi32OwnedBuffer
@@ -632,6 +720,64 @@ extension SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: Signal
     public var generic_size_bytes: size_t {
         get { self.size_bytes }
         set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrMySimpleTestEnumFfiArg: SignalPairOf {
+
+    public typealias First = SignalCStringPtr?
+
+    public typealias Second = SignalMySimpleTestEnumFfiArg
+
+    public init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalMySimpleTestEnumFfiArg,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: SignalMySimpleTestEnumFfiArg {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrMySimpleTestEnumFfiResult: SignalPairOf {
+
+    public typealias First = SignalCStringPtr?
+
+    public typealias Second = SignalMySimpleTestEnumFfiResult
+
+    public init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalMySimpleTestEnumFfiResult,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: SignalMySimpleTestEnumFfiResult {
+        get { self.second }
+        set { second = newValue }
     }
 
 }
@@ -5076,6 +5222,90 @@ internal enum NativeTestingNice {
         }
 
     }
+    internal static func TESTING_conversion_MapStringMySimpleTestEnum_identity(
+        x: [String: MySimpleTestEnum],
+    ) throws -> [String: MySimpleTestEnum] {
+        try StringMapArgConverter<
+            DerivedArgConverterMySimpleTestEnum, SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg,
+            SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringMapReturnConverter<
+                DerivedReturnConverterMySimpleTestEnum,
+                SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult,
+                SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_my_simple_test_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringMapReturnConverter<
+                DerivedReturnConverterMySimpleTestEnum,
+                SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult,
+                SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_MapStringMySimpleTestEnum_to_string(
+        x: [String: MySimpleTestEnum],
+    ) throws -> String {
+        try StringMapArgConverter<
+            DerivedArgConverterMySimpleTestEnum, SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg,
+            SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_my_simple_test_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_MapStringString_identity(
+        x: [String: String],
+    ) throws -> [String: String] {
+        try StringMapArgConverter<
+            StringConverter, SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, SignalPairOfCStringPtrCStringPtr
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringMapReturnConverter<
+                StringConverter, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr,
+                SignalPairOfCStringPtrCStringPtr
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_string_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringMapReturnConverter<
+                StringConverter, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr,
+                SignalPairOfCStringPtrCStringPtr
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_MapStringString_to_string(
+        x: [String: String],
+    ) throws -> String {
+        try StringMapArgConverter<
+            StringConverter, SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, SignalPairOfCStringPtrCStringPtr
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_conversion_OptionalBytes_identity(
         x: Data?,
     ) throws -> Data? {
@@ -5163,6 +5393,78 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_optional_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringMySimpleTestEnum_identity(
+        x: (String, MySimpleTestEnum),
+    ) throws -> (String, MySimpleTestEnum) {
+        try PairOfArgConverter<
+            StringConverter, DerivedArgConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = PairOfResultConverter<
+                StringConverter, DerivedReturnConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_my_simple_test_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try PairOfResultConverter<
+                StringConverter, DerivedReturnConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringMySimpleTestEnum_to_string(
+        x: (String, MySimpleTestEnum),
+    ) throws -> String {
+        try PairOfArgConverter<
+            StringConverter, DerivedArgConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_my_simple_test_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringString_identity(
+        x: (String, String),
+    ) throws -> (String, String) {
+        try PairOfArgConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>.convertArgBorrowed(x)
+        { xFfi in
+            var rawOutput = PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>
+                .emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_string_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>
+                .convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringString_to_string(
+        x: (String, String),
+    ) throws -> String {
+        try PairOfArgConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>.convertArgBorrowed(x)
+        { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_string_to_string(
                     &rawOutput,
                     xFfi,
                 )

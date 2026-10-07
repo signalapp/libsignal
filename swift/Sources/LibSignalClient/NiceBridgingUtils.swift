@@ -499,18 +499,17 @@ where Buffer.Element == Converter.FfiReturn {
         Buffer()
     }
 
-    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+    static func convertReturnForEach(consuming value: FfiReturn, _ thunk: (Converter.NiceReturn) -> Void) throws {
         defer {
             SignalFfi.signal_free_owned_buffer_of_max_aligned(value.typeErased())
         }
         let buffer = value.buffer()
-        var out: NiceReturn = Array(reservingCapacity: buffer.count)
         var err: (any Error)? = nil
         for x in buffer {
             // We want to consume all return values, even if there's an intermediate failure, to
             // avoid leaking memory.
             do {
-                out.append(try Converter.convertReturn(consuming: x))
+                thunk(try Converter.convertReturn(consuming: x))
             } catch {
                 err = error
             }
@@ -518,6 +517,11 @@ where Buffer.Element == Converter.FfiReturn {
         if let err = err {
             throw err
         }
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        var out: NiceReturn = Array(reservingCapacity: value.buffer().count)
+        try convertReturnForEach(consuming: value) { out.append($0) }
         return out
     }
 }
@@ -564,6 +568,36 @@ internal protocol SignalPairOf {
     init(generic_first: First, generic_second: Second)
     var generic_first: First { get set }
     var generic_second: Second { get set }
+}
+
+internal enum PairOfArgConverter<
+    FirstConverter: NiceArgConverter,
+    SecondConverter: NiceArgConverter,
+    PairType: SignalPairOf
+>: NiceArgConverter
+where PairType.First == FirstConverter.FfiArg, PairType.Second == SecondConverter.FfiArg {
+    typealias NiceArg = (FirstConverter.NiceArg, SecondConverter.NiceArg)
+    typealias FfiArg = PairType
+    typealias KeepAlive = (FirstConverter.KeepAlive?, SecondConverter.KeepAlive?)
+
+    static func convertArg(_ arg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let (first, firstKa) = FirstConverter.convertArg(arg.0)
+        let (second, secondKa) = SecondConverter.convertArg(arg.1)
+        let arg = PairType(generic_first: first, generic_second: second)
+        if firstKa != nil || secondKa != nil {
+            return (arg, (firstKa, secondKa))
+        } else {
+            return (arg, nil)
+        }
+    }
+
+    static func convertArgBorrowed<Result>(_ arg: NiceArg, _ thunk: (FfiArg) throws -> Result) rethrows -> Result {
+        try FirstConverter.convertArgBorrowed(arg.0) { first in
+            try SecondConverter.convertArgBorrowed(arg.1) { second in
+                try thunk(PairType(generic_first: first, generic_second: second))
+            }
+        }
+    }
 }
 
 internal enum PairOfResultConverter<
@@ -776,5 +810,66 @@ internal enum ServiceIdKindConverter: NiceArgConverter {
 
     static func convertArgBorrowed<Result>(_ arg: ServiceIdKind, _ thunk: (UInt8) throws -> Result) rethrows -> Result {
         try thunk(arg.rawValue)
+    }
+}
+
+internal enum StringMapArgConverter<
+    ValueConverter: NiceArgConverter,
+    BorrowedSlice: SignalBorrowedSliceOf,
+    PairType: SignalPairOf
+>: NiceArgConverter
+where
+    BorrowedSlice.Element == PairType, PairType.First == StringConverter.FfiArg,
+    PairType.Second == ValueConverter.FfiArg
+{
+    typealias InnerConverter = ArrayArgConverter<
+        PairOfArgConverter<StringConverter, ValueConverter, PairType>, BorrowedSlice
+    >
+    typealias NiceArg = [String: ValueConverter.NiceArg]
+    typealias FfiArg = InnerConverter.FfiArg
+    typealias KeepAlive = InnerConverter.KeepAlive
+
+    static func convertArg(
+        _ arg: [String: ValueConverter.NiceArg]
+    ) -> (
+        StringMapArgConverter<ValueConverter, BorrowedSlice, PairType>.InnerConverter.FfiArg,
+        StringMapArgConverter<ValueConverter, BorrowedSlice, PairType>.InnerConverter.KeepAlive?
+    ) {
+        InnerConverter.convertArg(Array(arg))
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: [String: ValueConverter.NiceArg],
+        _ thunk: (StringMapArgConverter<ValueConverter, BorrowedSlice, PairType>.InnerConverter.FfiArg) throws -> Result
+    ) rethrows -> Result {
+        try InnerConverter.convertArgBorrowed(Array(arg), thunk)
+    }
+}
+
+internal enum StringMapReturnConverter<
+    ValueConverter: NiceReturnConverter,
+    Buffer: SignalOwnedBufferOfMaxAligned,
+    PairType: SignalPairOf
+>: NiceReturnConverter
+where
+    Buffer.Element == PairType, PairType.First == StringConverter.FfiReturn,
+    PairType.Second == ValueConverter.FfiReturn
+{
+    typealias InnerConverter = ArrayReturnConverter<
+        PairOfResultConverter<StringConverter, ValueConverter, PairType>, Buffer
+    >
+    typealias NiceReturn = [String: ValueConverter.NiceReturn]
+    typealias FfiReturn = InnerConverter.FfiReturn
+
+    static func emptyFfiReturn() -> InnerConverter.FfiReturn {
+        InnerConverter.emptyFfiReturn()
+    }
+
+    static func convertReturn(
+        consuming value: StringMapReturnConverter<ValueConverter, Buffer, PairType>.InnerConverter.FfiReturn
+    ) throws -> [String: ValueConverter.NiceReturn] {
+        var out: NiceReturn = Dictionary(minimumCapacity: value.buffer().count)
+        try InnerConverter.convertReturnForEach(consuming: value) { out[$0.0] = $0.1 }
+        return out
     }
 }

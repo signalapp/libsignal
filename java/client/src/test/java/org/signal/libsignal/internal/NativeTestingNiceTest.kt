@@ -191,6 +191,80 @@ class NativeTestingNiceTest {
     )
 
   @Test
+  fun mapOfStrings() =
+    testConversion(
+      sequenceOf(
+        mapOf(),
+        mapOf("a" to "1"),
+        mapOf("a" to "1", "b" to "2"),
+        mapOf("a" to "1", "b" to "2", "c" to "3"),
+      ),
+      toString = {
+        it
+          .asSequence()
+          .map { "${it.key},${it.value}" }
+          .sorted()
+          .joinToString("\n")
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_MapStringString_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_MapStringString_identity,
+    )
+
+  @Test
+  fun mapOfStringToMySimpleTestEnum() =
+    testConversion(
+      sequenceOf(
+        mapOf(),
+        mapOf("a" to MySimpleTestEnum.A),
+        mapOf("a" to MySimpleTestEnum.A, "b" to MySimpleTestEnum.B),
+        mapOf("a" to MySimpleTestEnum.A, "b" to MySimpleTestEnum.B, "c" to MySimpleTestEnum.A),
+      ),
+      toString = {
+        it
+          .asSequence()
+          .map {
+            val value =
+              when (it.value) {
+                MySimpleTestEnum.A -> "a"
+                MySimpleTestEnum.B -> "b"
+              }
+            "${it.key},$value"
+          }.sorted()
+          .joinToString("\n")
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_MapStringMySimpleTestEnum_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_MapStringMySimpleTestEnum_identity,
+    )
+
+  @Test
+  fun pairOfStrings() =
+    testConversion(
+      listOf(
+        Pair("", ""),
+        Pair("a", "b"),
+        Pair("12", "34"),
+      ).asSequence(),
+      toString = { "${it.first},${it.second}" },
+      nativeToString = NativeTestingNice::TESTING_conversion_PairStringString_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_PairStringString_identity,
+    )
+
+  @Test
+  fun pairOfStringMySimpleTestEnum() =
+    testConversion(
+      listOf(Pair("foo", MySimpleTestEnum.A), Pair("baz", MySimpleTestEnum.B)).asSequence(),
+      toString = {
+        "${it.first}," +
+          when (it.second) {
+            MySimpleTestEnum.A -> "a"
+            MySimpleTestEnum.B -> "b"
+          }
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_PairStringMySimpleTestEnum_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_PairStringMySimpleTestEnum_identity,
+    )
+
+  @Test
   fun mySimpleTestEnum() =
     testConversion(
       listOf(MySimpleTestEnum.A, MySimpleTestEnum.B).asSequence(),

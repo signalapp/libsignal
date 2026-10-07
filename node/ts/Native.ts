@@ -9,6 +9,8 @@ import type { Bytes } from '@signalapp/types';
 
 import type { ChargeFailure } from './Errors.js';
 
+export type StringMapFfiContents<Value> = Array<string | Value>;
+
 export type Uuid = Bytes;
 
 /// A Native.Timestamp may be measured in seconds or in milliseconds;
@@ -3445,6 +3447,26 @@ type NativeFunctions = {
     x: number
   ) => CancellablePromise<number>;
   TESTING_conversion_Float_to_string: (x: number) => string;
+  TESTING_conversion_MapStringMySimpleTestEnum_identity: (
+    x: StringMapFfiContents<ArgFfiMySimpleTestEnum>
+  ) => StringMapFfiContents<ReturnFfiMySimpleTestEnum>;
+  TESTING_conversion_MapStringMySimpleTestEnum_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: StringMapFfiContents<ArgFfiMySimpleTestEnum>
+  ) => CancellablePromise<StringMapFfiContents<ReturnFfiMySimpleTestEnum>>;
+  TESTING_conversion_MapStringMySimpleTestEnum_to_string: (
+    x: StringMapFfiContents<ArgFfiMySimpleTestEnum>
+  ) => string;
+  TESTING_conversion_MapStringString_identity: (
+    x: StringMapFfiContents<string>
+  ) => StringMapFfiContents<string>;
+  TESTING_conversion_MapStringString_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: StringMapFfiContents<string>
+  ) => CancellablePromise<StringMapFfiContents<string>>;
+  TESTING_conversion_MapStringString_to_string: (
+    x: StringMapFfiContents<string>
+  ) => string;
   TESTING_conversion_OptionalBytes_identity: (x: Bytes | null) => Bytes | null;
   TESTING_conversion_OptionalBytes_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -3467,6 +3489,26 @@ type NativeFunctions = {
     x: string | null
   ) => CancellablePromise<string | null>;
   TESTING_conversion_OptionalString_to_string: (x: string | null) => string;
+  TESTING_conversion_PairStringMySimpleTestEnum_identity: (
+    x: [string, ArgFfiMySimpleTestEnum]
+  ) => [string, ReturnFfiMySimpleTestEnum];
+  TESTING_conversion_PairStringMySimpleTestEnum_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: [string, ArgFfiMySimpleTestEnum]
+  ) => CancellablePromise<[string, ReturnFfiMySimpleTestEnum]>;
+  TESTING_conversion_PairStringMySimpleTestEnum_to_string: (
+    x: [string, ArgFfiMySimpleTestEnum]
+  ) => string;
+  TESTING_conversion_PairStringString_identity: (
+    x: [string, string]
+  ) => [string, string];
+  TESTING_conversion_PairStringString_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: [string, string]
+  ) => CancellablePromise<[string, string]>;
+  TESTING_conversion_PairStringString_to_string: (
+    x: [string, string]
+  ) => string;
   TESTING_conversion_ServiceId_identity: (x: Bytes) => Bytes;
   TESTING_conversion_ServiceId_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -4527,6 +4569,12 @@ const {
   TESTING_conversion_Float_identity,
   TESTING_conversion_Float_identity_async,
   TESTING_conversion_Float_to_string,
+  TESTING_conversion_MapStringMySimpleTestEnum_identity,
+  TESTING_conversion_MapStringMySimpleTestEnum_identity_async,
+  TESTING_conversion_MapStringMySimpleTestEnum_to_string,
+  TESTING_conversion_MapStringString_identity,
+  TESTING_conversion_MapStringString_identity_async,
+  TESTING_conversion_MapStringString_to_string,
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
@@ -4536,6 +4584,12 @@ const {
   TESTING_conversion_OptionalString_identity,
   TESTING_conversion_OptionalString_identity_async,
   TESTING_conversion_OptionalString_to_string,
+  TESTING_conversion_PairStringMySimpleTestEnum_identity,
+  TESTING_conversion_PairStringMySimpleTestEnum_identity_async,
+  TESTING_conversion_PairStringMySimpleTestEnum_to_string,
+  TESTING_conversion_PairStringString_identity,
+  TESTING_conversion_PairStringString_identity_async,
+  TESTING_conversion_PairStringString_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,
@@ -5343,6 +5397,12 @@ export {
   TESTING_conversion_Float_identity,
   TESTING_conversion_Float_identity_async,
   TESTING_conversion_Float_to_string,
+  TESTING_conversion_MapStringMySimpleTestEnum_identity,
+  TESTING_conversion_MapStringMySimpleTestEnum_identity_async,
+  TESTING_conversion_MapStringMySimpleTestEnum_to_string,
+  TESTING_conversion_MapStringString_identity,
+  TESTING_conversion_MapStringString_identity_async,
+  TESTING_conversion_MapStringString_to_string,
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
@@ -5352,6 +5412,12 @@ export {
   TESTING_conversion_OptionalString_identity,
   TESTING_conversion_OptionalString_identity_async,
   TESTING_conversion_OptionalString_to_string,
+  TESTING_conversion_PairStringMySimpleTestEnum_identity,
+  TESTING_conversion_PairStringMySimpleTestEnum_identity_async,
+  TESTING_conversion_PairStringMySimpleTestEnum_to_string,
+  TESTING_conversion_PairStringString_identity,
+  TESTING_conversion_PairStringString_identity_async,
+  TESTING_conversion_PairStringString_to_string,
   TESTING_conversion_ServiceId_identity,
   TESTING_conversion_ServiceId_identity_async,
   TESTING_conversion_ServiceId_to_string,

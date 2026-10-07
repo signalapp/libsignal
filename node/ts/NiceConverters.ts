@@ -90,3 +90,31 @@ export function liftNull<In, Out>(
     return f(x);
   };
 }
+
+export function stringMapArgConverter<ValueFfi, ValueNice>(
+  f: (x: ValueNice) => ValueFfi
+): (map: Map<string, ValueNice>) => (string | ValueFfi)[] {
+  return function (map: Map<string, ValueNice>): (string | ValueFfi)[] {
+    const out: (string | ValueFfi)[] = [];
+    for (const [k, v] of map.entries()) {
+      out.push(k);
+      out.push(f(v));
+    }
+    return out;
+  };
+}
+
+export function stringMapResultConverter<ValueFfi, ValueNice>(
+  f: (x: ValueFfi) => ValueNice
+): (entries: (string | ValueFfi)[]) => Map<string, ValueNice> {
+  return function (entries: (string | ValueFfi)[]): Map<string, ValueNice> {
+    if (entries.length % 2 !== 0) {
+      throw new RangeError('Expected an even-sized array');
+    }
+    const out: Map<string, ValueNice> = new Map();
+    for (let i = 0; i < entries.length; i += 2) {
+      out.set(entries[i] as string, f(entries[i + 1] as ValueFfi));
+    }
+    return out;
+  };
+}

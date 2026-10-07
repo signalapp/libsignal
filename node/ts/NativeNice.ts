@@ -11,6 +11,7 @@ import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
   GrpcTestCase,
+  StringMapFfiContents,
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
   ArgFfiBridgeMfaVerificationCredential,
@@ -136,6 +137,8 @@ import {
   serviceIdArgConverter,
   grpcTestCaseConverter,
   liftNull,
+  stringMapArgConverter,
+  stringMapResultConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';
@@ -4243,6 +4246,102 @@ export function TESTING_conversion_Float_to_string({
   return identity(Native.TESTING_conversion_Float_to_string(identity(x)));
 }
 
+export function TESTING_conversion_MapStringMySimpleTestEnum_identity({
+  x: x,
+}: {
+  x: Map<string, MySimpleTestEnum>;
+}): Map<string, MySimpleTestEnum> {
+  return stringMapResultConverter<ReturnFfiMySimpleTestEnum, MySimpleTestEnum>(
+    returnConverterMySimpleTestEnum
+  )(
+    Native.TESTING_conversion_MapStringMySimpleTestEnum_identity(
+      stringMapArgConverter<ArgFfiMySimpleTestEnum, MySimpleTestEnum>(
+        argConverterMySimpleTestEnum
+      )(x)
+    )
+  );
+}
+export async function TESTING_conversion_MapStringMySimpleTestEnum_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Map<string, MySimpleTestEnum>;
+}): Promise<Map<string, MySimpleTestEnum>> {
+  return stringMapResultConverter<ReturnFfiMySimpleTestEnum, MySimpleTestEnum>(
+    returnConverterMySimpleTestEnum
+  )(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_MapStringMySimpleTestEnum_identity_async(
+        asyncContext,
+        stringMapArgConverter<ArgFfiMySimpleTestEnum, MySimpleTestEnum>(
+          argConverterMySimpleTestEnum
+        )(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_MapStringMySimpleTestEnum_to_string({
+  x: x,
+}: {
+  x: Map<string, MySimpleTestEnum>;
+}): string {
+  return identity(
+    Native.TESTING_conversion_MapStringMySimpleTestEnum_to_string(
+      stringMapArgConverter<ArgFfiMySimpleTestEnum, MySimpleTestEnum>(
+        argConverterMySimpleTestEnum
+      )(x)
+    )
+  );
+}
+
+export function TESTING_conversion_MapStringString_identity({
+  x: x,
+}: {
+  x: Map<string, string>;
+}): Map<string, string> {
+  return stringMapResultConverter<string, string>(identity)(
+    Native.TESTING_conversion_MapStringString_identity(
+      stringMapArgConverter<string, string>(identity)(x)
+    )
+  );
+}
+export async function TESTING_conversion_MapStringString_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: Map<string, string>;
+}): Promise<Map<string, string>> {
+  return stringMapResultConverter<string, string>(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_MapStringString_identity_async(
+        asyncContext,
+        stringMapArgConverter<string, string>(identity)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_MapStringString_to_string({
+  x: x,
+}: {
+  x: Map<string, string>;
+}): string {
+  return identity(
+    Native.TESTING_conversion_MapStringString_to_string(
+      stringMapArgConverter<string, string>(identity)(x)
+    )
+  );
+}
+
 export function TESTING_conversion_OptionalBytes_identity({
   x: x,
 }: {
@@ -4357,6 +4456,122 @@ export function TESTING_conversion_OptionalString_to_string({
 }): string {
   return identity(
     Native.TESTING_conversion_OptionalString_to_string(liftNull(identity)(x))
+  );
+}
+
+export function TESTING_conversion_PairStringMySimpleTestEnum_identity({
+  x: x,
+}: {
+  x: [string, MySimpleTestEnum];
+}): [string, MySimpleTestEnum] {
+  return (([a, b]: [string, ReturnFfiMySimpleTestEnum]): [
+    string,
+    MySimpleTestEnum
+  ] => [identity(a), returnConverterMySimpleTestEnum(b)])(
+    Native.TESTING_conversion_PairStringMySimpleTestEnum_identity(
+      (([a, b]: [string, MySimpleTestEnum]): [
+        string,
+        ArgFfiMySimpleTestEnum
+      ] => [identity(a), argConverterMySimpleTestEnum(b)])(x)
+    )
+  );
+}
+export async function TESTING_conversion_PairStringMySimpleTestEnum_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: [string, MySimpleTestEnum];
+}): Promise<[string, MySimpleTestEnum]> {
+  return (([a, b]: [string, ReturnFfiMySimpleTestEnum]): [
+    string,
+    MySimpleTestEnum
+  ] => [identity(a), returnConverterMySimpleTestEnum(b)])(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_PairStringMySimpleTestEnum_identity_async(
+        asyncContext,
+        (([a, b]: [string, MySimpleTestEnum]): [
+          string,
+          ArgFfiMySimpleTestEnum
+        ] => [identity(a), argConverterMySimpleTestEnum(b)])(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_PairStringMySimpleTestEnum_to_string({
+  x: x,
+}: {
+  x: [string, MySimpleTestEnum];
+}): string {
+  return identity(
+    Native.TESTING_conversion_PairStringMySimpleTestEnum_to_string(
+      (([a, b]: [string, MySimpleTestEnum]): [
+        string,
+        ArgFfiMySimpleTestEnum
+      ] => [identity(a), argConverterMySimpleTestEnum(b)])(x)
+    )
+  );
+}
+
+export function TESTING_conversion_PairStringString_identity({
+  x: x,
+}: {
+  x: [string, string];
+}): [string, string] {
+  return (([a, b]: [string, string]): [string, string] => [
+    identity(a),
+    identity(b),
+  ])(
+    Native.TESTING_conversion_PairStringString_identity(
+      (([a, b]: [string, string]): [string, string] => [
+        identity(a),
+        identity(b),
+      ])(x)
+    )
+  );
+}
+export async function TESTING_conversion_PairStringString_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: [string, string];
+}): Promise<[string, string]> {
+  return (([a, b]: [string, string]): [string, string] => [
+    identity(a),
+    identity(b),
+  ])(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_PairStringString_identity_async(
+        asyncContext,
+        (([a, b]: [string, string]): [string, string] => [
+          identity(a),
+          identity(b),
+        ])(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_PairStringString_to_string({
+  x: x,
+}: {
+  x: [string, string];
+}): string {
+  return identity(
+    Native.TESTING_conversion_PairStringString_to_string(
+      (([a, b]: [string, string]): [string, string] => [
+        identity(a),
+        identity(b),
+      ])(x)
+    )
   );
 }
 

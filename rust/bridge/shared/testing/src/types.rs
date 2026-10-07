@@ -553,7 +553,7 @@ pub enum MyTestEnum {
     },
 }
 
-#[derive(BridgedAsValue)]
+#[derive(BridgedAsValue, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MySimpleTestEnum {
     A,
     B,

@@ -4,9 +4,10 @@
 //
 
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::fmt::Display;
-use std::hash::Hasher;
+use std::hash::{BuildHasher, Hasher};
 use std::num::ParseIntError;
 use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::slice;
@@ -1499,6 +1500,132 @@ impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::
     register_ts_ffi_type!("Bytes");
 }
 
+impl<'storage, 'context: 'storage, T: ArgTypeInfo<'storage, 'context>, S: BuildHasher + Default>
+    ArgTypeInfo<'storage, 'context> for HashMap<String, T, S>
+{
+    type ArgType = JsArray;
+    type StoredType = Vec<(String, T::StoredType)>;
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let len = foreign.len(cx);
+        if !len.is_multiple_of(2) {
+            return cx.throw_range_error("Expected even array for map");
+        }
+        let count = len / 2;
+        let mut out = Vec::with_capacity(usize::try_from(count).expect("u32->usize"));
+        for i in 0..count {
+            let k: Handle<JsString> = foreign.prop(cx, i * 2).get()?;
+            let v = foreign.prop(cx, i * 2 + 1).get()?;
+            out.push((k.value(cx), T::borrow(cx, v)?));
+        }
+        Ok(out)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+            .iter_mut()
+            .map(|(k, v)| (std::mem::take(k), T::load_from(v)))
+            .collect()
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let t = T::register_ts_ffi_type(ctx);
+        format!("StringMapFfiContents<{}>", t)
+    }
+}
+
+impl<'storage, T: AsyncArgTypeInfo<'storage>, S: BuildHasher + Default> AsyncArgTypeInfo<'storage>
+    for HashMap<String, T, S>
+{
+    type ArgType = JsArray;
+    type StoredType = Vec<(String, T::StoredType)>;
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let len = foreign.len(cx);
+        if !len.is_multiple_of(2) {
+            return cx.throw_range_error("Expected even array for map");
+        }
+        let count = len / 2;
+        let mut out = Vec::with_capacity(usize::try_from(count).expect("u32->usize"));
+        for i in 0..count {
+            let k: Handle<JsString> = foreign.prop(cx, i * 2).get()?;
+            let v = foreign.prop(cx, i * 2 + 1).get()?;
+            out.push((k.value(cx), T::save_async_arg(cx, v)?));
+        }
+        Ok(out)
+    }
+
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+            .iter_mut()
+            .map(|(k, v)| (std::mem::take(k), T::load_async_arg(v)))
+            .collect()
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let t = T::register_ts_ffi_type(ctx);
+        format!("StringMapFfiContents<{}>", t)
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<T: NiceArgConverter, S> NiceArgConverter for HashMap<String, T, S> {
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        let t = T::register_ts_arg_converter(ctx);
+        TsArgConverter {
+            nice_type: format!("Map<string, {}>", t.nice_type),
+            ffi_type: format!("StringMapFfiContents<{}>", t.ffi_type),
+            converter_function: format!(
+                "stringMapArgConverter<{}, {}>({})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+impl<'a, T: ResultTypeInfo<'a>, S> ResultTypeInfo<'a> for HashMap<String, T, S> {
+    type ResultType = JsArray;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        let out = cx.empty_array();
+        for (i, (k, v)) in (0..).zip(self) {
+            let k = cx.string(k);
+            let v = v.convert_into(cx)?;
+            out.prop(cx, i * 2).set(k)?;
+            out.prop(cx, i * 2 + 1).set(v)?;
+        }
+        Ok(out)
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let t = T::register_ts_ffi_type(ctx);
+        format!("StringMapFfiContents<{}>", t)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter, S> NiceResultConverter for HashMap<String, T, S> {
+    fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        let t = T::register_ts_result_converter(ctx);
+        TsReturnConverter {
+            nice_type: format!("Map<string, {}>", t.nice_type),
+            ffi_type: format!("StringMapFfiContents<{}>", t.ffi_type),
+            converter_function: format!(
+                "stringMapResultConverter<{}, {}>({})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
 impl<'storage, 'context: 'storage, T: ArgTypeInfo<'storage, 'context>>
     ArgTypeInfo<'storage, 'context> for BridgeVec<T>
 {
@@ -1985,6 +2112,91 @@ impl NiceResultConverter for () {
             nice_type: "void".to_owned(),
             ffi_type: "void".to_owned(),
             converter_function: "identity".to_owned(),
+        }
+    }
+}
+
+impl<
+    'storage,
+    'context: 'storage,
+    A: ArgTypeInfo<'storage, 'context>,
+    B: ArgTypeInfo<'storage, 'context>,
+> ArgTypeInfo<'storage, 'context> for (A, B)
+{
+    type ArgType = JsArray;
+    type StoredType = (A::StoredType, B::StoredType);
+
+    fn borrow(
+        cx: &mut FunctionContext<'context>,
+        foreign: Handle<'context, Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let a = foreign.prop(cx, 0).get()?;
+        let b = foreign.prop(cx, 1).get()?;
+        let a = A::borrow(cx, a)?;
+        let b = B::borrow(cx, b)?;
+        Ok((a, b))
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        (A::load_from(&mut stored.0), B::load_from(&mut stored.1))
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let a = A::register_ts_ffi_type(ctx);
+        let b = B::register_ts_ffi_type(ctx);
+        format!("[{a}, {b}]")
+    }
+}
+impl<'storage, A: AsyncArgTypeInfo<'storage>, B: AsyncArgTypeInfo<'storage>>
+    AsyncArgTypeInfo<'storage> for (A, B)
+{
+    type ArgType = JsArray;
+    type StoredType = (A::StoredType, B::StoredType);
+
+    fn save_async_arg(
+        cx: &mut FunctionContext,
+        foreign: Handle<Self::ArgType>,
+    ) -> NeonResult<Self::StoredType> {
+        let a = foreign.prop(cx, 0).get()?;
+        let b = foreign.prop(cx, 1).get()?;
+        let a = A::save_async_arg(cx, a)?;
+        let b = B::save_async_arg(cx, b)?;
+        Ok((a, b))
+    }
+
+    fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
+        (
+            A::load_async_arg(&mut stored.0),
+            B::load_async_arg(&mut stored.1),
+        )
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let a = A::register_ts_ffi_type(ctx);
+        let b = B::register_ts_ffi_type(ctx);
+        format!("[{a}, {b}]")
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<A: NiceArgConverter, B: NiceArgConverter> NiceArgConverter for (A, B) {
+    fn register_ts_arg_converter(ctx: &mut TsMetadataContext) -> TsArgConverter {
+        let a = A::register_ts_arg_converter(ctx);
+        let b = B::register_ts_arg_converter(ctx);
+        TsArgConverter {
+            nice_type: format!("[{}, {}]", a.nice_type, b.nice_type),
+            ffi_type: format!("[{}, {}]", a.ffi_type, b.ffi_type),
+            converter_function: format!(
+                "([a, b]: [{}, {}]): [{}, {}] => [({})(a), ({})(b)]",
+                a.nice_type,
+                b.nice_type,
+                a.ffi_type,
+                b.ffi_type,
+                a.converter_function,
+                b.converter_function
+            ),
         }
     }
 }

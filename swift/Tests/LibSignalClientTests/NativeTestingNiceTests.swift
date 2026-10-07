@@ -208,6 +208,55 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testStringMapMySimpleTestEnum() throws {
+        try StringMapArgConverter<
+            DerivedArgConverterMySimpleTestEnum, SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg,
+            SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.testConversion(
+            items: [
+                [:],
+                ["a": .a],
+                ["b": .b],
+                ["foo": .a, "baz": .b, "asdf": .a, "fdhu": .b],
+            ],
+            toString: { dict in
+                var arr: [String] = []
+                for (k, v) in dict {
+                    arr.append("\(k),\(v)")
+                }
+                arr.sort()
+                return arr.joined(separator: "\n")
+            },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_MapStringMySimpleTestEnum_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_map_string_my_simple_test_enum_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_MapStringMySimpleTestEnum_identity(x: $0) },
+        )
+    }
+    @Test
+    func testStringMapString() throws {
+        try StringMapArgConverter<
+            StringConverter, SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, SignalPairOfCStringPtrCStringPtr
+        >.testConversion(
+            items: [
+                [:],
+                ["a": "A"],
+                ["b": "B"],
+                ["foo": "123", "baz": "456", "asdf": "789", "fdhu": "489385"],
+            ],
+            toString: { dict in
+                var arr: [String] = []
+                for (k, v) in dict {
+                    arr.append("\(k),\(v)")
+                }
+                arr.sort()
+                return arr.joined(separator: "\n")
+            },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_MapStringString_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_map_string_string_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_MapStringString_identity(x: $0) },
+        )
+    }
+    @Test
     func testMyTestSimpleEnum() throws {
         try DerivedArgConverterMySimpleTestEnum.testConversion(
             items: [.a, .b],
@@ -246,6 +295,28 @@ struct NativeTestingNiceTests {
             nativeToString: { try NativeTestingNice.TESTING_MySimpleTestEnum_BridgeVec_to_string(x: $0) },
             rawNativeToString: SignalFfi.signal_testing_my_simple_test_enum_bridge_vec_to_string,
             nativeIdentity: { try NativeTestingNice.TESTING_MySimpleTestEnum_BridgeVec_identity(x: $0) }
+        )
+    }
+    @Test
+    func testStringPairs() throws {
+        try PairOfArgConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>.testConversion(
+            items: [("", ""), ("abc", "def"), ("12", "34")],
+            toString: { "\($0.0),\($0.1)" },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_PairStringString_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_pair_string_string_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_PairStringString_identity(x: $0) },
+        )
+    }
+    @Test
+    func testStringMySimpleTestEnumPair() throws {
+        try PairOfArgConverter<
+            StringConverter, DerivedArgConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.testConversion(
+            items: [("foo", .a), ("baz", .b)],
+            toString: { "\($0.0),\($0.1)" },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_PairStringMySimpleTestEnum_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_pair_string_my_simple_test_enum_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_PairStringMySimpleTestEnum_identity(x: $0) },
         )
     }
     @Test

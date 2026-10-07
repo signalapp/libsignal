@@ -23,6 +23,9 @@ import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
+import org.signal.libsignal.internal.NativeNiceHelpers.argPairConverter
+import org.signal.libsignal.internal.NativeNiceHelpers.stringMapArgConverter
+import org.signal.libsignal.internal.NativeNiceHelpers.stringMapReturnConverter
 
 {% set ctx = testing_ctx if testing else non_testing_ctx %}
 

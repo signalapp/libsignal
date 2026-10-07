@@ -17,12 +17,15 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeNiceHelpers.argPairConverter
 import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
 import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+import org.signal.libsignal.internal.NativeNiceHelpers.stringMapArgConverter
+import org.signal.libsignal.internal.NativeNiceHelpers.stringMapReturnConverter
 
 public data class CheckSvrCredentialsArgs(
   public val number: String,
@@ -3160,6 +3163,58 @@ public object NativeTestingNice {
     return identity(ffiOut)
   }
 
+  public fun TESTING_conversion_MapStringMySimpleTestEnum_identity(
+    x: Map<String, org.signal.libsignal.internal.MySimpleTestEnum>,
+  ): Map<String, org.signal.libsignal.internal.MySimpleTestEnum> {
+    val ffi_x =
+      stringMapArgConverter<Object, org.signal.libsignal.internal.MySimpleTestEnum>({
+        (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(it)
+      })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_MapStringMySimpleTestEnum_identity(
+        ffi_x,
+      )
+
+    return stringMapReturnConverter<Object, org.signal.libsignal.internal.MySimpleTestEnum>({
+      downcastFromObject<org.signal.libsignal.internal.MySimpleTestEnum>(it)
+    })(ffiOut)
+  }
+
+  public fun TESTING_conversion_MapStringMySimpleTestEnum_to_string(
+    x: Map<String, org.signal.libsignal.internal.MySimpleTestEnum>,
+  ): String {
+    val ffi_x =
+      stringMapArgConverter<Object, org.signal.libsignal.internal.MySimpleTestEnum>({
+        (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(it)
+      })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_MapStringMySimpleTestEnum_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_MapStringString_identity(x: Map<String, String>): Map<String, String> {
+    val ffi_x = stringMapArgConverter<String, String>({ identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_MapStringString_identity(
+        ffi_x,
+      )
+
+    return stringMapReturnConverter<String, String>({ identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_conversion_MapStringString_to_string(x: Map<String, String>): String {
+    val ffi_x = stringMapArgConverter<String, String>({ identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_MapStringString_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_conversion_OptionalBytes_identity(x: ByteArray?): ByteArray? {
     val ffi_x = identity(x)
     val ffiOut =
@@ -3214,6 +3269,58 @@ public object NativeTestingNice {
     val ffi_x = identity(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_OptionalString_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_PairStringMySimpleTestEnum_identity(
+    x: Pair<String, org.signal.libsignal.internal.MySimpleTestEnum>,
+  ): Pair<String, org.signal.libsignal.internal.MySimpleTestEnum> {
+    val ffi_x =
+      argPairConverter<String, Object, String, org.signal.libsignal.internal.MySimpleTestEnum>({
+        identity(it)
+      }, { (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_PairStringMySimpleTestEnum_identity(
+        ffi_x,
+      )
+
+    return mapPair<String, Object, String, org.signal.libsignal.internal.MySimpleTestEnum>({
+      identity(it)
+    }, { downcastFromObject<org.signal.libsignal.internal.MySimpleTestEnum>(it) })(ffiOut)
+  }
+
+  public fun TESTING_conversion_PairStringMySimpleTestEnum_to_string(
+    x: Pair<String, org.signal.libsignal.internal.MySimpleTestEnum>,
+  ): String {
+    val ffi_x =
+      argPairConverter<String, Object, String, org.signal.libsignal.internal.MySimpleTestEnum>({
+        identity(it)
+      }, { (org.signal.libsignal.internal.MySimpleTestEnum::toFfiArgTypeObject)(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_PairStringMySimpleTestEnum_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_PairStringString_identity(x: Pair<String, String>): Pair<String, String> {
+    val ffi_x = argPairConverter<String, String, String, String>({ identity(it) }, { identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_PairStringString_identity(
+        ffi_x,
+      )
+
+    return mapPair<String, String, String, String>({ identity(it) }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_conversion_PairStringString_to_string(x: Pair<String, String>): String {
+    val ffi_x = argPairConverter<String, String, String, String>({ identity(it) }, { identity(it) })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_PairStringString_to_string(
         ffi_x,
       )
 

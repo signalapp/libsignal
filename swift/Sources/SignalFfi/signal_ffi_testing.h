@@ -141,6 +141,17 @@ static_assert_64bit(alignof(SignalOptionalPairOfMutPointerHttpRequestu64) == 8);
 typedef const SignalOptionalPairOfMutPointerHttpRequestu64* SignalType_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64) == 8);
+typedef struct {
+  const int8_t* first;
+  SignalMySimpleTestEnumFfiArg second;
+} SignalPairOfCStringPtrMySimpleTestEnumFfiArg;
+static_assert_64bit(offsetof(SignalPairOfCStringPtrMySimpleTestEnumFfiArg, first) == 0);
+static_assert_64bit(offsetof(SignalPairOfCStringPtrMySimpleTestEnumFfiArg, second) == 8);
+static_assert_64bit(sizeof(SignalPairOfCStringPtrMySimpleTestEnumFfiArg) == 16);
+static_assert_64bit(alignof(SignalPairOfCStringPtrMySimpleTestEnumFfiArg) == 8);
+typedef const SignalPairOfCStringPtrMySimpleTestEnumFfiArg* SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg) == 8);
 typedef SignalType_ConstPointer_void* SignalType_MutPointer_ConstPointer_void;
 static_assert_64bit(sizeof(SignalType_MutPointer_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_ConstPointer_void) == 8);
@@ -582,6 +593,30 @@ static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResu
 typedef SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult* SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult) == 8);
+typedef struct {
+  const int8_t* first;
+  SignalMySimpleTestEnumFfiResult second;
+} SignalPairOfCStringPtrMySimpleTestEnumFfiResult;
+static_assert_64bit(offsetof(SignalPairOfCStringPtrMySimpleTestEnumFfiResult, first) == 0);
+static_assert_64bit(offsetof(SignalPairOfCStringPtrMySimpleTestEnumFfiResult, second) == 8);
+static_assert_64bit(sizeof(SignalPairOfCStringPtrMySimpleTestEnumFfiResult) == 16);
+static_assert_64bit(alignof(SignalPairOfCStringPtrMySimpleTestEnumFfiResult) == 8);
+typedef SignalPairOfCStringPtrMySimpleTestEnumFfiResult* SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult) == 8);
+typedef struct {
+  SignalPairOfCStringPtrMySimpleTestEnumFfiResult* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult) == 8);
+typedef SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult* SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult) == 8);
 typedef struct {
   int32_t first;
   const int8_t* second;
@@ -1503,6 +1538,22 @@ static_assert_64bit(offsetof(SignalBorrowedSliceOfMySimpleTestEnumFfiArg, length
 static_assert_64bit(sizeof(SignalBorrowedSliceOfMySimpleTestEnumFfiArg) == 16);
 static_assert_64bit(alignof(SignalBorrowedSliceOfMySimpleTestEnumFfiArg) == 8);
 typedef struct {
+  const SignalPairOfCStringPtrCStringPtr* base;
+  size_t length;
+} SignalBorrowedSliceOfPairOfCStringPtrCStringPtr;
+static_assert_64bit(offsetof(SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, base) == 0);
+static_assert_64bit(offsetof(SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, length) == 8);
+static_assert_64bit(sizeof(SignalBorrowedSliceOfPairOfCStringPtrCStringPtr) == 16);
+static_assert_64bit(alignof(SignalBorrowedSliceOfPairOfCStringPtrCStringPtr) == 8);
+typedef struct {
+  const SignalPairOfCStringPtrMySimpleTestEnumFfiArg* base;
+  size_t length;
+} SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg;
+static_assert_64bit(offsetof(SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg, base) == 0);
+static_assert_64bit(offsetof(SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg, length) == 8);
+static_assert_64bit(sizeof(SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg) == 16);
+static_assert_64bit(alignof(SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg) == 8);
+typedef struct {
   const SignalTestStream* raw;
 } SignalConstPointerTestStream;
 static_assert_64bit(offsetof(SignalConstPointerTestStream, raw) == 0);
@@ -1898,6 +1949,22 @@ SignalFfiError* signal_testing_conversion_i32_to_string(
   SignalCStringPtr* out,
   int32_t x
 );
+SignalFfiError* signal_testing_conversion_map_string_my_simple_test_enum_identity(
+  SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult* out,
+  SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg x
+);
+SignalFfiError* signal_testing_conversion_map_string_my_simple_test_enum_to_string(
+  SignalCStringPtr* out,
+  SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg x
+);
+SignalFfiError* signal_testing_conversion_map_string_string_identity(
+  SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr* out,
+  SignalBorrowedSliceOfPairOfCStringPtrCStringPtr x
+);
+SignalFfiError* signal_testing_conversion_map_string_string_to_string(
+  SignalCStringPtr* out,
+  SignalBorrowedSliceOfPairOfCStringPtrCStringPtr x
+);
 SignalFfiError* signal_testing_conversion_optional_bytes_identity(
   SignalOptionalOfOwnedBuffer* out,
   SignalOptionalOfBorrowedBuffer x
@@ -1921,6 +1988,22 @@ SignalFfiError* signal_testing_conversion_optional_string_identity(
 SignalFfiError* signal_testing_conversion_optional_string_to_string(
   SignalCStringPtr* out,
   const int8_t* x
+);
+SignalFfiError* signal_testing_conversion_pair_string_my_simple_test_enum_identity(
+  SignalPairOfCStringPtrMySimpleTestEnumFfiResult* out,
+  SignalPairOfCStringPtrMySimpleTestEnumFfiArg x
+);
+SignalFfiError* signal_testing_conversion_pair_string_my_simple_test_enum_to_string(
+  SignalCStringPtr* out,
+  SignalPairOfCStringPtrMySimpleTestEnumFfiArg x
+);
+SignalFfiError* signal_testing_conversion_pair_string_string_identity(
+  SignalPairOfCStringPtrCStringPtr* out,
+  SignalPairOfCStringPtrCStringPtr x
+);
+SignalFfiError* signal_testing_conversion_pair_string_string_to_string(
+  SignalCStringPtr* out,
+  SignalPairOfCStringPtrCStringPtr x
 );
 SignalFfiError* signal_testing_conversion_service_id_identity(
   SignalType_FixedArray17_uint8_t* out,

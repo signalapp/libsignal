@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_uchar};
 use std::fmt::Display;
+use std::hash::BuildHasher;
 use std::num::{NonZeroU64, ParseIntError};
 use std::ops::Deref;
 
@@ -1784,6 +1786,115 @@ impl NiceResultConverter for () {
         SwiftReturnConverter {
             nice_type: "Void".to_owned(),
             converter_type: "VoidConverter".to_owned(),
+        }
+    }
+}
+
+impl<T: ArgTypeInfoBase, S> ArgTypeInfoBase for HashMap<String, T, S> {
+    type ArgType = <BridgeVec<(String, T)> as ArgTypeInfoBase>::ArgType;
+}
+impl<'storage, T: ArgTypeInfo<'storage>, S: BuildHasher + Default> ArgTypeInfo<'storage>
+    for HashMap<String, T, S>
+{
+    type StoredType = <BridgeVec<(String, T)> as ArgTypeInfo<'storage>>::StoredType;
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        <BridgeVec<(String, T)> as ArgTypeInfo<'storage>>::borrow(foreign)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+            .iter_mut()
+            .map(|(k, v)| (k.take().expect("only tooken once"), T::load_from(v)))
+            .collect()
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<T: NiceArgConverter + ArgTypeInfoBase, S> NiceArgConverter for HashMap<String, T, S> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let t = T::register_swift_arg_converter(ctx);
+        let pair_type =
+            <PairOf<<String as ArgTypeInfoBase>::ArgType, T::ArgType> as IsCType>::register_c_type(
+                ctx,
+            );
+        let slice_type = <BorrowedSliceOf<PairOf<<String as ArgTypeInfoBase>::ArgType, T::ArgType>> as IsCType>::register_c_type(ctx);
+        SwiftArgConverter {
+            nice_type: format!("[String:{}]", t.nice_type),
+            converter_type: format!(
+                "StringMapArgConverter<{}, {}, {}>",
+                t.converter_type,
+                slice_type.swift_name(),
+                pair_type.swift_name(),
+            ),
+        }
+    }
+}
+
+impl<T: ResultTypeInfo, S> ResultTypeInfo for HashMap<String, T, S> {
+    type ResultType = <BridgeVec<(String, T)> as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        // TODO: we could avoid the intermediate copy into a Vec<>. Not worth it at this time.
+        BridgeVec(self.into_iter().collect()).convert_into()
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter + ResultTypeInfo, S> NiceResultConverter for HashMap<String, T, S> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let t = T::register_swift_result_converter(ctx);
+        let pair_type =
+            <PairOf<<String as ResultTypeInfo>::ResultType, T::ResultType> as IsCType>::register_c_type(
+                ctx,
+            );
+        let buffer_type = <OwnedBufferOfMaxAligned<
+            PairOf<<String as ResultTypeInfo>::ResultType, T::ResultType>,
+        > as IsCType>::register_c_type(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("[String:{}]", t.nice_type),
+            converter_type: format!(
+                "StringMapReturnConverter<{}, {}, {}>",
+                t.converter_type,
+                buffer_type.swift_name(),
+                pair_type.swift_name(),
+            ),
+        }
+    }
+}
+
+impl<A: ArgTypeInfoBase, B: ArgTypeInfoBase> ArgTypeInfoBase for (A, B) {
+    type ArgType = PairOf<A::ArgType, B::ArgType>;
+}
+impl<'storage, A: ArgTypeInfo<'storage>, B: ArgTypeInfo<'storage>> ArgTypeInfo<'storage>
+    for (A, B)
+{
+    type StoredType = (A::StoredType, B::StoredType);
+
+    fn borrow(foreign: Self::ArgType) -> SignalFfiResult<Self::StoredType> {
+        // NOTE: this can leak memory if the first conversion fails.
+        Ok((A::borrow(foreign.first)?, B::borrow(foreign.second)?))
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        (A::load_from(&mut stored.0), B::load_from(&mut stored.1))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<A: NiceArgConverter + ArgTypeInfoBase, B: NiceArgConverter + ArgTypeInfoBase> NiceArgConverter
+    for (A, B)
+{
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let a = A::register_swift_arg_converter(ctx);
+        let b = B::register_swift_arg_converter(ctx);
+        SwiftArgConverter {
+            nice_type: format!("({}, {})", a.nice_type, b.nice_type),
+            converter_type: format!(
+                "PairOfArgConverter<{}, {}, {}>",
+                a.converter_type,
+                b.converter_type,
+                PairOf::<A::ArgType, B::ArgType>::register_c_type(ctx).swift_name(),
+            ),
         }
     }
 }
