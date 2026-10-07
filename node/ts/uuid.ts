@@ -8,17 +8,19 @@
  * @module uuid
  */
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 
 export type Uuid = string;
 
 export const NIL = '00000000-0000-0000-0000-000000000000';
 
-export function stringify(input: Uint8Array<ArrayBuffer>): string {
+export function stringify(input: Bytes): string {
   return Native.uuid_to_string(input);
 }
 
-export function parse(input: string): Uint8Array<ArrayBuffer> {
+export function parse(input: string): Bytes {
   const result = Native.uuid_from_string(input);
   if (!result) {
     throw new TypeError(`invalid UUID: '${input}'`);
@@ -26,6 +28,6 @@ export function parse(input: string): Uint8Array<ArrayBuffer> {
   return result;
 }
 
-export function v4(): Uint8Array<ArrayBuffer> {
+export function v4(): Bytes {
   return Native.uuid_new_v4();
 }

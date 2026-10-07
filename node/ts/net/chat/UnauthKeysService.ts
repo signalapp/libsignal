@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as Native from '../../Native.js';
 import { ServiceId } from '../../Address.js';
@@ -31,10 +33,7 @@ export interface UnauthKeysService {
     request: {
       target: ServiceId;
       device: 'all' | { deviceId: number };
-      auth:
-        | { accessKey: Uint8Array<ArrayBuffer> }
-        | GroupSendFullToken
-        | 'unrestricted';
+      auth: { accessKey: Bytes } | GroupSendFullToken | 'unrestricted';
     },
     options?: RequestOptions
   ) => Promise<{
@@ -45,10 +44,7 @@ export interface UnauthKeysService {
 
 UnauthenticatedChatConnection.prototype.getPreKeys = async function (
   request: {
-    auth:
-      | { accessKey: Uint8Array<ArrayBuffer> }
-      | GroupSendFullToken
-      | 'unrestricted';
+    auth: { accessKey: Bytes } | GroupSendFullToken | 'unrestricted';
     target: ServiceId;
     device: 'all' | { deviceId: number };
   },

@@ -7,6 +7,7 @@ import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+import type { Bytes } from '@signalapp/types';
 import { fail } from 'node:assert';
 import { Buffer } from 'node:buffer';
 
@@ -532,7 +533,7 @@ describe('chat service api', () => {
 
       // a helper function to check that the message has been passed to the listener
       async function check(
-        serverRequest: Uint8Array<ArrayBuffer>,
+        serverRequest: Bytes,
         expectedMethod: sinon.SinonStub,
         expectedArguments: unknown[]
       ) {
@@ -564,7 +565,7 @@ describe('chat service api', () => {
     it('messages arrive in order', async () => {
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Uint8Array<ArrayBuffer>,
+          _envelope: Bytes,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -638,7 +639,7 @@ describe('chat service api', () => {
       const connectionInterruptedReasons: (object | null)[] = [];
       const listener: ChatServiceListener = {
         onIncomingMessage(
-          _envelope: Uint8Array<ArrayBuffer>,
+          _envelope: Bytes,
           _timestamp: number,
           _ack: ChatServerMessageAck
         ): void {
@@ -781,10 +782,7 @@ describe('chat service api', () => {
           recordCall('onReceivedAddress', address);
           ack.send(200);
         },
-        onReceivedEnvelope(
-          envelope: Uint8Array<ArrayBuffer>,
-          ack: ChatServerMessageAck
-        ): void {
+        onReceivedEnvelope(envelope: Bytes, ack: ChatServerMessageAck): void {
           recordCall('onReceivedEnvelope', envelope);
           ack.send(200);
         },

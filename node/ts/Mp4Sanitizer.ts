@@ -31,6 +31,8 @@
  * @module Mp4Sanitizer
  */
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import {
   IoError,
@@ -56,7 +58,7 @@ export class SanitizedMetadata {
    * Get the sanitized metadata, if any.
    * @returns The sanitized metadata, or `null` if it didn't need to be sanitized.
    */
-  getMetadata(): Uint8Array<ArrayBuffer> | null {
+  getMetadata(): Bytes | null {
     const metadata = Native.SanitizedMetadata_GetMetadata(this);
     if (metadata.length == 0) {
       return null;

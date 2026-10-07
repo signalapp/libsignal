@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from '../../Native.js';
 import { ServiceId } from '../../Address.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
@@ -27,7 +29,7 @@ declare module '../Chat' {
 
 /** See {@link UnauthMessagesService#sendMultiRecipientMessage}. */
 export type MultiRecipientMessageRequest = Readonly<{
-  payload: Uint8Array<ArrayBuffer>;
+  payload: Bytes;
   timestamp: number;
   auth: 'story' | GroupSendFullToken;
   onlineOnly: boolean;
@@ -49,11 +51,7 @@ export type SendSealedMessageRequest = Readonly<{
   destination: ServiceId;
   timestamp: number;
   contents: Readonly<SingleOutboundSealedSenderMessage[]>;
-  auth:
-    | 'story'
-    | { accessKey: Uint8Array<ArrayBuffer> }
-    | GroupSendFullToken
-    | 'unrestricted';
+  auth: 'story' | { accessKey: Bytes } | GroupSendFullToken | 'unrestricted';
   onlineOnly: boolean;
   urgent: boolean;
 }>;
@@ -148,7 +146,7 @@ UnauthenticatedChatConnection.prototype.sendMessage = async function (
 ): Promise<void> {
   const deviceIds = new Uint32Array(contents.length);
   const registrationIds = new Uint32Array(contents.length);
-  const messages: Uint8Array<ArrayBuffer>[] = [];
+  const messages: Bytes[] = [];
   contents.forEach((next, i) => {
     deviceIds[i] = next.deviceId;
     registrationIds[i] = next.registrationId;
@@ -164,7 +162,7 @@ UnauthenticatedChatConnection.prototype.sendMessage = async function (
   }
 
   let authKind: AuthKind;
-  let authPayload: Uint8Array<ArrayBuffer> | null;
+  let authPayload: Bytes | null;
   if (auth === 'story') {
     authKind = AuthKind.Story;
     authPayload = null;

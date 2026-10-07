@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
+
 import ByteArray from './internal/ByteArray.js';
 import { RANDOM_LENGTH } from './internal/Constants.js';
 import * as Native from '../Native.js';
@@ -20,7 +22,7 @@ function dateFromSeconds(seconds: number): Date {
 
 /** A single use bearer token sent by the client to the donation endpoint. */
 export class DonationPermit extends ByteArray {
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.DonationPermit_CheckValidContents);
   }
   /**
@@ -37,17 +39,17 @@ export class DonationPermit extends ByteArray {
   public get expiration(): Date {
     return dateFromSeconds(Native.DonationPermit_Expiration(this.contents));
   }
-  public get spendId(): Uint8Array<ArrayBuffer> {
+  public get spendId(): Bytes {
     return Native.DonationPermit_SpendId(this.contents);
   }
   /** @deprecated Use the `spendId` getter instead. */
-  getSpendId(): Uint8Array<ArrayBuffer> {
+  getSpendId(): Bytes {
     return this.spendId;
   }
 }
 
 export class DonationPermitDerivedKeyPair extends ByteArray {
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.DonationPermitDerivedKeyPair_CheckValidContents);
   }
   static forExpiration(
@@ -65,7 +67,7 @@ export class DonationPermitDerivedKeyPair extends ByteArray {
 
 /** The blinded request sent from the client to the issuing server over the authenticated channel. */
 export class DonationPermitRequest extends ByteArray {
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.DonationPermitRequest_CheckValidContents);
   }
   issue(keyPair: DonationPermitDerivedKeyPair): DonationPermitResponse {
@@ -88,7 +90,7 @@ export class DonationPermitRequest extends ByteArray {
  * permits, not this context.
  */
 export class DonationPermitRequestContext extends ByteArray {
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.DonationPermitRequestContext_CheckValidContents);
   }
 
@@ -138,7 +140,7 @@ export class DonationPermitRequestContext extends ByteArray {
 export class DonationPermitResponse extends ByteArray {
   /** The shared expiration for the permits in this response. */
   expiration: Date;
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.DonationPermitResponse_CheckValidContents);
     this.expiration = dateFromSeconds(
       Native.DonationPermitResponse_GetExpiration(this.contents)

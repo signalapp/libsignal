@@ -8,6 +8,7 @@ import {
   Server,
   loadCertificates,
 } from '@signalapp/mock-server';
+import type { Bytes } from '@signalapp/types';
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
@@ -128,7 +129,7 @@ describe('chat connection to mock server', () => {
       async (listener: ConnectionEventsListener | ChatServiceListener) => {
         const serviceListener = {
           onIncomingMessage: (
-            _envelope: Uint8Array<ArrayBuffer>,
+            _envelope: Bytes,
             _timestamp: number,
             _ack: ChatServerMessageAck
           ) => {},
@@ -188,7 +189,7 @@ describe('chat connection to mock server', () => {
               void promisedAlerts.resolve(alerts);
             },
             onIncomingMessage: (
-              _envelope: Uint8Array<ArrayBuffer>,
+              _envelope: Bytes,
               _timestamp: number,
               _ack: ChatServerMessageAck
             ) => {},

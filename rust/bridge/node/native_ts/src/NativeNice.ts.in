@@ -5,6 +5,8 @@
 
 // WARNING: this file was automatically generated
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */

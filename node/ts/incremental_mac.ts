@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import * as stream from 'node:stream';
 import { Buffer } from 'node:buffer';
 
@@ -29,9 +30,9 @@ export function inferChunkSize(dataSize: number): ChunkSizeChoice {
 class DigestingWritable extends stream.Writable {
   _nativeHandle: Native.IncrementalMac;
 
-  _digests: Uint8Array<ArrayBuffer>[] = [];
+  _digests: Bytes[] = [];
 
-  constructor(key: Uint8Array<ArrayBuffer>, sizeChoice: ChunkSizeChoice) {
+  constructor(key: Bytes, sizeChoice: ChunkSizeChoice) {
     super();
     this._nativeHandle = Native.IncrementalMac_Initialize(
       key,
@@ -39,7 +40,7 @@ class DigestingWritable extends stream.Writable {
     );
   }
 
-  getFinalDigest(): Uint8Array<ArrayBuffer> {
+  getFinalDigest(): Bytes {
     // Use Buffer.concat for convenience, but return a proper Uint8Array, both for the correct type
     // and to make an independent copy of a possibly-reused buffer.
     return new Uint8Array(Buffer.concat(this._digests));
@@ -74,7 +75,7 @@ class DigestingWritable extends stream.Writable {
 export class DigestingPassThrough extends stream.Transform {
   private digester: DigestingWritable;
 
-  constructor(key: Uint8Array<ArrayBuffer>, sizeChoice: ChunkSizeChoice) {
+  constructor(key: Bytes, sizeChoice: ChunkSizeChoice) {
     super();
     this.digester = new DigestingWritable(key, sizeChoice);
 
@@ -84,12 +85,12 @@ export class DigestingPassThrough extends stream.Transform {
     });
   }
 
-  getFinalDigest(): Uint8Array<ArrayBuffer> {
+  getFinalDigest(): Bytes {
     return this.digester.getFinalDigest();
   }
 
   public override _transform(
-    data: Uint8Array<ArrayBuffer>,
+    data: Bytes,
     enc: BufferEncoding,
     callback: CallbackType
   ): void {
@@ -118,11 +119,7 @@ class ValidatingWritable extends stream.Writable {
 
   _validatedBytes = 0;
 
-  constructor(
-    key: Uint8Array<ArrayBuffer>,
-    sizeChoice: ChunkSizeChoice,
-    digest: Uint8Array<ArrayBuffer>
-  ) {
+  constructor(key: Bytes, sizeChoice: ChunkSizeChoice, digest: Bytes) {
     super();
     const handle = Native.ValidatingMac_Initialize(
       key,
@@ -177,13 +174,9 @@ class ValidatingWritable extends stream.Writable {
 
 export class ValidatingPassThrough extends stream.Transform {
   private validator: ValidatingWritable;
-  private buffer = new Array<Uint8Array<ArrayBuffer>>();
+  private buffer = new Array<Bytes>();
 
-  constructor(
-    key: Uint8Array<ArrayBuffer>,
-    sizeChoice: ChunkSizeChoice,
-    digest: Uint8Array<ArrayBuffer>
-  ) {
+  constructor(key: Bytes, sizeChoice: ChunkSizeChoice, digest: Bytes) {
     super();
     this.validator = new ValidatingWritable(key, sizeChoice, digest);
 
@@ -194,7 +187,7 @@ export class ValidatingPassThrough extends stream.Transform {
   }
 
   public override _transform(
-    data: Uint8Array<ArrayBuffer>,
+    data: Bytes,
     enc: BufferEncoding,
     callback: CallbackType
   ): void {

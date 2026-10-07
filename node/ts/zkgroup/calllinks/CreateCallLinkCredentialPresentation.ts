@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import ByteArray from '../internal/ByteArray.js';
 import * as Native from '../../Native.js';
 
@@ -12,7 +14,7 @@ import GenericServerSecretParams from '../GenericServerSecretParams.js';
 export default class CreateCallLinkCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(
       contents,
       Native.CreateCallLinkCredentialPresentation_CheckValidContents
@@ -20,7 +22,7 @@ export default class CreateCallLinkCredentialPresentation extends ByteArray {
   }
 
   verify(
-    roomId: Uint8Array<ArrayBuffer>,
+    roomId: Bytes,
     serverParams: GenericServerSecretParams,
     callLinkParams: CallLinkPublicParams,
     now: Date = new Date()

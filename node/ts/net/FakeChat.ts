@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+import assert from 'node:assert';
+
 import type { TokioAsyncContext } from '../net.js';
 import * as Native from '../Native.js';
 import { newNativeHandle } from '../internal.js';
 import { FakeChatRemoteEnd } from '../Native.js';
-
-import assert from 'node:assert';
 
 export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
   readonly _nativeHandle: Native.HttpRequest;
@@ -36,7 +37,7 @@ export class InternalRequest implements Native.Wrapper<Native.HttpRequest> {
     );
   }
 
-  public get body(): Uint8Array<ArrayBuffer> {
+  public get body(): Bytes {
     return Native.TESTING_ChatRequestGetBody(this);
   }
 }
@@ -46,7 +47,7 @@ export type ServerResponse = {
   status: number;
   message?: string;
   headers?: string[];
-  body?: Uint8Array<ArrayBuffer>;
+  body?: Bytes;
 };
 
 export class FakeChatRemote {
@@ -101,11 +102,11 @@ export class FakeChatRemote {
     Native.TESTING_FakeChatRemoteEnd_SendServerResponse(this, nativeResponse);
   }
 
-  public sendRawServerResponse(bytes: Uint8Array<ArrayBuffer>): void {
+  public sendRawServerResponse(bytes: Bytes): void {
     Native.TESTING_FakeChatRemoteEnd_SendRawServerResponse(this, bytes);
   }
 
-  public sendRawServerRequest(bytes: Uint8Array<ArrayBuffer>): void {
+  public sendRawServerRequest(bytes: Bytes): void {
     Native.TESTING_FakeChatRemoteEnd_SendRawServerRequest(this, bytes);
   }
 
@@ -133,7 +134,7 @@ export class FakeChatRemote {
 
   public sendRawGrpcReplyTo(
     request: InternalRequest,
-    response: Uint8Array<ArrayBuffer> | Native.GrpcTestCaseBridgedResponse
+    response: Bytes | Native.GrpcTestCaseBridgedResponse
   ): Promise<void> {
     if (response instanceof Uint8Array) {
       const nativeResponse = newNativeHandle(

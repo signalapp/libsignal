@@ -4,6 +4,7 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
+import type { Bytes } from '@signalapp/types';
 
 import * as Native from '../Native.js';
 import {
@@ -440,11 +441,11 @@ export class AccountAttributes {
     capabilities,
     discoverableByPhoneNumber,
   }: {
-    recoveryPassword: Uint8Array<ArrayBuffer>;
+    recoveryPassword: Bytes;
     aciRegistrationId: number;
     pniRegistrationId: number;
     registrationLock: string | null;
-    unidentifiedAccessKey: Uint8Array<ArrayBuffer>;
+    unidentifiedAccessKey: Bytes;
     unrestrictedUnidentifiedAccess: boolean;
     capabilities: Set<string>;
     discoverableByPhoneNumber: boolean;
@@ -483,14 +484,14 @@ export class RegisterAccountResponse {
   }
 
   /** Set only for an account with no phone number. */
-  public get authCredentialSalt(): Uint8Array<ArrayBuffer> | null {
+  public get authCredentialSalt(): Bytes | null {
     return Native.RegisterAccountResponse_GetAuthCredentialSalt(this);
   }
 
-  public get usernameHash(): Uint8Array<ArrayBuffer> | null {
+  public get usernameHash(): Bytes | null {
     return Native.RegisterAccountResponse_GetUsernameHash(this);
   }
-  public get usernameLinkHandle(): Uint8Array<ArrayBuffer> | null {
+  public get usernameLinkHandle(): Bytes | null {
     return Native.RegisterAccountResponse_GetUsernameLinkHandle(this);
   }
 

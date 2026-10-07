@@ -538,7 +538,7 @@ impl NiceArgConverter for uuid::Uuid {
     fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
         TsArgConverter {
             nice_type: "uuid.Uuid".to_string(),
-            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            ffi_type: "Bytes".to_string(),
             converter_function: "uuid.parse".to_string(),
         }
     }
@@ -589,7 +589,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::ServiceId {
                     .expect_err("throw_type_error always produces Err")
             })
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_service_id_arg_converter!(ServiceId, "ServiceId", "serviceIdArgConverter");
 
@@ -600,7 +600,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Aci {
             .try_into()
             .or_else(|_| cx.throw_type_error("not an ACI"))
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_service_id_arg_converter!(Aci, "Aci", "serviceIdArgConverter");
 
@@ -611,7 +611,7 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
             .try_into()
             .or_else(|_| cx.throw_type_error("not a PNI"))
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 impl SimpleArgTypeInfo for libsignal_core::E164 {
@@ -661,14 +661,14 @@ impl<const LEN: usize> SimpleArgTypeInfo for [u8; LEN] {
                 .expect_err("throw_type_error always produces Err")
         })
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 #[cfg(feature = "metadata")]
 impl<const LEN: usize> NiceArgConverter for [u8; LEN] {
     fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
         TsArgConverter {
-            nice_type: "Uint8Array<ArrayBuffer>".to_string(),
-            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            nice_type: "Bytes".to_string(),
+            ffi_type: "Bytes".to_string(),
             converter_function: "identity".to_string(),
         }
     }
@@ -847,7 +847,7 @@ impl SimpleArgTypeInfo for libsignal_net_chat::api::messages::MultiRecipientSend
             Ok(Self::Group(token))
         }
     }
-    register_ts_ffi_type!("(Uint8Array<ArrayBuffer> | null)");
+    register_ts_ffi_type!("(Bytes | null)");
 }
 
 macro_rules! zkgroup_serialize_type {
@@ -865,7 +865,7 @@ macro_rules! zkgroup_serialize_type {
                     cx.throw_type_error(concat!("bad ", stringify!($ty)))
                 })
             }
-            register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+            register_ts_ffi_type!("Bytes");
         }
 
         #[cfg(feature = "metadata")]
@@ -873,7 +873,7 @@ macro_rules! zkgroup_serialize_type {
             fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
                 TsArgConverter {
                     nice_type: format!("zkgroup.{}", $cls),
-                    ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+                    ffi_type: "Bytes".to_string(),
                     converter_function: "ByteArray.prototype.getContents.call".to_string(),
                 }
             }
@@ -894,7 +894,7 @@ macro_rules! zkgroup_serialize_type {
             fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
                 TsReturnConverter {
                     nice_type: format!("zkgroup.{}", $cls),
-                    ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+                    ffi_type: "Bytes".to_string(),
                     converter_function: format!("((x) => new zkgroup.{}(x))", $cls),
                 }
             }
@@ -951,7 +951,7 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.as_slice(cx).to_vec().into())
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_identity_arg_converter!(Box<[u8]>);
 
@@ -1198,7 +1198,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context> for &'storage
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.buffer
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_identity_arg_converter!(&[u8]);
 
@@ -1283,7 +1283,7 @@ impl<'a> AsyncArgTypeInfo<'a> for &'a [u8] {
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         &*stored
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 /// See [`AssumedImmutableBuffer`].
@@ -1301,7 +1301,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         Self::parse(&*stored)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 /// See [`PersistentAssumedImmutableBuffer`].
@@ -1317,7 +1317,7 @@ impl<'a> AsyncArgTypeInfo<'a> for crate::support::ServiceIdSequence<'a> {
     fn load_async_arg(stored: &'a mut Self::StoredType) -> Self {
         Self::parse(&*stored)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
@@ -1348,7 +1348,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         &stored.1
     }
-    register_ts_ffi_type!("Array<Uint8Array<ArrayBuffer>>");
+    register_ts_ffi_type!("Array<Bytes>");
 }
 
 impl SimpleArgTypeInfo for Vec<u8> {
@@ -1356,7 +1356,7 @@ impl SimpleArgTypeInfo for Vec<u8> {
     fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
         Ok(foreign.as_slice(cx).to_vec())
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_identity_arg_converter!(Vec<u8>);
 
@@ -1372,7 +1372,7 @@ impl SimpleArgTypeInfo for Vec<Vec<u8>> {
             })
             .collect()
     }
-    register_ts_ffi_type!("Array<Uint8Array<ArrayBuffer>>");
+    register_ts_ffi_type!("Array<Bytes>");
 }
 
 macro_rules! bridge_trait {
@@ -1481,7 +1481,7 @@ impl<'storage, 'context: 'storage> ArgTypeInfo<'storage, 'context>
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::load_from(stored).into()
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::BackupKey {
@@ -1496,7 +1496,7 @@ impl<'storage> AsyncArgTypeInfo<'storage> for &'storage libsignal_account_keys::
     fn load_async_arg(stored: &'storage mut Self::StoredType) -> Self {
         <&[u8; libsignal_account_keys::BACKUP_KEY_LEN]>::load_async_arg(stored).into()
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 impl<'storage, 'context: 'storage, T: ArgTypeInfo<'storage, 'context>>
@@ -1658,7 +1658,7 @@ impl<'a> ResultTypeInfo<'a> for &[u8] {
     fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, self)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 impl<'a> ResultTypeInfo<'a> for uuid::Uuid {
@@ -1673,7 +1673,7 @@ impl NiceResultConverter for uuid::Uuid {
     fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
         TsReturnConverter {
             nice_type: "uuid.Uuid".to_string(),
-            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            ffi_type: "Bytes".to_string(),
             converter_function: "uuid.stringify".to_string(),
         }
     }
@@ -1684,7 +1684,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::ServiceId {
     fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
         JsUint8Array::from_slice(cx, &self.service_id_fixed_width_binary())
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_service_id_result_converter!(ServiceId, "ServiceId");
 
@@ -1693,7 +1693,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Aci {
     fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
         libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_service_id_result_converter!(Aci, "Aci");
 
@@ -1702,7 +1702,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Pni {
     fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
         libsignal_protocol::ServiceId::from(self).convert_into(cx)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 /// Converts `None` to `null`, passing through all other values.
@@ -1737,7 +1737,7 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, &self)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 nice_identity_result_converter!(Vec<u8>);
 
@@ -1746,7 +1746,7 @@ impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         JsUint8Array::from_slice(cx, &self)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 impl<'a> ResultTypeInfo<'a> for &[&str] {
@@ -1839,7 +1839,7 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
     fn load_from(stored: &'storage mut Self::StoredType) -> Self {
         stored.buffer.try_into().expect("checked length already")
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 
 /// Loads from a JsUint8Array, assuming it won't be mutated while in use.
@@ -1847,7 +1847,7 @@ impl<'storage, 'context: 'storage, const LEN: usize> ArgTypeInfo<'storage, 'cont
 impl<'storage, const LEN: usize> AsyncArgTypeInfo<'storage> for &'storage [u8; LEN] {
     type ArgType = JsUint8Array;
     type StoredType = PersistentAssumedImmutableBuffer;
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
     fn save_async_arg(
         cx: &mut FunctionContext,
         foreign: Handle<Self::ArgType>,
@@ -1947,14 +1947,14 @@ impl<'a, const LEN: usize> ResultTypeInfo<'a> for [u8; LEN] {
     fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
         self.as_ref().convert_into(cx)
     }
-    register_ts_ffi_type!("Uint8Array<ArrayBuffer>");
+    register_ts_ffi_type!("Bytes");
 }
 #[cfg(feature = "metadata")]
 impl<const LEN: usize> NiceResultConverter for [u8; LEN] {
     fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
         TsReturnConverter {
-            nice_type: "Uint8Array<ArrayBuffer>".to_string(),
-            ffi_type: "Uint8Array<ArrayBuffer>".to_string(),
+            nice_type: "Bytes".to_string(),
+            ffi_type: "Bytes".to_string(),
             converter_function: "identity".to_string(),
         }
     }
@@ -2530,7 +2530,7 @@ where
             // If we ever want to use FixedLengthBincodeSerializable for non-zkgroup types,
             // we can add a module name as a trait requirement.
             nice_type: format!("zkgroup.{}", T::name()),
-            ffi_type: "Uint8Array<ArrayBuffer>".to_owned(),
+            ffi_type: "Bytes".to_owned(),
             converter_function: "ByteArray.prototype.getContents.call".to_owned(),
         }
     }
@@ -2563,7 +2563,7 @@ where
             // If we ever want to use FixedLengthBincodeSerializable for non-zkgroup types,
             // we can add a module name as a trait requirement.
             nice_type: format!("zkgroup.{}", T::name()),
-            ffi_type: "Uint8Array<ArrayBuffer>".to_owned(),
+            ffi_type: "Bytes".to_owned(),
             converter_function: format!("(x => new zkgroup.{}(x))", T::name()),
         }
     }

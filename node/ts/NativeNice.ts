@@ -5,6 +5,8 @@
 
 // WARNING: this file was automatically generated
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -156,12 +158,12 @@ export type BridgeCopyBackupMediaItem = {
   sourceAttachmentCdn: number;
   sourceKey: string;
   objectLength: bigint;
-  mediaId: Uint8Array<ArrayBuffer>;
-  encryptionKey: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
+  encryptionKey: Bytes;
 };
 
 export type BridgeCopyBackupMediaOutcome = {
-  mediaId: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
   result: BridgeCopyBackupMediaResult;
 };
 
@@ -174,7 +176,7 @@ export type BridgeCopyBackupMediaResult =
   | 'outOfSpace';
 
 export type BridgeDeleteBackupMediaItem = {
-  mediaId: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
   cdn: number;
 };
 
@@ -206,7 +208,7 @@ export type BridgeMfaVerificationCredential =
     };
 
 export type BridgePendingTotpKey = {
-  key: Uint8Array<ArrayBuffer>;
+  key: Bytes;
   parameters: BridgeTotpParameters;
 };
 
@@ -224,15 +226,15 @@ export type BridgeTotpParameters = {
 };
 
 export type BridgeWebAuthnAuthenticationParameters = {
-  challenge: Uint8Array<ArrayBuffer>;
+  challenge: Bytes;
   timeoutSeconds: number;
-  allowedCredentialIds: Array<Uint8Array<ArrayBuffer>>;
+  allowedCredentialIds: Array<Bytes>;
 };
 
 export type BridgeWebAuthnCreateParameters = {
-  userHandle: Uint8Array<ArrayBuffer>;
+  userHandle: Bytes;
   allowedAlgorithms: Array<number>;
-  excludeCredentialIds: Array<Uint8Array<ArrayBuffer>>;
+  excludeCredentialIds: Array<Bytes>;
 };
 
 export type CallQualitySurveyInternal = {
@@ -256,8 +258,8 @@ export type CallQualitySurveyInternal = {
   videoRecvPacketLossFraction: number | null;
   audioSendPacketLossFraction: number | null;
   videoSendPacketLossFraction: number | null;
-  callTelemetry: Uint8Array<ArrayBuffer> | null;
-  callIdHash: Uint8Array<ArrayBuffer> | null;
+  callTelemetry: Bytes | null;
+  callIdHash: Bytes | null;
 };
 
 export type CheckSvrCredentialsArgs = {
@@ -269,7 +271,7 @@ export type ConfirmTotpKeyArgs = {
   oneTimePassword: number;
   name: string;
   createdAt: Timestamp;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 };
 
 export type ConfirmTotpKeyOut =
@@ -281,7 +283,7 @@ export type ConfirmTotpKeyOut =
 
 export type ConfirmUsernameArgs = {
   username: string;
-  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  usernameCiphertext: Bytes;
 };
 
 export type ConfirmUsernameOut =
@@ -359,11 +361,11 @@ export type DeviceCapabilityInternal =
 export type FinishMfaVerificationOut = 'success' | 'failedToVerify';
 
 export type FinishWebAuthnRegistrationArgs = {
-  attestationObject: Uint8Array<ArrayBuffer>;
+  attestationObject: Bytes;
   collectedClientDataJson: string;
   name: string;
   createdAt: Timestamp;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 };
 
 export type FinishWebAuthnRegistrationOut =
@@ -434,7 +436,7 @@ export type GetStickerUploadFormsResponse = {
 };
 
 export type GetSubscriptionReceiptCredentialArgs = {
-  subscriberId: Uint8Array<ArrayBuffer>;
+  subscriberId: Bytes;
   receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
   serverParams: ServerPublicParamsSerialized;
 };
@@ -462,10 +464,10 @@ export type GetSvrBCredentialsOut =
 
 export type LinkedDeviceInternal = {
   id: DeviceId;
-  encryptedName: Uint8Array<ArrayBuffer>;
+  encryptedName: Bytes;
   lastSeen: Timestamp;
   registrationId: number;
-  createdAtCiphertext: Uint8Array<ArrayBuffer>;
+  createdAtCiphertext: Bytes;
 };
 
 export type ListMediaArgs = {
@@ -475,7 +477,7 @@ export type ListMediaArgs = {
 
 export type ListMediaItem = {
   cdn: number;
-  mediaId: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
   objectLength: bigint;
 };
 
@@ -495,7 +497,7 @@ export type ListMediaResponse = {
 };
 
 export type ListMfaKeysArgs = {
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 };
 
 export type ListMfaKeysOut = {
@@ -506,7 +508,7 @@ export type LoginReceiptLevel = 'normal' | 'sandbox';
 
 export type LookUpUsernameLinkArgs = {
   uuid: uuid.Uuid;
-  entropy: Uint8Array<ArrayBuffer>;
+  entropy: Bytes;
 };
 
 export type LookUpUsernameLinkOut =
@@ -600,16 +602,16 @@ export type RemoveMfaKeyOut = 'success';
 export type ReportMessageArgs = {
   source: Aci;
   messageGuid: uuid.Uuid;
-  reportSpamToken: Uint8Array<ArrayBuffer>;
+  reportSpamToken: Bytes;
 };
 
 export type ReserveUsernameHashArgs = {
-  usernames: Array<Uint8Array<ArrayBuffer>>;
+  usernames: Array<Bytes>;
 };
 
 export type ReserveUsernameHashOut =
   | {
-      success: Uint8Array<ArrayBuffer>;
+      success: Bytes;
     }
   | 'usernameNotAvailable';
 
@@ -624,7 +626,7 @@ export type S3UploadFormInternal = {
 };
 
 export type ServerPublicParamsSerialized = {
-  bytes: Uint8Array<ArrayBuffer>;
+  bytes: Bytes;
 };
 
 export type SetCapabilitiesArgs = {
@@ -633,7 +635,7 @@ export type SetCapabilitiesArgs = {
 
 export type SetDeviceNameArgs = {
   id: number;
-  encryptedName: Uint8Array<ArrayBuffer>;
+  encryptedName: Bytes;
 };
 
 export type SetDeviceNameOut = 'success' | 'deviceNotFound';
@@ -647,14 +649,14 @@ export type SetMfaKeyMetadataArgs = {
   keyId: number;
   name: string;
   createdAt: Timestamp;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 };
 
 export type SetMfaKeyMetadataOut = 'success' | 'keyNotFound';
 
 export type SetOneTimeEcPreKeysArgs = {
   identity: number;
-  preKeys: Array<[number, Uint8Array<ArrayBuffer>]>;
+  preKeys: Array<[number, Bytes]>;
 };
 
 export type SetOneTimeKemPreKeysArgs = {
@@ -668,7 +670,7 @@ export type SetSignedEcPreKeyArgs = {
 };
 
 export type SetUsernameLinkArgs = {
-  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  usernameCiphertext: Bytes;
   keepLinkHandle: boolean;
 };
 
@@ -707,8 +709,8 @@ export type TestStreamChunk = {
 
 export type TestingAnySignedPreKey = {
   id: number;
-  key: Uint8Array<ArrayBuffer>;
-  sig: Uint8Array<ArrayBuffer>;
+  key: Bytes;
+  sig: Bytes;
 };
 
 export function returnConverterAuthCheckResult(
@@ -912,8 +914,9 @@ export function returnConverterBridgeWebAuthnAuthenticationParameters(
   return {
     challenge: identity(ffiInput.challenge),
     timeoutSeconds: identity(ffiInput.timeout_seconds),
-    allowedCredentialIds: ((arr: Array<Uint8Array<ArrayBuffer>>) =>
-      arr.map(identity))(ffiInput.allowed_credential_ids),
+    allowedCredentialIds: ((arr: Array<Bytes>) => arr.map(identity))(
+      ffiInput.allowed_credential_ids
+    ),
   };
 }
 
@@ -925,8 +928,9 @@ export function returnConverterBridgeWebAuthnCreateParameters(
     allowedAlgorithms: ((arr: Array<number>) => arr.map(identity))(
       ffiInput.allowed_algorithms
     ),
-    excludeCredentialIds: ((arr: Array<Uint8Array<ArrayBuffer>>) =>
-      arr.map(identity))(ffiInput.exclude_credential_ids),
+    excludeCredentialIds: ((arr: Array<Bytes>) => arr.map(identity))(
+      ffiInput.exclude_credential_ids
+    ),
   };
 }
 
@@ -1841,9 +1845,7 @@ export function returnConverterReserveUsernameHashArgs(
   ffiInput: Native.ReturnFfiReserveUsernameHashArgs
 ): ReserveUsernameHashArgs {
   return {
-    usernames: ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
-      ffiInput.usernames
-    ),
+    usernames: ((arr: Array<Bytes>) => arr.map(identity))(ffiInput.usernames),
   };
 }
 
@@ -1961,13 +1963,11 @@ export function returnConverterSetOneTimeEcPreKeysArgs(
 ): SetOneTimeEcPreKeysArgs {
   return {
     identity: identity(ffiInput.identity),
-    preKeys: ((arr: Array<[number, Uint8Array<ArrayBuffer>]>) =>
-      arr.map(
-        ([a, b]: [number, Uint8Array<ArrayBuffer>]): [
-          number,
-          Uint8Array<ArrayBuffer>
-        ] => [identity(a), identity(b)]
-      ))(ffiInput.pre_keys),
+    preKeys: ((arr: Array<[number, Bytes]>) =>
+      arr.map(([a, b]: [number, Bytes]): [number, Bytes] => [
+        identity(a),
+        identity(b),
+      ]))(ffiInput.pre_keys),
   };
 }
 
@@ -2459,7 +2459,7 @@ export async function AuthenticatedChatConnection_confirm_totp_key({
   oneTimePassword: number;
   name: string;
   createdAt: Timestamp;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
   rng: Rng | undefined;
 }): Promise<number> {
   return identity(
@@ -2489,7 +2489,7 @@ export async function AuthenticatedChatConnection_confirm_username({
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
   username: string;
-  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  usernameCiphertext: Bytes;
   rng: Rng | undefined;
 }): Promise<uuid.Uuid> {
   return uuid.stringify(
@@ -2598,11 +2598,11 @@ export async function AuthenticatedChatConnection_finish_web_authn_registration(
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  attestationObject: Uint8Array<ArrayBuffer>;
+  attestationObject: Bytes;
   collectedClientDataJson: string;
   name: string;
   createdAt: Timestamp;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
   rng: Rng | undefined;
 }): Promise<number> {
   return identity(
@@ -2729,7 +2729,7 @@ export async function AuthenticatedChatConnection_list_mfa_keys({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 }): Promise<Array<BridgeConfirmedMfaKey>> {
   return ((arr: Array<ReturnFfiBridgeConfirmedMfaKey>) =>
     arr.map(returnConverterBridgeConfirmedMfaKey))(
@@ -2822,7 +2822,7 @@ export async function AuthenticatedChatConnection_report_message({
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
   source: Aci;
   messageGuid: uuid.Uuid;
-  reportSpamToken: Uint8Array<ArrayBuffer>;
+  reportSpamToken: Bytes;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -2846,17 +2846,15 @@ export async function AuthenticatedChatConnection_reserve_username_hash({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  usernameHashes: Array<Uint8Array<ArrayBuffer>>;
-}): Promise<Uint8Array<ArrayBuffer>> {
+  usernameHashes: Array<Bytes>;
+}): Promise<Bytes> {
   return identity(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.AuthenticatedChatConnection_reserve_username_hash(
         asyncContext,
         identity(chat),
-        ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
-          username_hashes
-        )
+        ((arr: Array<Bytes>) => arr.map(identity))(username_hashes)
       )
     )
   );
@@ -2895,7 +2893,7 @@ export async function AuthenticatedChatConnection_set_device_name({
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
   deviceId: DeviceId;
-  encryptedName: Uint8Array<ArrayBuffer>;
+  encryptedName: Bytes;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -2946,7 +2944,7 @@ export async function AuthenticatedChatConnection_set_last_resort_kem_pre_key({
   identityType: ServiceIdKind;
   id: number;
   key: Native.Wrapper<Native.KyberPublicKey>;
-  signature: Uint8Array<ArrayBuffer>;
+  signature: Bytes;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -2978,7 +2976,7 @@ export async function AuthenticatedChatConnection_set_mfa_key_metadata({
   keyId: number;
   name: string;
   createdAt: Timestamp;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
   rng: Rng | undefined;
 }): Promise<void> {
   return identity(
@@ -3041,7 +3039,7 @@ export async function AuthenticatedChatConnection_set_one_time_kem_pre_keys({
   identityType: ServiceIdKind;
   preKeyIds: Uint32Array<ArrayBuffer>;
   preKeyData: Array<Native.Wrapper<Native.KyberPublicKey>>;
-  preKeySignatures: Array<Uint8Array<ArrayBuffer>>;
+  preKeySignatures: Array<Bytes>;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -3053,9 +3051,7 @@ export async function AuthenticatedChatConnection_set_one_time_kem_pre_keys({
         identity(pre_key_ids),
         ((arr: Array<Native.Wrapper<Native.KyberPublicKey>>) =>
           arr.map(identity))(pre_key_data),
-        ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
-          pre_key_signatures
-        )
+        ((arr: Array<Bytes>) => arr.map(identity))(pre_key_signatures)
       )
     )
   );
@@ -3069,7 +3065,7 @@ export async function AuthenticatedChatConnection_set_registration_lock({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -3091,7 +3087,7 @@ export async function AuthenticatedChatConnection_set_registration_recovery_pass
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  svrKey: Uint8Array<ArrayBuffer>;
+  svrKey: Bytes;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -3119,7 +3115,7 @@ export async function AuthenticatedChatConnection_set_signed_ec_pre_key({
   identityType: ServiceIdKind;
   id: number;
   key: Native.Wrapper<Native.PublicKey>;
-  signature: Uint8Array<ArrayBuffer>;
+  signature: Bytes;
 }): Promise<void> {
   return identity(
     await asyncContext.makeCancellable(
@@ -3145,7 +3141,7 @@ export async function AuthenticatedChatConnection_set_username_link({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
-  usernameCiphertext: Uint8Array<ArrayBuffer>;
+  usernameCiphertext: Bytes;
   keepLinkHandle: boolean;
 }): Promise<uuid.Uuid> {
   return uuid.stringify(
@@ -3234,24 +3230,24 @@ export async function DeleteBackupMediaStream_next({
 export function SvrKey_DeriveLoggingKey({
   svrKey: svr_key,
 }: {
-  svrKey: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  svrKey: Bytes;
+}): Bytes {
   return identity(Native.SvrKey_DeriveLoggingKey(identity(svr_key)));
 }
 
 export function SvrKey_DeriveRegistrationLock({
   svrKey: svr_key,
 }: {
-  svrKey: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  svrKey: Bytes;
+}): Bytes {
   return identity(Native.SvrKey_DeriveRegistrationLock(identity(svr_key)));
 }
 
 export function SvrKey_DeriveRegistrationRecoveryPassword({
   svrKey: svr_key,
 }: {
-  svrKey: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  svrKey: Bytes;
+}): Bytes {
   return identity(
     Native.SvrKey_DeriveRegistrationRecoveryPassword(identity(svr_key))
   );
@@ -3260,8 +3256,8 @@ export function SvrKey_DeriveRegistrationRecoveryPassword({
 export function SvrKey_DeriveStorageServiceKey({
   svrKey: svr_key,
 }: {
-  svrKey: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  svrKey: Bytes;
+}): Bytes {
   return identity(Native.SvrKey_DeriveStorageServiceKey(identity(svr_key)));
 }
 
@@ -3778,7 +3774,7 @@ export function TESTING_MyTestStruct_to_string({
 }
 
 export function TESTING_RedeemBackupReceiptTests(): Array<
-  GrpcTestCase<Uint8Array<ArrayBuffer>, RedeemBackupReceiptOut>
+  GrpcTestCase<Bytes, RedeemBackupReceiptOut>
 > {
   return grpcTestCaseConverter(
     identity,
@@ -3900,7 +3896,7 @@ export function TESTING_SetOneTimeKemPreKeysTests(): Array<
 }
 
 export function TESTING_SetRegistrationLockTests(): Array<
-  GrpcTestCase<Uint8Array<ArrayBuffer>, void>
+  GrpcTestCase<Bytes, void>
 > {
   return grpcTestCaseConverter(
     identity,
@@ -3909,7 +3905,7 @@ export function TESTING_SetRegistrationLockTests(): Array<
 }
 
 export function TESTING_SetRegistrationRecoveryPasswordTests(): Array<
-  GrpcTestCase<Uint8Array<ArrayBuffer>, void>
+  GrpcTestCase<Bytes, void>
 > {
   return grpcTestCaseConverter(
     identity,
@@ -3983,7 +3979,7 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   count: number;
-}): Promise<Uint8Array<ArrayBuffer>> {
+}): Promise<Bytes> {
   return identity(
     await asyncContext.makeCancellable(
       abortSignal,
@@ -3998,11 +3994,11 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
 export function TESTING_conversion_BridgeVecData32_identity({
   x: x,
 }: {
-  x: Array<Uint8Array<ArrayBuffer>>;
-}): Array<Uint8Array<ArrayBuffer>> {
-  return ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+  x: Array<Bytes>;
+}): Array<Bytes> {
+  return ((arr: Array<Bytes>) => arr.map(identity))(
     Native.TESTING_conversion_BridgeVecData32_identity(
-      ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(x)
+      ((arr: Array<Bytes>) => arr.map(identity))(x)
     )
   );
 }
@@ -4013,14 +4009,14 @@ export async function TESTING_conversion_BridgeVecData32_identity_async({
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
-  x: Array<Uint8Array<ArrayBuffer>>;
-}): Promise<Array<Uint8Array<ArrayBuffer>>> {
-  return ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(
+  x: Array<Bytes>;
+}): Promise<Array<Bytes>> {
+  return ((arr: Array<Bytes>) => arr.map(identity))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.TESTING_conversion_BridgeVecData32_identity_async(
         asyncContext,
-        ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(x)
+        ((arr: Array<Bytes>) => arr.map(identity))(x)
       )
     )
   );
@@ -4029,11 +4025,11 @@ export async function TESTING_conversion_BridgeVecData32_identity_async({
 export function TESTING_conversion_BridgeVecData32_to_string({
   x: x,
 }: {
-  x: Array<Uint8Array<ArrayBuffer>>;
+  x: Array<Bytes>;
 }): string {
   return identity(
     Native.TESTING_conversion_BridgeVecData32_to_string(
-      ((arr: Array<Uint8Array<ArrayBuffer>>) => arr.map(identity))(x)
+      ((arr: Array<Bytes>) => arr.map(identity))(x)
     )
   );
 }
@@ -4084,8 +4080,8 @@ export function TESTING_conversion_BridgeVecString_to_string({
 export function TESTING_conversion_Data32_identity({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  x: Bytes;
+}): Bytes {
   return identity(Native.TESTING_conversion_Data32_identity(identity(x)));
 }
 export async function TESTING_conversion_Data32_identity_async({
@@ -4095,8 +4091,8 @@ export async function TESTING_conversion_Data32_identity_async({
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
-  x: Uint8Array<ArrayBuffer>;
-}): Promise<Uint8Array<ArrayBuffer>> {
+  x: Bytes;
+}): Promise<Bytes> {
   return identity(
     await asyncContext.makeCancellable(
       abortSignal,
@@ -4108,7 +4104,7 @@ export async function TESTING_conversion_Data32_identity_async({
 export function TESTING_conversion_Data32_to_string({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer>;
+  x: Bytes;
 }): string {
   return identity(Native.TESTING_conversion_Data32_to_string(identity(x)));
 }
@@ -4116,8 +4112,8 @@ export function TESTING_conversion_Data32_to_string({
 export function TESTING_conversion_Data_VecU8_identity({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  x: Bytes;
+}): Bytes {
   return identity(Native.TESTING_conversion_Data_VecU8_identity(identity(x)));
 }
 export async function TESTING_conversion_Data_VecU8_identity_async({
@@ -4127,8 +4123,8 @@ export async function TESTING_conversion_Data_VecU8_identity_async({
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
-  x: Uint8Array<ArrayBuffer>;
-}): Promise<Uint8Array<ArrayBuffer>> {
+  x: Bytes;
+}): Promise<Bytes> {
   return identity(
     await asyncContext.makeCancellable(
       abortSignal,
@@ -4143,7 +4139,7 @@ export async function TESTING_conversion_Data_VecU8_identity_async({
 export function TESTING_conversion_Data_VecU8_to_string({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer>;
+  x: Bytes;
 }): string {
   return identity(Native.TESTING_conversion_Data_VecU8_to_string(identity(x)));
 }
@@ -4151,8 +4147,8 @@ export function TESTING_conversion_Data_VecU8_to_string({
 export function TESTING_conversion_Data_identity({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer>;
-}): Uint8Array<ArrayBuffer> {
+  x: Bytes;
+}): Bytes {
   return identity(Native.TESTING_conversion_Data_identity(identity(x)));
 }
 export async function TESTING_conversion_Data_identity_async({
@@ -4162,8 +4158,8 @@ export async function TESTING_conversion_Data_identity_async({
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
-  x: Uint8Array<ArrayBuffer>;
-}): Promise<Uint8Array<ArrayBuffer>> {
+  x: Bytes;
+}): Promise<Bytes> {
   return identity(
     await asyncContext.makeCancellable(
       abortSignal,
@@ -4175,7 +4171,7 @@ export async function TESTING_conversion_Data_identity_async({
 export function TESTING_conversion_Data_to_string({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer>;
+  x: Bytes;
 }): string {
   return identity(Native.TESTING_conversion_Data_to_string(identity(x)));
 }
@@ -4250,8 +4246,8 @@ export function TESTING_conversion_Float_to_string({
 export function TESTING_conversion_OptionalBytes_identity({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer> | null;
-}): Uint8Array<ArrayBuffer> | null {
+  x: Bytes | null;
+}): Bytes | null {
   return liftNull(identity)(
     Native.TESTING_conversion_OptionalBytes_identity(liftNull(identity)(x))
   );
@@ -4263,8 +4259,8 @@ export async function TESTING_conversion_OptionalBytes_identity_async({
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
-  x: Uint8Array<ArrayBuffer> | null;
-}): Promise<Uint8Array<ArrayBuffer> | null> {
+  x: Bytes | null;
+}): Promise<Bytes | null> {
   return liftNull(identity)(
     await asyncContext.makeCancellable(
       abortSignal,
@@ -4279,7 +4275,7 @@ export async function TESTING_conversion_OptionalBytes_identity_async({
 export function TESTING_conversion_OptionalBytes_to_string({
   x: x,
 }: {
-  x: Uint8Array<ArrayBuffer> | null;
+  x: Bytes | null;
 }): string {
   return identity(
     Native.TESTING_conversion_OptionalBytes_to_string(liftNull(identity)(x))
@@ -5034,7 +5030,7 @@ export async function UnauthenticatedChatConnection_get_subscription_receipt_cre
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
-  subscriberId: Uint8Array<ArrayBuffer>;
+  subscriberId: Bytes;
   receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
   serverParams: Native.Wrapper<Native.ServerPublicParams>;
 }): Promise<zkgroup.ReceiptCredential> {

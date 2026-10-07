@@ -3,9 +3,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import * as Native from './Native.js';
-
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
+
+import * as Native from './Native.js';
 import * as uuid from './uuid.js';
 
 export enum ServiceIdKind {
@@ -22,10 +23,10 @@ const SERVICE_ID_FIXED_WIDTH_BINARY_LEN = 17;
  * user on the Signal service.
  */
 export abstract class ServiceId extends Object {
-  private readonly serviceIdFixedWidthBinary: Uint8Array<ArrayBuffer>;
+  private readonly serviceIdFixedWidthBinary: Bytes;
 
   // This has to be public for `InstanceType<T>`, which we use below.
-  constructor(serviceIdFixedWidthBinary: Uint8Array<ArrayBuffer>) {
+  constructor(serviceIdFixedWidthBinary: Bytes) {
     super();
     if (serviceIdFixedWidthBinary.length != SERVICE_ID_FIXED_WIDTH_BINARY_LEN) {
       throw new TypeError('invalid Service-Id-FixedWidthBinary');
@@ -38,9 +39,7 @@ export abstract class ServiceId extends Object {
     // Because ServiceId is abstract, and TypeScript won't let us construct an abstract class.
     // Strictly speaking we don't need the 'typeof' and 'InstanceType',
     // but it's more consistent with the factory methods below.
-    this: new (
-      serviceIdFixedWidthBinary: Uint8Array<ArrayBuffer>
-    ) => InstanceType<T>,
+    this: new (serviceIdFixedWidthBinary: Bytes) => InstanceType<T>,
     uuidBytes: ArrayLike<number>,
     kind: ServiceIdKind
   ): InstanceType<T> {
@@ -50,11 +49,11 @@ export abstract class ServiceId extends Object {
     return new this(buffer);
   }
 
-  getServiceIdBinary(): Uint8Array<ArrayBuffer> {
+  getServiceIdBinary(): Bytes {
     return Native.ServiceId_ServiceIdBinary(this.serviceIdFixedWidthBinary);
   }
 
-  getServiceIdFixedWidthBinary(): Uint8Array<ArrayBuffer> {
+  getServiceIdFixedWidthBinary(): Bytes {
     return Uint8Array.from(this.serviceIdFixedWidthBinary);
   }
 
@@ -78,7 +77,7 @@ export abstract class ServiceId extends Object {
 
   static parseFromServiceIdFixedWidthBinary<T extends typeof ServiceId>(
     this: T,
-    serviceIdFixedWidthBinary: Uint8Array<ArrayBuffer>
+    serviceIdFixedWidthBinary: Bytes
   ): InstanceType<T> {
     let result: ServiceId;
     switch (serviceIdFixedWidthBinary[0]) {
@@ -96,7 +95,7 @@ export abstract class ServiceId extends Object {
 
   static parseFromServiceIdBinary<T extends typeof ServiceId>(
     this: T,
-    serviceIdBinary: Uint8Array<ArrayBuffer>
+    serviceIdBinary: Bytes
   ): InstanceType<T> {
     const result = ServiceId.parseFromServiceIdFixedWidthBinary(
       Native.ServiceId_ParseFromServiceIdBinary(serviceIdBinary)
@@ -118,7 +117,7 @@ export abstract class ServiceId extends Object {
     return uuid.stringify(this.getRawUuidBytes());
   }
 
-  getRawUuidBytes(): Uint8Array<ArrayBuffer> {
+  getRawUuidBytes(): Bytes {
     return this.serviceIdFixedWidthBinary.subarray(1);
   }
 
@@ -138,9 +137,7 @@ export abstract class ServiceId extends Object {
     );
   }
 
-  static toConcatenatedFixedWidthBinary(
-    serviceIds: ServiceId[]
-  ): Uint8Array<ArrayBuffer> {
+  static toConcatenatedFixedWidthBinary(serviceIds: ServiceId[]): Bytes {
     const result = new Uint8Array(
       serviceIds.length * SERVICE_ID_FIXED_WIDTH_BINARY_LEN
     );

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import ByteArray from '../internal/ByteArray.js';
 import * as Native from '../../Native.js';
 import ProfileKeyCommitment from './ProfileKeyCommitment.js';
@@ -13,7 +15,7 @@ export default class ProfileKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, ProfileKey.checkLength(ProfileKey.SIZE));
   }
 
@@ -35,7 +37,7 @@ export default class ProfileKey extends ByteArray {
     );
   }
 
-  deriveAccessKey(): Uint8Array<ArrayBuffer> {
+  deriveAccessKey(): Bytes {
     return Native.ProfileKey_DeriveAccessKey(this.contents);
   }
 }

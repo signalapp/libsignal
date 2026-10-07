@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import { PrivateKey, PublicKey } from './EcKeys.js';
 import { KEMKeyPair, KEMPublicKey, KEMSecretKey } from './KemKeys.js';
@@ -25,14 +27,14 @@ export class SignedPreKeyRecord implements SignedPublicPreKey {
     timestamp: number,
     pubKey: PublicKey,
     privKey: PrivateKey,
-    signature: Uint8Array<ArrayBuffer>
+    signature: Bytes
   ): SignedPreKeyRecord {
     return new SignedPreKeyRecord(
       Native.SignedPreKeyRecord_New(id, timestamp, pubKey, privKey, signature)
     );
   }
 
-  static deserialize(buffer: Uint8Array<ArrayBuffer>): SignedPreKeyRecord {
+  static deserialize(buffer: Bytes): SignedPreKeyRecord {
     return new SignedPreKeyRecord(
       Native.SignedPreKeyRecord_Deserialize(buffer)
     );
@@ -54,11 +56,11 @@ export class SignedPreKeyRecord implements SignedPublicPreKey {
     );
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.SignedPreKeyRecord_Serialize(this);
   }
 
-  signature(): Uint8Array<ArrayBuffer> {
+  signature(): Bytes {
     return Native.SignedPreKeyRecord_GetSignature(this);
   }
 
@@ -71,7 +73,7 @@ export class SignedPreKeyRecord implements SignedPublicPreKey {
 export type SignedPublicPreKey = {
   id: () => number;
   publicKey: () => PublicKey;
-  signature: () => Uint8Array<ArrayBuffer>;
+  signature: () => Bytes;
 };
 
 export class PreKeyRecord {
@@ -89,7 +91,7 @@ export class PreKeyRecord {
     return new PreKeyRecord(Native.PreKeyRecord_New(id, pubKey, privKey));
   }
 
-  static deserialize(buffer: Uint8Array<ArrayBuffer>): PreKeyRecord {
+  static deserialize(buffer: Bytes): PreKeyRecord {
     return new PreKeyRecord(Native.PreKeyRecord_Deserialize(buffer));
   }
 
@@ -107,7 +109,7 @@ export class PreKeyRecord {
     return PublicKey._fromNativeHandle(Native.PreKeyRecord_GetPublicKey(this));
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.PreKeyRecord_Serialize(this);
   }
 }
@@ -116,7 +118,7 @@ export class PreKeyRecord {
 export type SignedKyberPublicPreKey = {
   id: () => number;
   publicKey: () => KEMPublicKey;
-  signature: () => Uint8Array<ArrayBuffer>;
+  signature: () => Bytes;
 };
 
 export class KyberPreKeyRecord implements SignedKyberPublicPreKey {
@@ -136,18 +138,18 @@ export class KyberPreKeyRecord implements SignedKyberPublicPreKey {
     id: number,
     timestamp: number,
     keyPair: KEMKeyPair,
-    signature: Uint8Array<ArrayBuffer>
+    signature: Bytes
   ): KyberPreKeyRecord {
     return new KyberPreKeyRecord(
       Native.KyberPreKeyRecord_New(id, timestamp, keyPair, signature)
     );
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.KyberPreKeyRecord_Serialize(this);
   }
 
-  static deserialize(buffer: Uint8Array<ArrayBuffer>): KyberPreKeyRecord {
+  static deserialize(buffer: Bytes): KyberPreKeyRecord {
     return new KyberPreKeyRecord(Native.KyberPreKeyRecord_Deserialize(buffer));
   }
 
@@ -173,7 +175,7 @@ export class KyberPreKeyRecord implements SignedKyberPublicPreKey {
     );
   }
 
-  signature(): Uint8Array<ArrayBuffer> {
+  signature(): Bytes {
     return Native.KyberPreKeyRecord_GetSignature(this);
   }
 
@@ -200,11 +202,11 @@ export class PreKeyBundle {
     prekey: PublicKey | null,
     signed_prekey_id: number,
     signed_prekey: PublicKey,
-    signed_prekey_signature: Uint8Array<ArrayBuffer>,
+    signed_prekey_signature: Bytes,
     identity_key: PublicKey,
     kyber_prekey_id: number,
     kyber_prekey: KEMPublicKey,
-    kyber_prekey_signature: Uint8Array<ArrayBuffer>
+    kyber_prekey_signature: Bytes
   ): PreKeyBundle {
     return new PreKeyBundle(
       Native.PreKeyBundle_New(
@@ -254,7 +256,7 @@ export class PreKeyBundle {
       Native.PreKeyBundle_GetSignedPreKeyPublic(this)
     );
   }
-  signedPreKeySignature(): Uint8Array<ArrayBuffer> {
+  signedPreKeySignature(): Bytes {
     return Native.PreKeyBundle_GetSignedPreKeySignature(this);
   }
 
@@ -268,7 +270,7 @@ export class PreKeyBundle {
     );
   }
 
-  kyberPreKeySignature(): Uint8Array<ArrayBuffer> {
+  kyberPreKeySignature(): Bytes {
     return Native.PreKeyBundle_GetKyberPreKeySignature(this);
   }
 }

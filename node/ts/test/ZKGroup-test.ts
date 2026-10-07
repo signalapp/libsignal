@@ -4,6 +4,7 @@
 //
 
 import { assert, expect } from 'chai';
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
 
 import {
@@ -108,7 +109,7 @@ describe('ZKGroup', () => {
 
   it('deserializationErrorType', () => {
     function assertDeserializeInvalidThrows<T>(
-      constructor: new (serialized: Uint8Array<ArrayBuffer>) => T
+      constructor: new (serialized: Bytes) => T
     ) {
       assert.throws(
         () => {

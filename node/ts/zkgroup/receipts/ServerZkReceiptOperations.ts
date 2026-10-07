@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
+
 import * as Native from '../../Native.js';
 import { RANDOM_LENGTH } from '../internal/Constants.js';
 import ServerSecretParams from '../ServerSecretParams.js';
@@ -33,7 +35,7 @@ export default class ServerZkReceiptOperations {
   }
 
   issueReceiptCredentialWithRandom(
-    random: Uint8Array<ArrayBuffer>,
+    random: Bytes,
     receiptCredentialRequest: ReceiptCredentialRequest,
     receiptExpirationTime: number,
     receiptLevel: bigint

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 
 import * as Native from '../../Native.js';
@@ -17,7 +18,7 @@ import BackupCredentialType from './BackupCredentialType.js';
 export default class BackupAuthCredentialRequest extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.BackupAuthCredentialRequest_CheckValidContents);
   }
 
@@ -42,7 +43,7 @@ export default class BackupAuthCredentialRequest extends ByteArray {
     backupLevel: BackupLevel,
     type: BackupCredentialType,
     params: GenericServerSecretParams,
-    random: Uint8Array<ArrayBuffer>
+    random: Bytes
   ): BackupAuthCredentialResponse {
     return new BackupAuthCredentialResponse(
       Native.BackupAuthCredentialRequest_IssueDeterministic(

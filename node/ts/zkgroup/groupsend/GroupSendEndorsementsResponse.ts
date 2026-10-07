@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 
 import ByteArray, { UNCHECKED_AND_UNCLONED } from '../internal/ByteArray.js';
@@ -41,7 +42,7 @@ export type ReceivedEndorsements = {
  * perspective.
  */
 export default class GroupSendEndorsementsResponse extends ByteArray {
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.GroupSendEndorsementsResponse_CheckValidContents);
   }
 
@@ -69,7 +70,7 @@ export default class GroupSendEndorsementsResponse extends ByteArray {
   public static issueWithRandom(
     groupMembers: UuidCiphertext[],
     keyPair: GroupSendDerivedKeyPair,
-    random: Uint8Array<ArrayBuffer>
+    random: Bytes
   ): GroupSendEndorsementsResponse {
     return new GroupSendEndorsementsResponse(
       Native.GroupSendEndorsementsResponse_IssueDeterministic(

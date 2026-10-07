@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import ByteArray from '../internal/ByteArray.js';
 
 export default class ProfileKeyVersion extends ByteArray {
   private readonly __type?: never;
   static SIZE = 64;
 
-  constructor(contents: Uint8Array<ArrayBuffer> | string) {
+  constructor(contents: Bytes | string) {
     super(
       typeof contents === 'string'
         ? new TextEncoder().encode(contents)

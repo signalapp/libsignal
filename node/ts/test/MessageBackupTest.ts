@@ -4,6 +4,7 @@
 //
 
 import { assert } from 'chai';
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -160,7 +161,7 @@ describe('MessageBackup', () => {
         async close(): Promise<void> {
           closeCount += 1;
         }
-        async read(_amount: number): Promise<Uint8Array<ArrayBuffer>> {
+        async read(_amount: number): Promise<Bytes> {
           return Uint8Array.of();
         }
         async skip(amount: number): Promise<void> {
@@ -192,11 +193,9 @@ const exampleBackup = fs.readFileSync(
   path.join(import.meta.dirname, '../../ts/test/canonical-backup.binproto')
 );
 
-function chunkLengthDelimited(
-  binproto: Uint8Array<ArrayBuffer>
-): Uint8Array<ArrayBuffer>[] {
+function chunkLengthDelimited(binproto: Bytes): Bytes[] {
   const r = Reader.create(binproto);
-  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  const chunks: Bytes[] = [];
 
   while (r.pos < r.len) {
     const headerStart = r.pos; // start of the varint length prefix
@@ -216,9 +215,7 @@ function chunkLengthDelimited(
   return chunks;
 }
 
-function stripLengthPrefix(
-  chunk: Uint8Array<ArrayBuffer>
-): Uint8Array<ArrayBuffer> {
+function stripLengthPrefix(chunk: Bytes): Bytes {
   const reader = Reader.create(chunk);
   const length = reader.uint32();
   const bodyStart = reader.pos;
@@ -232,9 +229,7 @@ function stripLengthPrefix(
   return chunk.subarray(bodyStart, bodyEnd);
 }
 
-function insertLengthPrefix(
-  chunk: Uint8Array<ArrayBuffer>
-): Uint8Array<ArrayBuffer> {
+function insertLengthPrefix(chunk: Bytes): Bytes {
   if (chunk.byteLength > 0x7f) {
     throw new Error(
       'not implemented: chunks with more than one varint byte of length'
@@ -251,9 +246,7 @@ const [exampleBackupInfoChunk, ...exampleFrameChunks] = exampleBackupChunks;
 const exampleBackupInfo = stripLengthPrefix(exampleBackupInfoChunk);
 const exampleFrames = exampleFrameChunks;
 
-function concatFrames(
-  chunks: ReadonlyArray<Uint8Array<ArrayBuffer>>
-): Uint8Array<ArrayBuffer> {
+function concatFrames(chunks: ReadonlyArray<Bytes>): Bytes {
   if (chunks.length === 0) {
     return new Uint8Array();
   }
@@ -306,11 +299,11 @@ const VIEW_ONCE_CHAT_ITEM_FRAME = Uint8Array.from(
   Buffer.from('IhwIChALGAwyDQgKEAsYCZIBBAoCGAGSAQQKAhgB', 'base64')
 );
 
-function createDisappearingChatItemFrame(): Uint8Array<ArrayBuffer> {
+function createDisappearingChatItemFrame(): Bytes {
   return insertLengthPrefix(DISAPPEARING_CHAT_ITEM_FRAME);
 }
 
-function createViewOnceChatItemFrame(): Uint8Array<ArrayBuffer> {
+function createViewOnceChatItemFrame(): Bytes {
   return insertLengthPrefix(VIEW_ONCE_CHAT_ITEM_FRAME);
 }
 
@@ -614,7 +607,7 @@ describe('OnlineBackupValidator', () => {
     // Here we override that `read` member with one that always produces a Uint8Array,
     // for more convenient use in the test. Note that this is unchecked.
     type ReadableUsingUint8Array = Omit<Readable, 'read'> & {
-      read: (size: number) => Uint8Array<ArrayBuffer>;
+      read: (size: number) => Bytes;
     };
     const input: ReadableUsingUint8Array = new Readable();
     input.push(exampleBackup);

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { ProtocolAddress, ServiceId } from './Address.js';
 import * as Native from './Native.js';
 import { newNativeHandle } from './internal.js';
@@ -124,7 +126,7 @@ export enum ErrorCode {
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
-type ServiceIdFixedWidthBinary = Uint8Array<ArrayBuffer>;
+type ServiceIdFixedWidthBinary = Bytes;
 
 /**
  * A failure sending to a recipient on account of not being up to date on their devices.

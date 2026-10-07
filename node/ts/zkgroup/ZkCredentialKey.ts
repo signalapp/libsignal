@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 
 import * as Native from '../Native.js';
@@ -27,15 +28,13 @@ export class ZkCredentialKeyPair extends ByteArray {
     return ZkCredentialKeyPair.generateWithRandom(random);
   }
 
-  static generateWithRandom(
-    random: Uint8Array<ArrayBuffer>
-  ): ZkCredentialKeyPair {
+  static generateWithRandom(random: Bytes): ZkCredentialKeyPair {
     return new ZkCredentialKeyPair(
       Native.ZkCredentialKeyPair_GenerateDeterministic(random)
     );
   }
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.ZkCredentialKeyPair_CheckValidContents);
   }
 
@@ -50,7 +49,7 @@ export class ZkCredentialKeyPair extends ByteArray {
 export class ZkCredentialPublicKey extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.ZkCredentialPublicKey_CheckValidContents);
   }
 }

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
 
 import * as Native from '../../Native.js';
@@ -36,7 +37,7 @@ export interface UnauthUsernamesService {
    */
   lookUpUsernameHash: (
     request: {
-      hash: Uint8Array<ArrayBuffer>;
+      hash: Bytes;
     },
     options?: RequestOptions
   ) => Promise<Aci | null>;
@@ -55,17 +56,17 @@ export interface UnauthUsernamesService {
   lookUpUsernameLink: (
     request: {
       uuid: Uuid;
-      entropy: Uint8Array<ArrayBuffer>;
+      entropy: Bytes;
     },
     options?: RequestOptions
-  ) => Promise<{ username: string; hash: Uint8Array<ArrayBuffer> } | null>;
+  ) => Promise<{ username: string; hash: Bytes } | null>;
 }
 
 UnauthenticatedChatConnection.prototype.lookUpUsernameHash = async function (
   {
     hash,
   }: {
-    hash: Uint8Array<ArrayBuffer>;
+    hash: Bytes;
   },
   options?: RequestOptions
 ): Promise<Aci | null> {
@@ -86,10 +87,10 @@ UnauthenticatedChatConnection.prototype.lookUpUsernameLink = async function (
     entropy,
   }: {
     uuid: Uuid;
-    entropy: Uint8Array<ArrayBuffer>;
+    entropy: Bytes;
   },
   options?: RequestOptions
-): Promise<{ username: string; hash: Uint8Array<ArrayBuffer> } | null> {
+): Promise<{ username: string; hash: Bytes } | null> {
   const response = await this._asyncContext.makeCancellable(
     options?.abortSignal,
     Native.UnauthenticatedChatConnection_look_up_username_link(

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import ByteArray from '../internal/ByteArray.js';
 import * as Native from '../../Native.js';
 
@@ -13,15 +15,13 @@ import { Aci } from '../../Address.js';
 export default class CallLinkSecretParams extends ByteArray {
   private readonly __type?: never;
 
-  static deriveFromRootKey(
-    callLinkRootKey: Uint8Array<ArrayBuffer>
-  ): CallLinkSecretParams {
+  static deriveFromRootKey(callLinkRootKey: Bytes): CallLinkSecretParams {
     return new CallLinkSecretParams(
       Native.CallLinkSecretParams_DeriveFromRootKey(callLinkRootKey)
     );
   }
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.CallLinkSecretParams_CheckValidContents);
   }
 

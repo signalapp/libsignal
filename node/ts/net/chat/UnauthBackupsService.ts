@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import {
   RequestOptions,
   UnauthenticatedChatConnection,
@@ -86,12 +88,12 @@ export type CopyBackupMediaItem = {
   sourceAttachmentCdn: number;
   sourceKey: string;
   objectLength: number;
-  mediaId: Uint8Array<ArrayBuffer>;
-  encryptionKey: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
+  encryptionKey: Bytes;
 };
 
 export type CopyBackupMediaOutcome = {
-  mediaId: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
   result: CopyBackupMediaResult;
 };
 
@@ -104,13 +106,13 @@ export type CopyBackupMediaResult =
   | 'outOfSpace';
 
 export type DeleteBackupMediaItem = {
-  mediaId: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
   cdn: number;
 };
 
 export type ListMediaItem = {
   cdn: number;
-  mediaId: Uint8Array<ArrayBuffer>;
+  mediaId: Bytes;
   objectLength: bigint;
 };
 

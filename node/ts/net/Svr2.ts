@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from '../Native.js';
 import type { TokioAsyncContext, Environment } from '../net.js';
 import type {
@@ -38,7 +40,7 @@ export class Svr2BackupSession {
    * Serializes the session so it can be persisted and later restored with
    * {@link #deserialize}.
    */
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.Svr2BackupSession_Serialize(this);
   }
 
@@ -47,7 +49,7 @@ export class Svr2BackupSession {
    *
    * @throws {SvrInvalidDataError} if the bytes are corrupt or incompatible.
    */
-  static deserialize(bytes: Uint8Array<ArrayBuffer>): Svr2BackupSession {
+  static deserialize(bytes: Bytes): Svr2BackupSession {
     return new Svr2BackupSession(Native.Svr2BackupSession_Deserialize(bytes));
   }
 }
@@ -71,7 +73,7 @@ export class Svr2MigrationSession {
    * Serializes the session so it can be persisted and later restored with
    * {@link #deserialize}.
    */
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.Svr2MigrationSession_Serialize(this);
   }
 
@@ -80,7 +82,7 @@ export class Svr2MigrationSession {
    *
    * @throws {SvrInvalidDataError} if the bytes are corrupt or incompatible.
    */
-  static deserialize(bytes: Uint8Array<ArrayBuffer>): Svr2MigrationSession {
+  static deserialize(bytes: Bytes): Svr2MigrationSession {
     return new Svr2MigrationSession(
       Native.Svr2MigrationSession_Deserialize(bytes)
     );
@@ -105,7 +107,7 @@ export class Svr2MigrationSession {
  */
 export type Svr2RestoreResponse = {
   /** The data that was protected with the given pin. */
-  data: Uint8Array<ArrayBuffer>;
+  data: Bytes;
   /** Number of remaining restore attempts before the data is wiped. */
   triesRemaining: number;
 };
@@ -115,7 +117,7 @@ export type Svr2RestoreResponse = {
  */
 export type Svr2MasterKeyRestoreResponse = {
   /** The 32-byte master key that was protected with the given pin. */
-  masterKey: Uint8Array<ArrayBuffer>;
+  masterKey: Bytes;
   /** Number of remaining restore attempts before the data is wiped. */
   triesRemaining: number;
 };
@@ -190,8 +192,8 @@ export class Svr2 {
    * @throws {SvrAttestationError} if enclave attestation fails.
    */
   startBackup(
-    pin: { normalizedPin: Uint8Array<ArrayBuffer> },
-    masterKey: Uint8Array<ArrayBuffer>,
+    pin: { normalizedPin: Bytes },
+    masterKey: Bytes,
     maxTries: number,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2BackupSession>;
@@ -216,14 +218,14 @@ export class Svr2 {
    * `data` blob.
    */
   startBackup(
-    hashedPin: Uint8Array<ArrayBuffer>,
-    data: Uint8Array<ArrayBuffer>,
+    hashedPin: Bytes,
+    data: Bytes,
     maxTries: number,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2BackupSession>;
   async startBackup(
-    pin: Uint8Array<ArrayBuffer> | { normalizedPin: Uint8Array<ArrayBuffer> },
-    dataOrMasterKey: Uint8Array<ArrayBuffer>,
+    pin: Bytes | { normalizedPin: Bytes },
+    dataOrMasterKey: Bytes,
     maxTries: number,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2BackupSession> {
@@ -302,7 +304,7 @@ export class Svr2 {
    * @throws {SvrAttestationError} if enclave attestation fails.
    */
   restore(
-    pin: { normalizedPin: Uint8Array<ArrayBuffer> },
+    pin: { normalizedPin: Bytes },
     options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2MasterKeyRestoreResponse>;
   /**
@@ -322,11 +324,11 @@ export class Svr2 {
    * raw encrypted blob that the caller must decrypt itself.
    */
   restore(
-    pin: Uint8Array<ArrayBuffer>,
+    pin: Bytes,
     options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2RestoreResponse>;
   async restore(
-    pin: Uint8Array<ArrayBuffer> | { normalizedPin: Uint8Array<ArrayBuffer> },
+    pin: Bytes | { normalizedPin: Bytes },
     options?: { abortSignal?: AbortSignal }
   ): Promise<Svr2RestoreResponse | Svr2MasterKeyRestoreResponse> {
     // The deprecated variant
@@ -432,8 +434,8 @@ export class Svr2 {
    * current enclave but does not match the `masterKey`.
    */
   async migrate(
-    pin: { normalizedPin: Uint8Array<ArrayBuffer> },
-    masterKey: Uint8Array<ArrayBuffer>,
+    pin: { normalizedPin: Bytes },
+    masterKey: Bytes,
     maxTries: number,
     priorSession?: Svr2MigrationSession,
     options?: { abortSignal?: AbortSignal }

@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
+
 import { RANDOM_LENGTH } from '../internal/Constants.js';
 import * as Native from '../../Native.js';
 
@@ -36,7 +38,7 @@ export default class ServerZkAuthOperations {
   }
 
   issueAuthCredentialWithPniZkcWithRandom(
-    random: Uint8Array<ArrayBuffer>,
+    random: Bytes,
     aci: Aci,
     pni: Pni,
     redemptionTime: number
@@ -59,7 +61,7 @@ export default class ServerZkAuthOperations {
    */
   issueAuthCredentialZkcWithoutPni(
     aci: Aci,
-    authCredentialSalt: Uint8Array<ArrayBuffer>,
+    authCredentialSalt: Bytes,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     const random = randomBytes(RANDOM_LENGTH);
@@ -73,9 +75,9 @@ export default class ServerZkAuthOperations {
   }
 
   issueAuthCredentialZkcWithoutPniWithRandom(
-    random: Uint8Array<ArrayBuffer>,
+    random: Bytes,
     aci: Aci,
-    authCredentialSalt: Uint8Array<ArrayBuffer>,
+    authCredentialSalt: Bytes,
     redemptionTime: number
   ): AuthCredentialWithPniResponse {
     return new AuthCredentialWithPniResponse(

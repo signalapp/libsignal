@@ -33,8 +33,9 @@
     "tsc": "tsc -b"
   },
   "dependencies": {
+    "@signalapp/types": "^0.3.0",
     "node-gyp-build": "^4.8.0",
-    "type-fest": "^4.26.0"
+    "type-fest": "^5.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

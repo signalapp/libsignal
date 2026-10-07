@@ -3,14 +3,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import ByteArray from '../internal/ByteArray.js';
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
+
+import ByteArray from '../internal/ByteArray.js';
 
 export default class GroupIdentifier extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, GroupIdentifier.checkLength(GroupIdentifier.SIZE));
   }
 

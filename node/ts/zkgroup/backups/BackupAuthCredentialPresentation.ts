@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import ByteArray from '../internal/ByteArray.js';
 import * as Native from '../../Native.js';
 
@@ -13,7 +15,7 @@ import BackupCredentialType from './BackupCredentialType.js';
 export default class BackupAuthCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.BackupAuthCredentialPresentation_CheckValidContents);
   }
 
@@ -28,7 +30,7 @@ export default class BackupAuthCredentialPresentation extends ByteArray {
     );
   }
 
-  getBackupId(): Uint8Array<ArrayBuffer> {
+  getBackupId(): Bytes {
     return Native.BackupAuthCredentialPresentation_GetBackupId(this.contents);
   }
 

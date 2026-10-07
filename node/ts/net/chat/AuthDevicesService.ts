@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import type { DeviceIdNotFound, StandardNetworkError } from '../../Errors.js';
@@ -21,7 +23,7 @@ export type LinkedDevice = {
    * A sequence of bytes that encodes an encrypted human-readable name for
    * this device.
    */
-  encryptedName: Uint8Array<ArrayBuffer>;
+  encryptedName: Bytes;
   /**
    * The approximate time, in milliseconds since the epoch, at which this
    * device last connected to the server.
@@ -35,7 +37,7 @@ export type LinkedDevice = {
    * A sequence of bytes that encodes the time, in milliseconds, since the epoch, at which this
    * device was attached to its parent account.
    */
-  createdAtCiphertext: Uint8Array<ArrayBuffer>;
+  createdAtCiphertext: Bytes;
 };
 
 /**
@@ -54,7 +56,7 @@ export interface AuthDevicesService {
   setDeviceName: (
     request: {
       deviceId: number;
-      encryptedName: Uint8Array<ArrayBuffer>;
+      encryptedName: Bytes;
     },
     options?: RequestOptions
   ) => Promise<void>;
@@ -119,7 +121,7 @@ AuthenticatedChatConnection.prototype.setDeviceName = async function (
     encryptedName,
   }: {
     deviceId: number;
-    encryptedName: Uint8Array<ArrayBuffer>;
+    encryptedName: Bytes;
   },
   options?: RequestOptions
 ): Promise<void> {

@@ -4,6 +4,8 @@
 //
 
 import { assert } from 'chai';
+import type { Bytes } from '@signalapp/types';
+
 import * as Mp4Sanitizer from '../Mp4Sanitizer.js';
 import * as WebpSanitizer from '../WebpSanitizer.js';
 import { SanitizedMetadata } from '../Mp4Sanitizer.js';
@@ -193,7 +195,7 @@ function assertSanitizedMetadataEqual(
   sanitized: SanitizedMetadata,
   dataOffset: number | bigint,
   dataLen: number | bigint,
-  metadata: Uint8Array<ArrayBuffer> | null
+  metadata: Bytes | null
 ) {
   assert.deepEqual(sanitized.getMetadata(), metadata);
   assert.equal(sanitized.getDataOffset(), BigInt(dataOffset));

@@ -4,6 +4,7 @@
 //
 
 import type { EmptyObject } from 'type-fest';
+import type { Bytes } from '@signalapp/types';
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
@@ -91,7 +92,7 @@ export type TotpParameters = {
  */
 export type PendingTotpKey = {
   /** The raw TOTP key. */
-  key: Uint8Array<ArrayBuffer>;
+  key: Bytes;
   /** The TOTP parameters associated with the generated key. */
   parameters: TotpParameters;
 };
@@ -105,7 +106,7 @@ export type PendingTotpKey = {
  */
 export type WebAuthnCreateParameters = {
   /** The "user handle" (`user.id`) that should be handed to the authenticator. */
-  userHandle: Uint8Array<ArrayBuffer>;
+  userHandle: Bytes;
   /**
    * The COSE IDs (https://www.iana.org/assignments/cose#algorithms) of acceptable algorithms for
    * the created key, as WebAuthn `COSEAlgorithmIdentifier`s.
@@ -117,7 +118,7 @@ export type WebAuthnCreateParameters = {
    * These can be passed to candidate authenticators to tell them not to create a new key if they
    * already have a private key matching one of these.
    */
-  excludeCredentialIds: Array<Uint8Array<ArrayBuffer>>;
+  excludeCredentialIds: Array<Bytes>;
 };
 
 /**
@@ -167,10 +168,10 @@ export type StartMfaVerificationResponse = {
 };
 
 export type WebAuthnAuthenticationParameters = {
-  challenge: Uint8Array<ArrayBuffer>;
+  challenge: Bytes;
   /** After this interval, verification may fail even if everything else is done correctly. */
   timeoutSeconds: number;
-  allowedCredentialIds: Uint8Array<ArrayBuffer>[];
+  allowedCredentialIds: Bytes[];
 };
 
 /** @see MfaVerificationCredential */
@@ -376,7 +377,7 @@ export interface AuthAccountsService {
    */
   finishWebAuthnRegistration: (
     request: {
-      attestationObject: Uint8Array<ArrayBuffer>;
+      attestationObject: Bytes;
       collectedClientDataJson: string;
       metadata: MfaMetadata;
       svrKey: SvrKey;

@@ -5,6 +5,7 @@
 
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import type { Bytes } from '@signalapp/types';
 
 import * as Native from '../../Native.js';
 import * as NativeNice from '../../NativeNice.js';
@@ -38,11 +39,7 @@ describe('AuthAccountsService', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetRegistrationLockTests(),
       connectAuth<AuthAccountsService>,
-      async (
-        chat: AuthAccountsService,
-        svrKey: Uint8Array<ArrayBuffer>,
-        _resp: void
-      ) => {
+      async (chat: AuthAccountsService, svrKey: Bytes, _resp: void) => {
         await chat.setRegistrationLock({ svrKey: new SvrKey(svrKey) });
       }
     );
@@ -62,11 +59,7 @@ describe('AuthAccountsService', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetRegistrationRecoveryPasswordTests(),
       connectAuth<AuthAccountsService>,
-      async (
-        chat: AuthAccountsService,
-        svrKey: Uint8Array<ArrayBuffer>,
-        _resp: void
-      ) => {
+      async (chat: AuthAccountsService, svrKey: Bytes, _resp: void) => {
         await chat.setRegistrationRecoveryPassword({
           svrKey: new SvrKey(svrKey),
         });

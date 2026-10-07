@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { ServiceId } from './Address.js';
 import type { CdnCredentials } from './net/chat/CdnCredentials.js';
 import * as Native from './Native.js';
@@ -19,9 +21,7 @@ export function identity<T>(t: T): T {
   return t;
 }
 
-export function serviceIdArgConverter(
-  account: ServiceId
-): Uint8Array<ArrayBuffer> {
+export function serviceIdArgConverter(account: ServiceId): Bytes {
   return account.getServiceIdFixedWidthBinary();
 }
 
