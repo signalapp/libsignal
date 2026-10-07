@@ -287,6 +287,10 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || (github.event_name == 'workflow_dispatch' && inputs.ignore_kt_tests == true) }}
       run: echo "LIBSIGNAL_TESTING_IGNORE_KT_TESTS=true" >> "$GITHUB_ENV"
     - run: node/docker-prebuildify.sh
+    # We still want to run tests against our preferred version of Node.
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      with:
+        node-version-file: '.nvmrc'
     - run: npm ci && npm run tsc && npm run test
       working-directory: node
       env:
