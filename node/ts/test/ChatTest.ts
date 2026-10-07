@@ -90,15 +90,17 @@ describe('chat connection to mock server', () => {
     await chatServer.init();
 
     const port = chatServer.port;
+    const DISCARD_PORT = 9; // Reserved by RFC 863.
 
     network = new Net({
       localTestServer: true,
       userAgent,
       TESTING_localServer_chatPort: port,
-      TESTING_localServer_cdsiPort: port,
-      TESTING_localServer_svr2Port: port,
-      TESTING_localServer_svrBPort: port,
+      TESTING_localServer_cdsiPort: DISCARD_PORT,
+      TESTING_localServer_svr2Port: DISCARD_PORT,
+      TESTING_localServer_svrBPort: DISCARD_PORT,
       TESTING_localServer_rootCertificateDer: pemToDer(certificateAuthority),
+      TESTING_localServer_httpVersion: 2,
     });
   });
 
