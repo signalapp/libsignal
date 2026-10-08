@@ -8,13 +8,50 @@ use std::time::SystemTime;
 
 use libsignal_net_grpc::proto::chat::donations::donations_client::DonationsClient;
 use libsignal_net_grpc::proto::chat::donations::{
-    CreateDonationPermitsRequest, CreateDonationPermitsResponse,
+    CreateDonationPermitsRequest, CreateDonationPermitsResponse, RedeemReceiptRequest,
+    RedeemReceiptResponse, redeem_receipt_response,
 };
+use libsignal_net_grpc::proto::chat::errors::{FailedPrecondition, FailedZkAuthentication};
 use zkgroup::donations::{DonationPermit, DonationPermitRequestContext, DonationPermitResponse};
+use zkgroup::receipts::ReceiptCredentialPresentation;
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::{GrpcServiceProvider, log_and_send};
 use crate::logging::Redact;
+
+/// How a redeemed badge should appear on the account's profile.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BadgeVisibility {
+    /// Don't make the badge visible. A new badge starts out hidden, and a badge the account already
+    /// shows stays visible.
+    DoNotSet,
+    /// Make the badge visible on the profile.
+    SetVisible,
+    /// Make the badge visible on the profile as the primary badge.
+    SetPrimary,
+}
+
+#[derive(Debug, displaydoc::Display)]
+pub enum RedeemDonationReceiptFailure {
+    /// Receipt credential presentation is invalid
+    InvalidReceipt,
+    /// Receipt was already redeemed
+    AlreadyRedeemed,
+}
+
+impl std::fmt::Display for Redact<RedeemReceiptRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(RedeemReceiptRequest {
+            receipt_credential_presentation: _,
+            visible,
+            primary,
+        }) = self;
+        f.debug_struct("RedeemReceiptRequest")
+            .field("visible", visible)
+            .field("primary", primary)
+            .finish_non_exhaustive()
+    }
+}
 
 impl std::fmt::Display for Redact<CreateDonationPermitsRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,6 +68,62 @@ impl std::fmt::Display for Redact<CreateDonationPermitsRequest> {
 }
 
 impl<T: GrpcServiceProvider> Auth<T> {
+    /// Redeems a donation receipt to add the corresponding badge to the account.
+    ///
+    /// After this succeeds, the account has the badge until the receipt's expiration time.
+    /// `visibility` controls whether it shows on the profile; see [`BadgeVisibility`].
+    ///
+    /// Redeeming the same receipt again for the same account succeeds. A receipt that was already
+    /// redeemed by a different account fails with
+    /// [`RedeemDonationReceiptFailure::AlreadyRedeemed`].
+    pub async fn redeem_donation_receipt(
+        &self,
+        presentation: &ReceiptCredentialPresentation,
+        visibility: BadgeVisibility,
+    ) -> Result<(), RequestError<RedeemDonationReceiptFailure>> {
+        let (visible, primary) = match visibility {
+            BadgeVisibility::DoNotSet => (false, false),
+            BadgeVisibility::SetVisible => (true, false),
+            BadgeVisibility::SetPrimary => (true, true),
+        };
+        let request = RedeemReceiptRequest {
+            receipt_credential_presentation: zkgroup::serialize(presentation),
+            visible,
+            primary,
+        };
+        let log_safe_description = Redact(&request).to_string();
+
+        let mut donations_service = DonationsClient::new(self.0.service());
+        let RedeemReceiptResponse { response } =
+            log_and_send(Self::LOG_TAG, &log_safe_description, || {
+                donations_service.redeem_receipt(request)
+            })
+            .await?
+            .into_inner();
+
+        match response.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing response".to_owned(),
+        })? {
+            redeem_receipt_response::Response::Success(()) => Ok(()),
+            redeem_receipt_response::Response::FailedAuthentication(FailedZkAuthentication {
+                description,
+            }) => {
+                log::warn!("invalid receipt: {description}");
+                Err(RequestError::Other(
+                    RedeemDonationReceiptFailure::InvalidReceipt,
+                ))
+            }
+            redeem_receipt_response::Response::AlreadyRedeemed(FailedPrecondition {
+                description,
+            }) => {
+                log::warn!("already redeemed: {description}");
+                Err(RequestError::Other(
+                    RedeemDonationReceiptFailure::AlreadyRedeemed,
+                ))
+            }
+        }
+    }
+
     /// Requests a batch of anonymous, single-use donation permits, one for each nonce in
     /// `request_context`.
     ///
@@ -83,7 +176,109 @@ pub mod test_cases {
 
     use super::*;
     use crate::grpc::GrpcTestCase;
-    use crate::grpc::test_case_util::day_align;
+    use crate::grpc::test_case_util::{day_align, test_receipt_credential_presentation};
+
+    #[derive(Clone)]
+    pub struct RedeemDonationReceiptArgs {
+        pub presentation: ReceiptCredentialPresentation,
+        pub visibility: BadgeVisibility,
+    }
+
+    pub enum RedeemDonationReceiptOut {
+        Success,
+        InvalidReceipt,
+        AlreadyRedeemed,
+        UnexpectedError { contains: &'static str },
+    }
+
+    pub fn redeem_donation_receipt_test_cases() -> Vec<
+        GrpcTestCase<
+            RedeemDonationReceiptArgs,
+            RedeemReceiptRequest,
+            RedeemReceiptResponse,
+            RedeemDonationReceiptOut,
+        >,
+    > {
+        let method = "/org.signal.chat.donations.Donations/RedeemReceipt";
+        let presentation = test_receipt_credential_presentation();
+
+        let case = |name: &str,
+                    visibility: BadgeVisibility,
+                    (visible, primary): (bool, bool),
+                    response_grpc: Option<redeem_receipt_response::Response>,
+                    response| GrpcTestCase {
+            name: name.to_owned(),
+            method: method.into(),
+            request: RedeemDonationReceiptArgs {
+                presentation: presentation.clone(),
+                visibility,
+            },
+            request_grpc: RedeemReceiptRequest {
+                receipt_credential_presentation: zkgroup::serialize(&presentation),
+                visible,
+                primary,
+            },
+            response_grpc: RedeemReceiptResponse {
+                response: response_grpc,
+            },
+            response,
+        };
+
+        vec![
+            case(
+                "success, do not set",
+                BadgeVisibility::DoNotSet,
+                (false, false),
+                Some(redeem_receipt_response::Response::Success(())),
+                RedeemDonationReceiptOut::Success,
+            ),
+            case(
+                "success, set visible",
+                BadgeVisibility::SetVisible,
+                (true, false),
+                Some(redeem_receipt_response::Response::Success(())),
+                RedeemDonationReceiptOut::Success,
+            ),
+            case(
+                "success, set primary",
+                BadgeVisibility::SetPrimary,
+                (true, true),
+                Some(redeem_receipt_response::Response::Success(())),
+                RedeemDonationReceiptOut::Success,
+            ),
+            case(
+                "invalid receipt",
+                BadgeVisibility::SetVisible,
+                (true, false),
+                Some(redeem_receipt_response::Response::FailedAuthentication(
+                    FailedZkAuthentication {
+                        description: "bad!".to_owned(),
+                    },
+                )),
+                RedeemDonationReceiptOut::InvalidReceipt,
+            ),
+            case(
+                "already redeemed",
+                BadgeVisibility::SetVisible,
+                (true, false),
+                Some(redeem_receipt_response::Response::AlreadyRedeemed(
+                    FailedPrecondition {
+                        description: "taken".to_owned(),
+                    },
+                )),
+                RedeemDonationReceiptOut::AlreadyRedeemed,
+            ),
+            case(
+                "missing response",
+                BadgeVisibility::SetVisible,
+                (true, false),
+                None,
+                RedeemDonationReceiptOut::UnexpectedError {
+                    contains: "missing response",
+                },
+            ),
+        ]
+    }
 
     #[derive(Clone)]
     pub struct CreateDonationPermitsArgs {
@@ -230,6 +425,40 @@ mod test {
     use super::test_cases::*;
     use super::*;
     use crate::grpc::testutil::run_tests;
+
+    #[test]
+    fn test_redeem_donation_receipt() {
+        run_tests(
+            redeem_donation_receipt_test_cases(),
+            |chat: Auth<_>,
+             RedeemDonationReceiptArgs {
+                 presentation,
+                 visibility,
+             }| async move {
+                chat.redeem_donation_receipt(&presentation, visibility)
+                    .await
+            },
+            |expected, actual| match expected {
+                RedeemDonationReceiptOut::Success => actual.expect("success"),
+                RedeemDonationReceiptOut::InvalidReceipt => assert_matches!(
+                    actual,
+                    Err(RequestError::Other(
+                        RedeemDonationReceiptFailure::InvalidReceipt
+                    ))
+                ),
+                RedeemDonationReceiptOut::AlreadyRedeemed => assert_matches!(
+                    actual,
+                    Err(RequestError::Other(
+                        RedeemDonationReceiptFailure::AlreadyRedeemed
+                    ))
+                ),
+                RedeemDonationReceiptOut::UnexpectedError { contains } => assert_matches!(
+                    actual,
+                    Err(RequestError::Unexpected { log_safe }) if log_safe.contains(contains)
+                ),
+            },
+        );
+    }
 
     #[test]
     fn test_create_donation_permits() {

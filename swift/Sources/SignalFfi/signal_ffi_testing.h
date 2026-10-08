@@ -1234,6 +1234,38 @@ typedef enum {
 } SignalRedeemBackupReceiptOutFfiResult;
 static_assert_64bit(sizeof(SignalRedeemBackupReceiptOutFfiResult) == 4);
 static_assert_64bit(alignof(SignalRedeemBackupReceiptOutFfiResult) == 4);
+typedef enum {
+  SignalBadgeVisibilityFfiResultDoNotSet,
+  SignalBadgeVisibilityFfiResultSetVisible,
+  SignalBadgeVisibilityFfiResultSetPrimary,
+} SignalBadgeVisibilityFfiResult;
+static_assert_64bit(sizeof(SignalBadgeVisibilityFfiResult) == 4);
+static_assert_64bit(alignof(SignalBadgeVisibilityFfiResult) == 4);
+typedef struct {
+  SignalType_FixedArray329_uint8_t presentation;
+  SignalBadgeVisibilityFfiResult visibility;
+} SignalRedeemDonationReceiptArgsFfiResult;
+static_assert_64bit(offsetof(SignalRedeemDonationReceiptArgsFfiResult, presentation) == 0);
+static_assert_64bit(offsetof(SignalRedeemDonationReceiptArgsFfiResult, visibility) == 332);
+static_assert_64bit(sizeof(SignalRedeemDonationReceiptArgsFfiResult) == 336);
+static_assert_64bit(alignof(SignalRedeemDonationReceiptArgsFfiResult) == 4);
+typedef enum {
+  SignalRedeemDonationReceiptOutFfiResultSuccess,
+  SignalRedeemDonationReceiptOutFfiResultInvalidReceipt,
+  SignalRedeemDonationReceiptOutFfiResultAlreadyRedeemed,
+  SignalRedeemDonationReceiptOutFfiResultUnexpectedError,
+} SignalRedeemDonationReceiptOutFfiResult_Tag;
+typedef struct {
+  const int8_t* contains;
+} SignalRedeemDonationReceiptOutFfiResultSignalUnexpectedError_Body;
+typedef struct {
+  SignalRedeemDonationReceiptOutFfiResult_Tag tag;
+  union {
+    SignalRedeemDonationReceiptOutFfiResultSignalUnexpectedError_Body unexpected_error;
+  };
+} SignalRedeemDonationReceiptOutFfiResult;
+static_assert_64bit(sizeof(SignalRedeemDonationReceiptOutFfiResult) == 16);
+static_assert_64bit(alignof(SignalRedeemDonationReceiptOutFfiResult) == 8);
 typedef struct {
   uint8_t id;
 } SignalRemoveDeviceArgsFfiResult;
@@ -2470,6 +2502,9 @@ SignalFfiError* signal_testing_process_bytestring_array(
   SignalBorrowedSliceOfBuffers input
 );
 SignalFfiError* signal_testing_redeem_backup_receipt_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_redeem_donation_receipt_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_register_account_response_create_test_value(

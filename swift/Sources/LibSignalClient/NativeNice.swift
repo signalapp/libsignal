@@ -2826,6 +2826,17 @@ internal enum AuthCheckResult {
 
 */
 
+/*
+// BadgeVisibility
+
+internal enum BadgeVisibility {
+    case doNotSet
+    case setVisible
+    case setPrimary
+}
+
+*/
+
 internal struct BridgeConfirmedMfaKey {
     var id: Int32
     var metadata: BridgeConfirmedMfaKeyMetadata
@@ -3716,6 +3727,43 @@ internal enum DerivedReturnConverterStartMfaVerificationResponse: NiceReturnConv
         }
 
         return StartMfaVerificationResponse(hasTotp: try has_totp.get(), webauthnParams: try webauthn_params.get())
+    }
+}
+
+internal enum DerivedArgConverterBadgeVisibility: NiceArgConverter {
+    typealias NiceArg = BadgeVisibility
+    typealias FfiArg = SignalBadgeVisibilityFfiArg
+    typealias KeepAlive = ()
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+
+        case .doNotSet:
+            return (SignalBadgeVisibilityFfiArgDoNotSet, nil)
+
+        case .setVisible:
+            return (SignalBadgeVisibilityFfiArgSetVisible, nil)
+
+        case .setPrimary:
+            return (SignalBadgeVisibilityFfiArgSetPrimary, nil)
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .doNotSet:
+            return try niceThunk(SignalBadgeVisibilityFfiArgDoNotSet)
+
+        case .setVisible:
+            return try niceThunk(SignalBadgeVisibilityFfiArgSetVisible)
+
+        case .setPrimary:
+            return try niceThunk(SignalBadgeVisibilityFfiArgSetPrimary)
+
+        }
     }
 }
 
@@ -5005,6 +5053,35 @@ internal enum NativeNice {
                                     chatFfi,
                                     presentationFfi,
                                 )
+                            }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_redeem_donation_receipt(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        presentation: ReceiptCredentialPresentation,
+        visibility: BadgeVisibility,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        FixedLengthSerializedConverter<ReceiptCredentialPresentation, FixedByteArrayHelper329>
+                            .convertArgBorrowed(presentation) { presentationFfi in
+                                DerivedArgConverterBadgeVisibility.convertArgBorrowed(visibility) { visibilityFfi in
+                                    SignalFfi.signal_authenticated_chat_connection_redeem_donation_receipt(
+                                        promiseFfi,
+                                        asyncContextFfi.const(),
+                                        chatFfi,
+                                        presentationFfi,
+                                        visibilityFfi,
+                                    )
+                                }
                             }
                     }
             }

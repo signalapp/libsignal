@@ -3629,6 +3629,7 @@ typedef enum {
   SignalErrorCodeMfaKeyNotFound = 237,
   SignalErrorCodeWebAuthnRegistrationUnsuccessful = 238,
   SignalErrorCodeProfileNotFound = 239,
+  SignalErrorCodeReceiptAlreadyRedeemed = 240,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);
 static_assert_64bit(alignof(SignalErrorCode) == 4);
@@ -3652,6 +3653,13 @@ enum SignalSvr2CredentialsResult {
 typedef uint8_t SignalSvr2CredentialsResult;
 static_assert_64bit(sizeof(SignalSvr2CredentialsResult) == 1);
 static_assert_64bit(alignof(SignalSvr2CredentialsResult) == 1);
+typedef enum {
+  SignalBadgeVisibilityFfiArgDoNotSet,
+  SignalBadgeVisibilityFfiArgSetVisible,
+  SignalBadgeVisibilityFfiArgSetPrimary,
+} SignalBadgeVisibilityFfiArg;
+static_assert_64bit(sizeof(SignalBadgeVisibilityFfiArg) == 4);
+static_assert_64bit(alignof(SignalBadgeVisibilityFfiArg) == 4);
 typedef enum {
   SignalBridgeMfaVerificationCredentialFfiArgTotp,
   SignalBridgeMfaVerificationCredentialFfiArgWebAuthn,
@@ -4037,6 +4045,13 @@ SignalFfiError* signal_authenticated_chat_connection_redeem_backup_receipt(
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat,
   const SignalType_FixedArray329_uint8_t* presentation
+);
+SignalFfiError* signal_authenticated_chat_connection_redeem_donation_receipt(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const SignalType_FixedArray329_uint8_t* presentation,
+  SignalBadgeVisibilityFfiArg visibility
 );
 SignalFfiError* signal_authenticated_chat_connection_remove_device(
   SignalCPromisebool* promise,

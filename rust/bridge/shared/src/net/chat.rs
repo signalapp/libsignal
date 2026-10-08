@@ -54,6 +54,7 @@ use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 use libsignal_net_chat::grpc::devices::{
     DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
 };
+use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceiptFailure};
 use libsignal_net_chat::grpc::keys::{PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
@@ -1514,6 +1515,18 @@ async fn AuthenticatedChatConnection_create_donation_permits(
         .create_donation_permits(request_context, &server_params)
         .await
         .map(Into::into)
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_redeem_donation_receipt(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    presentation: Serialized<::zkgroup::receipts::ReceiptCredentialPresentation>,
+    visibility: BadgeVisibility,
+) -> Result<(), RequestError<RedeemDonationReceiptFailure>> {
+    chat.require_grpc()
+        .await
+        .redeem_donation_receipt(&presentation, visibility)
+        .await
 }
 
 #[cfg(test)]

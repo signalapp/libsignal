@@ -2137,3 +2137,16 @@ impl MessageOnlyExceptionJniError
         }
     }
 }
+
+impl MessageOnlyExceptionJniError
+    for libsignal_net_chat::grpc::donations::RedeemDonationReceiptFailure
+{
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            Self::InvalidReceipt => ClassName("org.signal.libsignal.net.InvalidReceiptException"),
+            Self::AlreadyRedeemed => {
+                ClassName("org.signal.libsignal.net.ReceiptAlreadyRedeemedException")
+            }
+        }
+    }
+}

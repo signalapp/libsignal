@@ -168,6 +168,8 @@ pub enum SignalErrorCode {
     WebAuthnRegistrationUnsuccessful = 238,
 
     ProfileNotFound = 239,
+
+    ReceiptAlreadyRedeemed = 240,
 }
 
 pub trait UpcastAsAny {
@@ -1497,6 +1499,16 @@ impl IntoFfiError for libsignal_net_chat::api::profiles::ProfileKeyCredentialReq
         let code = match self {
             Self::AuthFailed => SignalErrorCode::RequestUnauthorized,
             Self::ProfileNotFound => SignalErrorCode::ProfileNotFound,
+        };
+        SimpleError::new(code, self.to_string())
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::donations::RedeemDonationReceiptFailure {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        let code = match self {
+            Self::InvalidReceipt => SignalErrorCode::InvalidReceipt,
+            Self::AlreadyRedeemed => SignalErrorCode::ReceiptAlreadyRedeemed,
         };
         SimpleError::new(code, self.to_string())
     }

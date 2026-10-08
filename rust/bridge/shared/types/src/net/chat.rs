@@ -1530,6 +1530,19 @@ pub mod remote_derives {
 
     #[derive(BridgedAsValue)]
     #[bridge(
+        remote = libsignal_net_chat::grpc::donations::BadgeVisibility,
+        ffi_nice_type = "BadgeVisibility",
+        jni_nice_type = "org.signal.libsignal.net.BadgeVisibility",
+    )]
+    #[allow(unused)]
+    pub enum BadgeVisibility {
+        DoNotSet,
+        SetVisible,
+        SetPrimary,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
         remote = libsignal_net_chat::api::S3UploadForm,
         ffi_nice_type = "S3UploadForm",
         jni_nice_type = "org.signal.libsignal.net.S3UploadForm"

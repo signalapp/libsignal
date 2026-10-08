@@ -939,6 +939,49 @@ internal enum FixedByteArrayHelper153: FixedByteArrayHelper {
     }
 }
 
+internal enum FixedByteArrayHelper329: FixedByteArrayHelper {
+    public typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
+    )
+    public static func count() -> Int {
+        329
+    }
+    public static func emptyFfi() -> Ffi {
+        (
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+        )
+    }
+}
+
 internal enum FixedByteArrayHelper473: FixedByteArrayHelper {
     public typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -1286,6 +1329,19 @@ internal enum RedeemBackupReceiptOut {
     case missingResponse
 }
 
+internal struct RedeemDonationReceiptArgs {
+    var presentation: ReceiptCredentialPresentation
+    var visibility: BadgeVisibility
+
+}
+
+internal enum RedeemDonationReceiptOut {
+    case success
+    case invalidReceipt
+    case alreadyRedeemed
+    case unexpectedError(contains: String)
+}
+
 internal struct RemoveDeviceArgs {
     var id: UInt8
 
@@ -1422,6 +1478,27 @@ internal struct TestingAnySignedPreKey {
 extension ProfileKeyCredentialRequestError: Equatable {}
 
 extension ReceiptCredentialError: Equatable {}
+
+internal enum DerivedReturnConverterBadgeVisibility: NiceReturnConverter {
+    typealias NiceReturn = BadgeVisibility
+    typealias FfiReturn = SignalBadgeVisibilityFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeVisibilityFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalBadgeVisibilityFfiResultDoNotSet:
+            return BadgeVisibility.doNotSet
+        case SignalBadgeVisibilityFfiResultSetVisible:
+            return BadgeVisibility.setVisible
+        case SignalBadgeVisibilityFfiResultSetPrimary:
+            return BadgeVisibility.setPrimary
+        default:
+            throw SignalError.internalError("Unexpected enum tag for BadgeVisibility: \(ffiTag)")
+        }
+    }
+}
 
 internal enum DerivedReturnConverterBridgeCopyBackupMediaItem: NiceReturnConverter {
     typealias NiceReturn = BridgeCopyBackupMediaItem
@@ -2745,6 +2822,55 @@ internal enum DerivedReturnConverterRedeemBackupReceiptOut: NiceReturnConverter 
             return RedeemBackupReceiptOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for RedeemBackupReceiptOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterRedeemDonationReceiptArgs: NiceReturnConverter {
+    typealias NiceReturn = RedeemDonationReceiptArgs
+    typealias FfiReturn = SignalRedeemDonationReceiptArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRedeemDonationReceiptArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let presentation = Result {
+            try FixedLengthSerializedConverter<ReceiptCredentialPresentation, FixedByteArrayHelper329>.convertReturn(
+                consuming: ffiValue.presentation
+            )
+        }
+        let visibility = Result {
+            try DerivedReturnConverterBadgeVisibility.convertReturn(consuming: ffiValue.visibility)
+        }
+
+        return RedeemDonationReceiptArgs(presentation: try presentation.get(), visibility: try visibility.get())
+    }
+}
+
+internal enum DerivedReturnConverterRedeemDonationReceiptOut: NiceReturnConverter {
+    typealias NiceReturn = RedeemDonationReceiptOut
+    typealias FfiReturn = SignalRedeemDonationReceiptOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRedeemDonationReceiptOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalRedeemDonationReceiptOutFfiResultSuccess:
+            return RedeemDonationReceiptOut.success
+        case SignalRedeemDonationReceiptOutFfiResultInvalidReceipt:
+            return RedeemDonationReceiptOut.invalidReceipt
+        case SignalRedeemDonationReceiptOutFfiResultAlreadyRedeemed:
+            return RedeemDonationReceiptOut.alreadyRedeemed
+        case SignalRedeemDonationReceiptOutFfiResultUnexpectedError:
+            let contains = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.unexpected_error.contains
+                )
+            }
+            return RedeemDonationReceiptOut.unexpectedError(contains: try contains.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for RedeemDonationReceiptOut: \(ffiTag)")
         }
     }
 }
@@ -4757,6 +4883,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<DataConverter, DerivedReturnConverterRedeemBackupReceiptOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_RedeemDonationReceiptTests() throws -> [GrpcTestCase<
+        RedeemDonationReceiptArgs, RedeemDonationReceiptOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterRedeemDonationReceiptArgs, DerivedReturnConverterRedeemDonationReceiptOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_redeem_donation_receipt_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterRedeemDonationReceiptArgs, DerivedReturnConverterRedeemDonationReceiptOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_RemoveDeviceTests() throws -> [GrpcTestCase<RemoveDeviceArgs, RemoveDeviceOut>] {

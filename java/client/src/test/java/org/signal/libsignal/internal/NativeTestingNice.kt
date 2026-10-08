@@ -398,6 +398,23 @@ public sealed class RedeemBackupReceiptOut {
   public data object MissingResponse : RedeemBackupReceiptOut()
 }
 
+public data class RedeemDonationReceiptArgs(
+  public val presentation: org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation,
+  public val visibility: org.signal.libsignal.net.BadgeVisibility,
+)
+
+public sealed class RedeemDonationReceiptOut {
+  public data object Success : RedeemDonationReceiptOut()
+
+  public data object InvalidReceipt : RedeemDonationReceiptOut()
+
+  public data object AlreadyRedeemed : RedeemDonationReceiptOut()
+
+  public data class UnexpectedError(
+    public val contains: String,
+  ) : RedeemDonationReceiptOut()
+}
+
 public data class RemoveDeviceArgs(
   public val id: Int,
 )
@@ -531,6 +548,27 @@ public data class TestingAnySignedPreKey(
   public val key: ByteArray,
   public val sig: ByteArray,
 )
+
+public object BadgeVisibility_DoNotSet_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.BadgeVisibility.DoNotSet
+}
+
+public object BadgeVisibility_SetVisible_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.BadgeVisibility.SetVisible
+}
+
+public object BadgeVisibility_SetPrimary_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.BadgeVisibility.SetPrimary
+}
 
 public object BridgeCopyBackupMediaItem_ReturnConverter {
   @CalledFromNative
@@ -1712,6 +1750,55 @@ public object RedeemBackupReceiptOut_MissingResponse_ReturnConverter {
   internal fun fromNative(): Any? = RedeemBackupReceiptOut.MissingResponse
 }
 
+public object RedeemDonationReceiptArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    presentation: Any?,
+    visibility: Any?,
+  ): Any? =
+    RedeemDonationReceiptArgs(
+      presentation =
+        org.signal.libsignal.zkgroup.receipts
+          .ReceiptCredentialPresentation(presentation as ByteArray),
+      visibility =
+        downcastFromObject<org.signal.libsignal.net.BadgeVisibility>(visibility as Object),
+    )
+}
+
+public object RedeemDonationReceiptOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemDonationReceiptOut.Success
+}
+
+public object RedeemDonationReceiptOut_InvalidReceipt_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemDonationReceiptOut.InvalidReceipt
+}
+
+public object RedeemDonationReceiptOut_AlreadyRedeemed_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = RedeemDonationReceiptOut.AlreadyRedeemed
+}
+
+public object RedeemDonationReceiptOut_UnexpectedError_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(contains: Any?): Any? =
+    RedeemDonationReceiptOut.UnexpectedError(
+      contains =
+        identity(contains as String),
+    )
+}
+
 public object RemoveDeviceArgs_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -2860,6 +2947,16 @@ public object NativeTestingNice {
       .resultConverter<ByteArray, Object, ByteArray, org.signal.libsignal.internal.RedeemBackupReceiptOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.RedeemBackupReceiptOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_RedeemDonationReceiptTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.RedeemDonationReceiptArgs, org.signal.libsignal.internal.RedeemDonationReceiptOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_RedeemDonationReceiptTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.RedeemDonationReceiptArgs, org.signal.libsignal.internal.RedeemDonationReceiptOut>({
+        downcastFromObject<org.signal.libsignal.internal.RedeemDonationReceiptArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.RedeemDonationReceiptOut>(it) })(ffiOut)
   }
 
   public fun TESTING_RemoveDeviceTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.RemoveDeviceArgs, org.signal.libsignal.internal.RemoveDeviceOut>> {

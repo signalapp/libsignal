@@ -37,6 +37,19 @@ public sealed class AuthCheckResult {
 
 */
 
+/*
+// org.signal.libsignal.net.BadgeVisibility
+
+public sealed class BadgeVisibility {
+  public data object DoNotSet : BadgeVisibility()
+
+  public data object SetVisible : BadgeVisibility()
+
+  public data object SetPrimary : BadgeVisibility()
+}
+
+*/
+
 public data class BridgeConfirmedMfaKey(
   public val id: Int,
   public val metadata: org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata,
@@ -919,6 +932,35 @@ public object StartMfaVerificationResponse_ReturnConverter {
     )
 }
 
+public sealed class BadgeVisibility_FfiArgType
+
+@CalledFromNative
+public object BadgeVisibility_DoNotSet_FfiArgType : BadgeVisibility_FfiArgType()
+
+public fun org.signal.libsignal.net.BadgeVisibility.DoNotSet.toFfiArgType(): BadgeVisibility_DoNotSet_FfiArgType =
+  BadgeVisibility_DoNotSet_FfiArgType
+
+@CalledFromNative
+public object BadgeVisibility_SetVisible_FfiArgType : BadgeVisibility_FfiArgType()
+
+public fun org.signal.libsignal.net.BadgeVisibility.SetVisible.toFfiArgType(): BadgeVisibility_SetVisible_FfiArgType =
+  BadgeVisibility_SetVisible_FfiArgType
+
+@CalledFromNative
+public object BadgeVisibility_SetPrimary_FfiArgType : BadgeVisibility_FfiArgType()
+
+public fun org.signal.libsignal.net.BadgeVisibility.SetPrimary.toFfiArgType(): BadgeVisibility_SetPrimary_FfiArgType =
+  BadgeVisibility_SetPrimary_FfiArgType
+
+public fun org.signal.libsignal.net.BadgeVisibility.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is org.signal.libsignal.net.BadgeVisibility.DoNotSet -> this.toFfiArgType()
+      is org.signal.libsignal.net.BadgeVisibility.SetVisible -> this.toFfiArgType()
+      is org.signal.libsignal.net.BadgeVisibility.SetPrimary -> this.toFfiArgType()
+    },
+  )
+
 @CalledFromNative
 @Suppress("ktlint:standard:backing-property-naming")
 public class BridgeCopyBackupMediaItem_FfiArgType {
@@ -1658,6 +1700,29 @@ public object NativeNice {
           asyncCtxHandle.nativeHandle(),
           ffi_chat,
           ffi_presentation,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_redeem_donation_receipt(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    presentation: org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation,
+    visibility: org.signal.libsignal.net.BadgeVisibility,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_presentation =
+      (org.signal.libsignal.zkgroup.internal.ByteArray::getInternalContentsForJNI)(presentation)
+    val ffi_visibility = (org.signal.libsignal.net.BadgeVisibility::toFfiArgTypeObject)(visibility)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_redeem_donation_receipt(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_presentation,
+          ffi_visibility,
         )
       }
     return ffiOut

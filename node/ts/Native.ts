@@ -170,6 +170,17 @@ export type ReturnFfiAuthCheckResult =
       __type: 2;
     };
 
+export type ReturnFfiBadgeVisibility =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
 export type ReturnFfiBridgeConfirmedMfaKey = {
   id: number;
   metadata: ReturnFfiBridgeConfirmedMfaKeyMetadata;
@@ -802,6 +813,26 @@ export type ReturnFfiRedeemBackupReceiptOut =
       __type: 3;
     };
 
+export type ReturnFfiRedeemDonationReceiptArgs = {
+  presentation: Bytes;
+  visibility: ReturnFfiBadgeVisibility;
+};
+
+export type ReturnFfiRedeemDonationReceiptOut =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+      contains: string;
+    };
+
 export type ReturnFfiRemoveDeviceArgs = {
   id: number;
 };
@@ -961,6 +992,17 @@ export type ReturnFfiTestingAnySignedPreKey = {
   key: Bytes;
   sig: Bytes;
 };
+
+export type ArgFfiBadgeVisibility =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
 
 export type ArgFfiBridgeCopyBackupMediaItem = {
   source_attachment_cdn: number;
@@ -1295,6 +1337,12 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
     presentation: Serialized<ReceiptCredentialPresentation>
+  ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_redeem_donation_receipt: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    presentation: Serialized<ReceiptCredentialPresentation>,
+    visibility: ArgFfiBadgeVisibility
   ) => CancellablePromise<void>;
   AuthenticatedChatConnection_remove_device: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -3315,6 +3363,12 @@ type NativeFunctions = {
   TESTING_RedeemBackupReceiptTests: () => Array<
     GrpcTestCaseFfi<Bytes, ReturnFfiRedeemBackupReceiptOut>
   >;
+  TESTING_RedeemDonationReceiptTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiRedeemDonationReceiptArgs,
+      ReturnFfiRedeemDonationReceiptOut
+    >
+  >;
   TESTING_RegisterAccountResponse_CreateTestValue: () => RegisterAccountResponse;
   TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber: () => RegisterAccountResponse;
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert: (
@@ -3914,6 +3968,7 @@ const {
   AuthenticatedChatConnection_list_mfa_keys,
   AuthenticatedChatConnection_preconnect,
   AuthenticatedChatConnection_redeem_backup_receipt,
+  AuthenticatedChatConnection_redeem_donation_receipt,
   AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_remove_mfa_key,
   AuthenticatedChatConnection_report_message,
@@ -4529,6 +4584,7 @@ const {
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
   TESTING_RedeemBackupReceiptTests,
+  TESTING_RedeemDonationReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
   TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber,
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,
@@ -4744,6 +4800,7 @@ export {
   AuthenticatedChatConnection_list_mfa_keys,
   AuthenticatedChatConnection_preconnect,
   AuthenticatedChatConnection_redeem_backup_receipt,
+  AuthenticatedChatConnection_redeem_donation_receipt,
   AuthenticatedChatConnection_remove_device,
   AuthenticatedChatConnection_remove_mfa_key,
   AuthenticatedChatConnection_report_message,
@@ -5359,6 +5416,7 @@ export {
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
   TESTING_RedeemBackupReceiptTests,
+  TESTING_RedeemDonationReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
   TESTING_RegisterAccountResponse_CreateTestValueWithoutPhoneNumber,
   TESTING_RegistrationService_CheckSvr2CredentialsErrorConvert,

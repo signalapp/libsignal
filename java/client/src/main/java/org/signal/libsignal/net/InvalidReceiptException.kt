@@ -15,7 +15,8 @@ import java.io.IOException
  */
 public class InvalidReceiptException :
   IOException,
-  RedeemBackupReceiptFailure {
+  RedeemBackupReceiptFailure,
+  RedeemDonationReceiptFailure {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }

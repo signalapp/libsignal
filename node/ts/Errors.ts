@@ -123,6 +123,8 @@ export enum ErrorCode {
   WebAuthnRegistrationUnsuccessful,
 
   ProfileNotFound,
+
+  ReceiptAlreadyRedeemed,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -631,6 +633,16 @@ export type ProfileNotFound = LibSignalErrorCommon & {
   code: ErrorCode.ProfileNotFound;
 };
 
+/**
+ * A receipt was already redeemed for a badge.
+ *
+ * Not the same as {@link ReceiptCredentialErrorReceiptAlreadyIssued}, which means a receipt
+ * credential was already issued for the purchase.
+ */
+export type ReceiptAlreadyRedeemed = LibSignalErrorCommon & {
+  code: ErrorCode.ReceiptAlreadyRedeemed;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -715,4 +727,5 @@ export type LibSignalError =
   | MfaNotVerified
   | MfaKeyNotFound
   | WebAuthnRegistrationUnsuccessful
-  | ProfileNotFound;
+  | ProfileNotFound
+  | ReceiptAlreadyRedeemed;

@@ -13,6 +13,41 @@ import XCTest
 class AuthDonationsServiceTests: AuthChatServiceTestBase<any AuthDonationsService> {
     override class var selector: SelectorCheck { .donations }
 
+    func testRedeemDonationReceipt() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_RedeemDonationReceiptTests(),
+            invoke: { api, args in
+                try await api.redeemDonationReceipt(
+                    args.presentation,
+                    badgeVisibility: args.visibility,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success:
+                    try actual.get()
+                case .invalidReceipt:
+                    do {
+                        try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidReceipt(_) {}
+                case .alreadyRedeemed:
+                    do {
+                        try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.receiptAlreadyRedeemed(_) {}
+                case .unexpectedError(let contains):
+                    do {
+                        try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(let msg) {
+                        XCTAssert(msg.contains(contains), "Expected to find '\(contains)' in '\(msg)'")
+                    }
+                }
+            }
+        )
+    }
+
     func testCreateDonationPermits() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_CreateDonationPermitsTests(),

@@ -12,6 +12,7 @@ import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
   GrpcTestCase,
   StringMapFfiContents,
+  ArgFfiBadgeVisibility,
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
   ArgFfiBridgeMfaVerificationCredential,
@@ -26,6 +27,7 @@ import type {
   ArgFfiMyTestStruct,
   ArgFfiPaymentProvider,
   ReturnFfiAuthCheckResult,
+  ReturnFfiBadgeVisibility,
   ReturnFfiBridgeConfirmedMfaKey,
   ReturnFfiBridgeConfirmedMfaKeyMetadata,
   ReturnFfiBridgeCopyBackupMediaItem,
@@ -94,6 +96,8 @@ import type {
   ReturnFfiProfileKeyCredentialRequestError,
   ReturnFfiReceiptCredentialError,
   ReturnFfiRedeemBackupReceiptOut,
+  ReturnFfiRedeemDonationReceiptArgs,
+  ReturnFfiRedeemDonationReceiptOut,
   ReturnFfiRemoveDeviceArgs,
   ReturnFfiRemoveDeviceOut,
   ReturnFfiRemoveMfaKeyArgs,
@@ -146,6 +150,8 @@ import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';
 
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
+
+export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
 
 export type BridgeConfirmedMfaKey = {
   id: number;
@@ -605,6 +611,19 @@ export type RedeemBackupReceiptOut =
   | 'missingBackupId'
   | 'missingResponse';
 
+export type RedeemDonationReceiptArgs = {
+  presentation: zkgroup.ReceiptCredentialPresentation;
+  visibility: BadgeVisibility;
+};
+
+export type RedeemDonationReceiptOut =
+  | 'success'
+  | 'invalidReceipt'
+  | 'alreadyRedeemed'
+  | {
+      unexpectedError: string;
+    };
+
 export type RemoveDeviceArgs = {
   id: number;
 };
@@ -745,6 +764,23 @@ export function returnConverterAuthCheckResult(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for AuthCheckResult');
+  }
+}
+
+export function returnConverterBadgeVisibility(
+  ffiInput: Native.ReturnFfiBadgeVisibility
+): BadgeVisibility {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'doNotSet';
+    case 1:
+      return 'setVisible';
+    case 2:
+      return 'setPrimary';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for BadgeVisibility');
   }
 }
 
@@ -1841,6 +1877,39 @@ export function returnConverterRedeemBackupReceiptOut(
   }
 }
 
+export function returnConverterRedeemDonationReceiptArgs(
+  ffiInput: Native.ReturnFfiRedeemDonationReceiptArgs
+): RedeemDonationReceiptArgs {
+  return {
+    presentation: ((x) => new zkgroup.ReceiptCredentialPresentation(x))(
+      ffiInput.presentation
+    ),
+    visibility: returnConverterBadgeVisibility(ffiInput.visibility),
+  };
+}
+
+export function returnConverterRedeemDonationReceiptOut(
+  ffiInput: Native.ReturnFfiRedeemDonationReceiptOut
+): RedeemDonationReceiptOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'success';
+    case 1:
+      return 'invalidReceipt';
+    case 2:
+      return 'alreadyRedeemed';
+    case 3:
+      return {
+        unexpectedError: identity(ffiInput.contains),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for RedeemDonationReceiptOut'
+      );
+  }
+}
+
 export function returnConverterRemoveDeviceArgs(
   ffiInput: Native.ReturnFfiRemoveDeviceArgs
 ): RemoveDeviceArgs {
@@ -2151,6 +2220,25 @@ export function returnConverterTestingAnySignedPreKey(
     key: identity(ffiInput.key),
     sig: identity(ffiInput.sig),
   };
+}
+
+export function argConverterBadgeVisibility(
+  niceInput: BadgeVisibility
+): Native.ArgFfiBadgeVisibility {
+  if (niceInput === 'doNotSet') {
+    return { __type: 0 };
+  }
+
+  if (niceInput === 'setVisible') {
+    return { __type: 1 };
+  }
+
+  if (niceInput === 'setPrimary') {
+    return { __type: 2 };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on BadgeVisibility argument');
 }
 
 export function argConverterBridgeCopyBackupMediaItem(
@@ -2838,6 +2926,31 @@ export async function AuthenticatedChatConnection_redeem_backup_receipt({
         asyncContext,
         identity(chat),
         ByteArray.prototype.getContents.call(presentation)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_redeem_donation_receipt({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  presentation: presentation,
+  visibility: visibility,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  presentation: zkgroup.ReceiptCredentialPresentation;
+  visibility: BadgeVisibility;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_redeem_donation_receipt(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(presentation),
+        argConverterBadgeVisibility(visibility)
       )
     )
   );
@@ -3866,6 +3979,15 @@ export function TESTING_RedeemBackupReceiptTests(): Array<
     identity,
     returnConverterRedeemBackupReceiptOut
   )(Native.TESTING_RedeemBackupReceiptTests());
+}
+
+export function TESTING_RedeemDonationReceiptTests(): Array<
+  GrpcTestCase<RedeemDonationReceiptArgs, RedeemDonationReceiptOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterRedeemDonationReceiptArgs,
+    returnConverterRedeemDonationReceiptOut
+  )(Native.TESTING_RedeemDonationReceiptTests());
 }
 
 export function TESTING_RemoveDeviceTests(): Array<
