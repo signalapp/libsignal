@@ -147,6 +147,8 @@ jobs:
 
     - run: sudo apt-get install -U protobuf-compiler
 
+    - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
+
     - run: ./gradlew :client:test :server:test -PskipAndroid -PjniTypeTagging -PjniCheckAnnotations
       working-directory: java
 
