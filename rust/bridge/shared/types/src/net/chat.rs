@@ -1516,7 +1516,10 @@ pub mod remote_derives {
     }
 
     #[derive(BridgedAsValue)]
-    #[bridge(remote = libsignal_net_chat::grpc::devices::DeviceCapability)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::devices::DeviceCapability,
+        ffi_nice_type = "DeviceCapability",
+    )]
     #[allow(unused)]
     pub enum DeviceCapabilityInternal {
         Storage,

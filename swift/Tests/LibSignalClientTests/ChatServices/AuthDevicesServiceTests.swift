@@ -41,7 +41,7 @@ class AuthDevicesServiceTests: AuthChatServiceTestBase<any AuthDevicesService> {
             try NativeTestingNice.TESTING_SetCapabilitiesTests(),
             invoke: { api, args in
                 try await api.setCapabilities(
-                    Set(args.capabilities.map { DeviceCapability.fromInternal($0) })
+                    Set(args.capabilities)
                 )
             },
             check: { _, actual in

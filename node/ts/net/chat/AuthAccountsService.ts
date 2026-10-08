@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import type { EmptyObject } from 'type-fest';
+import type { EmptyObject, IsEqual } from 'type-fest';
 import type { Bytes } from '@signalapp/types';
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
+import type { AssertTrue } from '../../internal.js';
 import { LibSignalErrorBase } from '../../Errors.js';
 import type {
   GenericError,
@@ -128,6 +129,12 @@ export type WebAuthnCreateParameters = {
  * {@link AuthAccountsService#listMfaKeys}.
  */
 export type MfaKeyKind = 'totp' | 'webAuthn' | 'unknown';
+
+// Must be kept in sync with BridgeMfaKeyKind in rust/bridge/shared/types/src/net/chat.rs. This
+// fails to compile if the generated NativeNice.BridgeMfaKeyKind has different cases.
+type _MfaKeyKindMatchesBridge = AssertTrue<
+  IsEqual<MfaKeyKind, NativeNice.BridgeMfaKeyKind>
+>;
 
 /**
  * A confirmed multi-factor authentication (MFA) key on the account, as returned by

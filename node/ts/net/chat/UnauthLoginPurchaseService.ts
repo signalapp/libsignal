@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { IsEqual } from 'type-fest';
+
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
+import type { AssertTrue } from '../../internal.js';
 import * as zkgroup from '../../zkgroup/index.js';
 import type {
   ReceiptCredentialErrorPaymentNotFound,
@@ -22,6 +25,12 @@ declare module '../Chat' {
 }
 
 export type LoginReceiptLevel = 'normal' | 'sandbox';
+
+// Must be kept in sync with LoginReceiptLevel in rust/bridge/shared/types/src/net/chat.rs. This
+// fails to compile if the generated NativeNice.LoginReceiptLevel has different cases.
+type _LoginReceiptLevelMatchesBridge = AssertTrue<
+  IsEqual<LoginReceiptLevel, NativeNice.LoginReceiptLevel>
+>;
 
 export interface UnauthLoginPurchaseService {
   /**

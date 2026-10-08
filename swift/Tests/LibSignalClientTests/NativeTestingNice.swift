@@ -1383,7 +1383,7 @@ internal struct ServerPublicParamsSerialized {
 }
 
 internal struct SetCapabilitiesArgs {
-    var capabilities: [DeviceCapabilityInternal]
+    var capabilities: [DeviceCapability]
 
 }
 
@@ -1972,7 +1972,7 @@ internal enum DerivedReturnConverterDeleteBackupMediaOut: NiceReturnConverter {
 }
 
 internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverter {
-    typealias NiceReturn = DeviceCapabilityInternal
+    typealias NiceReturn = DeviceCapability
     typealias FfiReturn = SignalDeviceCapabilityInternalFfiResult
     static func emptyFfiReturn() -> FfiReturn {
         SignalDeviceCapabilityInternalFfiResult(0)
@@ -1981,19 +1981,19 @@ internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverte
         let ffiTag = ffiValue
         switch ffiTag {
         case SignalDeviceCapabilityInternalFfiResultStorage:
-            return DeviceCapabilityInternal.storage
+            return DeviceCapability.storage
         case SignalDeviceCapabilityInternalFfiResultTransfer:
-            return DeviceCapabilityInternal.transfer
+            return DeviceCapability.transfer
         case SignalDeviceCapabilityInternalFfiResultAttachmentBackfill:
-            return DeviceCapabilityInternal.attachmentBackfill
+            return DeviceCapability.attachmentBackfill
         case SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet:
-            return DeviceCapabilityInternal.sparsePostQuantumRatchet
+            return DeviceCapability.sparsePostQuantumRatchet
         case SignalDeviceCapabilityInternalFfiResultProfilesV2:
-            return DeviceCapabilityInternal.profilesV2
+            return DeviceCapability.profilesV2
         case SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage:
-            return DeviceCapabilityInternal.usernameChangeSyncMessage
+            return DeviceCapability.usernameChangeSyncMessage
         case SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber:
-            return DeviceCapabilityInternal.optionalPhoneNumber
+            return DeviceCapability.optionalPhoneNumber
         default:
             throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
         }

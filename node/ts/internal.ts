@@ -21,6 +21,10 @@ export class BridgedStringMap {
   }
 }
 
+/// Fails to compile unless `T` is `true`. Use with `IsEqual` from type-fest to check at compile
+/// time that a hand-written type matches a generated one.
+export type AssertTrue<T extends true> = T;
+
 export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
   return {
     _nativeHandle: handle,

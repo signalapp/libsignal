@@ -3018,6 +3018,9 @@ internal struct DeleteBackupMediaNextChunk {
 
 }
 
+/*
+// DeviceCapability
+
 internal enum DeviceCapabilityInternal {
     case storage
     case transfer
@@ -3027,6 +3030,8 @@ internal enum DeviceCapabilityInternal {
     case usernameChangeSyncMessage
     case optionalPhoneNumber
 }
+
+*/
 
 /*
 // GetStickerUploadFormsResponse
@@ -4484,7 +4489,7 @@ internal enum DerivedArgConverterCallQualitySurveyInternal: NiceArgConverter {
 }
 
 internal enum DerivedArgConverterDeviceCapabilityInternal: NiceArgConverter {
-    typealias NiceArg = DeviceCapabilityInternal
+    typealias NiceArg = DeviceCapability
     typealias FfiArg = SignalDeviceCapabilityInternalFfiArg
     typealias KeepAlive = ()
     static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
@@ -5197,7 +5202,7 @@ internal enum NativeNice {
     internal static func AuthenticatedChatConnection_set_capabilities(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
-        capabilities: [DeviceCapabilityInternal],
+        capabilities: [DeviceCapability],
     ) async throws {
         let rawOutput: VoidConverter.FfiReturn =
             try await asyncContext.invokeAsyncFunction {

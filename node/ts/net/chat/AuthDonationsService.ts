@@ -7,6 +7,7 @@ import type { IsEqual } from 'type-fest';
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
+import type { AssertTrue } from '../../internal.js';
 import type {
   DonationPermit,
   DonationPermitRequestContext,
@@ -34,8 +35,6 @@ declare module '../Chat' {
  * - `'setPrimary'`: Make the badge visible on the profile as the primary badge.
  */
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
-
-type AssertTrue<T extends true> = T;
 
 // Must be kept in sync with BadgeVisibility in rust/bridge/shared/types/src/net/chat.rs. This fails
 // to compile if the generated NativeNice.BadgeVisibility has different cases.

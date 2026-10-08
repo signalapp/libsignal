@@ -3,8 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { IsEqual } from 'type-fest';
+
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
+import type { AssertTrue } from '../../internal.js';
 import type { StandardNetworkError } from '../../Errors.js';
 
 declare module '../Chat' {
@@ -28,6 +31,12 @@ export type AuthCheckResult =
    * recent token in the request which should be used instead.
    */
   | 'invalid';
+
+// Must be kept in sync with AuthCheckResult in rust/bridge/shared/types/src/net/chat.rs. This fails
+// to compile if the generated NativeNice.AuthCheckResult has different cases.
+type _AuthCheckResultMatchesBridge = AssertTrue<
+  IsEqual<AuthCheckResult, NativeNice.AuthCheckResult>
+>;
 
 export interface UnauthCredentialsService {
   /**
