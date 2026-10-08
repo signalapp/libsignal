@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation
 
@@ -27,19 +28,17 @@ public class AuthBackupsService(
   public fun redeemReceipt(
     presentation: ReceiptCredentialPresentation,
   ): CompletableFuture<RequestResult<Unit, RedeemBackupReceiptFailure>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_redeem_backup_receipt(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           presentation = presentation,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult<RedeemBackupReceiptFailure>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult<RedeemBackupReceiptFailure>() },
+    )
 }
 
 /** Either [InvalidReceiptException] or [MissingBackupIdException]. */

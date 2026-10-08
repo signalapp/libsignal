@@ -8,6 +8,7 @@ package org.signal.libsignal.net
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.CurrencyConversionsInternal
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 
 public data class CurrencyConversions(
@@ -46,20 +47,18 @@ public class AuthPaymentsService(
    * [RequestResult.ApplicationError].
    */
   public fun getCurrencyConversions(): CompletableFuture<RequestResult<CurrencyConversions, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_get_currency_conversions(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = {
-            RequestResult.Success(
-              it.toPublic(),
-            )
-          },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = {
+        RequestResult.Success(
+          it.toPublic(),
+        )
+      },
+      onError = { err -> err.toRequestResult() },
+    )
 }

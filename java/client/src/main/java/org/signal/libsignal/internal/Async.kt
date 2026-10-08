@@ -113,6 +113,14 @@ public fun <T> CompletableFuture<T>.toResultFuture(): CompletableFuture<Result<T
     }
   }
 
+/** Helper to forward any synchronous exceptions to the future. */
+internal inline fun <T> liftExceptions(block: () -> CompletableFuture<T>): CompletableFuture<T> =
+  try {
+    block()
+  } catch (e: Throwable) {
+    CompletableFuture.failedFuture(e)
+  }
+
 /**
  * Produces a `Flow` from a bulk-pull stream implementation.
  *

@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.zkgroup.ServerPublicParams
 import org.signal.libsignal.zkgroup.receipts.ReceiptCredential
@@ -46,7 +47,7 @@ public class UnauthSubscriptionsService(
     receiptCredentialRequestContext: ReceiptCredentialRequestContext,
     serverParams: ServerPublicParams,
   ): CompletableFuture<RequestResult<ReceiptCredential, ReceiptCredentialException>> =
-    try {
+    liftExceptions {
       NativeNice
         .UnauthenticatedChatConnection_get_subscription_receipt_credential(
           asyncCtx = connection.tokioAsyncContext,
@@ -54,11 +55,9 @@ public class UnauthSubscriptionsService(
           subscriberId = subscriberId,
           receiptCredentialRequestContext = receiptCredentialRequestContext,
           serverParams = serverParams,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<ReceiptCredentialException>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<ReceiptCredentialException>() },
+    )
 }

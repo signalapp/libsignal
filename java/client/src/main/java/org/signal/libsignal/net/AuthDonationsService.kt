@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.zkgroup.ServerPublicParams
 import org.signal.libsignal.zkgroup.donation.DonationPermit
@@ -71,20 +72,18 @@ public class AuthDonationsService(
     presentation: ReceiptCredentialPresentation,
     visibility: BadgeVisibility,
   ): CompletableFuture<RequestResult<Unit, RedeemDonationReceiptFailure>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_redeem_donation_receipt(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           presentation = presentation,
           visibility = visibility,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult<RedeemDonationReceiptFailure>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult<RedeemDonationReceiptFailure>() },
+    )
 
   /**
    * Requests a batch of anonymous, single-use donation permits, one for each nonce in
@@ -107,20 +106,18 @@ public class AuthDonationsService(
     requestContext: DonationPermitRequestContext,
     serverParams: ServerPublicParams,
   ): CompletableFuture<RequestResult<List<DonationPermit>, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_create_donation_permits(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           requestContext = requestContext,
           serverParams = serverParams,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 }
 
 /** Either [InvalidReceiptException] or [ReceiptAlreadyRedeemedException]. */

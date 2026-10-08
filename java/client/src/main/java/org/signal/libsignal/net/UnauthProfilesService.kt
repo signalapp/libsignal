@@ -8,6 +8,7 @@ package org.signal.libsignal.net
 import org.signal.libsignal.internal.CalledFromNative
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.zkgroup.ServerPublicParams
@@ -25,19 +26,17 @@ public class UnauthProfilesService(
    * [RequestResult.ApplicationError].
    */
   public fun accountExists(account: ServiceId): CompletableFuture<RequestResult<Boolean, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .UnauthenticatedChatConnection_account_exists(
           asyncCtx = this.connection.tokioAsyncContext,
           chat = this.connection,
           account = account,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Fetches a profile key credential using the given request context.
@@ -53,20 +52,18 @@ public class UnauthProfilesService(
     requestContext: ProfileKeyCredentialRequestContext,
     serverParams: ServerPublicParams,
   ): CompletableFuture<RequestResult<ExpiringProfileKeyCredential, GetProfileKeyCredentialFailure>> =
-    try {
+    liftExceptions {
       NativeNice
         .UnauthenticatedChatConnection_get_profile_key_credential(
           asyncCtx = this.connection.tokioAsyncContext,
           chat = this.connection,
           profileKeyRequestContext = requestContext,
           serverParams = serverParams,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<GetProfileKeyCredentialFailure>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<GetProfileKeyCredentialFailure>() },
+    )
 }
 
 /** Either [`RequestUnauthorizedException`] or [`ProfileNotFoundException`] */
