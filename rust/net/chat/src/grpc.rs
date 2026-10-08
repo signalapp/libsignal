@@ -11,6 +11,7 @@ pub mod backups;
 pub mod call_quality;
 pub mod credentials;
 pub mod devices;
+pub mod donations;
 pub mod keys;
 pub mod keytrans;
 pub mod login_purchase;

@@ -815,6 +815,11 @@ zkgroup_serialize_type!(
     zkgroup::receipts::ReceiptCredentialPresentation,
     "ReceiptCredentialPresentation"
 );
+zkgroup_serialize_type!(
+    zkgroup::donations::DonationPermitRequestContext,
+    "DonationPermitRequestContext"
+);
+zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;

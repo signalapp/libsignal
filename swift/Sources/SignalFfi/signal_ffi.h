@@ -520,6 +520,22 @@ static_assert_64bit(alignof(SignalType_ConstPointer_SignalOwnedBufferOfc_uchar17
 typedef const SignalOwnedBuffer* SignalType_ConstPointer_SignalOwnedBuffer;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalOwnedBuffer) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalOwnedBuffer) == 8);
+typedef SignalOwnedBuffer* SignalType_MutPointer_SignalOwnedBuffer;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOwnedBuffer) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOwnedBuffer) == 8);
+typedef struct {
+  SignalOwnedBuffer* base;
+  size_t length;
+  size_t size_bytes;
+} SignalOwnedBufferOfMaxAlignedOwnedBuffer;
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedOwnedBuffer, base) == 0);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedOwnedBuffer, length) == 8);
+static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedOwnedBuffer, size_bytes) == 16);
+static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedOwnedBuffer) == 24);
+static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
+typedef const SignalOwnedBufferOfMaxAlignedOwnedBuffer* SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
 typedef enum {
   SignalAuthCheckResultFfiResultMatch,
   SignalAuthCheckResultFfiResultNoMatch,
@@ -869,19 +885,6 @@ static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedi32, length) == 8);
 static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedi32, size_bytes) == 16);
 static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedi32) == 24);
 static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedi32) == 8);
-typedef SignalOwnedBuffer* SignalType_MutPointer_SignalOwnedBuffer;
-static_assert_64bit(sizeof(SignalType_MutPointer_SignalOwnedBuffer) == 8);
-static_assert_64bit(alignof(SignalType_MutPointer_SignalOwnedBuffer) == 8);
-typedef struct {
-  SignalOwnedBuffer* base;
-  size_t length;
-  size_t size_bytes;
-} SignalOwnedBufferOfMaxAlignedOwnedBuffer;
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedOwnedBuffer, base) == 0);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedOwnedBuffer, length) == 8);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedOwnedBuffer, size_bytes) == 16);
-static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedOwnedBuffer) == 24);
-static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
 typedef struct {
   SignalOwnedBuffer user_handle;
   SignalOwnedBufferOfMaxAlignedi32 allowed_algorithms;
@@ -2667,6 +2670,22 @@ static_assert_64bit(alignof(SignalCPromiseOwnedBuffer) == 8);
 typedef SignalCPromiseOwnedBuffer* SignalType_MutPointer_SignalCPromiseOwnedBuffer;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseOwnedBuffer) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseOwnedBuffer) == 8);
+typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer;
+static_assert_64bit(offsetof(SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer) == 24);
+static_assert_64bit(alignof(SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
+typedef SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer* SignalType_MutPointer_SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer) == 8);
 typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult, SignalType_ConstPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult_ConstPointer_void) == 8);
@@ -3914,6 +3933,13 @@ SignalFfiError* signal_authenticated_chat_connection_connect(
   const int8_t* password,
   bool receive_stories,
   SignalBorrowedBytestringArray languages
+);
+SignalFfiError* signal_authenticated_chat_connection_create_donation_permits(
+  SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  SignalBorrowedBuffer request_context,
+  SignalConstPointerServerPublicParams server_params
 );
 SignalFfiError* signal_authenticated_chat_connection_delete_account(
   SignalCPromisebool* promise,

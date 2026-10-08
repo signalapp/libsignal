@@ -50,6 +50,8 @@ import type {
   ReturnFfiConfirmUsernameOut,
   ReturnFfiCopyBackupMediaNextChunk,
   ReturnFfiCopyBackupMediaOut,
+  ReturnFfiCreateDonationPermitsArgs,
+  ReturnFfiCreateDonationPermitsOut,
   ReturnFfiCreateLoginReceiptCredentialArgs,
   ReturnFfiCreateLoginReceiptCredentialOut,
   ReturnFfiCurrencyConversionsInternal,
@@ -308,6 +310,19 @@ export type CopyBackupMediaOut =
   | 'invalidDataInStream'
   | 'credentialRejected'
   | 'credentialRejectedWithoutAppropriateServerInfo';
+
+export type CreateDonationPermitsArgs = {
+  requestContext: zkgroup.DonationPermitRequestContext;
+  serverParams: ServerPublicParamsSerialized;
+};
+
+export type CreateDonationPermitsOut =
+  | {
+      success: Array<zkgroup.DonationPermit>;
+    }
+  | {
+      unexpectedError: string;
+    };
 
 export type CreateLoginReceiptCredentialArgs = {
   paymentProcessor: PaymentProvider;
@@ -1081,6 +1096,40 @@ export function returnConverterCopyBackupMediaOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for CopyBackupMediaOut');
+  }
+}
+
+export function returnConverterCreateDonationPermitsArgs(
+  ffiInput: Native.ReturnFfiCreateDonationPermitsArgs
+): CreateDonationPermitsArgs {
+  return {
+    requestContext: ((x) => new zkgroup.DonationPermitRequestContext(x))(
+      ffiInput.request_context
+    ),
+    serverParams: returnConverterServerPublicParamsSerialized(
+      ffiInput.server_params
+    ),
+  };
+}
+
+export function returnConverterCreateDonationPermitsOut(
+  ffiInput: Native.ReturnFfiCreateDonationPermitsOut
+): CreateDonationPermitsOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: ((arr: Array<Bytes>) =>
+          arr.map((x) => new zkgroup.DonationPermit(x)))(ffiInput._0),
+      };
+    case 1:
+      return {
+        unexpectedError: identity(ffiInput.contains),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for CreateDonationPermitsOut'
+      );
   }
 }
 
@@ -2508,6 +2557,31 @@ export async function AuthenticatedChatConnection_confirm_username({
     )
   );
 }
+export async function AuthenticatedChatConnection_create_donation_permits({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  requestContext: request_context,
+  serverParams: server_params,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  requestContext: zkgroup.DonationPermitRequestContext;
+  serverParams: Native.Wrapper<Native.ServerPublicParams>;
+}): Promise<Array<zkgroup.DonationPermit>> {
+  return ((arr: Array<Bytes>) => arr.map((x) => new zkgroup.DonationPermit(x)))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_create_donation_permits(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(request_context),
+        identity(server_params)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_delete_account({
   asyncContext,
   abortSignal,
@@ -3358,6 +3432,15 @@ export function TESTING_CopyBackupMediaTests(): Array<
     (arr: Array<ReturnFfiCopyBackupMediaOut>) =>
       arr.map(returnConverterCopyBackupMediaOut)
   )(Native.TESTING_CopyBackupMediaTests());
+}
+
+export function TESTING_CreateDonationPermitsTests(): Array<
+  GrpcTestCase<CreateDonationPermitsArgs, CreateDonationPermitsOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterCreateDonationPermitsArgs,
+    returnConverterCreateDonationPermitsOut
+  )(Native.TESTING_CreateDonationPermitsTests());
 }
 
 export function TESTING_CreateLoginReceiptCredentialTests(): Array<

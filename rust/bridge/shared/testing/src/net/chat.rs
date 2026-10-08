@@ -1204,6 +1204,22 @@ mod remote_derives {
         message_guid: Uuid,
         report_spam_token: Vec<u8>,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::donations::test_cases::CreateDonationPermitsArgs)]
+    #[bridge(arg = false)]
+    pub struct CreateDonationPermitsArgs {
+        request_context: ::zkgroup::donations::DonationPermitRequestContext,
+        server_params: ServerPublicParamsSerialized,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::donations::test_cases::CreateDonationPermitsOut)]
+    #[bridge(arg = false)]
+    pub enum CreateDonationPermitsOut {
+        Success(BridgeVec<::zkgroup::donations::DonationPermit>),
+        UnexpectedError { contains: String },
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1517,4 +1533,12 @@ fn TESTING_GetSubscriptionReceiptCredentialTests() -> GrpcTestCases<
     remote_derives::GetSubscriptionReceiptCredentialOut,
 > {
     libsignal_net_chat::grpc::subscriptions::test_cases::get_receipt_credential_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_CreateDonationPermitsTests() -> GrpcTestCases<
+    remote_derives::CreateDonationPermitsArgs,
+    remote_derives::CreateDonationPermitsOut,
+> {
+    libsignal_net_chat::grpc::donations::test_cases::create_donation_permits_test_cases().into()
 }

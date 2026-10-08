@@ -1390,6 +1390,41 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_create_donation_permits(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    requestContext: org.signal.libsignal.zkgroup.donation.DonationPermitRequestContext,
+    serverParams: org.signal.libsignal.zkgroup.ServerPublicParams,
+  ): CompletableFuture<List<org.signal.libsignal.zkgroup.donation.DonationPermit>> {
+    val ffi_chat = identity(chat)
+    val ffi_request_context =
+      (org.signal.libsignal.zkgroup.donation.DonationPermitRequestContext::getInternalContentsForJNI)(
+        requestContext,
+      )
+    val ffi_server_params = identity(serverParams)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_create_donation_permits(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_request_context,
+          ffi_server_params,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapBridgeVecReturn<ByteArray, org.signal.libsignal.zkgroup.donation.DonationPermit>({
+          (
+            { x: ByteArray ->
+              org.signal.libsignal.zkgroup.donation
+                .DonationPermit(x)
+            }
+          )(it)
+        })(it)
+      }
+  }
+
   public fun AuthenticatedChatConnection_delete_account(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

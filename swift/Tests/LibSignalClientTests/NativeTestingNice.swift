@@ -1034,6 +1034,17 @@ internal enum CopyBackupMediaOut {
     case credentialRejectedWithoutAppropriateServerInfo
 }
 
+internal struct CreateDonationPermitsArgs {
+    var requestContext: DonationPermitRequestContext
+    var serverParams: ServerPublicParamsSerialized
+
+}
+
+internal enum CreateDonationPermitsOut {
+    case success([DonationPermit])
+    case unexpectedError(contains: String)
+}
+
 internal struct CreateLoginReceiptCredentialArgs {
     var paymentProcessor: PaymentProvider
     var purchaseIdentifier: String
@@ -1727,6 +1738,58 @@ internal enum DerivedReturnConverterCopyBackupMediaOut: NiceReturnConverter {
             return CopyBackupMediaOut.credentialRejectedWithoutAppropriateServerInfo
         default:
             throw SignalError.internalError("Unexpected enum tag for CopyBackupMediaOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterCreateDonationPermitsArgs: NiceReturnConverter {
+    typealias NiceReturn = CreateDonationPermitsArgs
+    typealias FfiReturn = SignalCreateDonationPermitsArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCreateDonationPermitsArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let request_context = Result {
+            try ByteArrayConverter<DonationPermitRequestContext>.convertReturn(consuming: ffiValue.request_context)
+        }
+        let server_params = Result {
+            try DerivedReturnConverterServerPublicParamsSerialized.convertReturn(consuming: ffiValue.server_params)
+        }
+
+        return CreateDonationPermitsArgs(
+            requestContext: try request_context.get(),
+            serverParams: try server_params.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterCreateDonationPermitsOut: NiceReturnConverter {
+    typealias NiceReturn = CreateDonationPermitsOut
+    typealias FfiReturn = SignalCreateDonationPermitsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCreateDonationPermitsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalCreateDonationPermitsOutFfiResultSuccess:
+            let _0 = Result {
+                try ArrayReturnConverter<ByteArrayConverter<DonationPermit>, SignalOwnedBufferOfMaxAlignedOwnedBuffer>
+                    .convertReturn(
+                        consuming: ffiValue.success._0
+                    )
+            }
+            return CreateDonationPermitsOut.success(try _0.get())
+        case SignalCreateDonationPermitsOutFfiResultUnexpectedError:
+            let contains = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.unexpected_error.contains
+                )
+            }
+            return CreateDonationPermitsOut.unexpectedError(contains: try contains.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for CreateDonationPermitsOut: \(ffiTag)")
         }
     }
 }
@@ -4099,6 +4162,22 @@ internal enum NativeTestingNice {
             ArrayReturnConverter<
                 DerivedReturnConverterCopyBackupMediaOut, SignalOwnedBufferOfMaxAlignedCopyBackupMediaOutFfiResult
             >
+        >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_CreateDonationPermitsTests() throws -> [GrpcTestCase<
+        CreateDonationPermitsArgs, CreateDonationPermitsOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterCreateDonationPermitsArgs, DerivedReturnConverterCreateDonationPermitsOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_create_donation_permits_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterCreateDonationPermitsArgs, DerivedReturnConverterCreateDonationPermitsOut
         >.convertReturn(consuming: rawOutput)
 
     }

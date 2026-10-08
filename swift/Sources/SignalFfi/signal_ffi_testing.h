@@ -846,6 +846,33 @@ typedef struct {
 static_assert_64bit(offsetof(SignalServerPublicParamsSerializedFfiResult, bytes) == 0);
 static_assert_64bit(sizeof(SignalServerPublicParamsSerializedFfiResult) == 16);
 static_assert_64bit(alignof(SignalServerPublicParamsSerializedFfiResult) == 8);
+typedef struct {
+  SignalOwnedBuffer request_context;
+  SignalServerPublicParamsSerializedFfiResult server_params;
+} SignalCreateDonationPermitsArgsFfiResult;
+static_assert_64bit(offsetof(SignalCreateDonationPermitsArgsFfiResult, request_context) == 0);
+static_assert_64bit(offsetof(SignalCreateDonationPermitsArgsFfiResult, server_params) == 16);
+static_assert_64bit(sizeof(SignalCreateDonationPermitsArgsFfiResult) == 32);
+static_assert_64bit(alignof(SignalCreateDonationPermitsArgsFfiResult) == 8);
+typedef enum {
+  SignalCreateDonationPermitsOutFfiResultSuccess,
+  SignalCreateDonationPermitsOutFfiResultUnexpectedError,
+} SignalCreateDonationPermitsOutFfiResult_Tag;
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedOwnedBuffer _0;
+} SignalCreateDonationPermitsOutFfiResultSignalSuccess_Body;
+typedef struct {
+  const int8_t* contains;
+} SignalCreateDonationPermitsOutFfiResultSignalUnexpectedError_Body;
+typedef struct {
+  SignalCreateDonationPermitsOutFfiResult_Tag tag;
+  union {
+    SignalCreateDonationPermitsOutFfiResultSignalSuccess_Body success;
+    SignalCreateDonationPermitsOutFfiResultSignalUnexpectedError_Body unexpected_error;
+  };
+} SignalCreateDonationPermitsOutFfiResult;
+static_assert_64bit(sizeof(SignalCreateDonationPermitsOutFfiResult) == 32);
+static_assert_64bit(alignof(SignalCreateDonationPermitsOutFfiResult) == 8);
 typedef enum {
   SignalLoginReceiptLevelFfiResultNormal,
   SignalLoginReceiptLevelFfiResultSandbox,
@@ -2054,6 +2081,9 @@ SignalFfiError* signal_testing_convert_optional_uuid(
   bool present
 );
 SignalFfiError* signal_testing_copy_backup_media_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_create_donation_permits_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_create_login_receipt_credential_tests(

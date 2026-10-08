@@ -924,6 +924,11 @@ zkgroup_serialize_type!(
     zkgroup::receipts::ReceiptCredentialPresentation,
     "ReceiptCredentialPresentation"
 );
+zkgroup_serialize_type!(
+    zkgroup::donations::DonationPermitRequestContext,
+    "DonationPermitRequestContext"
+);
+zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

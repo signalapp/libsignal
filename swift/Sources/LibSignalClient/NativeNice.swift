@@ -1171,6 +1171,43 @@ extension SignalCPromiseOwnedBuffer: SignalCPromise {
 
 }
 
+extension SignalCPromiseOwnedBufferOfMaxAlignedOwnedBuffer: SignalCPromise {
+
+    typealias Result = SignalOwnedBufferOfMaxAlignedOwnedBuffer
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedOwnedBuffer_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult: SignalCPromise {
 
     typealias Result = SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult
@@ -4645,6 +4682,38 @@ internal enum NativeNice {
                     }
             }
         return try UuidNiceConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_create_donation_permits(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        requestContext request_context: DonationPermitRequestContext,
+        serverParams server_params: ServerPublicParams,
+    ) async throws -> [DonationPermit] {
+        let rawOutput:
+            ArrayReturnConverter<ByteArrayConverter<DonationPermit>, SignalOwnedBufferOfMaxAlignedOwnedBuffer>.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            ByteArrayConverter<DonationPermitRequestContext>.convertArgBorrowed(request_context) {
+                                request_contextFfi in
+                                BridgeHandleRefConverter<SignalMutPointerServerPublicParams, ServerPublicParams>
+                                    .convertArgBorrowed(server_params) { server_paramsFfi in
+                                        SignalFfi.signal_authenticated_chat_connection_create_donation_permits(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            request_contextFfi,
+                                            server_paramsFfi,
+                                        )
+                                    }
+                            }
+                        }
+                }
+        return try ArrayReturnConverter<ByteArrayConverter<DonationPermit>, SignalOwnedBufferOfMaxAlignedOwnedBuffer>
+            .convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_delete_account(

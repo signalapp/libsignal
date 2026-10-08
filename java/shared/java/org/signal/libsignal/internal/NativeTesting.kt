@@ -170,6 +170,9 @@ public object NativeTesting {
   public external fun TESTING_CopyBackupMediaTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_CreateDonationPermitsTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_CreateLoginReceiptCredentialTests(): Array<Object>
 
   @JvmStatic

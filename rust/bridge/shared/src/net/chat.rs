@@ -1503,6 +1503,19 @@ async fn UnauthenticatedChatConnection_get_subscription_receipt_credential(
         .await
 }
 
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_create_donation_permits(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    request_context: ::zkgroup::donations::DonationPermitRequestContext,
+    server_params: BridgeHandleRef<'_, ServerPublicParams>,
+) -> Result<BridgeVec<::zkgroup::donations::DonationPermit>, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .create_donation_permits(request_context, &server_params)
+        .await
+        .map(Into::into)
+}
+
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;

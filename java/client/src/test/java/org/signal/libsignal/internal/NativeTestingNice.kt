@@ -76,6 +76,21 @@ public sealed class CopyBackupMediaOut {
   public data object CredentialRejectedWithoutAppropriateServerInfo : CopyBackupMediaOut()
 }
 
+public data class CreateDonationPermitsArgs(
+  public val requestContext: org.signal.libsignal.zkgroup.donation.DonationPermitRequestContext,
+  public val serverParams: org.signal.libsignal.internal.ServerPublicParamsSerialized,
+)
+
+public sealed class CreateDonationPermitsOut {
+  public data class Success(
+    public val _0: List<org.signal.libsignal.zkgroup.donation.DonationPermit>,
+  ) : CreateDonationPermitsOut()
+
+  public data class UnexpectedError(
+    public val contains: String,
+  ) : CreateDonationPermitsOut()
+}
+
 public data class CreateLoginReceiptCredentialArgs(
   public val paymentProcessor: org.signal.libsignal.net.PaymentProvider,
   public val purchaseIdentifier: String,
@@ -774,6 +789,58 @@ public object CopyBackupMediaOut_CredentialRejectedWithoutAppropriateServerInfo_
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = CopyBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
+}
+
+public object CreateDonationPermitsArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    request_context: Any?,
+    server_params: Any?,
+  ): Any? =
+    CreateDonationPermitsArgs(
+      requestContext =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.donation
+              .DonationPermitRequestContext(x)
+          }
+        )(request_context as ByteArray),
+      serverParams =
+        downcastFromObject<org.signal.libsignal.internal.ServerPublicParamsSerialized>(
+          server_params as Object,
+        ),
+    )
+}
+
+public object CreateDonationPermitsOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    CreateDonationPermitsOut.Success(
+      _0 =
+        mapBridgeVecReturn<ByteArray, org.signal.libsignal.zkgroup.donation.DonationPermit>({
+          (
+            { x: ByteArray ->
+              org.signal.libsignal.zkgroup.donation
+                .DonationPermit(x)
+            }
+          )(it)
+        })(_0 as Array<*>),
+    )
+}
+
+public object CreateDonationPermitsOut_UnexpectedError_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(contains: Any?): Any? =
+    CreateDonationPermitsOut.UnexpectedError(
+      contains =
+        identity(contains as String),
+    )
 }
 
 public object CreateLoginReceiptCredentialArgs_ReturnConverter {
@@ -2384,6 +2451,16 @@ public object NativeTestingNice {
           downcastFromObject<org.signal.libsignal.internal.CopyBackupMediaOut>(it)
         })(it)
       })(ffiOut)
+  }
+
+  public fun TESTING_CreateDonationPermitsTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.CreateDonationPermitsArgs, org.signal.libsignal.internal.CreateDonationPermitsOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_CreateDonationPermitsTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.CreateDonationPermitsArgs, org.signal.libsignal.internal.CreateDonationPermitsOut>({
+        downcastFromObject<org.signal.libsignal.internal.CreateDonationPermitsArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.CreateDonationPermitsOut>(it) })(ffiOut)
   }
 
   public fun TESTING_CreateLoginReceiptCredentialTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.CreateLoginReceiptCredentialArgs, org.signal.libsignal.internal.CreateLoginReceiptCredentialOut>> {

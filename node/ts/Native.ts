@@ -372,6 +372,21 @@ export type ReturnFfiCopyBackupMediaOut =
       __type: 3;
     };
 
+export type ReturnFfiCreateDonationPermitsArgs = {
+  request_context: Bytes;
+  server_params: ReturnFfiServerPublicParamsSerialized;
+};
+
+export type ReturnFfiCreateDonationPermitsOut =
+  | {
+      __type: 0;
+      _0: Array<Bytes>;
+    }
+  | {
+      __type: 1;
+      contains: string;
+    };
+
 export type ReturnFfiCreateLoginReceiptCredentialArgs = {
   payment_processor: ReturnFfiPaymentProvider;
   purchase_identifier: string;
@@ -1197,6 +1212,12 @@ type NativeFunctions = {
     receive_stories: boolean,
     languages: Array<string>
   ) => CancellablePromise<AuthenticatedChatConnection>;
+  AuthenticatedChatConnection_create_donation_permits: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    request_context: Bytes,
+    server_params: Wrapper<ServerPublicParams>
+  ) => CancellablePromise<Array<Bytes>>;
   AuthenticatedChatConnection_delete_account: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3004,6 +3025,12 @@ type NativeFunctions = {
       Array<ReturnFfiCopyBackupMediaOut>
     >
   >;
+  TESTING_CreateDonationPermitsTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiCreateDonationPermitsArgs,
+      ReturnFfiCreateDonationPermitsOut
+    >
+  >;
   TESTING_CreateLoginReceiptCredentialTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiCreateLoginReceiptCredentialArgs,
@@ -3869,6 +3896,7 @@ const {
   AuthenticatedChatConnection_confirm_totp_key,
   AuthenticatedChatConnection_confirm_username,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_create_donation_permits,
   AuthenticatedChatConnection_delete_account,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
@@ -4405,6 +4433,7 @@ const {
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
   TESTING_CopyBackupMediaTests,
+  TESTING_CreateDonationPermitsTests,
   TESTING_CreateLoginReceiptCredentialTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
@@ -4697,6 +4726,7 @@ export {
   AuthenticatedChatConnection_confirm_totp_key,
   AuthenticatedChatConnection_confirm_username,
   AuthenticatedChatConnection_connect,
+  AuthenticatedChatConnection_create_donation_permits,
   AuthenticatedChatConnection_delete_account,
   AuthenticatedChatConnection_delete_username_hash,
   AuthenticatedChatConnection_delete_username_link,
@@ -5233,6 +5263,7 @@ export {
   TESTING_ConnectionManager_newLocalOverride,
   TESTING_ConvertOptionalUuid,
   TESTING_CopyBackupMediaTests,
+  TESTING_CreateDonationPermitsTests,
   TESTING_CreateLoginReceiptCredentialTests,
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
