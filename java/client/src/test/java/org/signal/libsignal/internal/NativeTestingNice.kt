@@ -174,6 +174,14 @@ public data class GetDevicesOut(
   public val devices: List<org.signal.libsignal.net.LinkedDevice>,
 )
 
+public sealed class GetEntitlementsOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.net.AccountEntitlements,
+  ) : GetEntitlementsOut()
+
+  public data object Malformed : GetEntitlementsOut()
+}
+
 public sealed class GetMediaBackupInfoOut {
   public data class Success(
     public val _0: org.signal.libsignal.net.MediaBackupInfo,
@@ -1161,6 +1169,24 @@ public object GetDevicesOut_ReturnConverter {
           downcastFromObject<org.signal.libsignal.net.LinkedDevice>(it)
         })(devices as Array<*>),
     )
+}
+
+public object GetEntitlementsOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetEntitlementsOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.net.AccountEntitlements>(_0 as Object),
+    )
+}
+
+public object GetEntitlementsOut_Malformed_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetEntitlementsOut.Malformed
 }
 
 public object GetMediaBackupInfoOut_Success_ReturnConverter {
@@ -2671,6 +2697,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetDevicesOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetDevicesOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetEntitlementsTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetEntitlementsOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetEntitlementsTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetEntitlementsOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetEntitlementsOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GetMediaBackupInfoTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetMediaBackupInfoOut>> {

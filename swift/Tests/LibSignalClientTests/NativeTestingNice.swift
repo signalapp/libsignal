@@ -1148,6 +1148,11 @@ internal struct GetDevicesOut {
 
 }
 
+internal enum GetEntitlementsOut {
+    case success(AccountEntitlements)
+    case malformed
+}
+
 internal enum GetMediaBackupInfoOut {
     case success(BridgeMediaBackupInfo)
     case credentialRejected
@@ -2140,6 +2145,30 @@ internal enum DerivedReturnConverterGetDevicesOut: NiceReturnConverter {
         }
 
         return GetDevicesOut(devices: try devices.get())
+    }
+}
+
+internal enum DerivedReturnConverterGetEntitlementsOut: NiceReturnConverter {
+    typealias NiceReturn = GetEntitlementsOut
+    typealias FfiReturn = SignalGetEntitlementsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetEntitlementsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetEntitlementsOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterAccountEntitlements.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetEntitlementsOut.success(try _0.get())
+        case SignalGetEntitlementsOutFfiResultMalformed:
+            return GetEntitlementsOut.malformed
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetEntitlementsOut: \(ffiTag)")
+        }
     }
 }
 
@@ -4476,6 +4505,19 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetDevicesOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_GetEntitlementsTests() throws -> [GrpcTestCase<Void, GetEntitlementsOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetEntitlementsOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_entitlements_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetEntitlementsOut>.convertReturn(
             consuming: rawOutput
         )
 

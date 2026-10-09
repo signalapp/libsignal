@@ -12,6 +12,7 @@ import org.signal.libsignal.internal.ConfirmTotpKeyOut
 import org.signal.libsignal.internal.FinishMfaVerificationOut
 import org.signal.libsignal.internal.FinishWebAuthnRegistrationOut
 import org.signal.libsignal.internal.GenerateTotpKeyOut
+import org.signal.libsignal.internal.GetEntitlementsOut
 import org.signal.libsignal.internal.ListMfaKeysOut
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
@@ -446,6 +447,31 @@ class AuthAccountsServiceTest {
             }
             FinishMfaVerificationOut.FailedToVerify -> {
               actual.assertNonSuccess<_, _, MfaNotVerifiedException>()
+            }
+          }
+        },
+      )
+    }
+
+  @Test
+  fun testGetEntitlements() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetEntitlementsTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, req ->
+          chat.getEntitlements()
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetEntitlementsOut.Success -> {
+              assertEquals(expected._0, assertIs<RequestResult.Success<AccountEntitlements>>(actual).result)
+            }
+            GetEntitlementsOut.Malformed -> {
+              assertIs<UnexpectedResponseException>(
+                assertIs<RequestResult.ApplicationError>(actual).cause,
+              )
             }
           }
         },

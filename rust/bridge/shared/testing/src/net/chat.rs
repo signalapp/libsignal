@@ -501,7 +501,8 @@ mod remote_derives {
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::{
-        GetStickerUploadFormsResponse, ListMediaResponse, StartMfaVerificationResponse,
+        AccountEntitlements, GetStickerUploadFormsResponse, ListMediaResponse,
+        StartMfaVerificationResponse,
     };
     use libsignal_bridge_types::net::chat::{
         BridgeConfirmedMfaKey, BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem,
@@ -1239,6 +1240,14 @@ mod remote_derives {
         AlreadyRedeemed,
         UnexpectedError { contains: String },
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::GetEntitlementsOut)]
+    #[bridge(arg = false)]
+    pub enum GetEntitlementsOut {
+        Success(AccountEntitlements),
+        Malformed,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1568,4 +1577,9 @@ fn TESTING_RedeemDonationReceiptTests() -> GrpcTestCases<
     remote_derives::RedeemDonationReceiptOut,
 > {
     libsignal_net_chat::grpc::donations::test_cases::redeem_donation_receipt_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetEntitlementsTests() -> GrpcTestCases<(), remote_derives::GetEntitlementsOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::get_entitlements_test_cases().into()
 }

@@ -1021,6 +1021,21 @@ static_assert_64bit(offsetof(SignalGetDevicesOutFfiResult, devices) == 0);
 static_assert_64bit(sizeof(SignalGetDevicesOutFfiResult) == 24);
 static_assert_64bit(alignof(SignalGetDevicesOutFfiResult) == 8);
 typedef enum {
+  SignalGetEntitlementsOutFfiResultSuccess,
+  SignalGetEntitlementsOutFfiResultMalformed,
+} SignalGetEntitlementsOutFfiResult_Tag;
+typedef struct {
+  SignalAccountEntitlementsFfiResult _0;
+} SignalGetEntitlementsOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetEntitlementsOutFfiResult_Tag tag;
+  union {
+    SignalGetEntitlementsOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetEntitlementsOutFfiResult;
+static_assert_64bit(sizeof(SignalGetEntitlementsOutFfiResult) == 56);
+static_assert_64bit(alignof(SignalGetEntitlementsOutFfiResult) == 8);
+typedef enum {
   SignalGetMediaBackupInfoOutFfiResultSuccess,
   SignalGetMediaBackupInfoOutFfiResultCredentialRejected,
   SignalGetMediaBackupInfoOutFfiResultMissingResponse,
@@ -2326,6 +2341,9 @@ SignalFfiError* signal_testing_get_currency_conversions_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_devices_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_entitlements_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_media_backup_info_tests(

@@ -3726,6 +3726,7 @@ nice_identity_result_converter!(i64, "Long");
 nice_identity_arg_converter!(i64, "Long");
 
 impl_result_type_info_for_option!(BridgeWebAuthnAuthenticationParameters);
+impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
 
 #[cfg(feature = "metadata")]
 impl<T, U> NiceResultConverter for Option<T>

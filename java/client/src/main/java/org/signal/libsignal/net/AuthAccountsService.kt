@@ -313,6 +313,22 @@ public sealed class MfaVerificationCredential {
   ) : MfaVerificationCredential()
 }
 
+public data class AccountEntitlements(
+  public val badges: List<BadgeEntitlement>,
+  public val backup: BackupEntitlement?,
+)
+
+public data class BadgeEntitlement(
+  public val badgeId: String,
+  public val expiration: Instant,
+  public val visible: Boolean,
+)
+
+public data class BackupEntitlement(
+  public val level: Long,
+  public val expiration: Instant,
+)
+
 /**
  * Errors that [AuthAccountsService.generateTotpKey] can produce, in addition to the generic
  * request errors.
@@ -753,6 +769,24 @@ public class AuthAccountsService(
         )
     }.mapWithCancellation(
       onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
+
+  /**
+   * Returns the current set of account entitlements (may be empty).
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun getEntitlements(): CompletableFuture<RequestResult<AccountEntitlements, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_get_entitlements(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        )
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult() },
     )
 }

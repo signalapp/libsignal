@@ -18,8 +18,9 @@ use libsignal_account_keys::{MfaMetadata, SvrKey};
 use libsignal_bridge_macros::{bridge_fn, bridge_io};
 use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
-    BridgeMfaVerificationCredential, CallQualitySurveyInternal, CurrencyConversionsInternal,
-    GetStickerUploadFormsResponse, ListMediaResponse, StartMfaVerificationResponse,
+    AccountEntitlements, BridgeMfaVerificationCredential, CallQualitySurveyInternal,
+    CurrencyConversionsInternal, GetStickerUploadFormsResponse, ListMediaResponse,
+    StartMfaVerificationResponse,
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -1527,6 +1528,17 @@ async fn AuthenticatedChatConnection_redeem_donation_receipt(
         .await
         .redeem_donation_receipt(&presentation, visibility)
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_entitlements(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<AccountEntitlements, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_entitlements()
+        .await
+        .map(Into::into)
 }
 
 #[cfg(test)]

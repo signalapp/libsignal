@@ -444,4 +444,46 @@ describe('AuthAccountsService', () => {
       }
     );
   });
+
+  describe('getEntitlements', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetEntitlementsTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _args: void,
+        resp: NativeNice.GetEntitlementsOut
+      ) => {
+        const out = chat.getAccountEntitlements({});
+        switch (resp) {
+          case 'malformed':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.IoError,
+              });
+            break;
+          default: {
+            const { badges, backup } = await out;
+            expect(badges.length).equals(resp.success.badges.length);
+            resp.success.badges.forEach((expected, i) => {
+              expect(badges[i].badgeId).equals(expected.badgeId);
+              expect(badges[i].expiration.getTime()).equals(
+                expected.expiration
+              );
+              expect(badges[i].visible).equals(expected.visible);
+            });
+            if (resp.success.backup) {
+              expect(backup?.level).equals(resp.success.backup.level);
+              expect(backup?.expiration.getTime()).equals(
+                resp.success.backup.expiration
+              );
+            } else {
+              void expect(backup).to.be.null;
+            }
+          }
+        }
+      }
+    );
+  });
 });

@@ -1726,6 +1726,43 @@ extension SignalCPromiseDeleteBackupMediaNextChunkFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseAccountEntitlementsFfiResult: SignalCPromise {
+
+    typealias Result = SignalAccountEntitlementsFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalAccountEntitlementsFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalAccountEntitlementsFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseCurrencyConversionsInternalFfiResult: SignalCPromise {
 
     typealias Result = SignalCurrencyConversionsInternalFfiResult
@@ -1922,6 +1959,33 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
     }
 
     var generic_value: MaybeUninitOfBorrowedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfBackupEntitlementFfiResult: SignalOptionalOf {
+
+    typealias Contents = SignalBackupEntitlementFfiResult
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfBackupEntitlementFfiResult,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfBackupEntitlementFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -2204,6 +2268,40 @@ extension SignalOwnedBufferOfMaxAlignedBridgeDeleteBackupMediaItemFfiResult: Sig
     }
 
     var generic_base: SignalType_MutPointer_SignalBridgeDeleteBackupMediaItemFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedBadgeEntitlementFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalBadgeEntitlementFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalBadgeEntitlementFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalBadgeEntitlementFfiResult? {
         get { self.base }
         set { base = newValue }
     }
@@ -2816,12 +2914,46 @@ internal enum FixedByteArrayHelper473: FixedByteArrayHelper {
 }
 
 /*
+// AccountEntitlements
+
+internal struct AccountEntitlements {
+    var badges: [BadgeEntitlement]
+    var backup: BackupEntitlement?
+
+}
+
+*/
+
+/*
 // AuthCheckResult
 
 internal enum AuthCheckResult {
     case match
     case noMatch
     case invalid
+}
+
+*/
+
+/*
+// BackupEntitlement
+
+internal struct BackupEntitlement {
+    var level: Int64
+    var expiration: Date
+
+}
+
+*/
+
+/*
+// BadgeEntitlement
+
+internal struct BadgeEntitlement {
+    var badgeId: String
+    var expiration: Date
+    var visible: Bool
+
 }
 
 */
@@ -3123,6 +3255,29 @@ internal struct StartMfaVerificationResponse {
 
 */
 
+internal enum DerivedReturnConverterAccountEntitlements: NiceReturnConverter {
+    typealias NiceReturn = AccountEntitlements
+    typealias FfiReturn = SignalAccountEntitlementsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalAccountEntitlementsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let badges = Result {
+            try ArrayReturnConverter<
+                DerivedReturnConverterBadgeEntitlement, SignalOwnedBufferOfMaxAlignedBadgeEntitlementFfiResult
+            >.convertReturn(consuming: ffiValue.badges)
+        }
+        let backup = Result {
+            try OptionalReturnConverter<
+                DerivedReturnConverterBackupEntitlement, SignalOptionalOfBackupEntitlementFfiResult
+            >.convertReturn(consuming: ffiValue.backup)
+        }
+
+        return AccountEntitlements(badges: try badges.get(), backup: try backup.get())
+    }
+}
+
 internal enum DerivedReturnConverterAuthCheckResult: NiceReturnConverter {
     typealias NiceReturn = AuthCheckResult
     typealias FfiReturn = SignalAuthCheckResultFfiResult
@@ -3141,6 +3296,41 @@ internal enum DerivedReturnConverterAuthCheckResult: NiceReturnConverter {
         default:
             throw SignalError.internalError("Unexpected enum tag for AuthCheckResult: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterBackupEntitlement: NiceReturnConverter {
+    typealias NiceReturn = BackupEntitlement
+    typealias FfiReturn = SignalBackupEntitlementFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBackupEntitlementFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let level = Result { try IdentityResultConverter<Int64>.convertReturn(consuming: ffiValue.level) }
+        let expiration = Result { try TimestampConverter.convertReturn(consuming: ffiValue.expiration) }
+
+        return BackupEntitlement(level: try level.get(), expiration: try expiration.get())
+    }
+}
+
+internal enum DerivedReturnConverterBadgeEntitlement: NiceReturnConverter {
+    typealias NiceReturn = BadgeEntitlement
+    typealias FfiReturn = SignalBadgeEntitlementFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeEntitlementFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let badge_id = Result { try StringConverter.convertReturn(consuming: ffiValue.badge_id) }
+        let expiration = Result { try TimestampConverter.convertReturn(consuming: ffiValue.expiration) }
+        let visible = Result { try IdentityResultConverter<Bool>.convertReturn(consuming: ffiValue.visible) }
+
+        return BadgeEntitlement(
+            badgeId: try badge_id.get(),
+            expiration: try expiration.get(),
+            visible: try visible.get()
+        )
     }
 }
 
@@ -4964,6 +5154,26 @@ internal enum NativeNice {
         return try ArrayReturnConverter<
             DerivedReturnConverterLinkedDeviceInternal, SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
         >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_entitlements(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> AccountEntitlements {
+        let rawOutput: DerivedReturnConverterAccountEntitlements.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_get_entitlements(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterAccountEntitlements.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_pre_key_count(

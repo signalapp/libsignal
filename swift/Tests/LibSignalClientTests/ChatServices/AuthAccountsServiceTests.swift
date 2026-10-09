@@ -310,7 +310,28 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
                 }
             }
         )
+    }
 
+    func testGetEntitlements() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetEntitlementsTests(),
+            invoke: { api, _ in
+                try await api.getAccountEntitlements()
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let expected):
+                    let result = try actual.get()
+                    XCTAssertEqual(result.badges, expected.badges)
+                    XCTAssertEqual(result.backup, expected.backup)
+                case .malformed:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
     }
 }
 

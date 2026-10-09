@@ -159,6 +159,11 @@ export const enum LogLevel {
   Trace,
 }
 
+export type ReturnFfiAccountEntitlements = {
+  badges: Array<ReturnFfiBadgeEntitlement>;
+  backup: ReturnFfiBackupEntitlement | null;
+};
+
 export type ReturnFfiAuthCheckResult =
   | {
       __type: 0;
@@ -169,6 +174,17 @@ export type ReturnFfiAuthCheckResult =
   | {
       __type: 2;
     };
+
+export type ReturnFfiBackupEntitlement = {
+  level: bigint;
+  expiration: Timestamp;
+};
+
+export type ReturnFfiBadgeEntitlement = {
+  badge_id: string;
+  expiration: Timestamp;
+  visible: boolean;
+};
 
 export type ReturnFfiBadgeVisibility =
   | {
@@ -529,6 +545,15 @@ export type ReturnFfiGetCdnCredentialsOut =
 export type ReturnFfiGetDevicesOut = {
   devices: Array<ReturnFfiLinkedDeviceInternal>;
 };
+
+export type ReturnFfiGetEntitlementsOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiAccountEntitlements;
+    }
+  | {
+      __type: 1;
+    };
 
 export type ReturnFfiGetMediaBackupInfoOut =
   | {
@@ -1303,6 +1328,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<Array<ReturnFfiLinkedDeviceInternal>>;
+  AuthenticatedChatConnection_get_entitlements: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiAccountEntitlements>;
   AuthenticatedChatConnection_get_pre_key_count: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3242,6 +3271,9 @@ type NativeFunctions = {
   TESTING_GetDevicesTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetDevicesOut>
   >;
+  TESTING_GetEntitlementsTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetEntitlementsOut>
+  >;
   TESTING_GetMediaBackupInfoTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetMediaBackupInfoOut>
   >;
@@ -3960,6 +3992,7 @@ const {
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
+  AuthenticatedChatConnection_get_entitlements,
   AuthenticatedChatConnection_get_pre_key_count,
   AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
@@ -4537,6 +4570,7 @@ const {
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
+  TESTING_GetEntitlementsTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
@@ -4792,6 +4826,7 @@ export {
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
+  AuthenticatedChatConnection_get_entitlements,
   AuthenticatedChatConnection_get_pre_key_count,
   AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
@@ -5369,6 +5404,7 @@ export {
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
+  TESTING_GetEntitlementsTests,
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,

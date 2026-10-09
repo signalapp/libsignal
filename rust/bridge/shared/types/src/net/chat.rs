@@ -1665,6 +1665,77 @@ pub mod remote_derives {
             }
         }
     }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "AccountEntitlements",
+        jni_nice_type = "org.signal.libsignal.net.AccountEntitlements"
+    )]
+    pub struct AccountEntitlements {
+        pub badges: BridgeVec<BadgeEntitlement>,
+        pub backup: Option<BackupEntitlement>,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::AccountEntitlements> for AccountEntitlements {
+        fn from(value: libsignal_net_chat::grpc::accounts::AccountEntitlements) -> Self {
+            let libsignal_net_chat::grpc::accounts::AccountEntitlements { badges, backup } = value;
+            AccountEntitlements {
+                badges: badges.into(),
+                backup: backup.map(Into::into),
+            }
+        }
+    }
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        ffi_nice_type = "BadgeEntitlement",
+        jni_nice_type = "org.signal.libsignal.net.BadgeEntitlement"
+    )]
+    pub struct BadgeEntitlement {
+        pub badge_id: String,
+        pub expiration: libsignal_protocol::Timestamp,
+        pub visible: bool,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::BadgeEntitlement> for BadgeEntitlement {
+        fn from(value: libsignal_net_chat::grpc::accounts::BadgeEntitlement) -> Self {
+            let libsignal_net_chat::grpc::accounts::BadgeEntitlement {
+                badge_id,
+                expiration,
+                visible,
+            } = value;
+            Self {
+                badge_id,
+                expiration: expiration
+                    .try_into()
+                    .expect("expiration is not too far in the future"),
+                visible,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        ffi_nice_type = "BackupEntitlement",
+        jni_nice_type = "org.signal.libsignal.net.BackupEntitlement"
+    )]
+    pub struct BackupEntitlement {
+        pub level: i64, /* zkgroup::ReceiptLevel */
+        pub expiration: libsignal_protocol::Timestamp,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::BackupEntitlement> for BackupEntitlement {
+        fn from(value: libsignal_net_chat::grpc::accounts::BackupEntitlement) -> Self {
+            let libsignal_net_chat::grpc::accounts::BackupEntitlement { level, expiration } = value;
+            Self {
+                // Preserve all bits for zkgroup receipt levels.
+                level: level as i64,
+                expiration: expiration
+                    .try_into()
+                    .expect("expiration is not too far in the future"),
+            }
+        }
+    }
 }
 
 #[cfg(test)]

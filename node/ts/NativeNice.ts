@@ -26,7 +26,10 @@ import type {
   ArgFfiMyTestPoint,
   ArgFfiMyTestStruct,
   ArgFfiPaymentProvider,
+  ReturnFfiAccountEntitlements,
   ReturnFfiAuthCheckResult,
+  ReturnFfiBackupEntitlement,
+  ReturnFfiBadgeEntitlement,
   ReturnFfiBadgeVisibility,
   ReturnFfiBridgeConfirmedMfaKey,
   ReturnFfiBridgeConfirmedMfaKeyMetadata,
@@ -67,6 +70,7 @@ import type {
   ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
+  ReturnFfiGetEntitlementsOut,
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
   ReturnFfiGetProfileKeyCredentialArgs,
@@ -149,7 +153,23 @@ import {
 import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';
 
+export type AccountEntitlements = {
+  badges: Array<BadgeEntitlement>;
+  backup: BackupEntitlement | null;
+};
+
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
+
+export type BackupEntitlement = {
+  level: bigint;
+  expiration: Timestamp;
+};
+
+export type BadgeEntitlement = {
+  badgeId: string;
+  expiration: Timestamp;
+  visible: boolean;
+};
 
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
 
@@ -416,6 +436,12 @@ export type GetCdnCredentialsOut =
 export type GetDevicesOut = {
   devices: Array<LinkedDeviceInternal>;
 };
+
+export type GetEntitlementsOut =
+  | {
+      success: AccountEntitlements;
+    }
+  | 'malformed';
 
 export type GetMediaBackupInfoOut =
   | {
@@ -750,6 +776,16 @@ export type TestingAnySignedPreKey = {
   sig: Bytes;
 };
 
+export function returnConverterAccountEntitlements(
+  ffiInput: Native.ReturnFfiAccountEntitlements
+): AccountEntitlements {
+  return {
+    badges: ((arr: Array<ReturnFfiBadgeEntitlement>) =>
+      arr.map(returnConverterBadgeEntitlement))(ffiInput.badges),
+    backup: liftNull(returnConverterBackupEntitlement)(ffiInput.backup),
+  };
+}
+
 export function returnConverterAuthCheckResult(
   ffiInput: Native.ReturnFfiAuthCheckResult
 ): AuthCheckResult {
@@ -765,6 +801,25 @@ export function returnConverterAuthCheckResult(
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for AuthCheckResult');
   }
+}
+
+export function returnConverterBackupEntitlement(
+  ffiInput: Native.ReturnFfiBackupEntitlement
+): BackupEntitlement {
+  return {
+    level: identity(ffiInput.level),
+    expiration: identity(ffiInput.expiration),
+  };
+}
+
+export function returnConverterBadgeEntitlement(
+  ffiInput: Native.ReturnFfiBadgeEntitlement
+): BadgeEntitlement {
+  return {
+    badgeId: identity(ffiInput.badge_id),
+    expiration: identity(ffiInput.expiration),
+    visible: identity(ffiInput.visible),
+  };
 }
 
 export function returnConverterBadgeVisibility(
@@ -1389,6 +1444,23 @@ export function returnConverterGetDevicesOut(
     devices: ((arr: Array<ReturnFfiLinkedDeviceInternal>) =>
       arr.map(returnConverterLinkedDeviceInternal))(ffiInput.devices),
   };
+}
+
+export function returnConverterGetEntitlementsOut(
+  ffiInput: Native.ReturnFfiGetEntitlementsOut
+): GetEntitlementsOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterAccountEntitlements(ffiInput._0),
+      };
+    case 1:
+      return 'malformed';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetEntitlementsOut');
+  }
 }
 
 export function returnConverterGetMediaBackupInfoOut(
@@ -2844,6 +2916,25 @@ export async function AuthenticatedChatConnection_get_devices({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_entitlements({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<AccountEntitlements> {
+  return returnConverterAccountEntitlements(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_entitlements(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_pre_key_count({
   asyncContext,
   abortSignal,
@@ -3665,6 +3756,15 @@ export function TESTING_GetDevicesTests(): Array<
     identity,
     returnConverterGetDevicesOut
   )(Native.TESTING_GetDevicesTests());
+}
+
+export function TESTING_GetEntitlementsTests(): Array<
+  GrpcTestCase<void, GetEntitlementsOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetEntitlementsOut
+  )(Native.TESTING_GetEntitlementsTests());
 }
 
 export function TESTING_GetMediaBackupInfoTests(): Array<

@@ -25,6 +25,16 @@ import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
 
 /*
+// org.signal.libsignal.net.AccountEntitlements
+
+public data class AccountEntitlements(
+  public val badges: List<org.signal.libsignal.net.BadgeEntitlement>,
+  public val backup: org.signal.libsignal.net.BackupEntitlement?,
+)
+
+*/
+
+/*
 // org.signal.libsignal.net.AuthCheckResult
 
 public sealed class AuthCheckResult {
@@ -34,6 +44,27 @@ public sealed class AuthCheckResult {
 
   public data object Invalid : AuthCheckResult()
 }
+
+*/
+
+/*
+// org.signal.libsignal.net.BackupEntitlement
+
+public data class BackupEntitlement(
+  public val level: Long,
+  public val expiration: java.time.Instant,
+)
+
+*/
+
+/*
+// org.signal.libsignal.net.BadgeEntitlement
+
+public data class BadgeEntitlement(
+  public val badgeId: String,
+  public val expiration: java.time.Instant,
+  public val visible: Boolean,
+)
 
 */
 
@@ -372,6 +403,28 @@ public data class StartMfaVerificationResponse(
 
 */
 
+public object AccountEntitlements_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    badges: Any?,
+    backup: Any?,
+  ): Any? =
+    org.signal.libsignal.net.AccountEntitlements(
+      badges =
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.BadgeEntitlement>({
+          downcastFromObject<org.signal.libsignal.net.BadgeEntitlement>(it)
+        })(badges as Array<*>),
+      backup =
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.BackupEntitlement>(it) }
+          }
+        )(backup as Object?),
+    )
+}
+
 public object AuthCheckResult_Match_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -391,6 +444,41 @@ public object AuthCheckResult_Invalid_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.AuthCheckResult.Invalid
+}
+
+public object BackupEntitlement_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    level: Any?,
+    expiration: Any?,
+  ): Any? =
+    org.signal.libsignal.net.BackupEntitlement(
+      level =
+        identity(level as Long),
+      expiration =
+        (java.time.Instant::ofEpochMilli)(expiration as Long),
+    )
+}
+
+public object BadgeEntitlement_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    badge_id: Any?,
+    expiration: Any?,
+    visible: Any?,
+  ): Any? =
+    org.signal.libsignal.net.BadgeEntitlement(
+      badgeId =
+        identity(badge_id as String),
+      expiration =
+        (java.time.Instant::ofEpochMilli)(expiration as Long),
+      visible =
+        identity(visible as Boolean),
+    )
 }
 
 public object BridgeConfirmedMfaKey_ReturnConverter {
@@ -1623,6 +1711,23 @@ public object NativeNice {
           downcastFromObject<org.signal.libsignal.net.LinkedDevice>(it)
         })(it)
       }
+  }
+
+  public fun AuthenticatedChatConnection_get_entitlements(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.net.AccountEntitlements> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_entitlements(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.net.AccountEntitlements>(it) }
   }
 
   public fun AuthenticatedChatConnection_get_pre_key_count(

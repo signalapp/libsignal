@@ -402,6 +402,9 @@ public object NativeTesting {
   public external fun TESTING_GetDevicesTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetEntitlementsTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetMediaBackupInfoTests(): Array<Object>
 
   @JvmStatic

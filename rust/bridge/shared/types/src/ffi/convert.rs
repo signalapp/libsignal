@@ -2388,6 +2388,7 @@ simple_optional!(f32);
 simple_optional!(Vec<u8>);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
+return_optional!(crate::net::chat::remote_derives::BackupEntitlement);
 
 #[cfg(test)]
 mod test {

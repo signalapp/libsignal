@@ -195,6 +195,22 @@ export type MfaVerificationCredential =
   | MfaVerificationCredentialTotp
   | MfaVerificationCredentialWebAuthn;
 
+export type AccountEntitlements = {
+  badges: Array<BadgeEntitlement>;
+  backup: BackupEntitlement | null;
+};
+
+export type BackupEntitlement = {
+  level: bigint;
+  expiration: Date;
+};
+
+export type BadgeEntitlement = {
+  badgeId: string;
+  expiration: Date;
+  visible: boolean;
+};
+
 export interface AuthAccountsService {
   /**
    * Deletes the authenticated account, purging all associated data in the process.
@@ -496,6 +512,16 @@ export interface AuthAccountsService {
     },
     options?: RequestOptions
   ) => Promise<void>;
+
+  /**
+   * Returns the current set of account entitlements (may be empty).
+   *
+   * @throws {StandardNetworkError}
+   */
+  getAccountEntitlements: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<AccountEntitlements>;
 }
 
 AuthenticatedChatConnection.prototype.deleteAccount = async function (
@@ -710,4 +736,26 @@ AuthenticatedChatConnection.prototype.removeMfaKey = async function (
     chat: this.chatService,
     keyId,
   });
+};
+
+AuthenticatedChatConnection.prototype.getAccountEntitlements = async function (
+  _request,
+  options?
+): Promise<AccountEntitlements> {
+  const { badges, backup } =
+    await NativeNice.AuthenticatedChatConnection_get_entitlements({
+      asyncContext: this.asyncContext,
+      abortSignal: options?.abortSignal,
+      chat: this.chatService,
+    });
+  return {
+    badges: badges.map(({ badgeId, expiration, visible }) => ({
+      badgeId,
+      expiration: new Date(expiration),
+      visible,
+    })),
+    backup: backup
+      ? { level: backup.level, expiration: new Date(backup.expiration) }
+      : null,
+  };
 };
