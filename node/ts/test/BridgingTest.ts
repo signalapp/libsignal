@@ -228,6 +228,11 @@ describe('bridge_fn', () => {
       17
     );
   });
+
+  it('handles AsType on return', () => {
+    assert.equal(-1, Native.TESTING_DowncastViaAsTypeOnReturn(-1n));
+    assert.throws(() => Native.TESTING_DowncastViaAsTypeOnReturn(1n << 63n));
+  });
 });
 
 describe('BridgedStringMap', () => {

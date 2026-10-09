@@ -152,10 +152,10 @@ fn TESTING_ServerMessageAck_Create() -> ServerMessageAck {
 #[bridge_fn(jni = false, ffi = false)]
 fn TESTING_ConnectionManager_newLocalOverride(
     userAgent: String,
-    chatPort: AsType<NonZeroU16, u16>,
-    cdsiPort: AsType<NonZeroU16, u16>,
-    svr2Port: AsType<NonZeroU16, u16>,
-    svrBPort: AsType<NonZeroU16, u16>,
+    chatPort: AsType<NonZeroU16, u16, { str_as_int("chatPort") }>,
+    cdsiPort: AsType<NonZeroU16, u16, { str_as_int("cdsiPort") }>,
+    svr2Port: AsType<NonZeroU16, u16, { str_as_int("svr2Port") }>,
+    svrBPort: AsType<NonZeroU16, u16, { str_as_int("svrBPort") }>,
     rootCertificateDer: &[u8],
     http_version: u8,
 ) -> ConnectionManager {

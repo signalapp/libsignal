@@ -345,6 +345,16 @@ final class BridgingTests: TestCaseBase {
         )
     }
 
+    func testAsTypeOnReturn() throws {
+        XCTAssertEqual(-1, try invokeFnReturningInteger { signal_testing_downcast_via_as_type_on_return($0, -1) })
+        do {
+            _ = try invokeFnReturningInteger { signal_testing_downcast_via_as_type_on_return($0, Int64.max) }
+            XCTFail("should have thrown")
+        } catch SignalError.internalError(_) {
+            // okay
+        }
+    }
+
     private class TestStream: NativeHandleOwner<SignalMutPointerTestStream> {
         override class func destroyNativeHandle(_ handle: NonNull<SignalMutPointerTestStream>) -> SignalFfiErrorRef? {
             signal_test_stream_destroy(handle.pointer)

@@ -3125,6 +3125,7 @@ type NativeFunctions = {
   >;
   TESTING_DeleteUsernameHashTests: () => Array<GrpcTestCaseFfi<void, void>>;
   TESTING_DeleteUsernameLinkTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_DowncastViaAsTypeOnReturn: (x: bigint) => number;
   TESTING_EnableDeterministicRngForTesting: () => void;
   TESTING_ErrorOnBorrowAsync: (_input: null) => Promise<void>;
   TESTING_ErrorOnBorrowIo: (
@@ -4529,6 +4530,7 @@ const {
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
+  TESTING_DowncastViaAsTypeOnReturn,
   TESTING_EnableDeterministicRngForTesting,
   TESTING_ErrorOnBorrowAsync,
   TESTING_ErrorOnBorrowIo,
@@ -5363,6 +5365,7 @@ export {
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
+  TESTING_DowncastViaAsTypeOnReturn,
   TESTING_EnableDeterministicRngForTesting,
   TESTING_ErrorOnBorrowAsync,
   TESTING_ErrorOnBorrowIo,

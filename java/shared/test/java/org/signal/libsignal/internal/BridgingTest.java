@@ -222,4 +222,12 @@ public class BridgingTest {
     var pair = NativeTesting.TESTING_ReturnPair();
     assertEquals(pair, new Pair<>(1, "libsignal"));
   }
+
+  @Test
+  public void testAsTypeOnReturn() throws Exception {
+    assertEquals(-1, NativeTesting.TESTING_DowncastViaAsTypeOnReturn(-1));
+    assertThrows(
+        AssertionError.class,
+        () -> NativeTesting.TESTING_DowncastViaAsTypeOnReturn(Long.MAX_VALUE));
+  }
 }

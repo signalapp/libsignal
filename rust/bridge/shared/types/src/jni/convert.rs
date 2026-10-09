@@ -42,8 +42,8 @@ use crate::protocol::storage::{
     JniBridgeSignedPreKeyStore,
 };
 use crate::support::{
-    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
-    Serialized, extend_lifetime,
+    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
+    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -2643,7 +2643,7 @@ impl<'a> SimpleArgTypeInfo<'a> for ObjectHandle {
     }
 }
 
-impl<'a, T, P> SimpleArgTypeInfo<'a> for AsType<T, P>
+impl<'a, T, P, const LABEL: u128> SimpleArgTypeInfo<'a> for AsType<T, P, LABEL>
 where
     P: SimpleArgTypeInfo<'a> + TryInto<T, Error: Display>,
 {
@@ -2657,8 +2657,9 @@ where
         p.try_into()
             .map_err(|e| {
                 BridgeLayerError::bad_argument(format!(
-                    "invalid {}: {e}",
-                    std::any::type_name::<T>()
+                    "invalid {} {}: {e}",
+                    std::any::type_name::<T>(),
+                    DisplayIntLabel(LABEL),
                 ))
             })
             .map(AsType::from)
@@ -2668,7 +2669,7 @@ where
 // Note that we do *not* have a blanket NiceArgConverter impl for AsType;
 // the nice form of each type is going to be different.
 #[cfg(feature = "metadata")]
-impl NiceArgConverter for AsType<ServiceIdKind, u8> {
+impl<const LABEL: u128> NiceArgConverter for AsType<ServiceIdKind, u8, LABEL> {
     fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
         KtArgConverter {
             nice_type: "org.signal.libsignal.protocol.ServiceId.Kind".to_owned(),
@@ -2676,6 +2677,50 @@ impl NiceArgConverter for AsType<ServiceIdKind, u8> {
             ffi_field_type_erased: ffi_field_type_erased::<Self>(),
             converter_function: "(org.signal.libsignal.protocol.ServiceId.Kind::ordinal)"
                 .to_owned(),
+        }
+    }
+}
+
+impl<'a, T, P, const LABEL: u128> ResultTypeInfo<'a> for AsType<T, P, LABEL>
+where
+    P: TryFrom<T, Error: Display> + ResultTypeInfo<'a>,
+{
+    type ResultType = P::ResultType;
+    const JNI_SIGNATURE: &'static str = P::JNI_SIGNATURE;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        P::try_from(self.into_inner())
+            .unwrap_or_else(|e| {
+                // If we get here, libsignal is at fault for trying to use 'P' to pass values of type 'T'.
+                panic!(
+                    "unable to convert {} {} to {}: {e}",
+                    std::any::type_name::<T>(),
+                    DisplayIntLabel(LABEL),
+                    std::any::type_name::<P>(),
+                )
+            })
+            .convert_into(env)
+    }
+}
+
+// Note that we do *not* have a blanket NiceResultConverter impl for AsType;
+// the nice form of each type is going to be different.
+#[cfg(feature = "metadata")]
+impl<const LABEL: u128> NiceResultConverter for AsType<u32, i32, LABEL> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Int".into(),
+            ffi_type: "Int".into(),
+            converter_function: "identity".to_string(),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<const LABEL: u128> NiceResultConverter for AsType<u64, i64, LABEL> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Long".into(),
+            ffi_type: "Long".into(),
+            converter_function: "identity".to_string(),
         }
     }
 }

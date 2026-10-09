@@ -200,6 +200,9 @@ public object NativeTesting {
   public external fun TESTING_DeleteUsernameLinkTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_DowncastViaAsTypeOnReturn(x: Long): Int
+
+  @JvmStatic
   public external fun TESTING_EnableDeterministicRngForTesting(): Unit
 
   @JvmStatic

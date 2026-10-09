@@ -2158,6 +2158,10 @@ SignalFfiError* signal_testing_delete_username_hash_tests(
 SignalFfiError* signal_testing_delete_username_link_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_downcast_via_as_type_on_return(
+  int32_t* out,
+  int64_t x
+);
 SignalFfiError* signal_testing_enable_deterministic_rng_for_testing(void);
 SignalFfiError* signal_testing_error_on_borrow_async(
   const void* _input

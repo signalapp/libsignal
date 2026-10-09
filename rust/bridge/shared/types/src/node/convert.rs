@@ -35,8 +35,8 @@ use crate::protocol::storage::{
     NodeBridgeSenderKeyStore, NodeBridgeSessionStore, NodeBridgeSignedPreKeyStore,
 };
 use crate::support::{
-    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
-    Serialized, extend_lifetime,
+    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
+    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -2643,7 +2643,7 @@ full_range_integer!(u16);
 full_range_integer!(u32);
 full_range_integer!(i32);
 
-impl<T, P> SimpleArgTypeInfo for AsType<T, P>
+impl<T, P, const LABEL: u128> SimpleArgTypeInfo for AsType<T, P, LABEL>
 where
     T: 'static,
     P: SimpleArgTypeInfo + TryInto<T, Error: Display> + 'static,
@@ -2654,7 +2654,11 @@ where
         let p = P::convert_from(cx, foreign)?;
         match p.try_into() {
             Ok(t) => Ok(AsType::from(t)),
-            Err(e) => cx.throw_type_error(format!("invalid {}: {e}", std::any::type_name::<T>())),
+            Err(e) => cx.throw_type_error(format!(
+                "invalid {} {}: {e}",
+                std::any::type_name::<T>(),
+                DisplayIntLabel(LABEL),
+            )),
         }
     }
     #[cfg(feature = "metadata")]
@@ -2666,12 +2670,61 @@ where
 // Note that we do *not* have a blanket NiceArgConverter impl for AsType;
 // the nice form of each type is going to be different.
 #[cfg(feature = "metadata")]
-impl NiceArgConverter for AsType<ServiceIdKind, u8> {
+impl<const LABEL: u128> NiceArgConverter for AsType<ServiceIdKind, u8, LABEL> {
     fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
         TsArgConverter {
             nice_type: "ServiceIdKind".to_owned(),
             ffi_type: "number".to_owned(),
             converter_function: "Number".to_owned(),
+        }
+    }
+}
+
+impl<'a, T, P, const LABEL: u128> ResultTypeInfo<'a> for AsType<T, P, LABEL>
+where
+    P: TryFrom<T, Error: Display> + ResultTypeInfo<'a>,
+{
+    type ResultType = P::ResultType;
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        P::try_from(self.into_inner())
+            .unwrap_or_else(|e| {
+                // If we get here, libsignal is at fault for trying to use 'P' to pass values of type 'T'.
+                panic!(
+                    "unable to convert {} {} to {}: {e}",
+                    std::any::type_name::<T>(),
+                    DisplayIntLabel(LABEL),
+                    std::any::type_name::<P>()
+                )
+            })
+            .convert_into(cx)
+    }
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        P::register_ts_ffi_type(ctx)
+    }
+}
+
+// Note that we do *not* have a blanket NiceResultConverter impl for AsType;
+// the nice form of each type is going to be different.
+#[cfg(feature = "metadata")]
+impl<const LABEL: u128> NiceResultConverter for AsType<u32, i32, LABEL> {
+    fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        let ty = <AsType<u32, i32> as ResultTypeInfo>::register_ts_ffi_type(ctx);
+        TsReturnConverter {
+            nice_type: ty.clone(),
+            ffi_type: ty.clone(),
+            converter_function: "identity".into(),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<const LABEL: u128> NiceResultConverter for AsType<u64, i64, LABEL> {
+    fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        let ty = <AsType<u64, i64> as ResultTypeInfo>::register_ts_ffi_type(ctx);
+        TsReturnConverter {
+            nice_type: ty.clone(),
+            ffi_type: ty.clone(),
+            converter_function: "identity".into(),
         }
     }
 }
