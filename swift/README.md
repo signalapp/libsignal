@@ -46,7 +46,7 @@ The iOS Podfile has a commented-out line to use a checkout of libsignal as a pat
 
 1. Build the Rust library using `swift/build_ffi.sh`. The Swift Package.swift is configured to use the debug build of the Rust library.
 
-2. Use `swift build` and `swift test` as usual from within the `swift/` directory.
+2. Use `swift build` and `swift test` as usual.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.

@@ -99,6 +99,8 @@ jobs:
           - *rust_ios
           - 'swift/**'
           - 'LibSignalClient.podspec'
+          - 'Package.resolved'
+          - 'Package.swift'
           ignored:
           - 'LICENSE'
           - '*.md'
@@ -666,7 +668,6 @@ jobs:
 
     - name: Build Swift and run tests
       run: swift test -v
-      working-directory: swift
 
     - name: Build and run Swift benchmarks (in debug mode)
       run: swift run -v Benchmarks --allow-debug-build
@@ -688,7 +689,6 @@ jobs:
 # See https://forums.swift.org/t/generate-documentation-failing-for-swift-6-pre-release/74534
 #    - name: Build Swift package documentation
 #      run: swift package plugin generate-documentation --analyze --warnings-as-errors
-#      working-directory: swift
 
   swift_cocoapod:
     name: Swift CocoaPod

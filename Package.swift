@@ -7,7 +7,15 @@
 
 import PackageDescription
 
-let rustBuildDir = "../target/debug/"
+// This is only used for local builds; the directory won't exist when used as a (remote) dependency.
+let rustBuildDir: String = {
+    let manifestPath = #filePath
+    if let lastDirectorySep = manifestPath.lastIndex(of: "/") {
+        return manifestPath[...lastDirectorySep] + "target/debug/"
+    } else {
+        return "target/debug/"
+    }
+}()
 
 let package = Package(
     name: "LibSignalClient",
@@ -24,10 +32,11 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.4.3")
     ],
     targets: [
-        .systemLibrary(name: "SignalFfi"),
+        .systemLibrary(name: "SignalFfi", path: "swift/Sources/SignalFfi"),
         .target(
             name: "LibSignalClient",
             dependencies: ["SignalFfi"],
+            path: "swift/Sources/LibSignalClient",
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [
                 .linkedLibrary("stdc++", .when(platforms: [.linux]))
@@ -36,6 +45,7 @@ let package = Package(
         .testTarget(
             name: "LibSignalClientTests",
             dependencies: ["LibSignalClient"],
+            path: "swift/Tests/LibSignalClientTests",
             resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
