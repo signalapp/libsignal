@@ -245,6 +245,7 @@ message SendSyncMessageRequest {
 message SendSealedSenderMessageRequest {
 
   // The service identifier of the account to which to deliver the message.
+  // If `destination` is a PNI, `authorization` must be a group send token.
   common.ServiceIdentifier destination = 1;
 
   // If true, this message will only be delivered to destination devices that
