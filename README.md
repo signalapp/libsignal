@@ -85,7 +85,7 @@ Eventually, you may find that you need some additional Rust tools like `taplo` f
 
 You should always install any Rust tools you need that may affect the build from cargo rather than from your system
 package manager (e.g. `apt` or `brew`). Package managers sometimes contain outdated versions of these tools that can break
-the build with incompatibility issues (especially cbindgen).
+the build with incompatibility issues.
 
 To install the main Rust extra dependencies matching the versions we use, you can run the following commands:
 
@@ -140,8 +140,8 @@ $ cd java
 $ make
 ```
 
-When exposing new APIs to Java, you will need to run `rust/bridge/jni/bin/gen_java_decl.py` in
-addition to rebuilding. This requires installing the `cbindgen` Rust tool, as detailed above.
+When exposing new APIs to Java, you will need to run `cargo run -p libsignal-jni-native_kt` (or
+`just generate-jni`) in addition to rebuilding.
 
 ### Use as a library
 

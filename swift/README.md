@@ -12,11 +12,11 @@ This is a binding to the Signal client code in rust/, implemented on top of the 
         pod 'LibSignalClient', git: 'https://github.com/signalapp/libsignal.git'
         ENV['LIBSIGNAL_FFI_PREBUILD_CHECKSUM'] = '...'
 
-3. Use `pod install` or `pod update` to build the Rust library for all targets. You may be prompted to install Rust dependencies (`cbindgen`, `rust-src`).
+3. Use `pod install` or `pod update` as appropriate.
 
 4. Either disable "Swift Compiler - General - Explicitly Built Modules" (`SWIFT_ENABLE_EXPLICIT_MODULES`), or add a (non-recursive) header search path to `$(PODS_ROOT)/LibSignalClient/swift/Sources/SignalFfi`. (Sorry.)
 
-5. Build as usual. The Rust library will automatically be linked into the built LibSignalClient.framework.
+5. Build as usual. The Rust library will automatically be fetched and linked into the built LibSignalClient.framework.
 
 [GitHub Releases]: https://github.com/signalapp/libsignal/releases
 
@@ -49,11 +49,8 @@ The iOS Podfile has a commented-out line to use a checkout of libsignal as a pat
 2. Use `swift build` and `swift test` as usual from within the `swift/` directory.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
-`build_ffi.sh` invocation. This requires installing the `cbindgen` Rust tool:
+`build_ffi.sh` invocation.
 
-```shell
-$ cargo +stable install cbindgen
-```
 
 ## Use as a Swift Package
 
