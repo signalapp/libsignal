@@ -2122,11 +2122,14 @@ impl Visit<Scrambler> for proto::FavoriteStickerList {
 impl Visit<Scrambler> for proto::favorite_sticker_list::FavoriteSticker {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
-            sticker,
+            packId,
+            packKey,
+            stickerId: _,
             favoritedAtTimestamp: _,
             special_fields: _,
         } = self;
-        sticker.accept(visitor);
+        packId.randomize(&mut visitor.rng);
+        packKey.randomize(&mut visitor.rng);
     }
 }
 

@@ -760,7 +760,7 @@ mod test {
                 .as_array()
                 .expect("array")
                 .iter()
-                .map(|favorite| favorite["sticker"]["sticker_id"].as_u64().expect("u64"))
+                .map(|favorite| favorite["sticker_id"].as_u64().expect("u64"))
                 .collect::<Vec<_>>()
         };
 
@@ -779,10 +779,7 @@ mod test {
 
         // With equal timestamps and sticker IDs, the pack ID breaks the tie.
         let mut different_packs = proto::FavoriteStickerList::test_data();
-        let sticker = different_packs.favoriteSticker[1]
-            .sticker
-            .as_mut()
-            .expect("present");
+        let sticker = &mut different_packs.favoriteSticker[1];
         sticker.packId = vec![0x33; 16];
         sticker.stickerId = 1;
         assert_eq!(

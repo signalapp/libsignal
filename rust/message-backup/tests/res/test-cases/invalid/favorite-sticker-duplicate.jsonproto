@@ -8,25 +8,15 @@
     "favoriteStickerList": {
       "favoriteSticker": [
         {
-          "sticker": {
-            "packId": "IiIiIiIiIiIiIiIiIiIiIg==",
-            "packKey": "ERERERERERERERERERERERERERERERERERERERERERE=",
-            "stickerId": 7,
-            "data": {
-              "locatorInfo": {}
-            }
-          },
+          "packId": "IiIiIiIiIiIiIiIiIiIiIg==",
+          "packKey": "ERERERERERERERERERERERERERERERERERERERERERE=",
+          "stickerId": 7,
           "favoritedAtTimestamp": "1705692409000"
         },
         {
-          "sticker": {
-            "packId": "IiIiIiIiIiIiIiIiIiIiIg==",
-            "packKey": "ERERERERERERERERERERERERERERERERERERERERERE=",
-            "stickerId": 7,
-            "data": {
-              "locatorInfo": {}
-            }
-          },
+          "packId": "IiIiIiIiIiIiIiIiIiIiIg==",
+          "packKey": "ERERERERERERERERERERERERERERERERERERERERERE=",
+          "stickerId": 7,
           "favoritedAtTimestamp": "1705692408000"
         }
       ]

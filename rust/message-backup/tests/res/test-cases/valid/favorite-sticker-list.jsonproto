@@ -30,26 +30,15 @@
     "favoriteStickerList": {
       "favoriteSticker": [
         {
-          "sticker": {
-            "packId": "IiIiIiIiIiIiIiIiIiIiIg==",
-            "packKey": "ERERERERERERERERERERERERERERERERERERERERERE=",
-            "stickerId": 1,
-            "emoji": "👍",
-            "data": {
-              "locatorInfo": {}
-            }
-          },
+          "packId": "IiIiIiIiIiIiIiIiIiIiIg==",
+          "packKey": "ERERERERERERERERERERERERERERERERERERERERERE=",
+          "stickerId": 1,
           "favoritedAtTimestamp": "1715636550000"
         },
         {
-          "sticker": {
-            "packId": "MzMzMzMzMzMzMzMzMzMzMw==",
-            "packKey": "REREREREREREREREREREREREREREREREREREREREREQ=",
-            "stickerId": 1,
-            "data": {
-              "locatorInfo": {}
-            }
-          },
+          "packId": "MzMzMzMzMzMzMzMzMzMzMw==",
+          "packKey": "REREREREREREREREREREREREREREREREREREREREREQ=",
+          "stickerId": 1,
           "favoritedAtTimestamp": "1715636549000"
         }
       ]

@@ -6,3 +6,5 @@ v0.105.1
     - Donations.createDonationPermits
     - Donations.redeemDonationReceipt
     - AuthAccountsService.getAccountEntitlements (just getEntitlements for Kotlin)
+
+- Backups: flatten the FavoriteSticker proto
