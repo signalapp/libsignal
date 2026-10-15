@@ -75,7 +75,7 @@ def main(args: Optional[List[str]] = None) -> int:
     parser = optparse.OptionParser()
     parser.add_option('--out-dir', '-o', default=None, metavar='DIR',
                       help='specify destination dir (default build/$CONFIGURATION_NAME)')
-    parser.add_option('--configuration', default='Release', metavar='C',
+    parser.add_option('--configuration', '-C', default='Release', metavar='CONFIG',
                       help='specify build configuration (Release or Debug)')
     # Luckily, Python's sys.platform matches Node's OS names for our supported targets.
     parser.add_option('--os-name', default=sys.platform, metavar='OS',
@@ -151,11 +151,8 @@ def main(args: Optional[List[str]] = None) -> int:
     cargo_env['MACOSX_DEPLOYMENT_TARGET'] = '12'
     # Build with debug line tables, but not full debug info.
     cargo_env['CARGO_PROFILE_RELEASE_DEBUG'] = '1'
-    # On Linux, cdylibs don't include public symbols from their dependencies,
-    # even if those symbols have been re-exported in the Rust source.
-    # Using LTO works around this at the cost of a slightly slower build.
-    # https://github.com/rust-lang/rfcs/issues/2771
-    cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'thin'
+    # Use full LTO to reduce binary size
+    cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'fat'
     # Enable ARMv8 cryptography acceleration when available
     cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8'
     # Access tokio's unstable metrics
