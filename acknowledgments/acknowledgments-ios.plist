@@ -4281,7 +4281,7 @@ DEALINGS IN THE SOFTWARE.
 			<key>License</key>
 			<string>MIT License</string>
 			<key>Title</key>
-			<string>rustls 0.23.45</string>
+			<string>rustls 0.23.46</string>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 		</dict>
