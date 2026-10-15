@@ -430,7 +430,7 @@ export type ReturnFfiCreateDonationPermitsOut =
     };
 
 export type ReturnFfiCreateLoginReceiptCredentialArgs = {
-  payment_processor: ReturnFfiPaymentProvider;
+  payment_processor: ReturnFfiPaymentProviderInternal;
   purchase_identifier: string;
   receipt_credential_request_context: Bytes;
   server_params: ReturnFfiServerPublicParamsSerialized;
@@ -811,7 +811,7 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
-export type ReturnFfiPaymentProvider =
+export type ReturnFfiPaymentProviderInternal =
   | {
       __type: 0;
     }
@@ -1205,7 +1205,7 @@ export type ArgFfiMyTestStruct = {
   my_string_field: string;
 };
 
-export type ArgFfiPaymentProvider =
+export type ArgFfiPaymentProviderInternal =
   | {
       __type: 0;
     }
@@ -3858,7 +3858,7 @@ type NativeFunctions = {
   UnauthenticatedChatConnection_create_login_receipt_credential: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
-    payment_processor: ArgFfiPaymentProvider,
+    payment_processor: ArgFfiPaymentProviderInternal,
     purchase_identifier: string,
     receipt_credential_request_context: Bytes,
     server_params: Wrapper<ServerPublicParams>,

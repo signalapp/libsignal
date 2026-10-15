@@ -3314,7 +3314,7 @@ internal enum LoginReceiptLevel {
 /*
 // PaymentProvider
 
-internal enum PaymentProvider {
+internal enum PaymentProviderInternal {
     case googlePlayBilling
     case appleAppStore
     case stripe
@@ -3745,7 +3745,7 @@ internal enum DerivedReturnConverterChargeFailure: NiceReturnConverter {
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
 
         let processor = Result {
-            try DerivedReturnConverterPaymentProvider.convertReturn(consuming: ffiValue.processor)
+            try DerivedReturnConverterPaymentProviderInternal.convertReturn(consuming: ffiValue.processor)
         }
         let code = Result { try StringConverter.convertReturn(consuming: ffiValue.code) }
         let message = Result { try StringConverter.convertReturn(consuming: ffiValue.message) }
@@ -3978,25 +3978,25 @@ internal enum DerivedReturnConverterListMediaResponse: NiceReturnConverter {
     }
 }
 
-internal enum DerivedReturnConverterPaymentProvider: NiceReturnConverter {
+internal enum DerivedReturnConverterPaymentProviderInternal: NiceReturnConverter {
     typealias NiceReturn = PaymentProvider
-    typealias FfiReturn = SignalPaymentProviderFfiResult
+    typealias FfiReturn = SignalPaymentProviderInternalFfiResult
     static func emptyFfiReturn() -> FfiReturn {
-        SignalPaymentProviderFfiResult(0)
+        SignalPaymentProviderInternalFfiResult(0)
     }
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
         let ffiTag = ffiValue
         switch ffiTag {
-        case SignalPaymentProviderFfiResultGooglePlayBilling:
+        case SignalPaymentProviderInternalFfiResultGooglePlayBilling:
             return PaymentProvider.googlePlayBilling
-        case SignalPaymentProviderFfiResultAppleAppStore:
+        case SignalPaymentProviderInternalFfiResultAppleAppStore:
             return PaymentProvider.appleAppStore
-        case SignalPaymentProviderFfiResultStripe:
+        case SignalPaymentProviderInternalFfiResultStripe:
             return PaymentProvider.stripe
-        case SignalPaymentProviderFfiResultBraintree:
+        case SignalPaymentProviderInternalFfiResultBraintree:
             return PaymentProvider.braintree
         default:
-            throw SignalError.internalError("Unexpected enum tag for PaymentProvider: \(ffiTag)")
+            throw SignalError.internalError("Unexpected enum tag for PaymentProviderInternal: \(ffiTag)")
         }
     }
 }
@@ -5007,24 +5007,24 @@ internal enum DerivedArgConverterLoginReceiptLevel: NiceArgConverter {
     }
 }
 
-internal enum DerivedArgConverterPaymentProvider: NiceArgConverter {
+internal enum DerivedArgConverterPaymentProviderInternal: NiceArgConverter {
     typealias NiceArg = PaymentProvider
-    typealias FfiArg = SignalPaymentProviderFfiArg
+    typealias FfiArg = SignalPaymentProviderInternalFfiArg
     typealias KeepAlive = ()
     static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
         switch niceArg {
 
         case .googlePlayBilling:
-            return (SignalPaymentProviderFfiArgGooglePlayBilling, nil)
+            return (SignalPaymentProviderInternalFfiArgGooglePlayBilling, nil)
 
         case .appleAppStore:
-            return (SignalPaymentProviderFfiArgAppleAppStore, nil)
+            return (SignalPaymentProviderInternalFfiArgAppleAppStore, nil)
 
         case .stripe:
-            return (SignalPaymentProviderFfiArgStripe, nil)
+            return (SignalPaymentProviderInternalFfiArgStripe, nil)
 
         case .braintree:
-            return (SignalPaymentProviderFfiArgBraintree, nil)
+            return (SignalPaymentProviderInternalFfiArgBraintree, nil)
 
         }
     }
@@ -5035,16 +5035,16 @@ internal enum DerivedArgConverterPaymentProvider: NiceArgConverter {
         switch niceArg {
 
         case .googlePlayBilling:
-            return try niceThunk(SignalPaymentProviderFfiArgGooglePlayBilling)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgGooglePlayBilling)
 
         case .appleAppStore:
-            return try niceThunk(SignalPaymentProviderFfiArgAppleAppStore)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgAppleAppStore)
 
         case .stripe:
-            return try niceThunk(SignalPaymentProviderFfiArgStripe)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgStripe)
 
         case .braintree:
-            return try niceThunk(SignalPaymentProviderFfiArgBraintree)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgBraintree)
 
         }
     }
@@ -6863,7 +6863,7 @@ internal enum NativeNice {
                 asyncContextFfi in
                 BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
                     .convertArgBorrowed(chat) { chatFfi in
-                        DerivedArgConverterPaymentProvider.convertArgBorrowed(payment_processor) {
+                        DerivedArgConverterPaymentProviderInternal.convertArgBorrowed(payment_processor) {
                             payment_processorFfi in
                             StringConverter.convertArgBorrowed(purchase_identifier) { purchase_identifierFfi in
                                 ByteArrayConverter<ReceiptCredentialRequestContext>.convertArgBorrowed(

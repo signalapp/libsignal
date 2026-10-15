@@ -2319,15 +2319,15 @@ typedef SignalMutPointerServerSecretParams* SignalType_MutPointer_SignalMutPoint
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
 typedef enum {
-  SignalPaymentProviderFfiResultGooglePlayBilling,
-  SignalPaymentProviderFfiResultAppleAppStore,
-  SignalPaymentProviderFfiResultStripe,
-  SignalPaymentProviderFfiResultBraintree,
-} SignalPaymentProviderFfiResult;
-static_assert_64bit(sizeof(SignalPaymentProviderFfiResult) == 4);
-static_assert_64bit(alignof(SignalPaymentProviderFfiResult) == 4);
+  SignalPaymentProviderInternalFfiResultGooglePlayBilling,
+  SignalPaymentProviderInternalFfiResultAppleAppStore,
+  SignalPaymentProviderInternalFfiResultStripe,
+  SignalPaymentProviderInternalFfiResultBraintree,
+} SignalPaymentProviderInternalFfiResult;
+static_assert_64bit(sizeof(SignalPaymentProviderInternalFfiResult) == 4);
+static_assert_64bit(alignof(SignalPaymentProviderInternalFfiResult) == 4);
 typedef struct {
-  SignalPaymentProviderFfiResult processor;
+  SignalPaymentProviderInternalFfiResult processor;
   const int8_t* code;
   const int8_t* message;
   const int8_t* outcome_network_status;
@@ -3896,13 +3896,13 @@ typedef enum {
 static_assert_64bit(sizeof(SignalLoginReceiptLevelFfiArg) == 4);
 static_assert_64bit(alignof(SignalLoginReceiptLevelFfiArg) == 4);
 typedef enum {
-  SignalPaymentProviderFfiArgGooglePlayBilling,
-  SignalPaymentProviderFfiArgAppleAppStore,
-  SignalPaymentProviderFfiArgStripe,
-  SignalPaymentProviderFfiArgBraintree,
-} SignalPaymentProviderFfiArg;
-static_assert_64bit(sizeof(SignalPaymentProviderFfiArg) == 4);
-static_assert_64bit(alignof(SignalPaymentProviderFfiArg) == 4);
+  SignalPaymentProviderInternalFfiArgGooglePlayBilling,
+  SignalPaymentProviderInternalFfiArgAppleAppStore,
+  SignalPaymentProviderInternalFfiArgStripe,
+  SignalPaymentProviderInternalFfiArgBraintree,
+} SignalPaymentProviderInternalFfiArg;
+static_assert_64bit(sizeof(SignalPaymentProviderInternalFfiArg) == 4);
+static_assert_64bit(alignof(SignalPaymentProviderInternalFfiArg) == 4);
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
@@ -7037,7 +7037,7 @@ SignalFfiError* signal_unauthenticated_chat_connection_create_login_receipt_cred
   SignalCPromiseOwnedBuffer* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerUnauthenticatedChatConnection chat,
-  SignalPaymentProviderFfiArg payment_processor,
+  SignalPaymentProviderInternalFfiArg payment_processor,
   const int8_t* purchase_identifier,
   SignalBorrowedBuffer receipt_credential_request_context,
   SignalConstPointerServerPublicParams server_params,

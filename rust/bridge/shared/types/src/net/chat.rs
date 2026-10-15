@@ -1266,7 +1266,7 @@ pub mod remote_derives {
         jni_nice_type = "org.signal.libsignal.net.PaymentProvider",
     )]
     #[allow(unused)]
-    pub enum PaymentProvider {
+    pub enum PaymentProviderInternal {
         GooglePlayBilling,
         AppleAppStore,
         Stripe,

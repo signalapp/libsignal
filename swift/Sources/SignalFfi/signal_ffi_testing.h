@@ -893,7 +893,7 @@ typedef enum {
 static_assert_64bit(sizeof(SignalLoginReceiptLevelFfiResult) == 4);
 static_assert_64bit(alignof(SignalLoginReceiptLevelFfiResult) == 4);
 typedef struct {
-  SignalPaymentProviderFfiResult payment_processor;
+  SignalPaymentProviderInternalFfiResult payment_processor;
   const int8_t* purchase_identifier;
   SignalOwnedBuffer receipt_credential_request_context;
   SignalServerPublicParamsSerializedFfiResult server_params;

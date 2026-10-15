@@ -1908,7 +1908,7 @@ internal enum DerivedReturnConverterCreateLoginReceiptCredentialArgs: NiceReturn
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
 
         let payment_processor = Result {
-            try DerivedReturnConverterPaymentProvider.convertReturn(consuming: ffiValue.payment_processor)
+            try DerivedReturnConverterPaymentProviderInternal.convertReturn(consuming: ffiValue.payment_processor)
         }
         let purchase_identifier = Result { try StringConverter.convertReturn(consuming: ffiValue.purchase_identifier) }
         let receipt_credential_request_context = Result {

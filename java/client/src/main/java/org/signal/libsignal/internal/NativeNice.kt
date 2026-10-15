@@ -376,14 +376,14 @@ public sealed class LoginReceiptLevel {
 /*
 // org.signal.libsignal.net.PaymentProvider
 
-public sealed class PaymentProvider {
-  public data object GooglePlayBilling : PaymentProvider()
+public sealed class PaymentProviderInternal {
+  public data object GooglePlayBilling : PaymentProviderInternal()
 
-  public data object AppleAppStore : PaymentProvider()
+  public data object AppleAppStore : PaymentProviderInternal()
 
-  public data object Stripe : PaymentProvider()
+  public data object Stripe : PaymentProviderInternal()
 
-  public data object Braintree : PaymentProvider()
+  public data object Braintree : PaymentProviderInternal()
 }
 
 */
@@ -1000,28 +1000,28 @@ public object ListMediaResponse_ReturnConverter {
     )
 }
 
-public object PaymentProvider_GooglePlayBilling_ReturnConverter {
+public object PaymentProviderInternal_GooglePlayBilling_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.GooglePlayBilling
 }
 
-public object PaymentProvider_AppleAppStore_ReturnConverter {
+public object PaymentProviderInternal_AppleAppStore_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.AppleAppStore
 }
 
-public object PaymentProvider_Stripe_ReturnConverter {
+public object PaymentProviderInternal_Stripe_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Stripe
 }
 
-public object PaymentProvider_Braintree_ReturnConverter {
+public object PaymentProviderInternal_Braintree_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
@@ -1494,31 +1494,31 @@ public fun org.signal.libsignal.net.LoginReceiptLevel.toFfiArgTypeObject(): Obje
     },
   )
 
-public sealed class PaymentProvider_FfiArgType
+public sealed class PaymentProviderInternal_FfiArgType
 
 @CalledFromNative
-public object PaymentProvider_GooglePlayBilling_FfiArgType : PaymentProvider_FfiArgType()
+public object PaymentProviderInternal_GooglePlayBilling_FfiArgType : PaymentProviderInternal_FfiArgType()
 
-public fun org.signal.libsignal.net.PaymentProvider.GooglePlayBilling.toFfiArgType(): PaymentProvider_GooglePlayBilling_FfiArgType =
-  PaymentProvider_GooglePlayBilling_FfiArgType
-
-@CalledFromNative
-public object PaymentProvider_AppleAppStore_FfiArgType : PaymentProvider_FfiArgType()
-
-public fun org.signal.libsignal.net.PaymentProvider.AppleAppStore.toFfiArgType(): PaymentProvider_AppleAppStore_FfiArgType =
-  PaymentProvider_AppleAppStore_FfiArgType
+public fun org.signal.libsignal.net.PaymentProvider.GooglePlayBilling.toFfiArgType(): PaymentProviderInternal_GooglePlayBilling_FfiArgType =
+  PaymentProviderInternal_GooglePlayBilling_FfiArgType
 
 @CalledFromNative
-public object PaymentProvider_Stripe_FfiArgType : PaymentProvider_FfiArgType()
+public object PaymentProviderInternal_AppleAppStore_FfiArgType : PaymentProviderInternal_FfiArgType()
 
-public fun org.signal.libsignal.net.PaymentProvider.Stripe.toFfiArgType(): PaymentProvider_Stripe_FfiArgType =
-  PaymentProvider_Stripe_FfiArgType
+public fun org.signal.libsignal.net.PaymentProvider.AppleAppStore.toFfiArgType(): PaymentProviderInternal_AppleAppStore_FfiArgType =
+  PaymentProviderInternal_AppleAppStore_FfiArgType
 
 @CalledFromNative
-public object PaymentProvider_Braintree_FfiArgType : PaymentProvider_FfiArgType()
+public object PaymentProviderInternal_Stripe_FfiArgType : PaymentProviderInternal_FfiArgType()
 
-public fun org.signal.libsignal.net.PaymentProvider.Braintree.toFfiArgType(): PaymentProvider_Braintree_FfiArgType =
-  PaymentProvider_Braintree_FfiArgType
+public fun org.signal.libsignal.net.PaymentProvider.Stripe.toFfiArgType(): PaymentProviderInternal_Stripe_FfiArgType =
+  PaymentProviderInternal_Stripe_FfiArgType
+
+@CalledFromNative
+public object PaymentProviderInternal_Braintree_FfiArgType : PaymentProviderInternal_FfiArgType()
+
+public fun org.signal.libsignal.net.PaymentProvider.Braintree.toFfiArgType(): PaymentProviderInternal_Braintree_FfiArgType =
+  PaymentProviderInternal_Braintree_FfiArgType
 
 public fun org.signal.libsignal.net.PaymentProvider.toFfiArgTypeObject(): Object =
   convertToObject(
