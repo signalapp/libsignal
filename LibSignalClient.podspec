@@ -14,7 +14,8 @@ Pod::Spec.new do |s|
   s.source           = { :git => 'https://github.com/signalapp/libsignal.git', :tag => "v#{s.version}" }
 
   s.swift_version    = '5'
-  s.platform         = :ios, '15.0'
+  s.ios.deployment_target = '15.0'
+  s.osx.deployment_target = '12.0'
 
   s.source_files = ['swift/Sources/**/*.swift', 'swift/Sources/**/*.m']
   s.preserve_paths = [
@@ -51,9 +52,11 @@ Pod::Spec.new do |s|
       # so we need to hackily use the "IS_MACCATALYST" build flag
       # to set the appropriate cargo target
       'CARGO_BUILD_TARGET_MAC_CATALYST_ARM_' => 'aarch64-apple-darwin',
+      'CARGO_BUILD_TARGET_MAC_CATALYST_ARM_NO' => 'aarch64-apple-darwin',
       'CARGO_BUILD_TARGET_MAC_CATALYST_ARM_YES' => 'aarch64-apple-ios-macabi',
       'CARGO_BUILD_TARGET[sdk=macosx*][arch=arm64]' => '$(CARGO_BUILD_TARGET_MAC_CATALYST_ARM_$(IS_MACCATALYST))',
       'CARGO_BUILD_TARGET_MAC_CATALYST_X86_' => 'x86_64-apple-darwin',
+      'CARGO_BUILD_TARGET_MAC_CATALYST_X86_NO' => 'x86_64-apple-darwin',
       'CARGO_BUILD_TARGET_MAC_CATALYST_X86_YES' => 'x86_64-apple-ios-macabi',
       'CARGO_BUILD_TARGET[sdk=macosx*][arch=*]' => '$(CARGO_BUILD_TARGET_MAC_CATALYST_X86_$(IS_MACCATALYST))',
 

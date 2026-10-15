@@ -29,12 +29,32 @@ Instead of a git-based dependency, use a path-based dependency to treat LibSigna
     CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
 
-The CocoaPod is configured to use the release build of the Rust library. Use `LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES=1 pod lib lint` to validate locally. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
+The CocoaPod is configured to use the release build of the Rust library. Use `LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES=1 pod lib lint --platforms=ios` to validate locally. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.
 
 [pc]: https://guides.cocoapods.org/syntax/podspec.html#prepare_command
+
+
+### macOS
+
+The development pod can also be used on macOS 12 or later, but this configuration is not officially supported by Signal. Signal does not provide macOS prebuilt libraries for the CocoaPod, so use a local checkout and build the Rust library yourself:
+
+    platform :osx, '12.0'
+    use_frameworks!
+    pod 'LibSignalClient', path: '/path/to/libsignal'
+
+From the root of the checkout, build the release library for each architecture your app targets:
+
+    MACOSX_DEPLOYMENT_TARGET=12.0 CARGO_BUILD_TARGET=aarch64-apple-darwin swift/build_ffi.sh --release
+    MACOSX_DEPLOYMENT_TARGET=12.0 CARGO_BUILD_TARGET=x86_64-apple-darwin swift/build_ffi.sh --release
+
+Install the corresponding Rust targets with `rustup target add` if needed. The explicit-module settings described above also apply to macOS. Validate the development pod with:
+
+    LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES=1 pod lib lint --platforms=macos
+
+For a build limited to your Mac's architecture, build only the matching Rust target and set `LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH=1` when running `pod lib lint`.
 
 
 ## Testing a local build with Signal-iOS
