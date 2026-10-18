@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 
 import * as Native from '../Native.js';
@@ -27,7 +28,7 @@ import type { LibSignalError } from '../Errors.js';
 export class AvatarUploadCredentialRequestContext extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(
       contents,
       Native.AvatarUploadCredentialRequestContext_CheckValidContents
@@ -63,7 +64,7 @@ export class AvatarUploadCredentialRequestContext extends ByteArray {
     aci: Aci,
     zkCredentialKeyPair: ZkCredentialKeyPair,
     rotationId: bigint,
-    random: Uint8Array<ArrayBuffer>
+    random: Bytes
   ): AvatarUploadCredentialRequestContext {
     const newContents = Native.AvatarUploadCredentialRequestContext_New(
       aci.getServiceIdFixedWidthBinary(),
@@ -116,7 +117,7 @@ export class AvatarUploadCredentialRequestContext extends ByteArray {
 export class AvatarUploadCredentialRequest extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.AvatarUploadCredentialRequest_CheckValidContents);
   }
 
@@ -165,7 +166,7 @@ export class AvatarUploadCredentialRequest extends ByteArray {
     rotationId: bigint,
     redemptionTime: Date,
     params: GenericServerSecretParams,
-    random: Uint8Array<ArrayBuffer>
+    random: Bytes
   ): AvatarUploadCredentialResponse {
     const newContents = Native.AvatarUploadCredentialRequest_IssueDeterministic(
       this.getContents(),
@@ -184,7 +185,7 @@ export class AvatarUploadCredentialRequest extends ByteArray {
 export class AvatarUploadCredentialResponse extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.AvatarUploadCredentialResponse_CheckValidContents);
   }
 }
@@ -198,7 +199,7 @@ export class AvatarUploadCredentialResponse extends ByteArray {
 export class AvatarUploadCredential extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.AvatarUploadCredential_CheckValidContents);
   }
 
@@ -218,7 +219,7 @@ export class AvatarUploadCredential extends ByteArray {
    */
   presentWithRandom(
     serverParams: GenericServerPublicParams,
-    random: Uint8Array<ArrayBuffer>
+    random: Bytes
   ): AvatarUploadCredentialPresentation {
     const newContents = Native.AvatarUploadCredential_PresentDeterministic(
       this.getContents(),
@@ -234,7 +235,7 @@ export class AvatarUploadCredential extends ByteArray {
    *
    * This is a Pedersen commitment, not a key, so it carries no type-tag prefix.
    */
-  getCommitment(): Uint8Array<ArrayBuffer> {
+  getCommitment(): Bytes {
     return Native.AvatarUploadCredential_GetCm(this.contents);
   }
 
@@ -250,7 +251,7 @@ export class AvatarUploadCredential extends ByteArray {
 export class AvatarUploadCredentialPresentation extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(
       contents,
       Native.AvatarUploadCredentialPresentation_CheckValidContents
@@ -278,7 +279,7 @@ export class AvatarUploadCredentialPresentation extends ByteArray {
    *
    * This is a Pedersen commitment, not a key, so it carries no type-tag prefix.
    */
-  getCommitment(): Uint8Array<ArrayBuffer> {
+  getCommitment(): Bytes {
     return Native.AvatarUploadCredentialPresentation_GetCm(this.contents);
   }
 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 import * as Native from '../Native.js';
 
@@ -17,9 +18,7 @@ export default class ServerSecretParams {
     return ServerSecretParams.generateWithRandom(random);
   }
 
-  static generateWithRandom(
-    random: Uint8Array<ArrayBuffer>
-  ): ServerSecretParams {
+  static generateWithRandom(random: Bytes): ServerSecretParams {
     return new ServerSecretParams(
       Native.ServerSecretParams_GenerateDeterministic(random)
     );
@@ -27,7 +26,7 @@ export default class ServerSecretParams {
 
   readonly _nativeHandle: Native.ServerSecretParams;
 
-  constructor(contents: Uint8Array<ArrayBuffer> | Native.ServerSecretParams) {
+  constructor(contents: Bytes | Native.ServerSecretParams) {
     if (contents instanceof Uint8Array) {
       this._nativeHandle = Native.ServerSecretParams_Deserialize(contents);
     } else {
@@ -41,22 +40,19 @@ export default class ServerSecretParams {
     );
   }
 
-  sign(message: Uint8Array<ArrayBuffer>): NotarySignature {
+  sign(message: Bytes): NotarySignature {
     const random = randomBytes(RANDOM_LENGTH);
 
     return this.signWithRandom(random, message);
   }
 
-  signWithRandom(
-    random: Uint8Array<ArrayBuffer>,
-    message: Uint8Array<ArrayBuffer>
-  ): NotarySignature {
+  signWithRandom(random: Bytes, message: Bytes): NotarySignature {
     return new NotarySignature(
       Native.ServerSecretParams_SignDeterministic(this, random, message)
     );
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.ServerSecretParams_Serialize(this);
   }
 }

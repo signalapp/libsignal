@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashMap;
+use std::hash::BuildHasher;
 use std::num::ParseIntError;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -40,8 +42,8 @@ use crate::protocol::storage::{
     JniBridgeSignedPreKeyStore,
 };
 use crate::support::{
-    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, FixedLengthBincodeSerializable,
-    Serialized, extend_lifetime,
+    Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
+    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -801,6 +803,14 @@ zkgroup_serialize_type!(
 zkgroup_serialize_type!(
     zkgroup::receipts::ReceiptCredentialPresentation,
     "org.signal.libsignal.zkgroup.receipts.ReceiptCredentialPresentation"
+);
+zkgroup_serialize_type!(
+    zkgroup::donations::DonationPermitRequestContext,
+    "org.signal.libsignal.zkgroup.donation.DonationPermitRequestContext"
+);
+zkgroup_serialize_type!(
+    zkgroup::donations::DonationPermit,
+    "org.signal.libsignal.zkgroup.donation.DonationPermit"
 );
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
@@ -2255,6 +2265,172 @@ impl NiceResultConverter for libsignal_net_chat::api::backups::CdnCredentials {
     }
 }
 
+impl<
+    'storage,
+    'param: 'storage,
+    'context: 'param,
+    T: ArgTypeInfo<'storage, 'param, 'context>,
+    S: BuildHasher + Default,
+> ArgTypeInfo<'storage, 'param, 'context> for HashMap<String, T, S>
+where
+    T::ArgType: Into<JObject<'param>>,
+{
+    type ArgType = JavaArrayStar<'context>;
+    type StoredType = Vec<(String, T::StoredType)>;
+
+    fn borrow(
+        env: &mut jni::Env<'context>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        const CONTEXT: &str = "HashMap<String, T>::borrow()";
+        let len = foreign.0.len(env).check_exceptions(env, CONTEXT)?;
+        if !len.is_multiple_of(2) {
+            return Err(BridgeLayerError::bad_argument(
+                "odd number of elements in map array".into(),
+            ));
+        }
+        let count = len / 2;
+        let mut out = Vec::with_capacity(count);
+        for i in 0..count {
+            let (key, value) = foreign
+                .0
+                .get_element(env, i * 2)
+                .and_then(|key| env.cast_local::<JString>(key))
+                .and_then(|key| key.auto().try_to_string(env))
+                .and_then(|key| {
+                    foreign
+                        .0
+                        .get_element(env, i * 2 + 1)
+                        .and_then(|value| T::ArgType::try_convert(env, value.into()))
+                        .map(|value| (key, value))
+                })
+                .check_exceptions(env, CONTEXT)?;
+            let value = T::borrow(env, &value.auto())?;
+            out.push((key, value));
+        }
+        Ok(out)
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        stored
+            .iter_mut()
+            .map(|(k, v)| (std::mem::take(k), T::load_from(v)))
+            .collect()
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<'a, 'b: 'a, 'c: 'b, T: NiceArgConverter, S> NiceArgConverter for HashMap<String, T, S>
+where
+    HashMap<String, T, S>: ArgTypeInfo<'a, 'b, 'c>,
+{
+    fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter {
+        let t = T::register_kt_arg_converter(ctx);
+        KtArgConverter {
+            nice_type: format!("Map<String, {}>", t.nice_type),
+            ffi_type: "Array<*>".into(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function: format!(
+                "stringMapArgConverter<{}, {}>({{ {}(it) }})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+impl<'a, T: ResultTypeInfo<'a>, S> ResultTypeInfo<'a> for HashMap<String, T, S> {
+    type ResultType = JavaArrayStar<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        const CONTEXT: &str = "HashMap<String, T>::convert_into()";
+        let arr = JObjectArray::<JObject>::new(env, self.len() * 2, JObject::null())
+            .check_exceptions(env, CONTEXT)?;
+        for (i, (k, v)) in self.into_iter().enumerate() {
+            let v = v.convert_into(env)?;
+            let v = box_primitive_if_needed(env, v.into())?.auto();
+            JString::from_str(env, k)
+                .map(|k| k.auto())
+                .and_then(|k| arr.set_element(env, i * 2, k))
+                .and_then(|()| arr.set_element(env, i * 2 + 1, v))
+                .check_exceptions(env, CONTEXT)?;
+        }
+        Ok(JavaArrayStar(arr))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter, S> NiceResultConverter for HashMap<String, T, S> {
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let t = T::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: format!("Map<String, {}>", t.nice_type),
+            ffi_type: "Array<*>".into(),
+            converter_function: format!(
+                "stringMapReturnConverter<{}, {}>({{ {}(it) }})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+impl<
+    'storage,
+    'param: 'storage,
+    'context: 'param,
+    A: ArgTypeInfo<'storage, 'param, 'context>,
+    B: ArgTypeInfo<'storage, 'param, 'context>,
+> ArgTypeInfo<'storage, 'param, 'context> for (A, B)
+where
+    A::ArgType: Into<JObject<'param>>,
+    B::ArgType: Into<JObject<'param>>,
+{
+    type ArgType = JavaArrayStar<'context>;
+    type StoredType = (A::StoredType, B::StoredType);
+
+    fn borrow(
+        env: &mut jni::Env<'context>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self::StoredType, BridgeLayerError> {
+        let (a, b) = foreign
+            .0
+            .get_element(env, 0)
+            .and_then(|a| foreign.0.get_element(env, 1).map(|b| (a, b)))
+            .check_exceptions(env, "(A, B)::borrow()")?;
+        let a = A::ArgType::try_convert(env, a.into()).check_exceptions(env, "(A, B)::borrow()")?;
+        let b = B::ArgType::try_convert(env, b.into()).check_exceptions(env, "(A, B)::borrow()")?;
+        let a = A::borrow(env, &a.auto())?;
+        let b = B::borrow(env, &b.auto())?;
+        Ok((a, b))
+    }
+
+    fn load_from(stored: &'storage mut Self::StoredType) -> Self {
+        (A::load_from(&mut stored.0), B::load_from(&mut stored.1))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<'a, 'b: 'a, 'c: 'b, A: NiceArgConverter, B: NiceArgConverter> NiceArgConverter for (A, B)
+where
+    (A, B): ArgTypeInfo<'a, 'b, 'c>,
+{
+    fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter {
+        let a = A::register_kt_arg_converter(ctx);
+        let b = B::register_kt_arg_converter(ctx);
+        KtArgConverter {
+            nice_type: format!("Pair<{}, {}>", a.nice_type, b.nice_type),
+            ffi_type: "Array<*>".into(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function: format!(
+                "argPairConverter<{}, {}, {}, {}>({{ {}(it) }}, {{ {}(it) }})",
+                a.ffi_type,
+                b.ffi_type,
+                a.nice_type,
+                b.nice_type,
+                a.converter_function,
+                b.converter_function
+            ),
+        }
+    }
+}
+
 impl<'a, A: ResultTypeInfo<'a>, B: ResultTypeInfo<'a>> ResultTypeInfo<'a> for (A, B) {
     type ResultType = JavaPair<'a, A::ResultType, B::ResultType>;
     fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
@@ -2467,7 +2643,7 @@ impl<'a> SimpleArgTypeInfo<'a> for ObjectHandle {
     }
 }
 
-impl<'a, T, P> SimpleArgTypeInfo<'a> for AsType<T, P>
+impl<'a, T, P, const LABEL: u128> SimpleArgTypeInfo<'a> for AsType<T, P, LABEL>
 where
     P: SimpleArgTypeInfo<'a> + TryInto<T, Error: Display>,
 {
@@ -2481,8 +2657,9 @@ where
         p.try_into()
             .map_err(|e| {
                 BridgeLayerError::bad_argument(format!(
-                    "invalid {}: {e}",
-                    std::any::type_name::<T>()
+                    "invalid {} {}: {e}",
+                    std::any::type_name::<T>(),
+                    DisplayIntLabel(LABEL),
                 ))
             })
             .map(AsType::from)
@@ -2492,7 +2669,7 @@ where
 // Note that we do *not* have a blanket NiceArgConverter impl for AsType;
 // the nice form of each type is going to be different.
 #[cfg(feature = "metadata")]
-impl NiceArgConverter for AsType<ServiceIdKind, u8> {
+impl<const LABEL: u128> NiceArgConverter for AsType<ServiceIdKind, u8, LABEL> {
     fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
         KtArgConverter {
             nice_type: "org.signal.libsignal.protocol.ServiceId.Kind".to_owned(),
@@ -2500,6 +2677,50 @@ impl NiceArgConverter for AsType<ServiceIdKind, u8> {
             ffi_field_type_erased: ffi_field_type_erased::<Self>(),
             converter_function: "(org.signal.libsignal.protocol.ServiceId.Kind::ordinal)"
                 .to_owned(),
+        }
+    }
+}
+
+impl<'a, T, P, const LABEL: u128> ResultTypeInfo<'a> for AsType<T, P, LABEL>
+where
+    P: TryFrom<T, Error: Display> + ResultTypeInfo<'a>,
+{
+    type ResultType = P::ResultType;
+    const JNI_SIGNATURE: &'static str = P::JNI_SIGNATURE;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        P::try_from(self.into_inner())
+            .unwrap_or_else(|e| {
+                // If we get here, libsignal is at fault for trying to use 'P' to pass values of type 'T'.
+                panic!(
+                    "unable to convert {} {} to {}: {e}",
+                    std::any::type_name::<T>(),
+                    DisplayIntLabel(LABEL),
+                    std::any::type_name::<P>(),
+                )
+            })
+            .convert_into(env)
+    }
+}
+
+// Note that we do *not* have a blanket NiceResultConverter impl for AsType;
+// the nice form of each type is going to be different.
+#[cfg(feature = "metadata")]
+impl<const LABEL: u128> NiceResultConverter for AsType<u32, i32, LABEL> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Int".into(),
+            ffi_type: "Int".into(),
+            converter_function: "identity".to_string(),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<const LABEL: u128> NiceResultConverter for AsType<u64, i64, LABEL> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Long".into(),
+            ffi_type: "Long".into(),
+            converter_function: "identity".to_string(),
         }
     }
 }
@@ -3550,6 +3771,7 @@ nice_identity_result_converter!(i64, "Long");
 nice_identity_arg_converter!(i64, "Long");
 
 impl_result_type_info_for_option!(BridgeWebAuthnAuthenticationParameters);
+impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
 
 #[cfg(feature = "metadata")]
 impl<T, U> NiceResultConverter for Option<T>

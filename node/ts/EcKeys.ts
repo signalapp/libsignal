@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 
 export class PublicKey {
@@ -16,7 +18,7 @@ export class PublicKey {
     return new PublicKey(handle);
   }
 
-  static deserialize(buf: Uint8Array<ArrayBuffer>): PublicKey {
+  static deserialize(buf: Bytes): PublicKey {
     return new PublicKey(Native.PublicKey_Deserialize(buf));
   }
 
@@ -24,22 +26,19 @@ export class PublicKey {
     return Native.PublicKey_Equals(this, other);
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.PublicKey_Serialize(this);
   }
 
-  getPublicKeyBytes(): Uint8Array<ArrayBuffer> {
+  getPublicKeyBytes(): Bytes {
     return Native.PublicKey_GetPublicKeyBytes(this);
   }
 
-  verify(msg: Uint8Array<ArrayBuffer>, sig: Uint8Array<ArrayBuffer>): boolean {
+  verify(msg: Bytes, sig: Bytes): boolean {
     return Native.PublicKey_Verify(this, msg, sig);
   }
 
-  verifyAlternateIdentity(
-    other: PublicKey,
-    signature: Uint8Array<ArrayBuffer>
-  ): boolean {
+  verifyAlternateIdentity(other: PublicKey, signature: Bytes): boolean {
     return Native.IdentityKey_VerifyAlternateIdentity(this, other, signature);
   }
 
@@ -55,11 +54,7 @@ export class PublicKey {
    *
    * @see PrivateKey#open
    */
-  seal(
-    msg: Uint8Array<ArrayBuffer>,
-    info: string | Uint8Array<ArrayBuffer>,
-    associatedData?: Uint8Array<ArrayBuffer>
-  ): Uint8Array<ArrayBuffer> {
+  seal(msg: Bytes, info: string | Bytes, associatedData?: Bytes): Bytes {
     const infoBuffer =
       typeof info === 'string' ? new TextEncoder().encode(info) : info;
     return Native.PublicKey_HpkeSeal(
@@ -86,19 +81,19 @@ export class PrivateKey {
     return new PrivateKey(Native.PrivateKey_Generate());
   }
 
-  static deserialize(buf: Uint8Array<ArrayBuffer>): PrivateKey {
+  static deserialize(buf: Bytes): PrivateKey {
     return new PrivateKey(Native.PrivateKey_Deserialize(buf));
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.PrivateKey_Serialize(this);
   }
 
-  sign(msg: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> {
+  sign(msg: Bytes): Bytes {
     return Native.PrivateKey_Sign(this, msg);
   }
 
-  agree(other_key: PublicKey): Uint8Array<ArrayBuffer> {
+  agree(other_key: PublicKey): Bytes {
     return Native.PrivateKey_Agree(this, other_key);
   }
 
@@ -113,11 +108,7 @@ export class PrivateKey {
    * include its original type byte indicating the chosen algorithms and ciphertext layout. The
    * `info` and `associatedData` must match those used during sealing.
    */
-  open(
-    ciphertext: Uint8Array<ArrayBuffer>,
-    info: string | Uint8Array<ArrayBuffer>,
-    associatedData?: Uint8Array<ArrayBuffer>
-  ): Uint8Array<ArrayBuffer> {
+  open(ciphertext: Bytes, info: string | Bytes, associatedData?: Bytes): Bytes {
     const infoBuffer =
       typeof info === 'string' ? new TextEncoder().encode(info) : info;
     return Native.PrivateKey_HpkeOpen(
@@ -143,7 +134,7 @@ export class IdentityKeyPair {
     return new IdentityKeyPair(privateKey.getPublicKey(), privateKey);
   }
 
-  static deserialize(buffer: Uint8Array<ArrayBuffer>): IdentityKeyPair {
+  static deserialize(buffer: Bytes): IdentityKeyPair {
     const [publicKey, privateKey] = Native.IdentityKeyPair_Deserialize(buffer);
     return new IdentityKeyPair(
       PublicKey._fromNativeHandle(publicKey),
@@ -151,11 +142,11 @@ export class IdentityKeyPair {
     );
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.IdentityKeyPair_Serialize(this.publicKey, this.privateKey);
   }
 
-  signAlternateIdentity(other: PublicKey): Uint8Array<ArrayBuffer> {
+  signAlternateIdentity(other: PublicKey): Bytes {
     return Native.IdentityKeyPair_SignAlternateIdentity(
       this.publicKey,
       this.privateKey,

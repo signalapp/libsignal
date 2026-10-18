@@ -42,7 +42,7 @@ default-members = [
 resolver = "2" # so that our dev-dependency features don't leak into products
 
 [workspace.package]
-version = "0.105.0"
+version = "0.105.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 rust-version = "1.93.1"
@@ -196,7 +196,7 @@ rangemap = "1.5.1"
 rayon = "1.8.0"
 rcgen = "0.14.0"
 ref-cast = "1.0.25"
-rustls = { version = "0.23.45", default-features = false }
+rustls = { version = "0.23.46", default-features = false }
 rustls-platform-verifier = "0.7.1"
 scopeguard = "1.0"
 serde = "1.0.203"

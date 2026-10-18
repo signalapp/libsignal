@@ -3,8 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { IsEqual } from 'type-fest';
+import type { Bytes } from '@signalapp/types';
+
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
+import type { AssertTrue } from '../../internal.js';
 import type { DeviceIdNotFound, StandardNetworkError } from '../../Errors.js';
 
 declare module '../Chat' {
@@ -21,7 +25,7 @@ export type LinkedDevice = {
    * A sequence of bytes that encodes an encrypted human-readable name for
    * this device.
    */
-  encryptedName: Uint8Array<ArrayBuffer>;
+  encryptedName: Bytes;
   /**
    * The approximate time, in milliseconds since the epoch, at which this
    * device last connected to the server.
@@ -35,13 +39,26 @@ export type LinkedDevice = {
    * A sequence of bytes that encodes the time, in milliseconds, since the epoch, at which this
    * device was attached to its parent account.
    */
-  createdAtCiphertext: Uint8Array<ArrayBuffer>;
+  createdAtCiphertext: Bytes;
 };
 
 /**
  * A feature that a device may declare support for.
  */
-export type DeviceCapability = NativeNice.DeviceCapabilityInternal;
+export type DeviceCapability =
+  | 'storage'
+  | 'transfer'
+  | 'attachmentBackfill'
+  | 'sparsePostQuantumRatchet'
+  | 'profilesV2'
+  | 'usernameChangeSyncMessage'
+  | 'optionalPhoneNumber';
+
+// Must be kept in sync with DeviceCapabilityInternal in rust/bridge/shared/types/src/net/chat.rs.
+// This fails to compile if the generated NativeNice.DeviceCapabilityInternal has different cases.
+type _DeviceCapabilityMatchesBridge = AssertTrue<
+  IsEqual<DeviceCapability, NativeNice.DeviceCapabilityInternal>
+>;
 
 export interface AuthDevicesService {
   /**
@@ -54,7 +71,7 @@ export interface AuthDevicesService {
   setDeviceName: (
     request: {
       deviceId: number;
-      encryptedName: Uint8Array<ArrayBuffer>;
+      encryptedName: Bytes;
     },
     options?: RequestOptions
   ) => Promise<void>;
@@ -119,7 +136,7 @@ AuthenticatedChatConnection.prototype.setDeviceName = async function (
     encryptedName,
   }: {
     deviceId: number;
-    encryptedName: Uint8Array<ArrayBuffer>;
+    encryptedName: Bytes;
   },
   options?: RequestOptions
 ): Promise<void> {

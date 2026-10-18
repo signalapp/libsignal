@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 
 public data class CallQualitySurvey(
@@ -137,17 +138,15 @@ public class UnauthCallQualityService(
    * [RequestResult.ApplicationError].
    */
   public fun submitCallQualitySurvey(survey: CallQualitySurvey): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .UnauthenticatedChatConnection_submit_call_quality_survey(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           survey = survey,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

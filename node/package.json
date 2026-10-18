@@ -1,6 +1,6 @@
 {
   "name": "@signalapp/libsignal-client",
-  "version": "0.105.0",
+  "version": "0.105.1",
   "repository": "github:signalapp/libsignal",
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -33,13 +33,14 @@
     "tsc": "tsc -b"
   },
   "dependencies": {
+    "@signalapp/types": "^0.3.0",
     "node-gyp-build": "^4.8.0",
-    "type-fest": "^4.26.0"
+    "type-fest": "^5.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@indutny/bencher": "^1.2.0",
-    "@signalapp/mock-server": "^11.1.0",
+    "@signalapp/mock-server": "^27.0.0",
     "@types/bindings": "^1.3.0",
     "@types/chai": "^5.2.3",
     "@types/chai-as-promised": "^8.0.2",

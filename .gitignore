@@ -1,6 +1,8 @@
 .idea
 *.iml
 /target
+/.build
+/.swiftpm
 /swift/**/.build
 /swift/**/.swiftpm
 /node/dist

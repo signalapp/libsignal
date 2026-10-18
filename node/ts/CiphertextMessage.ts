@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 
 export interface CiphertextMessageConvertible {
@@ -26,7 +28,7 @@ export class CiphertextMessage {
     return message.asCiphertextMessage();
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.CiphertextMessage_Serialize(this);
   }
 

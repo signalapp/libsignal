@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 
 import ByteArray from '../internal/ByteArray.js';
@@ -16,7 +17,7 @@ import { Aci } from '../../Address.js';
 export default class CreateCallLinkCredentialRequest extends ByteArray {
   private readonly __type?: never;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.CreateCallLinkCredentialRequest_CheckValidContents);
   }
 
@@ -33,7 +34,7 @@ export default class CreateCallLinkCredentialRequest extends ByteArray {
     userId: Aci,
     timestamp: number,
     params: GenericServerSecretParams,
-    random: Uint8Array<ArrayBuffer>
+    random: Bytes
   ): CreateCallLinkCredentialResponse {
     return new CreateCallLinkCredentialResponse(
       Native.CreateCallLinkCredentialRequest_IssueDeterministic(

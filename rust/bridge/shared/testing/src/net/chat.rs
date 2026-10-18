@@ -501,7 +501,8 @@ mod remote_derives {
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::{
-        GetStickerUploadFormsResponse, ListMediaResponse, StartMfaVerificationResponse,
+        AccountEntitlements, GetStickerUploadFormsResponse, ListMediaResponse,
+        StartMfaVerificationResponse,
     };
     use libsignal_bridge_types::net::chat::{
         BridgeConfirmedMfaKey, BridgeCopyBackupMediaOutcome, BridgeDeleteBackupMediaItem,
@@ -511,6 +512,7 @@ mod remote_derives {
     use libsignal_core::Aci;
     use libsignal_net_chat::api::purchase::{ChargeFailure, PaymentProvider};
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
+    use libsignal_net_chat::grpc::donations::BadgeVisibility;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
     use libsignal_protocol::Timestamp;
@@ -1204,6 +1206,48 @@ mod remote_derives {
         message_guid: Uuid,
         report_spam_token: Vec<u8>,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::donations::test_cases::CreateDonationPermitsArgs)]
+    #[bridge(arg = false)]
+    pub struct CreateDonationPermitsArgs {
+        request_context: ::zkgroup::donations::DonationPermitRequestContext,
+        server_params: ServerPublicParamsSerialized,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::donations::test_cases::CreateDonationPermitsOut)]
+    #[bridge(arg = false)]
+    pub enum CreateDonationPermitsOut {
+        Success(BridgeVec<::zkgroup::donations::DonationPermit>),
+        UnexpectedError { contains: String },
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::donations::test_cases::RedeemDonationReceiptArgs)]
+    #[bridge(arg = false)]
+    pub struct RedeemDonationReceiptArgs {
+        presentation: Serialized<::zkgroup::receipts::ReceiptCredentialPresentation>,
+        visibility: BadgeVisibility,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::donations::test_cases::RedeemDonationReceiptOut)]
+    #[bridge(arg = false)]
+    pub enum RedeemDonationReceiptOut {
+        Success,
+        InvalidReceipt,
+        AlreadyRedeemed,
+        UnexpectedError { contains: String },
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::GetEntitlementsOut)]
+    #[bridge(arg = false)]
+    pub enum GetEntitlementsOut {
+        Success(AccountEntitlements),
+        Malformed,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1517,4 +1561,25 @@ fn TESTING_GetSubscriptionReceiptCredentialTests() -> GrpcTestCases<
     remote_derives::GetSubscriptionReceiptCredentialOut,
 > {
     libsignal_net_chat::grpc::subscriptions::test_cases::get_receipt_credential_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_CreateDonationPermitsTests() -> GrpcTestCases<
+    remote_derives::CreateDonationPermitsArgs,
+    remote_derives::CreateDonationPermitsOut,
+> {
+    libsignal_net_chat::grpc::donations::test_cases::create_donation_permits_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_RedeemDonationReceiptTests() -> GrpcTestCases<
+    remote_derives::RedeemDonationReceiptArgs,
+    remote_derives::RedeemDonationReceiptOut,
+> {
+    libsignal_net_chat::grpc::donations::test_cases::redeem_donation_receipt_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetEntitlementsTests() -> GrpcTestCases<(), remote_derives::GetEntitlementsOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::get_entitlements_test_cases().into()
 }

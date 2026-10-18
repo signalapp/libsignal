@@ -553,7 +553,7 @@ pub enum MyTestEnum {
     },
 }
 
-#[derive(BridgedAsValue)]
+#[derive(BridgedAsValue, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MySimpleTestEnum {
     A,
     B,
@@ -751,4 +751,9 @@ pub fn TESTING_MyNiceTypeSimpleEnum_identity(
 #[bridge_fn(nice = true, node = false)]
 pub fn TESTING_MyNiceTypeSimpleEnum_to_string(x: MyNiceTypeSimpleEnumNot) -> String {
     serde_json::to_string(&x).expect("can convert to json")
+}
+
+#[bridge_fn]
+pub fn TESTING_DowncastViaAsTypeOnReturn(x: i64) -> AsType<i64, i32> {
+    x.into()
 }

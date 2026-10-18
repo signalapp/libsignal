@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.usernames.Username
 import java.util.UUID
@@ -39,19 +40,17 @@ public class AuthUsernamesService(
   public fun reserveUsernameHash(
     usernameHashes: List<UsernameHash>,
   ): CompletableFuture<RequestResult<UsernameHash, UsernameNotAvailableException>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_reserve_username_hash(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           usernameHashes = usernameHashes,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<UsernameNotAvailableException>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<UsernameNotAvailableException>() },
+    )
 
   /**
    * Sets the account's username to a previously-reserved value (see [reserveUsernameHash]),
@@ -74,7 +73,7 @@ public class AuthUsernamesService(
     usernameCiphertext: ByteArray,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
   ): CompletableFuture<RequestResult<UUID, ConfirmUsernameError>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_confirm_username(
           asyncCtx = connection.tokioAsyncContext,
@@ -82,13 +81,11 @@ public class AuthUsernamesService(
           username = username.username,
           usernameCiphertext = usernameCiphertext,
           rng = rngSeedForTesting,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<ConfirmUsernameError>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<ConfirmUsernameError>() },
+    )
 
   /**
    * For the given encrypted username, generate a username link handle. The username link handle
@@ -109,20 +106,18 @@ public class AuthUsernamesService(
     usernameCiphertext: ByteArray,
     keepLinkHandle: Boolean,
   ): CompletableFuture<RequestResult<UUID, UsernameNotSetException>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_username_link(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           usernameCiphertext = usernameCiphertext,
           keepLinkHandle = keepLinkHandle,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<UsernameNotSetException>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<UsernameNotSetException>() },
+    )
 
   /**
    * Clears the current username hash, ciphertext, and link for the authenticated account.
@@ -134,18 +129,16 @@ public class AuthUsernamesService(
    * [RequestResult.ApplicationError].
    */
   public fun deleteUsernameHash(): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_delete_username_hash(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Clears any username link associated with the authenticated account.
@@ -158,16 +151,14 @@ public class AuthUsernamesService(
    * [RequestResult.ApplicationError].
    */
   public fun deleteUsernameLink(): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_delete_username_link(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

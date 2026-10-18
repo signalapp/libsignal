@@ -1360,8 +1360,10 @@ message StickerPack {
 
 message FavoriteStickerList {
   message FavoriteSticker {
-    Sticker sticker = 1;
-    uint64 favoritedAtTimestamp = 2;
+    bytes packId = 1;
+    bytes packKey = 2;
+    uint32 stickerId = 3;
+    uint64 favoritedAtTimestamp = 4;
   }
 
   repeated FavoriteSticker favoriteSticker = 1;  // At most 500 stickers

@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 
 export class KEMPublicKey {
@@ -16,11 +18,11 @@ export class KEMPublicKey {
     return new KEMPublicKey(handle);
   }
 
-  static deserialize(buf: Uint8Array<ArrayBuffer>): KEMPublicKey {
+  static deserialize(buf: Bytes): KEMPublicKey {
     return new KEMPublicKey(Native.KyberPublicKey_Deserialize(buf));
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.KyberPublicKey_Serialize(this);
   }
 }
@@ -36,11 +38,11 @@ export class KEMSecretKey {
     return new KEMSecretKey(handle);
   }
 
-  static deserialize(buf: Uint8Array<ArrayBuffer>): KEMSecretKey {
+  static deserialize(buf: Bytes): KEMSecretKey {
     return new KEMSecretKey(Native.KyberSecretKey_Deserialize(buf));
   }
 
-  serialize(): Uint8Array<ArrayBuffer> {
+  serialize(): Bytes {
     return Native.KyberSecretKey_Serialize(this);
   }
 }

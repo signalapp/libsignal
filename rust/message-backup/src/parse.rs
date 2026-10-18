@@ -8,6 +8,9 @@ use futures::io::{AsyncRead, AsyncReadExt as _};
 
 const VARINT_MAX_LENGTH: usize = 10;
 
+/// The most that will be allocated for a frame before any of its contents have been read.
+const MAX_PREALLOCATED_FRAME_LEN: usize = 64 * 1024;
+
 pub struct VarintDelimitedReader<R> {
     reader: R,
     buffer: ArrayVec<u8, VARINT_MAX_LENGTH>,
@@ -22,23 +25,43 @@ impl<R: AsyncRead + Unpin> VarintDelimitedReader<R> {
     }
 
     pub async fn read_next(&mut self) -> Result<Option<Box<[u8]>>, std::io::Error> {
+        self.read_next_with_max_len(usize::MAX).await
+    }
+
+    /// Like [`Self::read_next`], but fails with [`std::io::ErrorKind::InvalidData`] if the next
+    /// frame is longer than `max_len`.
+    pub async fn read_next_with_max_len(
+        &mut self,
+        max_len: usize,
+    ) -> Result<Option<Box<[u8]>>, std::io::Error> {
         let length = match self.read_next_varint().await? {
             None => return Ok(None),
             Some(length) => length,
         };
 
+        if length > max_len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("frame length {length} exceeds maximum of {max_len}"),
+            ));
+        }
+
         let Self { reader, buffer } = self;
 
         // Read `length` bytes, first from the buffer, then from the reader.
-        let mut buf = Vec::with_capacity(length);
+        let mut buf = Vec::with_capacity(length.min(MAX_PREALLOCATED_FRAME_LEN));
         let buffered_byte_count = length.min(buffer.len());
         buf.extend_from_slice(&buffer[..buffered_byte_count]);
         buffer.drain(..buffered_byte_count);
 
-        if buffered_byte_count < length {
-            buf.resize(length, 0);
+        // The length hasn't been checked against the actual input yet, so grow the buffer only as
+        // bytes arrive. Otherwise a short input claiming a huge frame forces a huge allocation.
+        while buf.len() < length {
+            let start = buf.len();
+            let end = length.min(start.saturating_mul(2).max(MAX_PREALLOCATED_FRAME_LEN));
+            buf.resize(end, 0);
 
-            reader.read_exact(&mut buf[buffered_byte_count..]).await?;
+            reader.read_exact(&mut buf[start..]).await?;
         }
 
         Ok(Some(buf.into_boxed_slice()))
@@ -148,6 +171,66 @@ mod test {
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof
         );
     }
+    #[test]
+    fn read_length_delimited_huge_length_truncated() {
+        // A length of u32::MAX with no message following it must not allocate
+        // based on the claimed length.
+        let bytes = [0xFF, 0xFF, 0xFF, 0xFF, 0x0F];
+        let reader = VarintDelimitedReader::new(bytes.as_slice());
+        pin_mut!(reader);
+
+        assert_matches!(
+            block_on(reader.read_next()),
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof
+        );
+    }
+
+    #[test]
+    fn read_length_delimited_larger_than_preallocation() {
+        let message = vec![0xab; MAX_PREALLOCATED_FRAME_LEN * 3 + 1];
+        let mut bytes = Vec::new();
+        {
+            let mut writer = protobuf::CodedOutputStream::vec(&mut bytes);
+            writer
+                .write_raw_varint32(message.len().try_into().unwrap())
+                .expect("can write");
+            writer.flush().expect("can write");
+        }
+        bytes.extend_from_slice(&message);
+
+        let reader = VarintDelimitedReader::new(bytes.as_slice());
+        pin_mut!(reader);
+
+        assert_eq!(
+            *block_on(reader.read_next())
+                .expect("can read")
+                .expect("has frame"),
+            *message
+        );
+        assert_matches!(block_on(reader.read_next()), Ok(None));
+    }
+
+    #[test]
+    fn read_length_delimited_exceeds_max_len() {
+        let bytes = [5, b'h', b'e', b'l', b'l', b'o'];
+
+        let reader = VarintDelimitedReader::new(bytes.as_slice());
+        pin_mut!(reader);
+        assert_matches!(
+            block_on(reader.read_next_with_max_len(4)),
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidData
+        );
+
+        let reader = VarintDelimitedReader::new(bytes.as_slice());
+        pin_mut!(reader);
+        assert_eq!(
+            *block_on(reader.read_next_with_max_len(5))
+                .expect("can read")
+                .expect("has frame"),
+            *b"hello"
+        );
+    }
+
     struct MessageAndLen<const L: usize, const M: usize> {
         varint: [u8; L],
         message: [u8; M],

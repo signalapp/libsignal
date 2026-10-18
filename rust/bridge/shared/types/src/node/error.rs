@@ -1235,6 +1235,15 @@ impl SimpleNodeError for libsignal_net_chat::api::profiles::ProfileKeyCredential
     }
 }
 
+impl SimpleNodeError for libsignal_net_chat::grpc::donations::RedeemDonationReceiptFailure {
+    fn js_error_name(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::InvalidReceipt => "InvalidReceipt",
+            Self::AlreadyRedeemed => "ReceiptAlreadyRedeemed",
+        })
+    }
+}
+
 impl<E> SignalNodeError for crate::support::RequestOrArgumentError<E>
 where
     libsignal_net_chat::api::RequestError<E>: SignalNodeError,

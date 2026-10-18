@@ -312,6 +312,14 @@ internal object Native {
   ): CompletableFuture<ObjectHandle>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_create_donation_permits(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    requestContext: ByteArray,
+    serverParams: SimpleOwner,
+  ): CompletableFuture<Array<*>>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_delete_account(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -373,6 +381,12 @@ internal object Native {
   ): CompletableFuture<Array<*>>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_entitlements(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_pre_key_count(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -419,6 +433,14 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
     presentation: ByteArray,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_redeem_donation_receipt(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    presentation: ByteArray,
+    visibility: Object,
   ): CompletableFuture<Void?>
 
   @JvmStatic

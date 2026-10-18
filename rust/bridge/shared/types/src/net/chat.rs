@@ -55,7 +55,7 @@ use static_assertions::assert_impl_all;
 
 use crate::net::ConnectionManager;
 use crate::net::remote_config::RemoteConfigKey;
-use crate::support::{AsyncMutex, BridgeVec, BridgedError, LimitedLifetimeRef};
+use crate::support::{AsType, AsyncMutex, BridgeVec, BridgedError, LimitedLifetimeRef, str_as_int};
 use crate::*;
 
 pub type ChatConnectionInfo = ConnectionInfo;
@@ -881,28 +881,20 @@ pub struct BridgeCopyBackupMediaItem {
 }
 
 // TODO: This can go away when we implement u32 and u64 Nice bridging to Kotlin.
-#[derive(BridgedAsValue)]
+#[derive(BridgedAsValue, StructuralFrom)]
+#[structural_from(MessageBackupInfo)]
 #[bridge(
     arg = false,
     jni_nice_type = "org.signal.libsignal.net.MessageBackupInfo"
 )]
 pub struct BridgeMessageBackupInfo {
     pub backup_dir: String,
-    pub cdn: i32,
+    pub cdn: AsType<u32, i32, { str_as_int("cdn") }>,
     pub backup_name: String,
 }
 
-impl From<MessageBackupInfo> for BridgeMessageBackupInfo {
-    fn from(value: MessageBackupInfo) -> Self {
-        Self {
-            backup_dir: value.backup_dir,
-            cdn: value.cdn.try_into().expect("CDN numbers are small"),
-            backup_name: value.backup_name,
-        }
-    }
-}
-
-#[derive(BridgedAsValue)]
+#[derive(BridgedAsValue, StructuralFrom)]
+#[structural_from(MediaBackupInfo)]
 #[bridge(
     arg = false,
     jni_nice_type = "org.signal.libsignal.net.MediaBackupInfo"
@@ -910,83 +902,30 @@ impl From<MessageBackupInfo> for BridgeMessageBackupInfo {
 pub struct BridgeMediaBackupInfo {
     pub backup_dir: String,
     pub media_dir: String,
-    pub used_space: i64,
-}
-
-impl From<MediaBackupInfo> for BridgeMediaBackupInfo {
-    fn from(value: MediaBackupInfo) -> Self {
-        Self {
-            backup_dir: value.backup_dir,
-            media_dir: value.media_dir,
-            used_space: value
-                .used_space
-                .try_into()
-                .expect("space measurements fit in i64"),
-        }
-    }
+    pub used_space: AsType<u64, i64, { str_as_int("usedSpace") }>,
 }
 
 // TODO: When u32 Nice bridging to Kotlin is implemented, this becomes a remote derive on
 // libsignal_net_chat::grpc::keys::PreKeyCounts (and gets renamed PreKeyCountsInternal to match),
-// dropping this manual `From` impl.
-#[derive(BridgedAsValue)]
+// dropping this `StructuralFrom` impl.
+#[derive(BridgedAsValue, StructuralFrom)]
+#[structural_from(PreKeyCounts)]
 #[bridge(arg = false, jni_nice_type = "org.signal.libsignal.net.PreKeyCounts")]
 pub struct BridgePreKeyCounts {
-    pub aci_ec_pre_key_count: i32,
-    pub aci_kem_pre_key_count: i32,
-    pub pni_ec_pre_key_count: i32,
-    pub pni_kem_pre_key_count: i32,
-}
-
-impl From<PreKeyCounts> for BridgePreKeyCounts {
-    fn from(value: PreKeyCounts) -> Self {
-        Self {
-            aci_ec_pre_key_count: value
-                .aci_ec_pre_key_count
-                .try_into()
-                .expect("pre-key counts are small"),
-            aci_kem_pre_key_count: value
-                .aci_kem_pre_key_count
-                .try_into()
-                .expect("pre-key counts are small"),
-            pni_ec_pre_key_count: value
-                .pni_ec_pre_key_count
-                .try_into()
-                .expect("pre-key counts are small"),
-            pni_kem_pre_key_count: value
-                .pni_kem_pre_key_count
-                .try_into()
-                .expect("pre-key counts are small"),
-        }
-    }
+    pub aci_ec_pre_key_count: AsType<u32, i32, { str_as_int("AciEcPreKeyCnt") }>,
+    pub aci_kem_pre_key_count: AsType<u32, i32, { str_as_int("AciKemPreKeyCnt") }>,
+    pub pni_ec_pre_key_count: AsType<u32, i32, { str_as_int("PniEcPreKeyCnt") }>,
+    pub pni_kem_pre_key_count: AsType<u32, i32, { str_as_int("PniKemPreKeyCnt") }>,
 }
 
 // TODO: More i32/u32 cheating.
-#[derive(BridgedAsValue)]
+#[derive(BridgedAsValue, StructuralFrom)]
+#[structural_from(TotpParameters)]
 #[bridge(arg = false)]
 pub struct BridgeTotpParameters {
     pub algorithm: String,
-    pub password_length: i32,
-    pub time_step_seconds: i32,
-}
-
-impl From<TotpParameters> for BridgeTotpParameters {
-    fn from(value: TotpParameters) -> Self {
-        let TotpParameters {
-            algorithm,
-            password_length,
-            time_step_seconds,
-        } = value;
-        Self {
-            algorithm,
-            password_length: password_length
-                .try_into()
-                .expect("validated by libsignal-net-chat"),
-            time_step_seconds: time_step_seconds
-                .try_into()
-                .expect("validated by libsignal-net-chat"),
-        }
-    }
+    pub password_length: AsType<u32, i32, { str_as_int("passwordLength") }>,
+    pub time_step_seconds: AsType<u32, i32, { str_as_int("timeStepSeconds") }>,
 }
 
 #[derive(BridgedAsValue, StructuralFrom)]
@@ -1366,27 +1305,16 @@ pub mod remote_derives {
         pub created_at_ciphertext: Vec<u8>,
     }
 
-    #[derive(BridgedAsValue)]
-    #[bridge(jni_nice_type = "org.signal.libsignal.net.ListBackupMediaResponse.Item")]
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::backups::ListMediaItem)]
+    #[bridge(
+        arg = false,
+        jni_nice_type = "org.signal.libsignal.net.ListBackupMediaResponse.Item"
+    )]
     pub struct ListMediaItem {
-        pub cdn: i32,
+        pub cdn: AsType<u32, i32, { str_as_int("cdn") }>,
         pub media_id: [u8; MEDIA_ID_LEN],
-        pub object_length: i64,
-    }
-
-    impl From<libsignal_net_chat::grpc::backups::ListMediaItem> for ListMediaItem {
-        fn from(value: libsignal_net_chat::grpc::backups::ListMediaItem) -> Self {
-            let libsignal_net_chat::grpc::backups::ListMediaItem {
-                cdn,
-                media_id,
-                object_length,
-            } = value;
-            Self {
-                cdn: cdn.try_into().expect("CDN numbers are small"),
-                media_id,
-                object_length: object_length.try_into().expect("object lengths fit in i64"),
-            }
-        }
+        pub object_length: AsType<u64, i64, { str_as_int("objectLength") }>,
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
@@ -1516,7 +1444,10 @@ pub mod remote_derives {
     }
 
     #[derive(BridgedAsValue)]
-    #[bridge(remote = libsignal_net_chat::grpc::devices::DeviceCapability)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::devices::DeviceCapability,
+        ffi_nice_type = "DeviceCapability",
+    )]
     #[allow(unused)]
     pub enum DeviceCapabilityInternal {
         Storage,
@@ -1526,6 +1457,19 @@ pub mod remote_derives {
         ProfilesV2,
         UsernameChangeSyncMessage,
         OptionalPhoneNumber,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::donations::BadgeVisibility,
+        ffi_nice_type = "BadgeVisibility",
+        jni_nice_type = "org.signal.libsignal.net.BadgeVisibility",
+    )]
+    #[allow(unused)]
+    pub enum BadgeVisibility {
+        DoNotSet,
+        SetVisible,
+        SetPrimary,
     }
 
     #[derive(BridgedAsValue)]
@@ -1646,6 +1590,77 @@ pub mod remote_derives {
                 challenge,
                 timeout_seconds: timeout.as_secs().try_into().expect("timeouts are short"),
                 allowed_credential_ids: allowed_credential_ids.into(),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "AccountEntitlements",
+        jni_nice_type = "org.signal.libsignal.net.AccountEntitlements"
+    )]
+    pub struct AccountEntitlements {
+        pub badges: BridgeVec<BadgeEntitlement>,
+        pub backup: Option<BackupEntitlement>,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::AccountEntitlements> for AccountEntitlements {
+        fn from(value: libsignal_net_chat::grpc::accounts::AccountEntitlements) -> Self {
+            let libsignal_net_chat::grpc::accounts::AccountEntitlements { badges, backup } = value;
+            AccountEntitlements {
+                badges: badges.into(),
+                backup: backup.map(Into::into),
+            }
+        }
+    }
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        ffi_nice_type = "BadgeEntitlement",
+        jni_nice_type = "org.signal.libsignal.net.BadgeEntitlement"
+    )]
+    pub struct BadgeEntitlement {
+        pub badge_id: String,
+        pub expiration: libsignal_protocol::Timestamp,
+        pub visible: bool,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::BadgeEntitlement> for BadgeEntitlement {
+        fn from(value: libsignal_net_chat::grpc::accounts::BadgeEntitlement) -> Self {
+            let libsignal_net_chat::grpc::accounts::BadgeEntitlement {
+                badge_id,
+                expiration,
+                visible,
+            } = value;
+            Self {
+                badge_id,
+                expiration: expiration
+                    .try_into()
+                    .expect("expiration is not too far in the future"),
+                visible,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        ffi_nice_type = "BackupEntitlement",
+        jni_nice_type = "org.signal.libsignal.net.BackupEntitlement"
+    )]
+    pub struct BackupEntitlement {
+        pub level: i64, /* zkgroup::ReceiptLevel */
+        pub expiration: libsignal_protocol::Timestamp,
+    }
+
+    impl From<libsignal_net_chat::grpc::accounts::BackupEntitlement> for BackupEntitlement {
+        fn from(value: libsignal_net_chat::grpc::accounts::BackupEntitlement) -> Self {
+            let libsignal_net_chat::grpc::accounts::BackupEntitlement { level, expiration } = value;
+            Self {
+                // Preserve all bits for zkgroup receipt levels.
+                level: level as i64,
+                expiration: expiration
+                    .try_into()
+                    .expect("expiration is not too far in the future"),
             }
         }
     }

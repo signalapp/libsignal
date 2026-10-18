@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from '../Native.js';
 import { Aci } from '../Address.js';
 import { PublicKey } from '../EcKeys.js';
@@ -25,16 +27,13 @@ import type {
  * used by the {@link Client}.
  */
 export interface Store {
-  getLastDistinguishedTreeHead: () => Promise<Uint8Array<ArrayBuffer> | null>;
+  getLastDistinguishedTreeHead: () => Promise<Bytes | null>;
   setLastDistinguishedTreeHead: (
-    bytes: Readonly<Uint8Array<ArrayBuffer>> | null
+    bytes: Readonly<Bytes> | null
   ) => Promise<void>;
 
-  getAccountData: (aci: Aci) => Promise<Uint8Array<ArrayBuffer> | null>;
-  setAccountData: (
-    aci: Aci,
-    bytes: Readonly<Uint8Array<ArrayBuffer>>
-  ) => Promise<void>;
+  getAccountData: (aci: Aci) => Promise<Bytes | null>;
+  setAccountData: (aci: Aci, bytes: Readonly<Bytes>) => Promise<void>;
 }
 
 /**
@@ -54,7 +53,7 @@ export type AciInfo = { aci: Aci; identityKey: PublicKey };
  */
 export type E164Info = {
   e164: string;
-  unidentifiedAccessKey: Readonly<Uint8Array<ArrayBuffer>>;
+  unidentifiedAccessKey: Readonly<Bytes>;
 };
 
 /**
@@ -71,7 +70,7 @@ export type Request = CheckMode & {
   /** Unidentified access key associated with the account. Optional. */
   e164Info?: E164Info;
   /* Hash of the username associated with the account. Optional. */
-  usernameHash?: Readonly<Uint8Array<ArrayBuffer>>;
+  usernameHash?: Readonly<Bytes>;
 };
 
 /**

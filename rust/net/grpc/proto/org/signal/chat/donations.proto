@@ -25,7 +25,7 @@ service Donations {
   // Generate a set of anonymous, single-use, permits for use with /v1/subscription endpoints.
   //
   // If rate limited, reduce requested permit count and/or try again after the prescribed delay.
-  rpc CreateDonationPermit(CreateDonationPermitRequest) returns (CreateDonationPermitResponse) {}
+  rpc CreateDonationPermits(CreateDonationPermitsRequest) returns (CreateDonationPermitsResponse) {}
 }
 
 message RedeemReceiptRequest {
@@ -48,12 +48,12 @@ message RedeemReceiptResponse {
   }
 }
 
-message CreateDonationPermitRequest {
-  // a serialized libsignal DonationPermitRequest
-  bytes donation_permit_request = 1 [(require.nonEmpty) = true];
+message CreateDonationPermitsRequest {
+  // a serialized libsignal DonationPermitsRequest
+  bytes donation_permits_request = 1 [(require.nonEmpty) = true];
 }
 
-message CreateDonationPermitResponse {
-  // a serialized libsignal DonationPermitResponse
-  bytes donation_permit_response = 1;
+message CreateDonationPermitsResponse {
+  // a serialized libsignal DonationPermitsResponse
+  bytes donation_permits_response = 1;
 }

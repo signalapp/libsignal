@@ -34,6 +34,28 @@ impl From<Timestamp> for std::time::SystemTime {
     }
 }
 
+#[derive(Debug, displaydoc::Display)]
+pub enum UnrepresentableTimestamp {
+    /// too far in the past
+    TooFarInPast,
+    /// too far in the future
+    TooFarInFuture,
+}
+
+impl TryFrom<std::time::SystemTime> for Timestamp {
+    type Error = UnrepresentableTimestamp;
+
+    fn try_from(value: std::time::SystemTime) -> Result<Self, Self::Error> {
+        match value.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+            Ok(duration) => match duration.as_millis().try_into() {
+                Ok(millis) => Ok(Self::from_epoch_millis(millis)),
+                Err(_) => Err(UnrepresentableTimestamp::TooFarInFuture),
+            },
+            Err(_) => Err(UnrepresentableTimestamp::TooFarInPast),
+        }
+    }
+}
+
 impl rand::distr::Distribution<Timestamp> for rand::distr::StandardUniform {
     fn sample<R: rand::prelude::Rng + ?Sized>(&self, rng: &mut R) -> Timestamp {
         Timestamp(Self::sample(self, rng))

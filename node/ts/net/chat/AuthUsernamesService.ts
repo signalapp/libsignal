@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import type {
@@ -22,7 +24,7 @@ declare module '../Chat' {
 /**
  * A 32-byte username hash
  */
-export type UsernameHash = Uint8Array<ArrayBuffer>;
+export type UsernameHash = Bytes;
 
 export interface AuthUsernamesService {
   /**
@@ -62,7 +64,7 @@ export interface AuthUsernamesService {
   confirmUsername: (
     request: {
       username: string;
-      usernameCiphertext: Uint8Array<ArrayBuffer>;
+      usernameCiphertext: Bytes;
       rng?: Rng;
     },
     options?: RequestOptions
@@ -83,7 +85,7 @@ export interface AuthUsernamesService {
    */
   setUsernameLink: (
     request: {
-      usernameCiphertext: Uint8Array<ArrayBuffer>;
+      usernameCiphertext: Bytes;
       keepLinkHandle: boolean;
     },
     options?: RequestOptions
@@ -134,7 +136,7 @@ AuthenticatedChatConnection.prototype.confirmUsername = async function (
     rng,
   }: {
     username: string;
-    usernameCiphertext: Uint8Array<ArrayBuffer>;
+    usernameCiphertext: Bytes;
     rng?: Rng;
   },
   options?: RequestOptions
@@ -154,7 +156,7 @@ AuthenticatedChatConnection.prototype.setUsernameLink = async function (
     usernameCiphertext,
     keepLinkHandle,
   }: {
-    usernameCiphertext: Uint8Array<ArrayBuffer>;
+    usernameCiphertext: Bytes;
     keepLinkHandle: boolean;
   },
   options?: RequestOptions

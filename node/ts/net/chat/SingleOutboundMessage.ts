@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import type { CiphertextMessage } from '../../CiphertextMessage.js';
 
 /**
@@ -16,8 +18,6 @@ export type SingleOutboundMessage<T> = Readonly<{
   contents: T;
 }>;
 
-export type SingleOutboundSealedSenderMessage = SingleOutboundMessage<
-  Uint8Array<ArrayBuffer>
->;
+export type SingleOutboundSealedSenderMessage = SingleOutboundMessage<Bytes>;
 export type SingleOutboundUnsealedMessage =
   SingleOutboundMessage<CiphertextMessage>;

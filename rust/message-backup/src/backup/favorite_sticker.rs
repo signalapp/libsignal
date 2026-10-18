@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use crate::backup::TryIntoWith;
 use crate::backup::serialize::{SerializeOrder, UnorderedList};
-use crate::backup::sticker::{MessageSticker, MessageStickerError, PackId};
+use crate::backup::sticker::{Key, PackId};
 use crate::backup::time::{ReportUnusualTimestamp, Timestamp, TimestampError};
 use crate::proto::backup as proto;
 
@@ -26,7 +26,9 @@ pub struct FavoriteStickerList {
 #[derive(Debug, serde::Serialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct FavoriteSticker {
-    pub sticker: MessageSticker,
+    pub pack_id: PackId,
+    pub pack_key: Key,
+    pub sticker_id: u32,
     pub favorited_at: Timestamp,
     _limit_construction_to_module: (),
 }
@@ -35,8 +37,8 @@ impl SerializeOrder for FavoriteSticker {
     fn serialize_cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.favorited_at
             .cmp(&other.favorited_at)
-            .then_with(|| self.sticker.pack_id.cmp(&other.sticker.pack_id))
-            .then_with(|| self.sticker.sticker_id.cmp(&other.sticker.sticker_id))
+            .then_with(|| self.pack_id.cmp(&other.pack_id))
+            .then_with(|| self.sticker_id.cmp(&other.sticker_id))
     }
 }
 
@@ -56,11 +58,12 @@ pub enum FavoriteStickerListError {
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 #[cfg_attr(test, derive(PartialEq))]
+#[expect(clippy::enum_variant_names)]
 pub enum FavoriteStickerError {
-    /// missing sticker
-    MissingSticker,
-    /// sticker: {0}
-    Sticker(#[from] MessageStickerError),
+    /// pack ID is invalid
+    InvalidPackId,
+    /// pack key is invalid
+    InvalidPackKey,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
 }
@@ -87,8 +90,8 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<FavoriteStickerList, C> for proto::F
                 .try_into_with(context)
                 .map_err(|error| FavoriteStickerListError::Sticker { index, error })?;
 
-            let pack_id = favorite.sticker.pack_id;
-            let sticker_id = favorite.sticker.sticker_id;
+            let pack_id = favorite.pack_id;
+            let sticker_id = favorite.sticker_id;
             if !seen.insert((pack_id, sticker_id)) {
                 return Err(FavoriteStickerListError::DuplicateSticker(
                     pack_id, sticker_id,
@@ -112,15 +115,21 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<FavoriteSticker, C>
 
     fn try_into_with(self, context: &C) -> Result<FavoriteSticker, Self::Error> {
         let proto::favorite_sticker_list::FavoriteSticker {
-            sticker,
+            packId,
+            packKey,
+            stickerId,
             favoritedAtTimestamp,
             special_fields: _,
         } = self;
 
-        let sticker = sticker
-            .into_option()
-            .ok_or(FavoriteStickerError::MissingSticker)?
-            .try_into_with(context)?;
+        let pack_id = packId
+            .as_slice()
+            .try_into()
+            .map_err(|_| FavoriteStickerError::InvalidPackId)?;
+
+        let pack_key = packKey
+            .try_into()
+            .map_err(|_| FavoriteStickerError::InvalidPackKey)?;
 
         let favorited_at = Timestamp::from_millis(
             favoritedAtTimestamp,
@@ -129,7 +138,9 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<FavoriteSticker, C>
         )?;
 
         Ok(FavoriteSticker {
-            sticker,
+            pack_id,
+            pack_key,
+            sticker_id: stickerId,
             favorited_at,
             _limit_construction_to_module: (),
         })
@@ -147,8 +158,15 @@ mod test {
         const TEST_FAVORITED_AT_MS: u64 = 1_700_000_000_000;
 
         fn test_data() -> Self {
+            let proto::StickerPack {
+                packId,
+                packKey,
+                special_fields: _,
+            } = proto::StickerPack::test_data();
             Self {
-                sticker: Some(proto::Sticker::test_data()).into(),
+                packId,
+                packKey,
+                stickerId: proto::Sticker::TEST_ID,
                 favoritedAtTimestamp: Self::TEST_FAVORITED_AT_MS,
                 ..Default::default()
             }
@@ -156,11 +174,7 @@ mod test {
 
         fn test_data_with_sticker_id(sticker_id: u32) -> Self {
             Self {
-                sticker: Some(proto::Sticker {
-                    stickerId: sticker_id,
-                    ..proto::Sticker::test_data()
-                })
-                .into(),
+                stickerId: sticker_id,
                 ..Self::test_data()
             }
         }
@@ -187,7 +201,7 @@ mod test {
         let ids: Vec<_> = list
             .stickers
             .iter()
-            .map(|favorite| favorite.sticker.sticker_id)
+            .map(|favorite| favorite.sticker_id)
             .collect();
         assert_eq!(ids, [1, 2]);
         assert!(list.stickers.iter().all(|favorite| {
@@ -221,7 +235,7 @@ mod test {
     #[test]
     fn too_many_is_checked_before_stickers() {
         let favorite = proto::favorite_sticker_list::FavoriteSticker {
-            sticker: None.into(),
+            packId: vec![],
             ..proto::favorite_sticker_list::FavoriteSticker::test_data()
         };
         assert_eq!(
@@ -243,7 +257,7 @@ mod test {
         let mut duplicate =
             proto::favorite_sticker_list::FavoriteSticker::test_data_with_sticker_id(1);
         // A different key doesn't make it a different sticker.
-        duplicate.sticker.as_mut().expect("present").packKey = vec![0x44; 32];
+        duplicate.packKey = vec![0x44; 32];
         list.favoriteSticker.push(duplicate);
 
         assert_eq!(
@@ -261,12 +275,8 @@ mod test {
         let mut list = proto::FavoriteStickerList::test_data();
         list.favoriteSticker
             .push(proto::favorite_sticker_list::FavoriteSticker {
-                sticker: Some(proto::Sticker {
-                    packId: vec![0x33; 16],
-                    stickerId: 1,
-                    ..proto::Sticker::test_data()
-                })
-                .into(),
+                packId: vec![0x33; 16],
+                stickerId: 1,
                 ..proto::favorite_sticker_list::FavoriteSticker::test_data()
             });
 
@@ -280,28 +290,24 @@ mod test {
     #[test]
     fn invalid_sticker_reports_index() {
         let mut list = proto::FavoriteStickerList::test_data();
-        list.favoriteSticker[1]
-            .sticker
-            .as_mut()
-            .expect("present")
-            .packKey = vec![];
+        list.favoriteSticker[1].packKey = vec![];
 
         assert_eq!(
             list.try_into_with(&TestContext::default())
                 .map(|_: FavoriteStickerList| ()),
             Err(FavoriteStickerListError::Sticker {
                 index: 1,
-                error: FavoriteStickerError::Sticker(MessageStickerError::InvalidPackKey),
+                error: FavoriteStickerError::InvalidPackKey,
             })
         );
     }
 
-    #[test_case(|x| x.sticker = None.into() => Err(FavoriteStickerError::MissingSticker); "missing sticker")]
-    #[test_case(
-        |x| x.sticker.as_mut().expect("present").data = None.into() =>
-        Err(FavoriteStickerError::Sticker(MessageStickerError::MissingDataPointer));
-        "missing data pointer"
-    )]
+    #[test_case(|_| {} => Ok(()); "valid")]
+    #[test_case(|x| x.packId = vec![123; 3] => Err(FavoriteStickerError::InvalidPackId); "invalid pack ID")]
+    #[test_case(|x| x.packId = vec![] => Err(FavoriteStickerError::InvalidPackId); "no pack ID")]
+    #[test_case(|x| x.packKey = vec![0xaa; 45] => Err(FavoriteStickerError::InvalidPackKey); "invalid pack key")]
+    #[test_case(|x| x.packKey = vec![] => Err(FavoriteStickerError::InvalidPackKey); "no pack key")]
+    #[test_case(|x| x.stickerId = 0 => Ok(()); "sticker ID zero")]
     #[test_case(
         |x| x.favoritedAtTimestamp = Timestamp::INVALID_TIMESTAMP_MS =>
         Err(FavoriteStickerError::InvalidTimestamp(TimestampError(

@@ -479,6 +479,7 @@ mod test {
     #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, 1) => using assert_io_error(ErrorKind::UnexpectedEof))]
     #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, [1, 0]) => using assert_io_error(ErrorKind::InvalidData))]
     #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, [0x80, 0x80, 0x80, 0x80, 0x80, 0x01]) => using assert_io_error(ErrorKind::InvalidData))]
+    #[test_case(const_str::concat_bytes!(MAGIC_NUMBER, [0xFF, 0xFF, 0xFF, 0xFF, 0x0F]) => using assert_io_error(ErrorKind::InvalidData); "huge metadata length")]
     fn invalid_start_of_file(input: &[u8]) -> ValidationError {
         block_on(FramesReader::new(
             &FAKE_MESSAGE_BACKUP_KEY,

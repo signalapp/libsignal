@@ -11,6 +11,7 @@ pub mod backups;
 pub mod call_quality;
 pub mod credentials;
 pub mod devices;
+pub mod donations;
 pub mod keys;
 pub mod keytrans;
 pub mod login_purchase;
@@ -834,6 +835,34 @@ pub mod test_case_util {
 
     pub(crate) fn day_align(x: u64) -> u64 {
         (x / SECONDS_PER_DAY) * SECONDS_PER_DAY
+    }
+
+    /// A structurally-valid receipt credential presentation.
+    ///
+    /// Our tests never actually verify these presentations, so it's fine that the server params are synthetic.
+    pub(crate) fn test_receipt_credential_presentation()
+    -> zkgroup::receipts::ReceiptCredentialPresentation {
+        let server_keys =
+            zkgroup::server_params::ServerSecretParams::generate([b's'; zkgroup::RANDOMNESS_LEN]);
+        let server_public = server_keys.get_public_params();
+
+        let context = server_public.create_receipt_credential_request_context(
+            [b'r'; zkgroup::RANDOMNESS_LEN],
+            [b'r'; zkgroup::RECEIPT_SERIAL_LEN],
+        );
+        let request = context.get_request();
+        let expiration = zkgroup::Timestamp::from_epoch_seconds(1771545600); // 2026-02-20 00:00
+        let response = server_keys.issue_receipt_credential(
+            [b'i'; zkgroup::RANDOMNESS_LEN],
+            &request,
+            expiration,
+            200,
+        );
+        let credential = server_public
+            .receive_receipt_credential(&context, &response)
+            .expect("valid");
+        server_public
+            .create_receipt_credential_presentation([b'p'; zkgroup::RANDOMNESS_LEN], &credential)
     }
 }
 

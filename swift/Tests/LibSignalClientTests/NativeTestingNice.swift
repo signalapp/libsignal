@@ -47,6 +47,60 @@ extension SignalBorrowedSliceOfMySimpleTestEnumFfiArg: SignalBorrowedSliceOf {
 
 }
 
+extension SignalBorrowedSliceOfPairOfCStringPtrCStringPtr: SignalBorrowedSliceOf {
+
+    public typealias Element = SignalPairOfCStringPtrCStringPtr
+
+    public init(
+        generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrCStringPtr?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    public var generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrCStringPtr? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
+extension SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg: SignalBorrowedSliceOf {
+
+    public typealias Element = SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+
+    public init(
+        generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg?,
+        generic_length: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+
+        )
+    }
+
+    public var generic_base: SignalType_ConstPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiArg? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+}
+
 extension SignalCPromiseRawPointer: SignalCPromise {
 
     public typealias Result = SignalType_ConstPointer_void?
@@ -500,6 +554,40 @@ extension SignalOwnedBufferOfMaxAlignedMySimpleTestEnumFfiResult: SignalOwnedBuf
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    public typealias Element = SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+
+    public init(
+        generic_base: SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    public var generic_base: SignalType_MutPointer_SignalPairOfCStringPtrMySimpleTestEnumFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    public var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalPairOfi32OwnedBuffer
@@ -632,6 +720,64 @@ extension SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: Signal
     public var generic_size_bytes: size_t {
         get { self.size_bytes }
         set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrMySimpleTestEnumFfiArg: SignalPairOf {
+
+    public typealias First = SignalCStringPtr?
+
+    public typealias Second = SignalMySimpleTestEnumFfiArg
+
+    public init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalMySimpleTestEnumFfiArg,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: SignalMySimpleTestEnumFfiArg {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrMySimpleTestEnumFfiResult: SignalPairOf {
+
+    public typealias First = SignalCStringPtr?
+
+    public typealias Second = SignalMySimpleTestEnumFfiResult
+
+    public init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalMySimpleTestEnumFfiResult,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: SignalMySimpleTestEnumFfiResult {
+        get { self.second }
+        set { second = newValue }
     }
 
 }
@@ -793,6 +939,49 @@ internal enum FixedByteArrayHelper153: FixedByteArrayHelper {
     }
 }
 
+internal enum FixedByteArrayHelper329: FixedByteArrayHelper {
+    public typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
+    )
+    public static func count() -> Int {
+        329
+    }
+    public static func emptyFfi() -> Ffi {
+        (
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0
+        )
+    }
+}
+
 internal enum FixedByteArrayHelper473: FixedByteArrayHelper {
     public typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -888,6 +1077,17 @@ internal enum CopyBackupMediaOut {
     case credentialRejectedWithoutAppropriateServerInfo
 }
 
+internal struct CreateDonationPermitsArgs {
+    var requestContext: DonationPermitRequestContext
+    var serverParams: ServerPublicParamsSerialized
+
+}
+
+internal enum CreateDonationPermitsOut {
+    case success([DonationPermit])
+    case unexpectedError(contains: String)
+}
+
 internal struct CreateLoginReceiptCredentialArgs {
     var paymentProcessor: PaymentProvider
     var purchaseIdentifier: String
@@ -946,6 +1146,11 @@ internal enum GetCdnCredentialsOut {
 internal struct GetDevicesOut {
     var devices: [LinkedDevice]
 
+}
+
+internal enum GetEntitlementsOut {
+    case success(AccountEntitlements)
+    case malformed
 }
 
 internal enum GetMediaBackupInfoOut {
@@ -1129,6 +1334,19 @@ internal enum RedeemBackupReceiptOut {
     case missingResponse
 }
 
+internal struct RedeemDonationReceiptArgs {
+    var presentation: ReceiptCredentialPresentation
+    var visibility: BadgeVisibility
+
+}
+
+internal enum RedeemDonationReceiptOut {
+    case success
+    case invalidReceipt
+    case alreadyRedeemed
+    case unexpectedError(contains: String)
+}
+
 internal struct RemoveDeviceArgs {
     var id: UInt8
 
@@ -1170,7 +1388,7 @@ internal struct ServerPublicParamsSerialized {
 }
 
 internal struct SetCapabilitiesArgs {
-    var capabilities: [DeviceCapabilityInternal]
+    var capabilities: [DeviceCapability]
 
 }
 
@@ -1265,6 +1483,27 @@ internal struct TestingAnySignedPreKey {
 extension ProfileKeyCredentialRequestError: Equatable {}
 
 extension ReceiptCredentialError: Equatable {}
+
+internal enum DerivedReturnConverterBadgeVisibility: NiceReturnConverter {
+    typealias NiceReturn = BadgeVisibility
+    typealias FfiReturn = SignalBadgeVisibilityFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeVisibilityFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalBadgeVisibilityFfiResultDoNotSet:
+            return BadgeVisibility.doNotSet
+        case SignalBadgeVisibilityFfiResultSetVisible:
+            return BadgeVisibility.setVisible
+        case SignalBadgeVisibilityFfiResultSetPrimary:
+            return BadgeVisibility.setPrimary
+        default:
+            throw SignalError.internalError("Unexpected enum tag for BadgeVisibility: \(ffiTag)")
+        }
+    }
+}
 
 internal enum DerivedReturnConverterBridgeCopyBackupMediaItem: NiceReturnConverter {
     typealias NiceReturn = BridgeCopyBackupMediaItem
@@ -1585,6 +1824,58 @@ internal enum DerivedReturnConverterCopyBackupMediaOut: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterCreateDonationPermitsArgs: NiceReturnConverter {
+    typealias NiceReturn = CreateDonationPermitsArgs
+    typealias FfiReturn = SignalCreateDonationPermitsArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCreateDonationPermitsArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let request_context = Result {
+            try ByteArrayConverter<DonationPermitRequestContext>.convertReturn(consuming: ffiValue.request_context)
+        }
+        let server_params = Result {
+            try DerivedReturnConverterServerPublicParamsSerialized.convertReturn(consuming: ffiValue.server_params)
+        }
+
+        return CreateDonationPermitsArgs(
+            requestContext: try request_context.get(),
+            serverParams: try server_params.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterCreateDonationPermitsOut: NiceReturnConverter {
+    typealias NiceReturn = CreateDonationPermitsOut
+    typealias FfiReturn = SignalCreateDonationPermitsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalCreateDonationPermitsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalCreateDonationPermitsOutFfiResultSuccess:
+            let _0 = Result {
+                try ArrayReturnConverter<ByteArrayConverter<DonationPermit>, SignalOwnedBufferOfMaxAlignedOwnedBuffer>
+                    .convertReturn(
+                        consuming: ffiValue.success._0
+                    )
+            }
+            return CreateDonationPermitsOut.success(try _0.get())
+        case SignalCreateDonationPermitsOutFfiResultUnexpectedError:
+            let contains = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.unexpected_error.contains
+                )
+            }
+            return CreateDonationPermitsOut.unexpectedError(contains: try contains.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for CreateDonationPermitsOut: \(ffiTag)")
+        }
+    }
+}
+
 internal enum DerivedReturnConverterCreateLoginReceiptCredentialArgs: NiceReturnConverter {
     typealias NiceReturn = CreateLoginReceiptCredentialArgs
     typealias FfiReturn = SignalCreateLoginReceiptCredentialArgsFfiResult
@@ -1686,7 +1977,7 @@ internal enum DerivedReturnConverterDeleteBackupMediaOut: NiceReturnConverter {
 }
 
 internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverter {
-    typealias NiceReturn = DeviceCapabilityInternal
+    typealias NiceReturn = DeviceCapability
     typealias FfiReturn = SignalDeviceCapabilityInternalFfiResult
     static func emptyFfiReturn() -> FfiReturn {
         SignalDeviceCapabilityInternalFfiResult(0)
@@ -1695,19 +1986,19 @@ internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverte
         let ffiTag = ffiValue
         switch ffiTag {
         case SignalDeviceCapabilityInternalFfiResultStorage:
-            return DeviceCapabilityInternal.storage
+            return DeviceCapability.storage
         case SignalDeviceCapabilityInternalFfiResultTransfer:
-            return DeviceCapabilityInternal.transfer
+            return DeviceCapability.transfer
         case SignalDeviceCapabilityInternalFfiResultAttachmentBackfill:
-            return DeviceCapabilityInternal.attachmentBackfill
+            return DeviceCapability.attachmentBackfill
         case SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet:
-            return DeviceCapabilityInternal.sparsePostQuantumRatchet
+            return DeviceCapability.sparsePostQuantumRatchet
         case SignalDeviceCapabilityInternalFfiResultProfilesV2:
-            return DeviceCapabilityInternal.profilesV2
+            return DeviceCapability.profilesV2
         case SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage:
-            return DeviceCapabilityInternal.usernameChangeSyncMessage
+            return DeviceCapability.usernameChangeSyncMessage
         case SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber:
-            return DeviceCapabilityInternal.optionalPhoneNumber
+            return DeviceCapability.optionalPhoneNumber
         default:
             throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
         }
@@ -1854,6 +2145,30 @@ internal enum DerivedReturnConverterGetDevicesOut: NiceReturnConverter {
         }
 
         return GetDevicesOut(devices: try devices.get())
+    }
+}
+
+internal enum DerivedReturnConverterGetEntitlementsOut: NiceReturnConverter {
+    typealias NiceReturn = GetEntitlementsOut
+    typealias FfiReturn = SignalGetEntitlementsOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetEntitlementsOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetEntitlementsOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterAccountEntitlements.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetEntitlementsOut.success(try _0.get())
+        case SignalGetEntitlementsOutFfiResultMalformed:
+            return GetEntitlementsOut.malformed
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetEntitlementsOut: \(ffiTag)")
+        }
     }
 }
 
@@ -2536,6 +2851,55 @@ internal enum DerivedReturnConverterRedeemBackupReceiptOut: NiceReturnConverter 
             return RedeemBackupReceiptOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for RedeemBackupReceiptOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterRedeemDonationReceiptArgs: NiceReturnConverter {
+    typealias NiceReturn = RedeemDonationReceiptArgs
+    typealias FfiReturn = SignalRedeemDonationReceiptArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRedeemDonationReceiptArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let presentation = Result {
+            try FixedLengthSerializedConverter<ReceiptCredentialPresentation, FixedByteArrayHelper329>.convertReturn(
+                consuming: ffiValue.presentation
+            )
+        }
+        let visibility = Result {
+            try DerivedReturnConverterBadgeVisibility.convertReturn(consuming: ffiValue.visibility)
+        }
+
+        return RedeemDonationReceiptArgs(presentation: try presentation.get(), visibility: try visibility.get())
+    }
+}
+
+internal enum DerivedReturnConverterRedeemDonationReceiptOut: NiceReturnConverter {
+    typealias NiceReturn = RedeemDonationReceiptOut
+    typealias FfiReturn = SignalRedeemDonationReceiptOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalRedeemDonationReceiptOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalRedeemDonationReceiptOutFfiResultSuccess:
+            return RedeemDonationReceiptOut.success
+        case SignalRedeemDonationReceiptOutFfiResultInvalidReceipt:
+            return RedeemDonationReceiptOut.invalidReceipt
+        case SignalRedeemDonationReceiptOutFfiResultAlreadyRedeemed:
+            return RedeemDonationReceiptOut.alreadyRedeemed
+        case SignalRedeemDonationReceiptOutFfiResultUnexpectedError:
+            let contains = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.unexpected_error.contains
+                )
+            }
+            return RedeemDonationReceiptOut.unexpectedError(contains: try contains.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for RedeemDonationReceiptOut: \(ffiTag)")
         }
     }
 }
@@ -3956,6 +4320,22 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_CreateDonationPermitsTests() throws -> [GrpcTestCase<
+        CreateDonationPermitsArgs, CreateDonationPermitsOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterCreateDonationPermitsArgs, DerivedReturnConverterCreateDonationPermitsOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_create_donation_permits_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterCreateDonationPermitsArgs, DerivedReturnConverterCreateDonationPermitsOut
+        >.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_CreateLoginReceiptCredentialTests() throws -> [GrpcTestCase<
         CreateLoginReceiptCredentialArgs, CreateLoginReceiptCredentialOut
     >] {
@@ -4125,6 +4505,19 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetDevicesOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_GetEntitlementsTests() throws -> [GrpcTestCase<Void, GetEntitlementsOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetEntitlementsOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_entitlements_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetEntitlementsOut>.convertReturn(
             consuming: rawOutput
         )
 
@@ -4532,6 +4925,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<DataConverter, DerivedReturnConverterRedeemBackupReceiptOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_RedeemDonationReceiptTests() throws -> [GrpcTestCase<
+        RedeemDonationReceiptArgs, RedeemDonationReceiptOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterRedeemDonationReceiptArgs, DerivedReturnConverterRedeemDonationReceiptOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_redeem_donation_receipt_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterRedeemDonationReceiptArgs, DerivedReturnConverterRedeemDonationReceiptOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_RemoveDeviceTests() throws -> [GrpcTestCase<RemoveDeviceArgs, RemoveDeviceOut>] {
@@ -5076,6 +5485,90 @@ internal enum NativeTestingNice {
         }
 
     }
+    internal static func TESTING_conversion_MapStringMySimpleTestEnum_identity(
+        x: [String: MySimpleTestEnum],
+    ) throws -> [String: MySimpleTestEnum] {
+        try StringMapArgConverter<
+            DerivedArgConverterMySimpleTestEnum, SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg,
+            SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringMapReturnConverter<
+                DerivedReturnConverterMySimpleTestEnum,
+                SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult,
+                SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_my_simple_test_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringMapReturnConverter<
+                DerivedReturnConverterMySimpleTestEnum,
+                SignalOwnedBufferOfMaxAlignedPairOfCStringPtrMySimpleTestEnumFfiResult,
+                SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_MapStringMySimpleTestEnum_to_string(
+        x: [String: MySimpleTestEnum],
+    ) throws -> String {
+        try StringMapArgConverter<
+            DerivedArgConverterMySimpleTestEnum, SignalBorrowedSliceOfPairOfCStringPtrMySimpleTestEnumFfiArg,
+            SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_my_simple_test_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_MapStringString_identity(
+        x: [String: String],
+    ) throws -> [String: String] {
+        try StringMapArgConverter<
+            StringConverter, SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, SignalPairOfCStringPtrCStringPtr
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringMapReturnConverter<
+                StringConverter, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr,
+                SignalPairOfCStringPtrCStringPtr
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_string_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringMapReturnConverter<
+                StringConverter, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrCStringPtr,
+                SignalPairOfCStringPtrCStringPtr
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_MapStringString_to_string(
+        x: [String: String],
+    ) throws -> String {
+        try StringMapArgConverter<
+            StringConverter, SignalBorrowedSliceOfPairOfCStringPtrCStringPtr, SignalPairOfCStringPtrCStringPtr
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_map_string_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_conversion_OptionalBytes_identity(
         x: Data?,
     ) throws -> Data? {
@@ -5163,6 +5656,78 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_optional_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringMySimpleTestEnum_identity(
+        x: (String, MySimpleTestEnum),
+    ) throws -> (String, MySimpleTestEnum) {
+        try PairOfArgConverter<
+            StringConverter, DerivedArgConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = PairOfResultConverter<
+                StringConverter, DerivedReturnConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_my_simple_test_enum_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try PairOfResultConverter<
+                StringConverter, DerivedReturnConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiResult
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringMySimpleTestEnum_to_string(
+        x: (String, MySimpleTestEnum),
+    ) throws -> String {
+        try PairOfArgConverter<
+            StringConverter, DerivedArgConverterMySimpleTestEnum, SignalPairOfCStringPtrMySimpleTestEnumFfiArg
+        >.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_my_simple_test_enum_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringString_identity(
+        x: (String, String),
+    ) throws -> (String, String) {
+        try PairOfArgConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>.convertArgBorrowed(x)
+        { xFfi in
+            var rawOutput = PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>
+                .emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_string_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try PairOfResultConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>
+                .convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_PairStringString_to_string(
+        x: (String, String),
+    ) throws -> String {
+        try PairOfArgConverter<StringConverter, StringConverter, SignalPairOfCStringPtrCStringPtr>.convertArgBorrowed(x)
+        { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_pair_string_string_to_string(
                     &rawOutput,
                     xFfi,
                 )

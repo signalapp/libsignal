@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.usernames.Username
@@ -26,17 +27,15 @@ public class UnauthUsernamesService(
    * [RequestResult.ApplicationError].
    */
   public fun lookUpUsernameHash(hash: ByteArray): CompletableFuture<RequestResult<ServiceId.Aci?, Nothing>> =
-    try {
+    liftExceptions {
       connection
         .runWithContextAndConnectionHandles { asyncCtx, conn ->
           Native.UnauthenticatedChatConnection_look_up_username_hash(asyncCtx, conn, hash)
-        }.mapWithCancellation(
-          onSuccess = { uuid -> RequestResult.Success(uuid?.let(ServiceId::Aci)) },
-          onError = { err -> err.toRequestResult() },
-        )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+        }
+    }.mapWithCancellation(
+      onSuccess = { uuid -> RequestResult.Success(uuid?.let(ServiceId::Aci)) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Looks up a username link on the service by UUID.
@@ -51,21 +50,19 @@ public class UnauthUsernamesService(
     uuid: UUID,
     entropy: ByteArray,
   ): CompletableFuture<RequestResult<Username?, LookUpUsernameLinkFailure>> =
-    try {
+    liftExceptions {
       connection
         .runWithContextAndConnectionHandles { asyncCtx, conn ->
           Native.UnauthenticatedChatConnection_look_up_username_link(asyncCtx, conn, uuid, entropy)
-        }.mapWithCancellation(
-          onSuccess = { pair ->
-            if (pair == null) {
-              RequestResult.Success(null)
-            } else {
-              RequestResult.Success(Username._withPrecomputedHash(pair.first, pair.second))
-            }
-          },
-          onError = { err -> err.toRequestResult<LookUpUsernameLinkFailure>() },
-        )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(e.toRequestResult<LookUpUsernameLinkFailure>())
-    }
+        }
+    }.mapWithCancellation(
+      onSuccess = { pair ->
+        if (pair == null) {
+          RequestResult.Success(null)
+        } else {
+          RequestResult.Success(Username._withPrecomputedHash(pair.first, pair.second))
+        }
+      },
+      onError = { err -> err.toRequestResult<LookUpUsernameLinkFailure>() },
+    )
 }

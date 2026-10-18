@@ -170,6 +170,9 @@ public object NativeTesting {
   public external fun TESTING_CopyBackupMediaTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_CreateDonationPermitsTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_CreateLoginReceiptCredentialTests(): Array<Object>
 
   @JvmStatic
@@ -195,6 +198,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_DeleteUsernameLinkTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_DowncastViaAsTypeOnReturn(x: Long): Int
 
   @JvmStatic
   public external fun TESTING_EnableDeterministicRngForTesting(): Unit
@@ -399,6 +405,9 @@ public object NativeTesting {
   public external fun TESTING_GetDevicesTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetEntitlementsTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetMediaBackupInfoTests(): Array<Object>
 
   @JvmStatic
@@ -563,6 +572,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_RedeemBackupReceiptTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_RedeemDonationReceiptTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_RegisterAccountResponse_CreateTestValue(): ObjectHandle
@@ -770,6 +782,18 @@ public object NativeTesting {
   public external fun TESTING_conversion_Float_to_string(x: Float): String
 
   @JvmStatic
+  public external fun TESTING_conversion_MapStringMySimpleTestEnum_identity(x: Array<*>): Array<*>
+
+  @JvmStatic
+  public external fun TESTING_conversion_MapStringMySimpleTestEnum_to_string(x: Array<*>): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_MapStringString_identity(x: Array<*>): Array<*>
+
+  @JvmStatic
+  public external fun TESTING_conversion_MapStringString_to_string(x: Array<*>): String
+
+  @JvmStatic
   public external fun TESTING_conversion_OptionalBytes_identity(x: ByteArray?): ByteArray?
 
   @JvmStatic
@@ -786,6 +810,18 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_conversion_OptionalString_to_string(x: String?): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_PairStringMySimpleTestEnum_identity(x: Array<*>): Pair<String, Object>
+
+  @JvmStatic
+  public external fun TESTING_conversion_PairStringMySimpleTestEnum_to_string(x: Array<*>): String
+
+  @JvmStatic
+  public external fun TESTING_conversion_PairStringString_identity(x: Array<*>): Pair<String, String>
+
+  @JvmStatic
+  public external fun TESTING_conversion_PairStringString_to_string(x: Array<*>): String
 
   @JvmStatic
   public external fun TESTING_conversion_ServiceId_identity(x: ByteArray): ByteArray

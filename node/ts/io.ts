@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import type { IoError } from './Errors.js';
 
@@ -29,7 +31,7 @@ export abstract class InputStream {
    * @returns A promise yielding a {@link Uint8Array} containing the read bytes.
    * @throws {IoError} If an I/O error occurred while reading from the input.
    */
-  abstract read(amount: number): Promise<Uint8Array<ArrayBuffer>>;
+  abstract read(amount: number): Promise<Bytes>;
 
   /**
    * Skip an amount of bytes in the input stream.
@@ -47,7 +49,7 @@ export function _bridgeInputStream(
   inputStream: InputStream
 ): Native.InputStream {
   return {
-    read(amount: number): Promise<Uint8Array<ArrayBuffer>> {
+    read(amount: number): Promise<Bytes> {
       return inputStream.read(amount);
     },
     skip(amount: bigint): Promise<void> {

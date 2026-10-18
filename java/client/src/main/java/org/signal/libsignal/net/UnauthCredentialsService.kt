@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 
 public sealed class AuthCheckResult {
@@ -55,18 +56,16 @@ public class UnauthCredentialsService(
     number: String,
     credentials: List<String>,
   ): CompletableFuture<RequestResult<Map<String, AuthCheckResult>, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .UnauthenticatedChatConnection_check_svr_credentials(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           number = number,
           credentials = credentials,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it.toMap()) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it.toMap()) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

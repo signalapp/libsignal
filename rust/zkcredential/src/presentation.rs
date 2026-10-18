@@ -242,7 +242,6 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
 
         // These terms are from Chase-Perrin-Zaverucha section 4.1,
         // proving the validity of the encryption keys.
-        let mut encryption_sum_terms = vec![];
         for key in &self.encryption_keys {
             let key_id = key.id();
             let a1 = format!("a1_{key_id}");
@@ -252,22 +251,16 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
             // 0 = z1_uid * I + a1_uid * Z
             st.add("0", &[(&format!("z1_{key_id}"), "I"), (&a1, "Z")]);
 
+            // A_uid = (a1_uid * G_a1_uid) + (a2_uid * G_a2_uid)
             if key.public_key().is_some() {
-                encryption_sum_terms.push((a1, format!("G_a1_{key_id}")));
-                encryption_sum_terms.push((format!("a2_{key_id}"), format!("G_a2_{key_id}")));
+                st.add(
+                    &format!("A_{key_id}"),
+                    &[
+                        (&a1, &format!("G_a1_{key_id}")),
+                        (&format!("a2_{key_id}"), &format!("G_a2_{key_id}")),
+                    ],
+                );
             }
-        }
-        if !encryption_sum_terms.is_empty() {
-            // sum(A) = (a1_uid * G_a1_uid) + (a2_uid * G_a2_uid) +
-            //          (a1_profilekey * G_a1_profilekey) + (a2_profilekey * G_a2_profilekey) +
-            //          ...
-            st.add(
-                "sum(A)",
-                &encryption_sum_terms
-                    .iter()
-                    .map(|(a, b)| (a.as_str(), b.as_str()))
-                    .collect::<Vec<_>>(),
-            );
         }
 
         for attr in &self.attributes {
@@ -325,7 +318,7 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
     /// This includes the credential key commitments `C_x0`, `C_x1`, and `C_y0`; the system points
     /// `G_x0`, `G_x1`, and all `G_y{i}`; the appropriate issuing parameter point `I`; and the
     /// points necessary to prove the validity of encryption keys: `0`, `G_a1_{key}`, `G_a2_{key}`,
-    /// and `sum(A)`.
+    /// and `A_{key}`.
     ///
     /// The caller is responsible for handling the presenter's one-off public point `Z` (which the
     /// verifier derives from the commitments and public attributes); the appropriate `C_y{i}` for
@@ -348,17 +341,13 @@ impl<'a, T: MayHavePublicKey> PresentationProofBuilderCore<'a, T> {
 
         if !self.encryption_keys.is_empty() {
             point_args.add("0", RistrettoPoint::identity());
-            let mut sum_A = RistrettoPoint::identity();
             for key in &self.encryption_keys {
                 if let Some(key) = key.public_key() {
                     let [G_a1, G_a2] = (key.G_a)();
                     point_args.add(format!("G_a1_{}", key.id), G_a1);
                     point_args.add(format!("G_a2_{}", key.id), G_a2);
-                    sum_A += key.A;
+                    point_args.add(format!("A_{}", key.id), key.A);
                 }
-            }
-            if sum_A != RistrettoPoint::identity() {
-                point_args.add("sum(A)", sum_A);
             }
         }
 

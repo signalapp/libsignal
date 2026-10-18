@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import { StandardNetworkError } from '../../Errors.js';
@@ -121,13 +123,13 @@ export type CallQualitySurvey = {
    * entity generated (and, critically, explained to the user!) by the calling
    * library
    */
-  callTelemetry: Uint8Array<ArrayBuffer> | null;
+  callTelemetry: Bytes | null;
   /*
    * Machine-generated telemetry from the call, this is a serialized protobuf
    * entity generated (and, critically, explained to the user!) by the calling
    * library
    */
-  callIdHash: Uint8Array<ArrayBuffer> | null;
+  callIdHash: Bytes | null;
 };
 
 export interface UnauthCallQualityService {

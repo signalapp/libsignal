@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { ServiceId } from './Address.js';
 import type { CdnCredentials } from './net/chat/CdnCredentials.js';
 import * as Native from './Native.js';
@@ -19,9 +21,7 @@ export function identity<T>(t: T): T {
   return t;
 }
 
-export function serviceIdArgConverter(
-  account: ServiceId
-): Uint8Array<ArrayBuffer> {
+export function serviceIdArgConverter(account: ServiceId): Bytes {
   return account.getServiceIdFixedWidthBinary();
 }
 
@@ -88,5 +88,33 @@ export function liftNull<In, Out>(
   return function (x: In | null): Out | null {
     if (x === null) return null;
     return f(x);
+  };
+}
+
+export function stringMapArgConverter<ValueFfi, ValueNice>(
+  f: (x: ValueNice) => ValueFfi
+): (map: Map<string, ValueNice>) => (string | ValueFfi)[] {
+  return function (map: Map<string, ValueNice>): (string | ValueFfi)[] {
+    const out: (string | ValueFfi)[] = [];
+    for (const [k, v] of map.entries()) {
+      out.push(k);
+      out.push(f(v));
+    }
+    return out;
+  };
+}
+
+export function stringMapResultConverter<ValueFfi, ValueNice>(
+  f: (x: ValueFfi) => ValueNice
+): (entries: (string | ValueFfi)[]) => Map<string, ValueNice> {
+  return function (entries: (string | ValueFfi)[]): Map<string, ValueNice> {
+    if (entries.length % 2 !== 0) {
+      throw new RangeError('Expected an even-sized array');
+    }
+    const out: Map<string, ValueNice> = new Map();
+    for (let i = 0; i < entries.length; i += 2) {
+      out.set(entries[i] as string, f(entries[i + 1] as ValueFfi));
+    }
+    return out;
   };
 }

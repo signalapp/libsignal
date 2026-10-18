@@ -4,6 +4,8 @@
 //
 
 import type { ReadonlyDeep } from 'type-fest';
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import {
   cdsiLookup,
@@ -35,6 +37,7 @@ export * from './net/Chat.js';
 export * from './net/chat/AuthAccountsService.js';
 export * from './net/chat/AuthBackupsService.js';
 export * from './net/chat/AuthDevicesService.js';
+export * from './net/chat/AuthDonationsService.js';
 export * from './net/chat/AuthKeysService.js';
 export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthPaymentsService.js';
@@ -84,7 +87,7 @@ export type ChatRequest = Readonly<{
   verb: string;
   path: string;
   headers: ReadonlyArray<[string, string]>;
-  body?: Uint8Array<ArrayBuffer>;
+  body?: Bytes;
   timeoutMillis?: number;
 }>;
 
@@ -133,7 +136,7 @@ export type NetConstructorOptions = Readonly<
       TESTING_localServer_cdsiPort: number;
       TESTING_localServer_svr2Port: number;
       TESTING_localServer_svrBPort: number;
-      TESTING_localServer_rootCertificateDer: Uint8Array<ArrayBuffer>;
+      TESTING_localServer_rootCertificateDer: Bytes;
       TESTING_localServer_httpVersion?: 1 | 2;
     }
 >;

@@ -20,12 +20,15 @@ pub const MAGIC_NUMBER: &[u8] = b"SBACKUP\x01";
 // From HMAC_SHA256_TRUNCATED_BYTES in net's svrb.rs.
 const CT_MAC_LEN: usize = 16;
 const BACKUP_METADATA_IV_LEN: usize = 12;
+/// Generous upper bound on the size of the metadata frame, which is read before the HMAC is
+/// checked. A valid one (two pairs plus an IV) is a few hundred bytes.
+const MAX_METADATA_LEN: usize = 16 * 1024;
 
 impl<R: AsyncRead + Unpin> FramesReader<R> {
     pub async fn verify_metadata(reader: &mut R) -> Result<(), ValidationError> {
         let mut metadata_frame_reader = VarintDelimitedReader::new(reader);
         let metadata = metadata_frame_reader
-            .read_next()
+            .read_next_with_max_len(MAX_METADATA_LEN)
             .await?
             .ok_or_else(|| io::Error::from(io::ErrorKind::UnexpectedEof))?;
 

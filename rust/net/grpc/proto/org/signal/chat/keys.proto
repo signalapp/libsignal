@@ -110,6 +110,7 @@ message GetPreKeysRequest {
 
 message GetPreKeysAnonymousRequest {
   // The request to retrieve pre-keys for a specific account/device(s).
+  // If `request.target_identifier` is a PNI, `authorization` must be a group send token.
   GetPreKeysRequest request = 1;
 
   // A means to authorize the request.

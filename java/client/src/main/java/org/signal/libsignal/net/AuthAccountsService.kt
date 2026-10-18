@@ -14,6 +14,7 @@ import org.signal.libsignal.internal.BridgeTotpParameters
 import org.signal.libsignal.internal.BridgeWebAuthnCreateParameters
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import java.time.Duration
 import java.time.Instant
@@ -312,6 +313,22 @@ public sealed class MfaVerificationCredential {
   ) : MfaVerificationCredential()
 }
 
+public data class AccountEntitlements(
+  public val badges: List<BadgeEntitlement>,
+  public val backup: BackupEntitlement?,
+)
+
+public data class BadgeEntitlement(
+  public val badgeId: String,
+  public val expiration: Instant,
+  public val visible: Boolean,
+)
+
+public data class BackupEntitlement(
+  public val level: Long,
+  public val expiration: Instant,
+)
+
 /**
  * Errors that [AuthAccountsService.generateTotpKey] can produce, in addition to the generic
  * request errors.
@@ -353,18 +370,16 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun deleteAccount(): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_delete_account(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Sets the registration lock secret for the authenticated account, given the account's SVR key
@@ -382,19 +397,17 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun setRegistrationLock(svrKey: SvrKey): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_registration_lock(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           svrKey = svrKey.internalContentsForJNI,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Removes any registration lock from the authenticated account.
@@ -408,18 +421,16 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun clearRegistrationLock(): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_clear_registration_lock(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Sets the registration recovery password for the authenticated account, given the account's SVR
@@ -435,19 +446,17 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun setRegistrationRecoveryPassword(svrKey: SvrKey): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_registration_recovery_password(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           svrKey = svrKey.internalContentsForJNI,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Sets whether the authenticated account may be discovered by phone number via the Contact
@@ -459,19 +468,17 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun setDiscoverableByPhoneNumber(discoverable: Boolean): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_discoverable_by_phone_number(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           discoverable = discoverable,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Generates and stores a new pending TOTP key for the authenticated account.
@@ -490,18 +497,16 @@ public class AuthAccountsService(
    * kinds; either way, one must be removed before adding more.
    */
   public fun generateTotpKey(): CompletableFuture<RequestResult<PendingTotpKey, GenerateTotpKeyError>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_generate_totp_key(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(PendingTotpKey.fromInternal(it)) },
-          onError = { err -> err.toRequestResult<GenerateTotpKeyError>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(PendingTotpKey.fromInternal(it)) },
+      onError = { err -> err.toRequestResult<GenerateTotpKeyError>() },
+    )
 
   /**
    * Confirms the account's pending TOTP key (see [generateTotpKey]), thus activating it.
@@ -532,7 +537,7 @@ public class AuthAccountsService(
     svrKey: SvrKey,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
   ): CompletableFuture<RequestResult<Int, ConfirmTotpKeyError>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_confirm_totp_key(
           asyncCtx = connection.tokioAsyncContext,
@@ -542,13 +547,11 @@ public class AuthAccountsService(
           createdAt = metadata.createdAt,
           svrKey = svrKey.internalContentsForJNI,
           rng = rngSeedForTesting,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<ConfirmTotpKeyError>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<ConfirmTotpKeyError>() },
+    )
 
   /**
    * Starts a WebAuthn registration ceremony, returning the parameters the authenticator needs to
@@ -567,18 +570,16 @@ public class AuthAccountsService(
    */
   public fun startWebAuthnRegistration():
     CompletableFuture<RequestResult<WebAuthnCreateParameters, StartWebAuthnRegistrationError>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_start_web_authn_registration(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(WebAuthnCreateParameters.fromInternal(it)) },
-          onError = { err -> err.toRequestResult<StartWebAuthnRegistrationError>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(WebAuthnCreateParameters.fromInternal(it)) },
+      onError = { err -> err.toRequestResult<StartWebAuthnRegistrationError>() },
+    )
 
   /**
    * Concludes a WebAuthn registration ceremony (see [startWebAuthnRegistration]), adding the new
@@ -609,7 +610,7 @@ public class AuthAccountsService(
     svrKey: SvrKey,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
   ): CompletableFuture<RequestResult<Int, FinishWebAuthnRegistrationError>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_finish_web_authn_registration(
           asyncCtx = connection.tokioAsyncContext,
@@ -620,13 +621,11 @@ public class AuthAccountsService(
           createdAt = metadata.createdAt,
           svrKey = svrKey.internalContentsForJNI,
           rng = rngSeedForTesting,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult<FinishWebAuthnRegistrationError>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult<FinishWebAuthnRegistrationError>() },
+    )
 
   /**
    * Starts a verification check for any of the MFA keys on the authenticated account.
@@ -647,18 +646,16 @@ public class AuthAccountsService(
    * @see [finishMfaVerification]
    */
   public fun startMfaVerification(): CompletableFuture<RequestResult<StartMfaVerificationResponse, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_start_mfa_verification(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Completes a verification check for any of the MFA keys on the authenticated account.
@@ -675,19 +672,17 @@ public class AuthAccountsService(
   public fun finishMfaVerification(
     credential: MfaVerificationCredential,
   ): CompletableFuture<RequestResult<Unit, MfaNotVerifiedException>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_finish_mfa_verification(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           credential = credential,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult<MfaNotVerifiedException>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult<MfaNotVerifiedException>() },
+    )
 
   /**
    * Lists the confirmed MFA keys for the authenticated account.
@@ -708,19 +703,17 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun listMfaKeys(svrKey: SvrKey): CompletableFuture<RequestResult<List<ConfirmedMfaKey>, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_list_mfa_keys(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           svrKey = svrKey.internalContentsForJNI,
-        ).mapWithCancellation(
-          onSuccess = { keys -> RequestResult.Success(keys.map { ConfirmedMfaKey.fromInternal(it) }) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { keys -> RequestResult.Success(keys.map { ConfirmedMfaKey.fromInternal(it) }) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Replaces the metadata attached to the confirmed MFA key identified by [keyId].
@@ -740,7 +733,7 @@ public class AuthAccountsService(
     svrKey: SvrKey,
     rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
   ): CompletableFuture<RequestResult<Unit, MfaKeyNotFoundException>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_mfa_key_metadata(
           asyncCtx = connection.tokioAsyncContext,
@@ -750,13 +743,11 @@ public class AuthAccountsService(
           createdAt = metadata.createdAt,
           svrKey = svrKey.internalContentsForJNI,
           rng = rngSeedForTesting,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult<MfaKeyNotFoundException>() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult<MfaKeyNotFoundException>() },
+    )
 
   /**
    * Removes the MFA key identified by [keyId] from the authenticated account.
@@ -769,17 +760,33 @@ public class AuthAccountsService(
    * [RequestResult.ApplicationError].
    */
   public fun removeMfaKey(keyId: Int): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_remove_mfa_key(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           keyId = keyId,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
+
+  /**
+   * Returns the current set of account entitlements (may be empty).
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun getEntitlements(): CompletableFuture<RequestResult<AccountEntitlements, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_get_entitlements(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        )
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

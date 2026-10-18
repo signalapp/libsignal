@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
 
 import { RANDOM_LENGTH } from '../internal/Constants.js';
@@ -40,7 +41,7 @@ export default class ClientZkProfileOperations {
   }
 
   createProfileKeyCredentialRequestContextWithRandom(
-    random: Uint8Array<ArrayBuffer>,
+    random: Bytes,
     userId: Aci,
     profileKey: ProfileKey
   ): ProfileKeyCredentialRequestContext {
@@ -83,7 +84,7 @@ export default class ClientZkProfileOperations {
   }
 
   createExpiringProfileKeyCredentialPresentationWithRandom(
-    random: Uint8Array<ArrayBuffer>,
+    random: Bytes,
     groupSecretParams: GroupSecretParams,
     profileKeyCredential: ExpiringProfileKeyCredential
   ): ProfileKeyCredentialPresentation {

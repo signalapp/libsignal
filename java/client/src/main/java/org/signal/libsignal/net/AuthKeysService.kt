@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.protocol.ecc.ECPublicKey
@@ -126,18 +127,16 @@ public class AuthKeysService(
    * [RequestResult.ApplicationError].
    */
   public fun getPreKeyCount(): CompletableFuture<RequestResult<PreKeyCounts, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_get_pre_key_count(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Uploads a new set of one-time EC pre-keys for the authenticated device, clearing any
@@ -151,14 +150,14 @@ public class AuthKeysService(
   public fun setOneTimeEcPreKeys(
     identity: ServiceId.Kind,
     preKeys: List<PublicEcPreKey>,
-  ): CompletableFuture<RequestResult<Unit, Nothing>> {
-    val ids = IntArray(preKeys.size)
-    val keys = ArrayList<ECPublicKey>(preKeys.size)
-    preKeys.forEachIndexed { i, next ->
-      ids[i] = next.keyId
-      keys.add(next.publicKey)
-    }
-    return try {
+  ): CompletableFuture<RequestResult<Unit, Nothing>> =
+    liftExceptions {
+      val ids = IntArray(preKeys.size)
+      val keys = ArrayList<ECPublicKey>(preKeys.size)
+      preKeys.forEachIndexed { i, next ->
+        ids[i] = next.keyId
+        keys.add(next.publicKey)
+      }
       NativeNice
         .AuthenticatedChatConnection_set_one_time_ec_pre_keys(
           asyncCtx = connection.tokioAsyncContext,
@@ -166,14 +165,11 @@ public class AuthKeysService(
           identityType = identity,
           preKeyIds = ids,
           preKeyData = keys,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
-  }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Uploads a new set of one-time KEM pre-keys for the authenticated device, clearing any
@@ -187,16 +183,16 @@ public class AuthKeysService(
   public fun setOneTimeKemPreKeys(
     identity: ServiceId.Kind,
     preKeys: List<PublicKemPreKey>,
-  ): CompletableFuture<RequestResult<Unit, Nothing>> {
-    val ids = IntArray(preKeys.size)
-    val keys = ArrayList<KEMPublicKey>(preKeys.size)
-    val signatures = ArrayList<ByteArray>(preKeys.size)
-    preKeys.forEachIndexed { i, next ->
-      ids[i] = next.keyId
-      keys.add(next.publicKey)
-      signatures.add(next.signature)
-    }
-    return try {
+  ): CompletableFuture<RequestResult<Unit, Nothing>> =
+    liftExceptions {
+      val ids = IntArray(preKeys.size)
+      val keys = ArrayList<KEMPublicKey>(preKeys.size)
+      val signatures = ArrayList<ByteArray>(preKeys.size)
+      preKeys.forEachIndexed { i, next ->
+        ids[i] = next.keyId
+        keys.add(next.publicKey)
+        signatures.add(next.signature)
+      }
       NativeNice
         .AuthenticatedChatConnection_set_one_time_kem_pre_keys(
           asyncCtx = connection.tokioAsyncContext,
@@ -205,14 +201,11 @@ public class AuthKeysService(
           preKeyIds = ids,
           preKeyData = keys,
           preKeySignatures = signatures,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
-  }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Uploads a new signed EC pre-key for the authenticated device, clearing the
@@ -225,7 +218,7 @@ public class AuthKeysService(
     identity: ServiceId.Kind,
     preKey: PublicSignedEcPreKey,
   ): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_signed_ec_pre_key(
           asyncCtx = connection.tokioAsyncContext,
@@ -234,13 +227,11 @@ public class AuthKeysService(
           id = preKey.keyId,
           key = preKey.publicKey,
           signature = preKey.signature,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 
   /**
    * Uploads a new last-resort KEM pre-key for the authenticated device, clearing the
@@ -253,7 +244,7 @@ public class AuthKeysService(
     identity: ServiceId.Kind,
     preKey: PublicKemPreKey,
   ): CompletableFuture<RequestResult<Unit, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_set_last_resort_kem_pre_key(
           asyncCtx = connection.tokioAsyncContext,
@@ -262,11 +253,9 @@ public class AuthKeysService(
           id = preKey.keyId,
           key = preKey.publicKey,
           signature = preKey.signature,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

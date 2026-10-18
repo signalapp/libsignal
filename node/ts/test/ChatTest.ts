@@ -8,6 +8,7 @@ import {
   Server,
   loadCertificates,
 } from '@signalapp/mock-server';
+import type { Bytes } from '@signalapp/types';
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
@@ -89,15 +90,17 @@ describe('chat connection to mock server', () => {
     await chatServer.init();
 
     const port = chatServer.port;
+    const DISCARD_PORT = 9; // Reserved by RFC 863.
 
     network = new Net({
       localTestServer: true,
       userAgent,
       TESTING_localServer_chatPort: port,
-      TESTING_localServer_cdsiPort: port,
-      TESTING_localServer_svr2Port: port,
-      TESTING_localServer_svrBPort: port,
+      TESTING_localServer_cdsiPort: DISCARD_PORT,
+      TESTING_localServer_svr2Port: DISCARD_PORT,
+      TESTING_localServer_svrBPort: DISCARD_PORT,
       TESTING_localServer_rootCertificateDer: pemToDer(certificateAuthority),
+      TESTING_localServer_httpVersion: 2,
     });
   });
 
@@ -128,7 +131,7 @@ describe('chat connection to mock server', () => {
       async (listener: ConnectionEventsListener | ChatServiceListener) => {
         const serviceListener = {
           onIncomingMessage: (
-            _envelope: Uint8Array<ArrayBuffer>,
+            _envelope: Bytes,
             _timestamp: number,
             _ack: ChatServerMessageAck
           ) => {},
@@ -188,7 +191,7 @@ describe('chat connection to mock server', () => {
               void promisedAlerts.resolve(alerts);
             },
             onIncomingMessage: (
-              _envelope: Uint8Array<ArrayBuffer>,
+              _envelope: Bytes,
               _timestamp: number,
               _ack: ChatServerMessageAck
             ) => {},

@@ -1025,7 +1025,9 @@ pub mod test_cases {
 
     use super::*;
     use crate::grpc::GrpcTestCase;
-    use crate::grpc::test_case_util::{status_for_server_side_error, stream};
+    use crate::grpc::test_case_util::{
+        status_for_server_side_error, stream, test_receipt_credential_presentation,
+    };
 
     #[derive(Debug)]
     pub enum CopyBackupMediaOut {
@@ -1368,34 +1370,6 @@ pub mod test_cases {
             presentation: BackupAuth::EXPECTED_TEST_PRESENTATION.to_vec(),
             presentation_signature: BackupAuth::EXPECTED_TEST_SIGNATURE.to_vec(),
         }
-    }
-
-    /// A structurally-valid receipt credential presentation.
-    ///
-    /// Our tests never actually verify these presentations, so it's fine that the server params are synthetic.
-    fn test_backup_receipt_credential_presentation()
-    -> zkgroup::receipts::ReceiptCredentialPresentation {
-        let server_keys =
-            zkgroup::server_params::ServerSecretParams::generate([b's'; zkgroup::RANDOMNESS_LEN]);
-        let server_public = server_keys.get_public_params();
-
-        let context = server_public.create_receipt_credential_request_context(
-            [b'r'; zkgroup::RANDOMNESS_LEN],
-            [b'r'; zkgroup::RECEIPT_SERIAL_LEN],
-        );
-        let request = context.get_request();
-        let expiration = zkgroup::Timestamp::from_epoch_seconds(1771545600); // 2026-02-20 00:00
-        let response = server_keys.issue_receipt_credential(
-            [b'i'; zkgroup::RANDOMNESS_LEN],
-            &request,
-            expiration,
-            200,
-        );
-        let credential = server_public
-            .receive_receipt_credential(&context, &response)
-            .expect("valid");
-        server_public
-            .create_receipt_credential_presentation([b'p'; zkgroup::RANDOMNESS_LEN], &credential)
     }
 
     #[derive(Debug)]
@@ -2077,7 +2051,7 @@ pub mod test_cases {
         >,
     > {
         let method = "/org.signal.chat.backup.Backups/RedeemReceipt";
-        let presentation = test_backup_receipt_credential_presentation();
+        let presentation = test_receipt_credential_presentation();
         let request_grpc = RedeemReceiptRequest {
             presentation: zkgroup::serialize(&presentation),
         };

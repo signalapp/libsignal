@@ -96,6 +96,7 @@ public enum SignalError: Error {
     case mfaKeyNotFound(String)
     case webAuthnRegistrationUnsuccessful(String)
     case profileNotFound(String)
+    case receiptAlreadyRedeemed(String)
 
     case unknown(UInt32, String)
 
@@ -412,6 +413,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.webAuthnRegistrationUnsuccessful(errStr)
     case SignalErrorCodeProfileNotFound:
         throw SignalError.profileNotFound(errStr)
+    case SignalErrorCodeReceiptAlreadyRedeemed:
+        throw SignalError.receiptAlreadyRedeemed(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

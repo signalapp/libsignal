@@ -52,7 +52,7 @@
 //! export function SenderKeyMessage_New(
 //!     keyId: number,
 //!     iteration: number,
-//!     ciphertext: Uint8Array<ArrayBuffer>,
+//!     ciphertext: Bytes,
 //!     pk: Wrapper<PrivateKey>
 //! ): SenderKeyMessage;
 //! ```

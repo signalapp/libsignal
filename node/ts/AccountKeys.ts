@@ -10,6 +10,8 @@
  */
 
 import * as crypto from 'node:crypto';
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import * as NativeNice from './NativeNice.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -48,9 +50,7 @@ export class AccountEntropyPool {
    * `accountEntropyPool` must be a **validated** account entropy pool;
    * passing an arbitrary string here is considered a programmer error.
    */
-  public static deriveSvrKey(
-    accountEntropyPool: string
-  ): Uint8Array<ArrayBuffer> {
+  public static deriveSvrKey(accountEntropyPool: string): Bytes {
     return Native.AccountEntropyPool_DeriveSvrKey(accountEntropyPool);
   }
 
@@ -80,33 +80,33 @@ export class SvrKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, SvrKey.checkLength(SvrKey.SIZE));
   }
 
   /** Derives the raw 32-byte token used to enable registration lock. */
-  deriveRegistrationLock(): Uint8Array<ArrayBuffer> {
+  deriveRegistrationLock(): Bytes {
     return NativeNice.SvrKey_DeriveRegistrationLock({
       svrKey: this.getContents(),
     });
   }
 
   /** Derives the raw 32-byte password used to recover an account without SMS verification. */
-  deriveRegistrationRecoveryPassword(): Uint8Array<ArrayBuffer> {
+  deriveRegistrationRecoveryPassword(): Bytes {
     return NativeNice.SvrKey_DeriveRegistrationRecoveryPassword({
       svrKey: this.getContents(),
     });
   }
 
   /** Derives the raw 32-byte root key used to encrypt data in Storage Service. */
-  deriveStorageServiceKey(): Uint8Array<ArrayBuffer> {
+  deriveStorageServiceKey(): Bytes {
     return NativeNice.SvrKey_DeriveStorageServiceKey({
       svrKey: this.getContents(),
     });
   }
 
   /** Derives the raw 32-byte key used to obscure sensitive identifiers in logs. */
-  deriveLoggingKey(): Uint8Array<ArrayBuffer> {
+  deriveLoggingKey(): Bytes {
     return NativeNice.SvrKey_DeriveLoggingKey({
       svrKey: this.getContents(),
     });
@@ -124,7 +124,7 @@ export class BackupKey extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, BackupKey.checkLength(BackupKey.SIZE));
   }
 
@@ -145,7 +145,7 @@ export class BackupKey extends ByteArray {
    *
    * Used for both message and media backups.
    */
-  public deriveBackupId(aci: Aci): Uint8Array<ArrayBuffer> {
+  public deriveBackupId(aci: Aci): Bytes {
     return Native.BackupKey_DeriveBackupId(
       this.contents,
       aci.getServiceIdFixedWidthBinary()
@@ -171,7 +171,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for message backup keys.
    */
-  public deriveLocalBackupMetadataKey(): Uint8Array<ArrayBuffer> {
+  public deriveLocalBackupMetadataKey(): Bytes {
     return Native.BackupKey_DeriveLocalBackupMetadataKey(this.contents);
   }
 
@@ -180,7 +180,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveMediaId(mediaName: string): Uint8Array<ArrayBuffer> {
+  public deriveMediaId(mediaName: string): Bytes {
     return Native.BackupKey_DeriveMediaId(this.contents, mediaName);
   }
 
@@ -191,9 +191,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveMediaEncryptionKey(
-    mediaId: Uint8Array<ArrayBuffer>
-  ): Uint8Array<ArrayBuffer> {
+  public deriveMediaEncryptionKey(mediaId: Bytes): Bytes {
     return Native.BackupKey_DeriveMediaEncryptionKey(this.contents, mediaId);
   }
 
@@ -205,9 +203,7 @@ export class BackupKey extends ByteArray {
    *
    * Only relevant for media backup keys.
    */
-  public deriveThumbnailTransitEncryptionKey(
-    mediaId: Uint8Array<ArrayBuffer>
-  ): Uint8Array<ArrayBuffer> {
+  public deriveThumbnailTransitEncryptionKey(mediaId: Bytes): Bytes {
     return Native.BackupKey_DeriveThumbnailTransitEncryptionKey(
       this.contents,
       mediaId
@@ -234,10 +230,7 @@ export class PinHash {
    * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
    * @param salt A 32 byte salt
    */
-  static fromSalt(
-    normalizedPin: Uint8Array<ArrayBuffer>,
-    salt: Uint8Array<ArrayBuffer>
-  ): PinHash {
+  static fromSalt(normalizedPin: Bytes, salt: Bytes): PinHash {
     return new PinHash(Native.PinHash_FromSalt(normalizedPin, salt));
   }
 
@@ -249,9 +242,9 @@ export class PinHash {
    * @param mrenclave The mrenclave where the hashed pin will be stored
    */
   static fromUsernameMrenclave(
-    normalizedPin: Uint8Array<ArrayBuffer>,
+    normalizedPin: Bytes,
     username: string,
-    mrenclave: Uint8Array<ArrayBuffer>
+    mrenclave: Bytes
   ): PinHash {
     return new PinHash(
       Native.PinHash_FromUsernameMrenclave(normalizedPin, username, mrenclave)
@@ -259,12 +252,12 @@ export class PinHash {
   }
 
   /** A 32 byte encryption key that can be used to encrypt or decrypt values before uploading them to a secure store. */
-  get encryptionKey(): Uint8Array<ArrayBuffer> {
+  get encryptionKey(): Bytes {
     return Native.PinHash_EncryptionKey(this);
   }
 
   /** A 32 byte secret that can be used to access a value in a secure store. */
-  get accessKey(): Uint8Array<ArrayBuffer> {
+  get accessKey(): Bytes {
     return Native.PinHash_AccessKey(this);
   }
 }
@@ -289,7 +282,7 @@ export const Pin = {
    * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin
    * @returns A hashed pin string that can be verified later
    */
-  localHash(normalizedPin: Uint8Array<ArrayBuffer>): string {
+  localHash(normalizedPin: Bytes): string {
     return Native.Pin_LocalHash(normalizedPin);
   },
 
@@ -300,10 +293,7 @@ export const Pin = {
    * @param normalizedPin A normalized, UTF-8 encoded byte representation of the pin to verify
    * @returns true if the pin matches the hash, false otherwise
    */
-  verifyLocalHash(
-    encodedHash: string,
-    normalizedPin: Uint8Array<ArrayBuffer>
-  ): boolean {
+  verifyLocalHash(encodedHash: string, normalizedPin: Bytes): boolean {
     return Native.Pin_VerifyLocalHash(encodedHash, normalizedPin);
   },
 };
@@ -318,7 +308,7 @@ export class BackupForwardSecrecyToken extends ByteArray {
   private readonly __type?: never;
   static SIZE = 32;
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(
       contents,
       BackupForwardSecrecyToken.checkLength(BackupForwardSecrecyToken.SIZE)

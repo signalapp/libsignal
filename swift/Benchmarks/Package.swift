@@ -20,14 +20,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/google/swift-benchmark", from: "0.1.0"),
-        .package(path: ".."),
+        .package(name: "LibSignalClient", path: "../.."),
     ],
     targets: [
         .target(
             name: "Benchmarks",
             dependencies: [
                 .product(name: "Benchmark", package: "swift-benchmark"),
-                .product(name: "LibSignalClient", package: "swift" /* the folder name, sigh */),
+                .product(name: "LibSignalClient", package: "LibSignalClient"),
             ],
             linkerSettings: [
                 .linkedLibrary("stdc++", .when(platforms: [.linux])),

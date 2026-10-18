@@ -9,6 +9,7 @@ import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
 import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.internal.TokioAsyncContext
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.keytrans.KeyTransparencyException
 import org.signal.libsignal.keytrans.Store
@@ -102,15 +103,9 @@ public class KeyTransparencyClient internal constructor(
     unidentifiedAccessKey: ByteArray?,
     usernameHash: ByteArray?,
     store: Store,
-  ): CompletableFuture<RequestResult<Unit, KeyTransparencyException>> {
-    val lastDistinguishedTreeHead =
-      try {
-        store.lastDistinguishedTreeHead
-      } catch (t: Throwable) {
-        return CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
-      }
-
-    return try {
+  ): CompletableFuture<RequestResult<Unit, KeyTransparencyException>> =
+    liftExceptions {
+      val lastDistinguishedTreeHead = store.lastDistinguishedTreeHead
       NativeHandleGuard(tokioAsyncContext).use { tokioContextGuard ->
         NativeHandleGuard(aciIdentityKey.publicKey).use { identityKeyGuard ->
           NativeHandleGuard(chatConnection).use { chatConnectionGuard ->
@@ -130,25 +125,22 @@ public class KeyTransparencyClient internal constructor(
                 lastDistinguishedTreeHead.orElse(null),
                 mode.isSelf(),
                 mode.isE164Discoverable() ?: true,
-              ).mapWithCancellation(
-                onSuccess = { (updatedAccountData, distinguished) ->
-                  try {
-                    store.setAccountData(aci, updatedAccountData)
-                    if (distinguished.isNotEmpty()) {
-                      store.setLastDistinguishedTreeHead(distinguished)
-                    }
-                    RequestResult.Success(Unit)
-                  } catch (t: Throwable) {
-                    RequestResult.ApplicationError(t)
-                  }
-                },
-                onError = { err -> err.toRequestResult<KeyTransparencyException>() },
               )
           }
         }
       }
-    } catch (t: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(t))
-    }
-  }
+    }.mapWithCancellation(
+      onSuccess = { (updatedAccountData, distinguished) ->
+        try {
+          store.setAccountData(aci, updatedAccountData)
+          if (distinguished.isNotEmpty()) {
+            store.setLastDistinguishedTreeHead(distinguished)
+          }
+          RequestResult.Success(Unit)
+        } catch (t: Throwable) {
+          RequestResult.ApplicationError(t)
+        }
+      },
+      onError = { err -> err.toRequestResult<KeyTransparencyException>() },
+    )
 }

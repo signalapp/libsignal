@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import type { StandardNetworkError } from '../../Errors.js';
@@ -79,7 +81,7 @@ export type PublicSignedEcPreKey = {
   /**
    * The signature of the public key by the appropriate identity key.
    */
-  signature: Uint8Array<ArrayBuffer>;
+  signature: Bytes;
 };
 
 /**
@@ -103,7 +105,7 @@ export type PublicKemPreKey = {
   /**
    * The signature of the public key by the appropriate identity key.
    */
-  signature: Uint8Array<ArrayBuffer>;
+  signature: Bytes;
 };
 
 export interface AuthKeysService {
@@ -213,7 +215,7 @@ AuthenticatedChatConnection.prototype.setOneTimeKemPreKeys = async function (
 ): Promise<void> {
   const ids = new Uint32Array(preKeys.length);
   const keys = new Array<KEMPublicKey>(preKeys.length);
-  const signatures = new Array<Uint8Array<ArrayBuffer>>(preKeys.length);
+  const signatures = new Array<Bytes>(preKeys.length);
   preKeys.forEach((next, i) => {
     ids[i] = next.keyId;
     keys[i] = next.publicKey;

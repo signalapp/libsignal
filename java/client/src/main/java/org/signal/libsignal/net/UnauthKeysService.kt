@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.IdentityKey
 import org.signal.libsignal.protocol.ServiceId
@@ -48,39 +49,41 @@ public class UnauthKeysService(
 
         is DeviceSpecifier.AllDevices -> -1
       }
-    return try {
-      connection.runWithContextAndConnectionHandles { asyncCtx, conn ->
-        // Suppress the warnings about java.lang.Object being inferred as the type
-        // parameter for mapWithCancellation
-        @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
-        when (auth) {
-          is UserBasedAuthorization.AccessKey -> {
-            Native.UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
-              asyncCtx,
-              conn,
-              auth.bytes,
-              target.toServiceIdFixedWidthBinary(),
-              device,
-            )
-          }
+    return liftExceptions {
+      connection
+        .runWithContextAndConnectionHandles { asyncCtx, conn ->
+          // Suppress the warnings about java.lang.Object being inferred as the type
+          // parameter for mapWithCancellation
+          @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
+          when (auth) {
+            is UserBasedAuthorization.AccessKey -> {
+              Native.UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
+                asyncCtx,
+                conn,
+                auth.bytes,
+                target.toServiceIdFixedWidthBinary(),
+                device,
+              )
+            }
 
-          is UserBasedAuthorization.GroupSend -> {
-            Native.UnauthenticatedChatConnection_get_pre_keys_group_auth(
-              asyncCtx,
-              conn,
-              auth.token.serialize(),
-              target.toServiceIdFixedWidthBinary(),
-              device,
-            )
-          }
+            is UserBasedAuthorization.GroupSend -> {
+              Native.UnauthenticatedChatConnection_get_pre_keys_group_auth(
+                asyncCtx,
+                conn,
+                auth.token.serialize(),
+                target.toServiceIdFixedWidthBinary(),
+                device,
+              )
+            }
 
-          is UserBasedAuthorization.UnrestrictedUnauthenticatedAccess -> {
-            Native.UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
-              asyncCtx,
-              conn,
-              target.toServiceIdFixedWidthBinary(),
-              device,
-            )
+            is UserBasedAuthorization.UnrestrictedUnauthenticatedAccess -> {
+              Native.UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
+                asyncCtx,
+                conn,
+                target.toServiceIdFixedWidthBinary(),
+                device,
+              )
+            }
           }
         }.mapWithCancellation(
           onSuccess = { out: Any ->
@@ -95,9 +98,6 @@ public class UnauthKeysService(
           },
           onError = { err -> err.toRequestResult<GetPreKeysError>() },
         )
-      }
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
   }
 }

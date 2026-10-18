@@ -195,7 +195,7 @@ public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegister
     }
 }
 
-public struct BadgeEntitlement: Equatable {
+public struct BadgeEntitlement: Equatable, Sendable {
     public let id: String
     public let visible: Bool
     public let expiration: TimeInterval
@@ -205,15 +205,32 @@ public struct BadgeEntitlement: Equatable {
         self.visible = visible
         self.expiration = expiration
     }
+
+    public init(id: String, visible: Bool, expiration: Date) {
+        self.init(id: id, visible: visible, expiration: expiration.timeIntervalSince1970)
+    }
+
+    // Extension for by-value bridging.
+    internal init(badgeId: String, expiration: Date, visible: Bool) {
+        self.init(id: badgeId, visible: visible, expiration: expiration)
+    }
+
+    public var expirationDate: Date {
+        Date(timeIntervalSince1970: expiration)
+    }
 }
 
-public struct BackupEntitlement: Equatable {
+public struct BackupEntitlement: Equatable, Sendable {
     public let expiration: TimeInterval
     public let level: UInt64
 
     public init(expiration: TimeInterval, level: UInt64) {
         self.expiration = expiration
         self.level = level
+    }
+
+    public init(expiration: Date, level: UInt64) {
+        self.init(expiration: expiration.timeIntervalSince1970, level: level)
     }
 
     fileprivate init?(fromResponse native: SignalConstPointerRegisterAccountResponse) throws {
@@ -231,6 +248,15 @@ public struct BackupEntitlement: Equatable {
             return nil
         }
         self.init(expiration: TimeInterval(expiration), level: level)
+    }
+
+    // Extension for by-value bridging.
+    internal init(level: Int64, expiration: Date) {
+        self.init(expiration: expiration, level: UInt64(bitPattern: level))
+    }
+
+    public var expirationDate: Date {
+        Date(timeIntervalSince1970: expiration)
     }
 }
 

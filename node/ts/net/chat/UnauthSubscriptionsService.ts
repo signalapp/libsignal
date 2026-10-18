@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import { Bytes } from '@signalapp/types';
+
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import * as zkgroup from '../../zkgroup/index.js';
@@ -51,7 +53,7 @@ export interface UnauthSubscriptionsService {
    */
   getSubscriptionReceiptCredential: (
     request: {
-      subscriberId: Uint8Array<ArrayBuffer>;
+      subscriberId: Bytes;
       receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
       serverParams: zkgroup.ServerPublicParams;
     },

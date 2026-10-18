@@ -4,7 +4,9 @@
 //
 
 import { assert } from 'chai';
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
+
 import * as SignalClient from '../index.js';
 
 export function initLogger(logLevel?: SignalClient.LogLevel): void {
@@ -62,48 +64,36 @@ export class CompletablePromise {
   }
 }
 
-export function assertByteArray(
-  hex: string,
-  actual: Uint8Array<ArrayBuffer>
-): void {
+export function assertByteArray(hex: string, actual: Bytes): void {
   const actualHex = Buffer.from(actual).toString('hex');
 
   assert.strictEqual(hex, actualHex);
 }
-export function assertArrayEquals(
-  expected: Uint8Array<ArrayBuffer>,
-  actual: Uint8Array<ArrayBuffer>
-): void {
+export function assertArrayEquals(expected: Bytes, actual: Bytes): void {
   const expectedHex = Buffer.from(expected).toString('hex');
   const actualHex = Buffer.from(actual).toString('hex');
 
   assert.strictEqual(expectedHex, actualHex);
 }
-export function assertArrayNotEquals(
-  expected: Uint8Array<ArrayBuffer>,
-  actual: Uint8Array<ArrayBuffer>
-): void {
+export function assertArrayNotEquals(expected: Bytes, actual: Bytes): void {
   const expectedHex = Buffer.from(expected).toString('hex');
   const actualHex = Buffer.from(actual).toString('hex');
 
   assert.notEqual(expectedHex, actualHex);
 }
 
-export function repeatedBytes(
-  fill: number,
-  count: number
-): Uint8Array<ArrayBuffer> {
-  const out = new Uint8Array<ArrayBuffer>(new ArrayBuffer(count));
+export function repeatedBytes(fill: number, count: number): Bytes {
+  const out = new Uint8Array(new ArrayBuffer(count));
   for (let i = 0; i < count; i++) {
     out[i] = fill;
   }
   return out;
 }
 
-export function fromBase64(base64: string): Uint8Array<ArrayBuffer> {
+export function fromBase64(base64: string): Bytes {
   return Uint8Array.from(Buffer.from(base64, 'base64'));
 }
-export function toBase64(buffer: Uint8Array<ArrayBuffer>): string {
+export function toBase64(buffer: Bytes): string {
   return Buffer.from(buffer).toString('base64');
 }
 

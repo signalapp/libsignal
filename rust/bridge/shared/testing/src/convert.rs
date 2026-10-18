@@ -7,6 +7,7 @@ use std::future::Future;
 
 use futures_util::{AsyncReadExt as _, FutureExt};
 use io::{AsyncInput, InputStream};
+use itertools::Itertools as _;
 use libsignal_bridge_macros::*;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::support::*;
@@ -389,6 +390,8 @@ pub mod test_conversions {
     //! Node async arguments are handled differently than Node sync arguments, so we make sure to
     //! test async specially.
 
+    use std::collections::HashMap;
+
     use libsignal_core::ServiceId;
     use libsignal_protocol::Timestamp;
 
@@ -635,6 +638,98 @@ pub mod test_conversions {
     async fn TESTING_conversion_OptionalBytes_identity_async(
         x: Option<Vec<u8>>,
     ) -> Option<Vec<u8>> {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_PairStringString_to_string(x: (String, String)) -> String {
+        format!("{},{}", x.0, x.1)
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_PairStringString_identity(x: (String, String)) -> (String, String) {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_PairStringString_identity_async(
+        x: (String, String),
+    ) -> (String, String) {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_PairStringMySimpleTestEnum_to_string(
+        x: (String, MySimpleTestEnum),
+    ) -> String {
+        format!(
+            "{},{}",
+            x.0,
+            match x.1 {
+                MySimpleTestEnum::A => "a",
+                MySimpleTestEnum::B => "b",
+            }
+        )
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_PairStringMySimpleTestEnum_identity(
+        x: (String, MySimpleTestEnum),
+    ) -> (String, MySimpleTestEnum) {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_PairStringMySimpleTestEnum_identity_async(
+        x: (String, MySimpleTestEnum),
+    ) -> (String, MySimpleTestEnum) {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_MapStringString_to_string(x: HashMap<String, String>) -> String {
+        let mut x = x.into_iter().collect_vec();
+        x.sort();
+        x.into_iter().map(|(a, b)| format!("{a},{b}")).join("\n")
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_MapStringString_identity(
+        x: HashMap<String, String>,
+    ) -> HashMap<String, String> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_MapStringString_identity_async(
+        x: HashMap<String, String>,
+    ) -> HashMap<String, String> {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_MapStringMySimpleTestEnum_to_string(
+        x: HashMap<String, MySimpleTestEnum>,
+    ) -> String {
+        let mut x = x.into_iter().collect_vec();
+        x.sort();
+        x.into_iter()
+            .map(|x| {
+                format!(
+                    "{},{}",
+                    x.0,
+                    match x.1 {
+                        MySimpleTestEnum::A => "a",
+                        MySimpleTestEnum::B => "b",
+                    }
+                )
+            })
+            .join("\n")
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_MapStringMySimpleTestEnum_identity(
+        x: HashMap<String, MySimpleTestEnum>,
+    ) -> HashMap<String, MySimpleTestEnum> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_MapStringMySimpleTestEnum_identity_async(
+        x: HashMap<String, MySimpleTestEnum>,
+    ) -> HashMap<String, MySimpleTestEnum> {
         x
     }
 }

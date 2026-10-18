@@ -5,6 +5,7 @@
 
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
 
 import * as Native from '../Native.js';
@@ -221,36 +222,34 @@ describe('KeyTransparency Integration', function (this: Mocha.Suite) {
 });
 
 class InMemoryKtStore implements KT.Store {
-  storage: Map<Readonly<Aci>, Array<Readonly<Uint8Array<ArrayBuffer>>>>;
-  distinguished: Array<Readonly<Uint8Array<ArrayBuffer>>>;
+  storage: Map<Readonly<Aci>, Array<Readonly<Bytes>>>;
+  distinguished: Array<Readonly<Bytes>>;
 
   constructor() {
-    this.storage = new Map<Aci, Array<Readonly<Uint8Array<ArrayBuffer>>>>();
-    this.distinguished = new Array<Uint8Array<ArrayBuffer>>();
+    this.storage = new Map<Aci, Array<Readonly<Bytes>>>();
+    this.distinguished = new Array<Bytes>();
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getLastDistinguishedTreeHead(): Promise<Uint8Array<ArrayBuffer> | null> {
+  async getLastDistinguishedTreeHead(): Promise<Bytes | null> {
     return this.distinguished.at(-1) ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async setLastDistinguishedTreeHead(
-    bytes: Readonly<Uint8Array<ArrayBuffer>> | null
-  ) {
+  async setLastDistinguishedTreeHead(bytes: Readonly<Bytes> | null) {
     if (bytes !== null) {
       this.distinguished.push(bytes);
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async getAccountData(aci: Aci): Promise<Uint8Array<ArrayBuffer> | null> {
+  async getAccountData(aci: Aci): Promise<Bytes | null> {
     const allVersions = this.storage.get(aci) ?? [];
     return allVersions.at(-1) ?? null;
   }
 
   // eslint-disable-next-line @typescript-eslint/require-await
-  async setAccountData(aci: Aci, bytes: Readonly<Uint8Array<ArrayBuffer>>) {
+  async setAccountData(aci: Aci, bytes: Readonly<Bytes>) {
     const allVersions = this.storage.get(aci) ?? [];
     allVersions.push(bytes);
     this.storage.set(aci, allVersions);

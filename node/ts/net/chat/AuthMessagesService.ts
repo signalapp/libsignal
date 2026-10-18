@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
+
 import {
   RequestOptions,
   AuthenticatedChatConnection,
@@ -54,7 +56,7 @@ export type SendSyncMessageRequest = Readonly<{
 export type ReportMessageRequest = Readonly<{
   source: Aci;
   messageGuid: Uuid;
-  reportSpamToken: Uint8Array<ArrayBuffer> | null;
+  reportSpamToken: Bytes | null;
 }>;
 
 export interface AuthMessagesService {

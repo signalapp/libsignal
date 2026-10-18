@@ -117,7 +117,7 @@ service Subscriptions {
 message UpdateSubscriberRequest {
   // New subscriber-ids must be a randomly-generated 32 byte byte-string.
   bytes subscriber_id = 1 [(require.exactlySize) = 32];
-  // A libsignal DonationPermit from rpc Donations.CreateDonationPermit.
+  // A libsignal DonationPermit from rpc Donations.CreateDonationPermits.
   // Not required if the subscriber already exists.
   bytes donation_permit = 2;
 }
@@ -185,7 +185,7 @@ message CreatePaymentMethodRequest {
   // other values will result in an INVALID_ARGUMENT error.
   bytes subscriber_id = 1 [(require.exactlySize) = 32];
   PaymentMethod payment_method = 2 [(require.specified) = true];
-  // a libsignal DonationPermit from rpc Donations.CreateDonationPermit
+  // a libsignal DonationPermit from rpc Donations.CreateDonationPermits
   bytes donation_permit = 3 [(require.nonEmpty) = true];
 }
 
@@ -308,33 +308,26 @@ message PaymentRequired {
 }
 
 message SetSubscriptionLevelResponse {
-  message SetSubscriptionLevelResult {
-    uint64 level = 1;
-  }
-
   oneof response {
-    SetSubscriptionLevelResult success = 1;
+    google.protobuf.Empty success = 1;
     // The subscriber did not exist
     errors.NotFound subscriber_not_found = 2 [(tag.reason) = "subscriber_not_found"];
-    // New payment processor does not match existing processor associated with
-    // the subscription
-    errors.FailedPrecondition subscription_processor_conflict = 3 [(tag.reason) = "subscription_processor_conflict"];
     // No payment method has been created for the subscriber
-    errors.FailedPrecondition payment_method_not_set_up = 4 [(tag.reason) = "payment_method_not_set_up"];
+    errors.FailedPrecondition payment_method_not_set_up = 3 [(tag.reason) = "payment_method_not_set_up"];
     // The payment processor does not support this operation
-    errors.FailedPrecondition unsupported_operation = 5 [(tag.reason) = "unsupported_operation"];
+    errors.FailedPrecondition unsupported_operation = 4 [(tag.reason) = "unsupported_operation"];
     // The requested level was invalid
-    errors.FailedPrecondition unsupported_level = 6 [(tag.reason) = "unsupported_level"];
+    errors.FailedPrecondition unsupported_level = 5 [(tag.reason) = "unsupported_level"];
     // The requested currency was invalid
-    errors.FailedPrecondition unsupported_currency = 7 [(tag.reason) = "unsupported_currency"];
+    errors.FailedPrecondition unsupported_currency = 6 [(tag.reason) = "unsupported_currency"];
     // The card could not be charged
-    errors.FailedPrecondition payment_requires_action = 8 [(tag.reason) = "payment_requires_action"];
+    errors.FailedPrecondition payment_requires_action = 7 [(tag.reason) = "payment_requires_action"];
     // Cannot transition from existing level to the requested level
-    errors.FailedPrecondition invalid_level_transition = 9 [(tag.reason) = "invalid_level_transition"];
+    errors.FailedPrecondition invalid_level_transition = 8 [(tag.reason) = "invalid_level_transition"];
     // The idempotency key was invalid or re-used with a modified request
-    errors.FailedPrecondition invalid_idempotency_key = 10 [(tag.reason) = "invalid_idempotency_key"];
+    errors.FailedPrecondition invalid_idempotency_key = 9 [(tag.reason) = "invalid_idempotency_key"];
     // The payment failed; see charge failure details
-    ChargeFailure charge_failure = 11 [(tag.reason) = "charge_failure"];
+    ChargeFailure charge_failure = 10 [(tag.reason) = "charge_failure"];
   }
 }
 

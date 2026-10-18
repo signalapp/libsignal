@@ -5,6 +5,7 @@
 
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import type { Bytes } from '@signalapp/types';
 
 import * as Native from '../../Native.js';
 import * as util from '../util.js';
@@ -55,11 +56,8 @@ describe('UnauthKeysService', () => {
       fromBase64('ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA')
     );
 
-    function bytePrefix(
-      prefixByte: number,
-      buf: Uint8Array<ArrayBuffer>
-    ): Uint8Array<ArrayBuffer> {
-      const out = new Uint8Array<ArrayBuffer>(new ArrayBuffer(1 + buf.length));
+    function bytePrefix(prefixByte: number, buf: Bytes): Bytes {
+      const out = new Uint8Array(new ArrayBuffer(1 + buf.length));
       out.set([prefixByte], 0);
       out.set(buf, 1);
       return out;

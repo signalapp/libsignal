@@ -12,6 +12,8 @@
  * @module WebpSanitizer
  */
 
+import type { Bytes } from '@signalapp/types';
+
 import * as Native from './Native.js';
 import type {
   IoError,
@@ -27,6 +29,6 @@ import type {
  * @throws {InvalidMediaInputError} If the input could not be parsed because it was invalid.
  * @throws {UnsupportedMediaInputError} If the input could not be parsed because it's unsupported in some way.
  */
-export function sanitize(input: Uint8Array<ArrayBuffer>): void {
+export function sanitize(input: Bytes): void {
   Native.WebpSanitizer_Sanitize(input);
 }

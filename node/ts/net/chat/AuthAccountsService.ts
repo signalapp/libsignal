@@ -3,10 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import type { EmptyObject } from 'type-fest';
+import type { EmptyObject, IsEqual } from 'type-fest';
+import type { Bytes } from '@signalapp/types';
 
 import { RequestOptions, AuthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
+import type { AssertTrue } from '../../internal.js';
 import { LibSignalErrorBase } from '../../Errors.js';
 import type {
   GenericError,
@@ -91,7 +93,7 @@ export type TotpParameters = {
  */
 export type PendingTotpKey = {
   /** The raw TOTP key. */
-  key: Uint8Array<ArrayBuffer>;
+  key: Bytes;
   /** The TOTP parameters associated with the generated key. */
   parameters: TotpParameters;
 };
@@ -105,7 +107,7 @@ export type PendingTotpKey = {
  */
 export type WebAuthnCreateParameters = {
   /** The "user handle" (`user.id`) that should be handed to the authenticator. */
-  userHandle: Uint8Array<ArrayBuffer>;
+  userHandle: Bytes;
   /**
    * The COSE IDs (https://www.iana.org/assignments/cose#algorithms) of acceptable algorithms for
    * the created key, as WebAuthn `COSEAlgorithmIdentifier`s.
@@ -117,7 +119,7 @@ export type WebAuthnCreateParameters = {
    * These can be passed to candidate authenticators to tell them not to create a new key if they
    * already have a private key matching one of these.
    */
-  excludeCredentialIds: Array<Uint8Array<ArrayBuffer>>;
+  excludeCredentialIds: Array<Bytes>;
 };
 
 /**
@@ -127,6 +129,12 @@ export type WebAuthnCreateParameters = {
  * {@link AuthAccountsService#listMfaKeys}.
  */
 export type MfaKeyKind = 'totp' | 'webAuthn' | 'unknown';
+
+// Must be kept in sync with BridgeMfaKeyKind in rust/bridge/shared/types/src/net/chat.rs. This
+// fails to compile if the generated NativeNice.BridgeMfaKeyKind has different cases.
+type _MfaKeyKindMatchesBridge = AssertTrue<
+  IsEqual<MfaKeyKind, NativeNice.BridgeMfaKeyKind>
+>;
 
 /**
  * A confirmed multi-factor authentication (MFA) key on the account, as returned by
@@ -167,10 +175,10 @@ export type StartMfaVerificationResponse = {
 };
 
 export type WebAuthnAuthenticationParameters = {
-  challenge: Uint8Array<ArrayBuffer>;
+  challenge: Bytes;
   /** After this interval, verification may fail even if everything else is done correctly. */
   timeoutSeconds: number;
-  allowedCredentialIds: Uint8Array<ArrayBuffer>[];
+  allowedCredentialIds: Bytes[];
 };
 
 /** @see MfaVerificationCredential */
@@ -186,6 +194,22 @@ export type MfaVerificationCredentialWebAuthn = { webauthnJson: string };
 export type MfaVerificationCredential =
   | MfaVerificationCredentialTotp
   | MfaVerificationCredentialWebAuthn;
+
+export type AccountEntitlements = {
+  badges: Array<BadgeEntitlement>;
+  backup: BackupEntitlement | null;
+};
+
+export type BackupEntitlement = {
+  level: bigint;
+  expiration: Date;
+};
+
+export type BadgeEntitlement = {
+  badgeId: string;
+  expiration: Date;
+  visible: boolean;
+};
 
 export interface AuthAccountsService {
   /**
@@ -376,7 +400,7 @@ export interface AuthAccountsService {
    */
   finishWebAuthnRegistration: (
     request: {
-      attestationObject: Uint8Array<ArrayBuffer>;
+      attestationObject: Bytes;
       collectedClientDataJson: string;
       metadata: MfaMetadata;
       svrKey: SvrKey;
@@ -488,6 +512,16 @@ export interface AuthAccountsService {
     },
     options?: RequestOptions
   ) => Promise<void>;
+
+  /**
+   * Returns the current set of account entitlements (may be empty).
+   *
+   * @throws {StandardNetworkError}
+   */
+  getAccountEntitlements: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<AccountEntitlements>;
 }
 
 AuthenticatedChatConnection.prototype.deleteAccount = async function (
@@ -702,4 +736,26 @@ AuthenticatedChatConnection.prototype.removeMfaKey = async function (
     chat: this.chatService,
     keyId,
   });
+};
+
+AuthenticatedChatConnection.prototype.getAccountEntitlements = async function (
+  _request,
+  options?
+): Promise<AccountEntitlements> {
+  const { badges, backup } =
+    await NativeNice.AuthenticatedChatConnection_get_entitlements({
+      asyncContext: this.asyncContext,
+      abortSignal: options?.abortSignal,
+      chat: this.chatService,
+    });
+  return {
+    badges: badges.map(({ badgeId, expiration, visible }) => ({
+      badgeId,
+      expiration: new Date(expiration),
+      visible,
+    })),
+    backup: backup
+      ? { level: backup.level, expiration: new Date(backup.expiration) }
+      : null,
+  };
 };

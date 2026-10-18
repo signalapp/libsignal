@@ -3,10 +3,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Bytes } from '@signalapp/types';
 import { randomBytes } from 'node:crypto';
+
 import * as Native from '../Native.js';
 import ByteArray from './internal/ByteArray.js';
-
 import { RANDOM_LENGTH } from './internal/Constants.js';
 import GenericServerPublicParams from './GenericServerPublicParams.js';
 
@@ -19,15 +20,13 @@ export default class GenericServerSecretParams extends ByteArray {
     return GenericServerSecretParams.generateWithRandom(random);
   }
 
-  static generateWithRandom(
-    random: Uint8Array<ArrayBuffer>
-  ): GenericServerSecretParams {
+  static generateWithRandom(random: Bytes): GenericServerSecretParams {
     return new GenericServerSecretParams(
       Native.GenericServerSecretParams_GenerateDeterministic(random)
     );
   }
 
-  constructor(contents: Uint8Array<ArrayBuffer>) {
+  constructor(contents: Bytes) {
     super(contents, Native.GenericServerSecretParams_CheckValidContents);
   }
 

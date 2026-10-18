@@ -5,6 +5,7 @@
 
 import { assert, config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import type { Bytes } from '@signalapp/types';
 import { Buffer } from 'node:buffer';
 
 import * as Native from '../../Native.js';
@@ -237,7 +238,7 @@ describe('UnauthMessagesService', () => {
       chat: UnauthMessagesService,
       auth:
         | 'story'
-        | { accessKey: Uint8Array<ArrayBuffer> }
+        | { accessKey: Bytes }
         | GroupSendFullToken
         | 'unrestricted',
       expectedAuthHeader: Readonly<[string, string]> | null,

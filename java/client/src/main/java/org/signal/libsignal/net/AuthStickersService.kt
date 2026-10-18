@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 
 /** The output of [AuthStickersService.getStickerUploadForms]. */
@@ -35,17 +36,15 @@ public class AuthStickersService(
   public fun getStickerUploadForms(
     numberOfStickers: Int,
   ): CompletableFuture<RequestResult<GetStickerUploadFormsResponse, Nothing>> =
-    try {
+    liftExceptions {
       NativeNice
         .AuthenticatedChatConnection_get_sticker_upload_forms(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
           numberOfStickers = numberOfStickers,
-        ).mapWithCancellation(
-          onSuccess = { RequestResult.Success(it) },
-          onError = { err -> err.toRequestResult() },
         )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

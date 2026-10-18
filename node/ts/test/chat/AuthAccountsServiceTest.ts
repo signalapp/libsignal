@@ -5,6 +5,7 @@
 
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import type { Bytes } from '@signalapp/types';
 
 import * as Native from '../../Native.js';
 import * as NativeNice from '../../NativeNice.js';
@@ -38,11 +39,7 @@ describe('AuthAccountsService', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetRegistrationLockTests(),
       connectAuth<AuthAccountsService>,
-      async (
-        chat: AuthAccountsService,
-        svrKey: Uint8Array<ArrayBuffer>,
-        _resp: void
-      ) => {
+      async (chat: AuthAccountsService, svrKey: Bytes, _resp: void) => {
         await chat.setRegistrationLock({ svrKey: new SvrKey(svrKey) });
       }
     );
@@ -62,11 +59,7 @@ describe('AuthAccountsService', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_SetRegistrationRecoveryPasswordTests(),
       connectAuth<AuthAccountsService>,
-      async (
-        chat: AuthAccountsService,
-        svrKey: Uint8Array<ArrayBuffer>,
-        _resp: void
-      ) => {
+      async (chat: AuthAccountsService, svrKey: Bytes, _resp: void) => {
         await chat.setRegistrationRecoveryPassword({
           svrKey: new SvrKey(svrKey),
         });
@@ -447,6 +440,48 @@ describe('AuthAccountsService', () => {
             break;
           default:
             await out;
+        }
+      }
+    );
+  });
+
+  describe('getEntitlements', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetEntitlementsTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _args: void,
+        resp: NativeNice.GetEntitlementsOut
+      ) => {
+        const out = chat.getAccountEntitlements({});
+        switch (resp) {
+          case 'malformed':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.IoError,
+              });
+            break;
+          default: {
+            const { badges, backup } = await out;
+            expect(badges.length).equals(resp.success.badges.length);
+            resp.success.badges.forEach((expected, i) => {
+              expect(badges[i].badgeId).equals(expected.badgeId);
+              expect(badges[i].expiration.getTime()).equals(
+                expected.expiration
+              );
+              expect(badges[i].visible).equals(expected.visible);
+            });
+            if (resp.success.backup) {
+              expect(backup?.level).equals(resp.success.backup.level);
+              expect(backup?.expiration.getTime()).equals(
+                resp.success.backup.expiration
+              );
+            } else {
+              void expect(backup).to.be.null;
+            }
+          }
         }
       }
     );

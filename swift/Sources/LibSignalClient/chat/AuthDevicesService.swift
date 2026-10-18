@@ -37,6 +37,8 @@ public struct LinkedDevice: Equatable {
 
 /// A feature that a device may declare support for.
 public enum DeviceCapability: Sendable, CaseIterable {
+    // Must be kept in sync with DeviceCapabilityInternal in rust/bridge/shared/types/src/net/chat.rs.
+    // The generated bridging code uses this type directly and refers to the cases by name.
     case storage
     case transfer
     case attachmentBackfill
@@ -44,30 +46,6 @@ public enum DeviceCapability: Sendable, CaseIterable {
     case profilesV2
     case usernameChangeSyncMessage
     case optionalPhoneNumber
-
-    internal var asInternal: DeviceCapabilityInternal {
-        switch self {
-        case .storage: .storage
-        case .transfer: .transfer
-        case .attachmentBackfill: .attachmentBackfill
-        case .sparsePostQuantumRatchet: .sparsePostQuantumRatchet
-        case .profilesV2: .profilesV2
-        case .usernameChangeSyncMessage: .usernameChangeSyncMessage
-        case .optionalPhoneNumber: .optionalPhoneNumber
-        }
-    }
-
-    internal static func fromInternal(_ it: DeviceCapabilityInternal) -> DeviceCapability {
-        switch it {
-        case .storage: .storage
-        case .transfer: .transfer
-        case .attachmentBackfill: .attachmentBackfill
-        case .sparsePostQuantumRatchet: .sparsePostQuantumRatchet
-        case .profilesV2: .profilesV2
-        case .usernameChangeSyncMessage: .usernameChangeSyncMessage
-        case .optionalPhoneNumber: .optionalPhoneNumber
-        }
-    }
 }
 
 public protocol AuthDevicesService: Sendable {
@@ -157,7 +135,7 @@ extension AuthenticatedChatConnection: AuthDevicesService {
         return try await NativeNice.AuthenticatedChatConnection_set_capabilities(
             asyncContext: self.tokioAsyncContext,
             chat: self,
-            capabilities: capabilities.map(\.asInternal)
+            capabilities: Array(capabilities)
         )
     }
 

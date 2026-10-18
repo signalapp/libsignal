@@ -7,6 +7,7 @@ package org.signal.libsignal.net
 
 import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.Native
+import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.metadata.SealedSessionCipher
 import org.signal.libsignal.protocol.ServiceId
@@ -38,7 +39,7 @@ public class UnauthMessagesService(
     onlineOnly: Boolean,
     urgent: Boolean,
   ): CompletableFuture<RequestResult<MultiRecipientMessageResponse, MultiRecipientSendFailure>> =
-    try {
+    liftExceptions {
       connection
         .runWithContextAndConnectionHandles { asyncCtx, conn ->
           Native.UnauthenticatedChatConnection_send_multi_recipient_message(
@@ -50,16 +51,14 @@ public class UnauthMessagesService(
             onlineOnly,
             urgent,
           )
-        }.mapWithCancellation(
-          onSuccess = { rawUnregisteredIds ->
-            @Suppress("UNCHECKED_CAST") // https://youtrack.jetbrains.com/issue/KT-11948
-            RequestResult.Success(MultiRecipientMessageResponse(rawUnregisteredIds as Array<ByteArray>))
-          },
-          onError = { err -> err.toRequestResult<MultiRecipientSendFailure>() },
-        )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+        }
+    }.mapWithCancellation(
+      onSuccess = { rawUnregisteredIds ->
+        @Suppress("UNCHECKED_CAST") // https://youtrack.jetbrains.com/issue/KT-11948
+        RequestResult.Success(MultiRecipientMessageResponse(rawUnregisteredIds as Array<ByteArray>))
+      },
+      onError = { err -> err.toRequestResult<MultiRecipientSendFailure>() },
+    )
 
   /**
    * Sends a 1:1 message encrypted with Sealed Sender.
@@ -82,7 +81,7 @@ public class UnauthMessagesService(
     onlineOnly: Boolean,
     urgent: Boolean,
   ): CompletableFuture<RequestResult<Unit, SealedSendFailure>> =
-    try {
+    liftExceptions {
       val deviceIds = IntArray(contents.size)
       val registrationIds = IntArray(contents.size)
       val messages = arrayOfNulls<ByteArray>(contents.size)
@@ -108,13 +107,11 @@ public class UnauthMessagesService(
             onlineOnly,
             urgent,
           )
-        }.mapWithCancellation(
-          onSuccess = { _ -> RequestResult.Success(Unit) },
-          onError = { err -> err.toRequestResult<SealedSendFailure>() },
-        )
-    } catch (e: Throwable) {
-      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
-    }
+        }
+    }.mapWithCancellation(
+      onSuccess = { _ -> RequestResult.Success(Unit) },
+      onError = { err -> err.toRequestResult<SealedSendFailure>() },
+    )
 }
 
 public sealed interface MultiRecipientSendAuthorization {

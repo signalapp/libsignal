@@ -5,6 +5,7 @@
 
 import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
+import type { Bytes } from '@signalapp/types';
 
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
@@ -25,7 +26,7 @@ describe('AuthBackupsService', () => {
       connectAuth<AuthBackupsService>,
       async (
         chat: AuthBackupsService,
-        presentation: Uint8Array<ArrayBuffer>,
+        presentation: Bytes,
         resp: NativeNice.RedeemBackupReceiptOut
       ) => {
         const out = chat.redeemBackupReceipt({
