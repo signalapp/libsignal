@@ -160,6 +160,14 @@ public sealed class GenerateTotpKeyOut {
   public data object TooManyMfaKeys : GenerateTotpKeyOut()
 }
 
+public sealed class GetCapabilitiesOut {
+  public data class Success(
+    public val _0: List<org.signal.libsignal.internal.DeviceCapabilityInternal>,
+  ) : GetCapabilitiesOut()
+
+  public data object Malformed : GetCapabilitiesOut()
+}
+
 public sealed class GetCdnCredentialsOut {
   public data class Success(
     public val _0: org.signal.libsignal.net.BackupCdnCredentials,
@@ -994,55 +1002,6 @@ public object DeleteBackupMediaOut_CredentialRejectedWithoutAppropriateServerInf
   internal fun fromNative(): Any? = DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
 }
 
-public object DeviceCapabilityInternal_Storage_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.Storage
-}
-
-public object DeviceCapabilityInternal_Transfer_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.Transfer
-}
-
-public object DeviceCapabilityInternal_AttachmentBackfill_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.AttachmentBackfill
-}
-
-public object DeviceCapabilityInternal_SparsePostQuantumRatchet_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.SparsePostQuantumRatchet
-}
-
-public object DeviceCapabilityInternal_ProfilesV2_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.ProfilesV2
-}
-
-public object DeviceCapabilityInternal_UsernameChangeSyncMessage_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.UsernameChangeSyncMessage
-}
-
-public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
-}
-
 public object FinishMfaVerificationOut_Success_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1130,6 +1089,26 @@ public object GenerateTotpKeyOut_TooManyMfaKeys_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = GenerateTotpKeyOut.TooManyMfaKeys
+}
+
+public object GetCapabilitiesOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetCapabilitiesOut.Success(
+      _0 =
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.DeviceCapabilityInternal>({
+          downcastFromObject<org.signal.libsignal.internal.DeviceCapabilityInternal>(it)
+        })(_0 as Array<*>),
+    )
+}
+
+public object GetCapabilitiesOut_Malformed_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetCapabilitiesOut.Malformed
 }
 
 public object GetCdnCredentialsOut_Success_ReturnConverter {
@@ -2677,6 +2656,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetSvrBCredentialsOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetSvrBCredentialsOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetCapabilitiesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetCapabilitiesOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetCapabilitiesTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetCapabilitiesOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetCapabilitiesOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GetCurrencyConversionsTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.CurrencyConversionsInternal>> {

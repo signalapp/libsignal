@@ -333,6 +333,26 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
             }
         )
     }
+
+    func testGetCapabilities() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetCapabilitiesTests(),
+            invoke: { api, _ in
+                try await api.getAccountCapabilities()
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let expected):
+                    XCTAssertEqual(try actual.get(), Set(expected))
+                case .malformed:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
+    }
 }
 
 // Uses the internal Impl protocol so the test can pin the RNG seed; the public methods simply

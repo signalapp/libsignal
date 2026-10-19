@@ -852,6 +852,55 @@ public object DeleteBackupMediaNextChunk_ReturnConverter {
     )
 }
 
+public object DeviceCapabilityInternal_Storage_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.Storage
+}
+
+public object DeviceCapabilityInternal_Transfer_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.Transfer
+}
+
+public object DeviceCapabilityInternal_AttachmentBackfill_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.AttachmentBackfill
+}
+
+public object DeviceCapabilityInternal_SparsePostQuantumRatchet_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.SparsePostQuantumRatchet
+}
+
+public object DeviceCapabilityInternal_ProfilesV2_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ProfilesV2
+}
+
+public object DeviceCapabilityInternal_UsernameChangeSyncMessage_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.UsernameChangeSyncMessage
+}
+
+public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
+}
+
 public object GetStickerUploadFormsResponse_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1673,6 +1722,27 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgePendingTotpKey>(it) }
+  }
+
+  public fun AuthenticatedChatConnection_get_capabilities(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<List<org.signal.libsignal.internal.DeviceCapabilityInternal>> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_capabilities(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.DeviceCapabilityInternal>({
+          downcastFromObject<org.signal.libsignal.internal.DeviceCapabilityInternal>(it)
+        })(it)
+      }
   }
 
   public fun AuthenticatedChatConnection_get_currency_conversions(

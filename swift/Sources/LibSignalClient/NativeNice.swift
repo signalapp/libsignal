@@ -1282,6 +1282,43 @@ extension SignalCPromiseOwnedBufferOfMaxAlignedBridgeConfirmedMfaKeyFfiResult: S
 
 }
 
+extension SignalCPromiseOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: SignalCPromise {
+
+    typealias Result = SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: SignalCPromise {
 
     typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
@@ -2336,6 +2373,40 @@ extension SignalOwnedBufferOfMaxAlignedCurrencyInternalFfiResult: SignalOwnedBuf
     }
 
     var generic_base: SignalType_MutPointer_SignalCurrencyInternalFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalDeviceCapabilityInternalFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult? {
         get { self.base }
         set { base = newValue }
     }
@@ -3754,6 +3825,35 @@ internal enum DerivedReturnConverterDeleteBackupMediaNextChunk: NiceReturnConver
     }
 }
 
+internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverter {
+    typealias NiceReturn = DeviceCapability
+    typealias FfiReturn = SignalDeviceCapabilityInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalDeviceCapabilityInternalFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalDeviceCapabilityInternalFfiResultStorage:
+            return DeviceCapability.storage
+        case SignalDeviceCapabilityInternalFfiResultTransfer:
+            return DeviceCapability.transfer
+        case SignalDeviceCapabilityInternalFfiResultAttachmentBackfill:
+            return DeviceCapability.attachmentBackfill
+        case SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet:
+            return DeviceCapability.sparsePostQuantumRatchet
+        case SignalDeviceCapabilityInternalFfiResultProfilesV2:
+            return DeviceCapability.profilesV2
+        case SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage:
+            return DeviceCapability.usernameChangeSyncMessage
+        case SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber:
+            return DeviceCapability.optionalPhoneNumber
+        default:
+            throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
+        }
+    }
+}
+
 internal enum DerivedReturnConverterGetStickerUploadFormsResponse: NiceReturnConverter {
     typealias NiceReturn = GetStickerUploadFormsResponse
     typealias FfiReturn = SignalGetStickerUploadFormsResponseFfiResult
@@ -5109,6 +5209,33 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgePendingTotpKey.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_capabilities(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> [DeviceCapability] {
+        let rawOutput:
+            ArrayReturnConverter<
+                DerivedReturnConverterDeviceCapabilityInternal,
+                SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            SignalFfi.signal_authenticated_chat_connection_get_capabilities(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                            )
+                        }
+                }
+        return try ArrayReturnConverter<
+            DerivedReturnConverterDeviceCapabilityInternal,
+            SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_currency_conversions(

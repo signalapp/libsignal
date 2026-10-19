@@ -399,6 +399,9 @@ public object NativeTesting {
   public external fun TESTING_GetBackupSvrBCredentialsTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetCapabilitiesTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetCurrencyConversionsTests(): Array<Object>
 
   @JvmStatic

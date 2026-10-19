@@ -530,6 +530,15 @@ export type ReturnFfiGenerateTotpKeyOut =
       __type: 2;
     };
 
+export type ReturnFfiGetCapabilitiesOut =
+  | {
+      __type: 0;
+      _0: Array<ReturnFfiDeviceCapabilityInternal>;
+    }
+  | {
+      __type: 1;
+    };
+
 export type ReturnFfiGetCdnCredentialsOut =
   | {
       __type: 0;
@@ -1320,6 +1329,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgePendingTotpKey>;
+  AuthenticatedChatConnection_get_capabilities: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<Array<ReturnFfiDeviceCapabilityInternal>>;
   AuthenticatedChatConnection_get_currency_conversions: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3266,6 +3279,9 @@ type NativeFunctions = {
   TESTING_GetBackupSvrBCredentialsTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetSvrBCredentialsOut>
   >;
+  TESTING_GetCapabilitiesTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetCapabilitiesOut>
+  >;
   TESTING_GetCurrencyConversionsTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiCurrencyConversionsInternal>
   >;
@@ -3991,6 +4007,7 @@ const {
   AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
+  AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_entitlements,
@@ -4570,6 +4587,7 @@ const {
   TESTING_GenerateTotpKeyTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetCapabilitiesTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
   TESTING_GetEntitlementsTests,
@@ -4826,6 +4844,7 @@ export {
   AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
+  AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_entitlements,
@@ -5405,6 +5424,7 @@ export {
   TESTING_GenerateTotpKeyTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetCapabilitiesTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
   TESTING_GetEntitlementsTests,

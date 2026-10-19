@@ -1248,6 +1248,14 @@ mod remote_derives {
         Success(AccountEntitlements),
         Malformed,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::GetCapabilitiesOut)]
+    #[bridge(arg = false)]
+    pub enum GetCapabilitiesOut {
+        Success(BridgeVec<DeviceCapability>),
+        Malformed,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1582,4 +1590,9 @@ fn TESTING_RedeemDonationReceiptTests() -> GrpcTestCases<
 #[bridge_fn(nice = true)]
 fn TESTING_GetEntitlementsTests() -> GrpcTestCases<(), remote_derives::GetEntitlementsOut> {
     libsignal_net_chat::grpc::accounts::test_cases::get_entitlements_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetCapabilitiesTests() -> GrpcTestCases<(), remote_derives::GetCapabilitiesOut> {
+    libsignal_net_chat::grpc::accounts::test_cases::get_capabilities_test_cases().into()
 }

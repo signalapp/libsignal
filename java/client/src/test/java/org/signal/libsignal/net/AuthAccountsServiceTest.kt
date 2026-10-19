@@ -12,6 +12,7 @@ import org.signal.libsignal.internal.ConfirmTotpKeyOut
 import org.signal.libsignal.internal.FinishMfaVerificationOut
 import org.signal.libsignal.internal.FinishWebAuthnRegistrationOut
 import org.signal.libsignal.internal.GenerateTotpKeyOut
+import org.signal.libsignal.internal.GetCapabilitiesOut
 import org.signal.libsignal.internal.GetEntitlementsOut
 import org.signal.libsignal.internal.ListMfaKeysOut
 import org.signal.libsignal.internal.NativeTesting
@@ -469,6 +470,34 @@ class AuthAccountsServiceTest {
               assertEquals(expected._0, assertIs<RequestResult.Success<AccountEntitlements>>(actual).result)
             }
             GetEntitlementsOut.Malformed -> {
+              assertIs<UnexpectedResponseException>(
+                assertIs<RequestResult.ApplicationError>(actual).cause,
+              )
+            }
+          }
+        },
+      )
+    }
+
+  @Test
+  fun testGetCapabilities() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetCapabilitiesTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, _ ->
+          chat.getCapabilities()
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetCapabilitiesOut.Success -> {
+              assertEquals(
+                expected._0.map { it.toDeviceCapability() }.toSet(),
+                assertIs<RequestResult.Success<Set<DeviceCapability>>>(actual).result,
+              )
+            }
+            GetCapabilitiesOut.Malformed -> {
               assertIs<UnexpectedResponseException>(
                 assertIs<RequestResult.ApplicationError>(actual).cause,
               )

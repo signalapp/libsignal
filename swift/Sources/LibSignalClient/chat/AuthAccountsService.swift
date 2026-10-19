@@ -457,6 +457,14 @@ public protocol AuthAccountsService: Sendable {
     /// - Throws:
     ///   - the standard Signal network errors
     func getAccountEntitlements() async throws -> AccountEntitlements
+
+    /// Gets the capabilities of the authenticated account.
+    ///
+    /// Capabilities that are not recognized are filtered out.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func getAccountCapabilities() async throws -> Set<DeviceCapability>
 }
 
 extension AuthenticatedChatConnection: AuthAccountsService {
@@ -586,6 +594,15 @@ extension AuthenticatedChatConnection: AuthAccountsService {
             asyncContext: self.tokioAsyncContext,
             chat: self,
             keyId: try bridgeInt32(keyId, "keyId"),
+        )
+    }
+
+    public func getAccountCapabilities() async throws -> Set<DeviceCapability> {
+        return Set(
+            try await NativeNice.AuthenticatedChatConnection_get_capabilities(
+                asyncContext: self.tokioAsyncContext,
+                chat: self
+            )
         )
     }
 }

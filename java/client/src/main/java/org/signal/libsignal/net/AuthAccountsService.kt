@@ -789,4 +789,26 @@ public class AuthAccountsService(
       onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult() },
     )
+
+  /**
+   * Gets the capabilities of the authenticated account.
+   *
+   * Capabilities that are not recognized are filtered out.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun getCapabilities(): CompletableFuture<RequestResult<Set<DeviceCapability>, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_get_capabilities(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        )
+    }.mapWithCancellation(
+      onSuccess = { capabilities ->
+        RequestResult.Success(capabilities.map { DeviceCapability.fromInternal(it) }.toSet())
+      },
+      onError = { err -> err.toRequestResult() },
+    )
 }

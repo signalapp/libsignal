@@ -1541,6 +1541,17 @@ async fn AuthenticatedChatConnection_get_entitlements(
         .map(Into::into)
 }
 
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_capabilities(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgeVec<DeviceCapability>, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_capabilities()
+        .await
+        .map(BridgeVec::from_iter)
+}
+
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;

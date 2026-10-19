@@ -486,4 +486,29 @@ describe('AuthAccountsService', () => {
       }
     );
   });
+
+  describe('getAccountCapabilities', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetCapabilitiesTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _args: void,
+        resp: NativeNice.GetCapabilitiesOut
+      ) => {
+        const out = chat.getAccountCapabilities({});
+        switch (resp) {
+          case 'malformed':
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.IoError,
+              });
+            break;
+          default:
+            expect(await out).to.deep.equal(new Set(resp.success));
+        }
+      }
+    );
+  });
 });

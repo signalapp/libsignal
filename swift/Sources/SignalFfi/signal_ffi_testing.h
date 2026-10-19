@@ -766,20 +766,6 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeCopyBackupMediaIte
 typedef SignalChargeFailureFfiResult* SignalType_MutPointer_SignalChargeFailureFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
-typedef enum {
-  SignalDeviceCapabilityInternalFfiResultStorage,
-  SignalDeviceCapabilityInternalFfiResultTransfer,
-  SignalDeviceCapabilityInternalFfiResultAttachmentBackfill,
-  SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet,
-  SignalDeviceCapabilityInternalFfiResultProfilesV2,
-  SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage,
-  SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber,
-} SignalDeviceCapabilityInternalFfiResult;
-static_assert_64bit(sizeof(SignalDeviceCapabilityInternalFfiResult) == 4);
-static_assert_64bit(alignof(SignalDeviceCapabilityInternalFfiResult) == 4);
-typedef SignalDeviceCapabilityInternalFfiResult* SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult;
-static_assert_64bit(sizeof(SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult) == 8);
-static_assert_64bit(alignof(SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult) == 8);
 typedef struct {
   const int8_t* number;
   SignalOwnedBufferOfMaxAlignedCStringPtr passwords;
@@ -998,6 +984,21 @@ typedef struct {
 } SignalGenerateTotpKeyOutFfiResult;
 static_assert_64bit(sizeof(SignalGenerateTotpKeyOutFfiResult) == 40);
 static_assert_64bit(alignof(SignalGenerateTotpKeyOutFfiResult) == 8);
+typedef enum {
+  SignalGetCapabilitiesOutFfiResultSuccess,
+  SignalGetCapabilitiesOutFfiResultMalformed,
+} SignalGetCapabilitiesOutFfiResult_Tag;
+typedef struct {
+  SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult _0;
+} SignalGetCapabilitiesOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetCapabilitiesOutFfiResult_Tag tag;
+  union {
+    SignalGetCapabilitiesOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetCapabilitiesOutFfiResult;
+static_assert_64bit(sizeof(SignalGetCapabilitiesOutFfiResult) == 32);
+static_assert_64bit(alignof(SignalGetCapabilitiesOutFfiResult) == 8);
 typedef enum {
   SignalGetCdnCredentialsOutFfiResultSuccess,
   SignalGetCdnCredentialsOutFfiResultCredentialRejected,
@@ -1334,16 +1335,6 @@ typedef struct {
 } SignalReserveUsernameHashOutFfiResult;
 static_assert_64bit(sizeof(SignalReserveUsernameHashOutFfiResult) == 36);
 static_assert_64bit(alignof(SignalReserveUsernameHashOutFfiResult) == 4);
-typedef struct {
-  SignalDeviceCapabilityInternalFfiResult* base;
-  size_t length;
-  size_t size_bytes;
-} SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult;
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult, base) == 0);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult, length) == 8);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult, size_bytes) == 16);
-static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult) == 24);
-static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult) == 8);
 typedef struct {
   SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult capabilities;
 } SignalSetCapabilitiesArgsFfiResult;
@@ -2339,6 +2330,9 @@ SignalFfiError* signal_testing_get_backup_cdn_credentials_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_backup_svr_b_credentials_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_capabilities_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_currency_conversions_tests(

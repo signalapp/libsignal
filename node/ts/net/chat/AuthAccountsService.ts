@@ -21,6 +21,7 @@ import type {
 } from '../../Errors.js';
 import { SvrKey } from '../../AccountKeys.js';
 import type { Rng } from '../../RngForTesting.js';
+import type { DeviceCapability } from './AuthDevicesService.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -522,6 +523,18 @@ export interface AuthAccountsService {
     request: EmptyObject,
     options?: RequestOptions
   ) => Promise<AccountEntitlements>;
+
+  /**
+   * Gets the capabilities of the authenticated account.
+   *
+   * Capabilities that are not recognized are filtered out.
+   *
+   * @throws {StandardNetworkError}
+   */
+  getAccountCapabilities: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<Set<DeviceCapability>>;
 }
 
 AuthenticatedChatConnection.prototype.deleteAccount = async function (
@@ -758,4 +771,17 @@ AuthenticatedChatConnection.prototype.getAccountEntitlements = async function (
       ? { level: backup.level, expiration: new Date(backup.expiration) }
       : null,
   };
+};
+
+AuthenticatedChatConnection.prototype.getAccountCapabilities = async function (
+  _request,
+  options?
+): Promise<Set<DeviceCapability>> {
+  return new Set(
+    await NativeNice.AuthenticatedChatConnection_get_capabilities({
+      asyncContext: this.asyncContext,
+      abortSignal: options?.abortSignal,
+      chat: this.chatService,
+    })
+  );
 };

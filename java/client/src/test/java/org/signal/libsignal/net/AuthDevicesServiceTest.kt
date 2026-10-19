@@ -15,9 +15,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+// Not DeviceCapability.fromInternal: that's internal to the library, and the Android build compiles
+// these tests as a separate module.
+//
 // This `when` is deliberately exhaustive: it stops compiling if the internal type gains a
 // variant that the public enum does not expose, so the two stay in sync.
-private fun DeviceCapabilityInternal.toDeviceCapability(): DeviceCapability =
+internal fun DeviceCapabilityInternal.toDeviceCapability(): DeviceCapability =
   when (this) {
     DeviceCapabilityInternal.Storage -> DeviceCapability.STORAGE
     DeviceCapabilityInternal.Transfer -> DeviceCapability.TRANSFER

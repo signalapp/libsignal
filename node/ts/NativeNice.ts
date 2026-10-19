@@ -68,6 +68,7 @@ import type {
   ReturnFfiFinishWebAuthnRegistrationArgs,
   ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
+  ReturnFfiGetCapabilitiesOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
   ReturnFfiGetEntitlementsOut,
@@ -425,6 +426,12 @@ export type GenerateTotpKeyOut =
     }
   | 'tooManyTotpKeys'
   | 'tooManyMfaKeys';
+
+export type GetCapabilitiesOut =
+  | {
+      success: Array<DeviceCapabilityInternal>;
+    }
+  | 'malformed';
 
 export type GetCdnCredentialsOut =
   | {
@@ -1415,6 +1422,24 @@ export function returnConverterGenerateTotpKeyOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for GenerateTotpKeyOut');
+  }
+}
+
+export function returnConverterGetCapabilitiesOut(
+  ffiInput: Native.ReturnFfiGetCapabilitiesOut
+): GetCapabilitiesOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: ((arr: Array<ReturnFfiDeviceCapabilityInternal>) =>
+          arr.map(returnConverterDeviceCapabilityInternal))(ffiInput._0),
+      };
+    case 1:
+      return 'malformed';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetCapabilitiesOut');
   }
 }
 
@@ -2877,6 +2902,26 @@ export async function AuthenticatedChatConnection_generate_totp_key({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_capabilities({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<Array<DeviceCapabilityInternal>> {
+  return ((arr: Array<ReturnFfiDeviceCapabilityInternal>) =>
+    arr.map(returnConverterDeviceCapabilityInternal))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_capabilities(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_currency_conversions({
   asyncContext,
   abortSignal,
@@ -3738,6 +3783,15 @@ export function TESTING_GetBackupSvrBCredentialsTests(): Array<
     identity,
     returnConverterGetSvrBCredentialsOut
   )(Native.TESTING_GetBackupSvrBCredentialsTests());
+}
+
+export function TESTING_GetCapabilitiesTests(): Array<
+  GrpcTestCase<void, GetCapabilitiesOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetCapabilitiesOut
+  )(Native.TESTING_GetCapabilitiesTests());
 }
 
 export function TESTING_GetCurrencyConversionsTests(): Array<
