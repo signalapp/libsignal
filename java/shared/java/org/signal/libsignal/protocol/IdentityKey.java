@@ -26,12 +26,20 @@ public class IdentityKey {
     this.publicKey = publicKey;
   }
 
+  /**
+   * @deprecated use the constructor that takes an offset and length
+   */
+  @Deprecated
   public IdentityKey(byte[] bytes, int offset) throws InvalidKeyException {
-    this.publicKey = new ECPublicKey(bytes, offset);
+    this(bytes, offset, bytes.length - offset);
+  }
+
+  public IdentityKey(byte[] bytes, int offset, int length) throws InvalidKeyException {
+    this.publicKey = new ECPublicKey(bytes, offset, length);
   }
 
   public IdentityKey(byte[] bytes) throws InvalidKeyException {
-    this.publicKey = new ECPublicKey(bytes, 0);
+    this.publicKey = new ECPublicKey(bytes);
   }
 
   @CalledFromNative

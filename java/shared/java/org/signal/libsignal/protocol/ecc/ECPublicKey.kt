@@ -22,6 +22,8 @@ public final class ECPublicKey :
   @Throws(InvalidKeyException::class)
   public constructor(serialized: ByteArray) : this(serialized, 0, serialized.size)
 
+  // The Rust side checks that offset and length are in bounds, and throws IllegalArgumentException
+  // if they aren't.
   @Throws(InvalidKeyException::class)
   public constructor(
     serialized: ByteArray,

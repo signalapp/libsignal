@@ -128,12 +128,26 @@ fn PublicKey_Deserialize(data: &[u8]) -> Result<PublicKey> {
     Ok(PublicKey::deserialize(data)?)
 }
 
+/// Returns `data[offset..][..length]`, or an `InvalidArgument` error if that range is out of bounds.
+#[cfg(feature = "jni")]
+fn slice_at_offset_with_length(data: &[u8], offset: u32, length: u32) -> Result<&[u8]> {
+    let offset = offset as usize;
+    let length = length as usize;
+    data.get(offset..)
+        .and_then(|rest| rest.get(..length))
+        .ok_or_else(|| {
+            SignalProtocolError::InvalidArgument(format!(
+                "offset {offset} and length {length} out of bounds for {} bytes",
+                data.len()
+            ))
+        })
+}
+
 // Alternate implementation to deserialize from an offset and length.
 #[bridge_fn(ffi = false, node = false)]
 fn ECPublicKey_Deserialize(data: &[u8], offset: u32, length: u32) -> Result<PublicKey> {
-    let offset = offset as usize;
-    let length = length as usize;
-    Ok(PublicKey::deserialize(&data[offset..][..length])?)
+    let data = slice_at_offset_with_length(data, offset, length)?;
+    Ok(PublicKey::deserialize(data)?)
 }
 
 bridge_get!(
@@ -217,9 +231,8 @@ fn KyberPublicKey_DeserializeWithOffsetLength(
     offset: u32,
     length: u32,
 ) -> Result<KyberPublicKey> {
-    let offset = offset as usize;
-    let length = length as usize;
-    KyberPublicKey::deserialize(&data[offset..][..length])
+    let data = slice_at_offset_with_length(data, offset, length)?;
+    KyberPublicKey::deserialize(data)
 }
 
 bridge_get!(
