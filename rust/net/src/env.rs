@@ -313,12 +313,6 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q1_PROD: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q1_PROD),
-        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q1_PROD,
-    };
-
 pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_STAGING: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q2_STAGING),
@@ -916,15 +910,7 @@ pub const PROD: Env<'static> = Env {
             }),
             None,
         ],
-        previous: [
-            Some(EnclaveEndpoint {
-                domain_config: DOMAIN_CONFIG_SVRB_PROD,
-                ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2026Q1_PROD,
-            }),
-            None,
-            None,
-        ],
+        previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_PROD,
     reflector_providers: || &*REFLECTOR_PROVIDERS_PROD,
@@ -953,6 +939,23 @@ mod test {
     use test_case::test_matrix;
 
     use super::*;
+
+    /// The SVR2 bridge derives pin hash salts by looking up each endpoint's
+    /// group id in `attest`'s own enclave-to-raft-config map, which is
+    /// maintained separately from the endpoints defined here. An endpoint
+    /// missing from that map would panic at runtime.
+    #[test_matrix([&PROD, &STAGING])]
+    fn svr2_endpoints_have_known_group_id(env: &Env<'static>) {
+        for endpoint in env.svr2.current_and_previous() {
+            let mr_enclave = endpoint.params.mr_enclave.as_ref();
+            assert_eq!(
+                attest::svr2::lookup_groupid(mr_enclave),
+                Some(endpoint.params.raft_config.group_id),
+                "group id mismatch for SVR2 enclave {}",
+                hex::encode(mr_enclave),
+            );
+        }
+    }
 
     #[test_matrix([&DOMAIN_CONFIG_CHAT, &DOMAIN_CONFIG_CHAT_STAGING])]
     fn chat_has_confirmation_header(config: &DomainConfig) {
