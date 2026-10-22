@@ -1100,6 +1100,7 @@ async fn SessionCipher_DecryptPreKeySignalMessage(
         &mut csprng,
     )
     .await
+    .map(|r| r.plaintext)
 }
 
 #[bridge_fn(node = "SealedSender_Encrypt")]

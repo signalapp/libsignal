@@ -8,19 +8,21 @@ use std::time::{Duration, SystemTime};
 
 use bitflags::bitflags;
 use prost::Message;
-#[cfg(test)]
-use rand::{CryptoRng, Rng};
 use subtle::ConstantTimeEq;
 
-use crate::proto::storage::{RecordStructure, SessionStructure, session_structure};
+use crate::proto::storage::{
+    RecordStructure, SessionStructure, TahiniSessionManagementState, record_structure,
+    session_structure,
+};
 use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
-#[cfg(test)]
-use crate::ratchet::MessageKeyGenerator;
 use crate::ratchet::{ChainKey, RootKey};
 use crate::state::{KyberPreKeyId, PreKeyId, SignedPreKeyId};
+use crate::tahini::{LastAct, SessionOrigin};
 use crate::{
     IdentityKey, KeyPair, PrivateKey, PublicKey, SessionNotFound, SignalProtocolError, consts, kem,
 };
+
+// ── Error types ─────────────────────────────────────────────────────────────
 
 /// A distinct error type to keep from accidentally propagating deserialization errors.
 #[derive(Debug)]
@@ -166,6 +168,7 @@ impl SessionState {
                 local_registration_id: 0,
                 alice_base_key: alice_base_key.serialize().into_vec(),
                 pq_ratchet_state,
+                origin: SessionOrigin::Legacy.into(),
             },
         }
     }
@@ -173,6 +176,44 @@ impl SessionState {
     pub(crate) fn alice_base_key(&self) -> &[u8] {
         // Check the length before returning?
         &self.session.alice_base_key
+    }
+
+    /// The session ID (Tahini SID). This is the alice_base_key, which
+    /// uniquely identifies a session and is already on the wire.
+    pub(crate) fn session_id(&self) -> &[u8] {
+        self.alice_base_key()
+    }
+
+    pub(crate) fn origin(&self) -> SessionOrigin {
+        // Unknown enum values fall back to Legacy (the proto default), which is
+        // already treated as Remote for policy purposes.
+        SessionOrigin::try_from(self.session.origin).unwrap_or(SessionOrigin::Legacy)
+    }
+
+    pub(crate) fn set_origin(&mut self, origin: SessionOrigin) {
+        self.session.origin = origin.into();
+    }
+
+    /// Whether the remote peer is aware of this session.
+    ///
+    /// True once the peer has responded, which is exactly when the session's
+    /// unacknowledged pre-key is cleared. This is equivalent to "origin is not
+    /// `LocalNew`" for Tahini-created sessions, and is additionally correct for
+    /// migrated pre-Tahini sessions whose stored origin reads as `Legacy` but
+    /// which still carry a pending pre-key (locally initiated, no response yet).
+    ///
+    // This predicate doesn't really belong on `SessionState` — it's Tahini
+    // policy, and Tahini policy lives in tahini.rs. It's here, and keyed on
+    // `pending_pre_key` rather than on `origin()`, because migrated pre-Tahini
+    // sessions store their origin as `Legacy` regardless of which side
+    // initiated, so origin alone can't tell us whether the peer has
+    // acknowledged. The pending pre-key can. The pure-Tahini form would be
+    // `self.origin() != SessionOrigin::LocalNew` (which is why `LocalAcked` is
+    // a distinct origin state — to make that form meaningful), living in
+    // tahini.rs. If the migrated-Legacy case stops mattering — or if some
+    // other approach makes it irrelevant here — feel free to move this.
+    pub(crate) fn is_known_by_peer(&self) -> bool {
+        self.session.pending_pre_key.is_none()
     }
 
     pub(crate) fn session_version(&self) -> Result<u32, InvalidSessionError> {
@@ -219,24 +260,6 @@ impl SessionState {
 
     pub(crate) fn previous_counter(&self) -> u32 {
         self.session.previous_counter
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_previous_counter(&mut self, ctr: u32) {
-        self.session.previous_counter = ctr;
-    }
-
-    #[cfg(test)]
-    pub(crate) fn root_key(&self) -> Result<RootKey, InvalidSessionError> {
-        let root_key_bytes = self.session.root_key[..]
-            .try_into()
-            .map_err(|_| InvalidSessionError("invalid root key"))?;
-        Ok(RootKey::new(root_key_bytes))
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_root_key(&mut self, root_key: &RootKey) {
-        self.session.root_key = root_key.key().to_vec();
     }
 
     pub(crate) fn sender_ratchet_key(&self) -> Result<PublicKey, InvalidSessionError> {
@@ -438,74 +461,6 @@ impl SessionState {
         self.session.sender_chain = Some(new_chain);
     }
 
-    #[cfg(test)]
-    pub(crate) fn get_message_keys(
-        &mut self,
-        sender: &PublicKey,
-        counter: u32,
-    ) -> Result<Option<MessageKeyGenerator>, InvalidSessionError> {
-        if let Some(mut chain_and_index) = self.get_receiver_chain(sender)? {
-            let message_key_idx = chain_and_index
-                .0
-                .message_keys
-                .iter()
-                .position(|m| m.index == counter);
-
-            if let Some(position) = message_key_idx {
-                let message_key = chain_and_index.0.message_keys.remove(position);
-                let keys =
-                    MessageKeyGenerator::from_pb(message_key).map_err(InvalidSessionError)?;
-
-                // Update with message key removed
-                self.session.receiver_chains[chain_and_index.1] = chain_and_index.0;
-                return Ok(Some(keys));
-            }
-        }
-
-        Ok(None)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_message_keys(
-        &mut self,
-        sender: &PublicKey,
-        message_keys: MessageKeyGenerator,
-    ) -> Result<(), InvalidSessionError> {
-        let chain_and_index = self
-            .get_receiver_chain(sender)?
-            .expect("called set_message_keys for a non-existent chain");
-        let mut updated_chain = chain_and_index.0;
-        updated_chain.message_keys.insert(0, message_keys.into_pb());
-
-        if updated_chain.message_keys.len() > consts::MAX_MESSAGE_KEYS {
-            updated_chain.message_keys.pop();
-        }
-
-        self.session.receiver_chains[chain_and_index.1] = updated_chain;
-
-        Ok(())
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set_receiver_chain_key(
-        &mut self,
-        sender: &PublicKey,
-        chain_key: &ChainKey,
-    ) -> Result<(), InvalidSessionError> {
-        let chain_and_index = self
-            .get_receiver_chain(sender)?
-            .expect("called set_receiver_chain_key for a non-existent chain");
-        let mut updated_chain = chain_and_index.0;
-        updated_chain.chain_key = Some(session_structure::chain::ChainKey {
-            index: chain_key.index(),
-            key: chain_key.key().to_vec(),
-        });
-
-        self.session.receiver_chains[chain_and_index.1] = updated_chain;
-
-        Ok(())
-    }
-
     pub(crate) fn set_unacknowledged_pre_key_message(
         &mut self,
         pre_key_id: Option<PreKeyId>,
@@ -580,6 +535,7 @@ impl SessionState {
             local_registration_id: _local_registration_id,
             alice_base_key: _alice_base_key,
             pq_ratchet_state: _pq_ratchet_state,
+            origin: _origin,
         } = &self.session;
         // ####### IMPORTANT #######
         // Don't forget to clean up new pending fields.
@@ -643,28 +599,6 @@ impl SessionState {
         ratchet.apply_to_pb(&mut self.session);
     }
 
-    #[cfg(test)]
-    pub(crate) fn pq_ratchet_recv(
-        &mut self,
-        msg: &spqr::SerializedMessage,
-    ) -> Result<spqr::MessageKey, spqr::Error> {
-        let _trace = libsignal_debug::trace_block!("SessionState::pq_ratchet_recv");
-        let spqr::Recv { state, key } = spqr::recv(&self.session.pq_ratchet_state, msg)?;
-        self.session.pq_ratchet_state = state;
-        Ok(key)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn pq_ratchet_send<R: Rng + CryptoRng>(
-        &mut self,
-        csprng: &mut R,
-    ) -> Result<(spqr::SerializedMessage, spqr::MessageKey), spqr::Error> {
-        let _trace = libsignal_debug::trace_block!("SessionState::pq_ratchet_send");
-        let spqr::Send { state, key, msg } = spqr::send(&self.session.pq_ratchet_state, csprng)?;
-        self.session.pq_ratchet_state = state;
-        Ok((msg, key))
-    }
-
     pub(crate) fn pq_ratchet_state(&self) -> &spqr::SerializedState {
         &self.session.pq_ratchet_state
     }
@@ -705,6 +639,12 @@ impl From<&SessionState> for SessionStructure {
 pub struct SessionRecord {
     current_session: Option<SessionState>,
     previous_sessions: Vec<Vec<u8>>,
+    /// Per-device-record session management state.
+    ///
+    /// `None` is a pre-Tahini (Sesame/legacy) record on disk; any
+    /// Tahini-side mutation (`set_last_act`, `increment_direction_change_ctr`,
+    /// etc.) auto-promotes this to `Some(default)`.
+    session_management_state: Option<TahiniSessionManagementState>,
 }
 
 impl SessionRecord {
@@ -712,6 +652,7 @@ impl SessionRecord {
         Self {
             current_session: None,
             previous_sessions: Vec::new(),
+            session_management_state: Some(TahiniSessionManagementState::default()),
         }
     }
 
@@ -719,6 +660,7 @@ impl SessionRecord {
         Self {
             current_session: Some(state),
             previous_sessions: Vec::new(),
+            session_management_state: Some(TahiniSessionManagementState::default()),
         }
     }
 
@@ -726,65 +668,30 @@ impl SessionRecord {
         let record = RecordStructure::decode(bytes)
             .map_err(|_| InvalidSessionError("failed to decode session record protobuf"))?;
 
+        let session_management_state = record.session_management_state.map(|sm| match sm {
+            record_structure::SessionManagementState::Tahini(state) => state,
+        });
+
         Ok(Self {
             current_session: record.current_session.map(|s| s.into()),
             previous_sessions: record.previous_sessions,
+            session_management_state,
         })
     }
 
-    /// If there's a session with a matching version and `alice_base_key`, ensures that it is the
-    /// current session, promoting if necessary.
-    ///
-    /// Returns `Ok(true)` if such a session was found, `Ok(false)` if not, and
-    /// `Err(InvalidSessionError)` if an invalid session was found during the search (whether
-    /// current or not).
-    pub(crate) fn promote_matching_session(
-        &mut self,
-        version: u32,
-        alice_base_key: &[u8],
-    ) -> Result<bool, InvalidSessionError> {
-        if let Some(current_session) = &self.current_session {
-            if current_session.session_version()? == version
-                && alice_base_key
-                    .ct_eq(current_session.alice_base_key())
-                    .into()
-            {
-                return Ok(true);
-            }
-        }
-
-        let mut session_to_promote = None;
-        for (i, previous) in self.previous_session_states().enumerate() {
-            let previous = previous?;
-            if previous.session_version()? == version
-                && alice_base_key.ct_eq(previous.alice_base_key()).into()
-            {
-                session_to_promote = Some((i, previous));
-                break;
-            }
-        }
-
-        if let Some((i, state)) = session_to_promote {
-            self.promote_old_session(i, state);
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    pub(crate) fn session_state(&self) -> Option<&SessionState> {
+    pub(crate) fn active_session(&self) -> Option<&SessionState> {
         self.current_session.as_ref()
     }
 
-    pub(crate) fn session_state_mut(&mut self) -> Option<&mut SessionState> {
+    pub(crate) fn active_session_mut(&mut self) -> Option<&mut SessionState> {
         self.current_session.as_mut()
     }
 
-    pub(crate) fn set_session_state(&mut self, session: SessionState) {
+    pub(crate) fn set_active_session(&mut self, session: SessionState) {
         self.current_session = Some(session);
     }
 
-    pub(crate) fn previous_session_states(
+    pub(crate) fn archived_sessions(
         &self,
     ) -> impl ExactSizeIterator<Item = Result<SessionState, InvalidSessionError>> + '_ {
         self.previous_sessions.iter().map(|bytes| {
@@ -794,40 +701,23 @@ impl SessionRecord {
         })
     }
 
-    pub(crate) fn promote_old_session(
-        &mut self,
-        old_session: usize,
-        updated_session: SessionState,
-    ) {
-        self.previous_sessions.remove(old_session);
-        self.promote_state(updated_session)
+    /// The number of archived (previous) sessions retained in this record.
+    pub fn archived_session_count(&self) -> usize {
+        self.previous_sessions.len()
     }
 
-    pub(crate) fn promote_state(&mut self, new_state: SessionState) {
-        self.archive_current_state_inner();
+    /// Archives the current active session (if any) and sets `new_state` as active.
+    pub(crate) fn replace_active_session(&mut self, new_state: SessionState) {
+        if let Some(s) = self.current_session.take() {
+            self.archive_session(s);
+        }
         self.current_session = Some(new_state);
     }
 
-    // A non-fallible version of archive_current_state.
-    //
-    // Returns `true` if there was a session to archive, `false` if not.
-    fn archive_current_state_inner(&mut self) -> bool {
-        if let Some(mut current_session) = self.current_session.take() {
-            if self.previous_sessions.len() >= consts::ARCHIVED_STATES_MAX_LENGTH {
-                self.previous_sessions.pop();
-            }
-            current_session.clear_unacknowledged_pre_key_message();
-            self.previous_sessions
-                .insert(0, current_session.session.encode_to_vec());
-            true
-        } else {
-            false
-        }
-    }
-
     pub fn archive_current_state(&mut self) -> Result<(), SignalProtocolError> {
-        if !self.archive_current_state_inner() {
-            log::info!("Skipping archive, current session state is fresh");
+        match self.current_session.take() {
+            Some(s) => self.archive_session(s),
+            None => log::info!("archive_current_state: no active session to archive"),
         }
         Ok(())
     }
@@ -836,6 +726,9 @@ impl SessionRecord {
         let record = RecordStructure {
             current_session: self.current_session.as_ref().map(|s| s.into()),
             previous_sessions: self.previous_sessions.clone(),
+            session_management_state: self
+                .session_management_state
+                .map(record_structure::SessionManagementState::Tahini),
         };
         Ok(record.encode_to_vec())
     }
@@ -846,7 +739,7 @@ impl SessionRecord {
 
     pub fn remote_registration_id(&self) -> Result<u32, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "remote_registration_id",
@@ -857,7 +750,7 @@ impl SessionRecord {
 
     pub fn local_registration_id(&self) -> Result<u32, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "local_registration_id",
@@ -868,7 +761,7 @@ impl SessionRecord {
 
     pub fn session_version(&self) -> Result<u32, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "session_version",
@@ -879,7 +772,7 @@ impl SessionRecord {
 
     pub fn local_identity_key_bytes(&self) -> Result<Vec<u8>, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "local_identity_key_bytes",
@@ -890,7 +783,7 @@ impl SessionRecord {
 
     pub fn remote_identity_key_bytes(&self) -> Result<Option<Vec<u8>>, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "remote_identity_key_bytes",
@@ -912,7 +805,7 @@ impl SessionRecord {
 
     pub fn alice_base_key(&self) -> Result<&[u8], SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "alice_base_key",
@@ -926,7 +819,7 @@ impl SessionRecord {
         sender: &PublicKey,
     ) -> Result<Option<Box<[u8]>>, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "get_receiver_chain_key",
@@ -938,7 +831,7 @@ impl SessionRecord {
 
     pub fn get_sender_chain_key_bytes(&self) -> Result<Vec<u8>, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "get_sender_chain_key_bytes",
@@ -959,7 +852,7 @@ impl SessionRecord {
 
     pub fn get_kyber_ciphertext(&self) -> Result<Option<&Vec<u8>>, SignalProtocolError> {
         Ok(self
-            .session_state()
+            .active_session()
             .ok_or_else(|| {
                 SignalProtocolError::SessionNotFound(SessionNotFound::without_address(
                     "get_kyber_ciphertext",
@@ -967,4 +860,161 @@ impl SessionRecord {
             })?
             .get_kyber_ciphertext())
     }
+
+    // ── Tahini session management ───────────────────────────────────
+    //
+    // Reads on a legacy (None) record see Tahini defaults (last_act=Send,
+    // ctr=0). The first write auto-promotes the record to Tahini.
+    //
+    // last_act defaults to Send (the proto enum-0 value) when a record carries no
+    // Tahini state: a legacy record predates the counter, and Send is a safe
+    // starting point -- it costs at most one direction change, against a threshold
+    // of MAX_DIR_CHANGES, if that record's first Tahini action is a receive on an
+    // inactive session.
+    //
+    // LastAct::Unset is a distinct value, never the default. It is written by
+    // `on_initiate` for a freshly established session that has taken no action
+    // yet, so its first send is not counted as a direction change (see tahini.rs).
+
+    pub(crate) fn last_act(&self) -> LastAct {
+        let raw = self
+            .session_management_state
+            .as_ref()
+            .map(|s| s.last_act)
+            .unwrap_or_default();
+        LastAct::try_from(raw).unwrap_or(LastAct::Send)
+    }
+
+    pub(crate) fn set_last_act(&mut self, act: LastAct) {
+        self.session_management_state
+            .get_or_insert_with(TahiniSessionManagementState::default)
+            .last_act = act.into();
+    }
+
+    pub(crate) fn direction_change_ctr(&self) -> u32 {
+        self.session_management_state
+            .as_ref()
+            .map(|s| s.direction_change_ctr)
+            .unwrap_or(0)
+    }
+
+    pub(crate) fn increment_direction_change_ctr(&mut self) {
+        self.session_management_state
+            .get_or_insert_with(TahiniSessionManagementState::default)
+            .direction_change_ctr += 1;
+    }
+
+    pub(crate) fn reset_direction_change_ctr(&mut self) {
+        if let Some(state) = self.session_management_state.as_mut() {
+            state.direction_change_ctr = 0;
+        }
+    }
+
+    /// Update an archived session in place (write back ratchet state
+    /// after decryption without promoting).
+    pub(crate) fn update_archived_session(
+        &mut self,
+        index: usize,
+        updated: SessionState,
+    ) -> Result<(), SignalProtocolError> {
+        assert!(
+            index < self.previous_sessions.len(),
+            "update_archived_session: index {index} out of bounds (len {})",
+            self.previous_sessions.len()
+        );
+        let prev =
+            SessionStructure::decode(self.previous_sessions[index].as_slice()).map_err(|_| {
+                SignalProtocolError::InvalidSessionStructure(
+                    "update_archived_session: stored archived session failed to decode",
+                )
+            })?;
+        assert!(
+            prev.alice_base_key == updated.alice_base_key(),
+            "update_archived_session: attempting to update session at index {index} but base key doesn't match."
+        );
+        let structure: SessionStructure = updated.into();
+        self.previous_sessions[index] = structure.encode_to_vec();
+        Ok(())
+    }
+
+    /// Where a session with the given `session_id` lives in this record.
+    pub(crate) fn find_session_by_id(
+        &self,
+        session_id: &[u8],
+    ) -> Result<Option<SessionLocation>, InvalidSessionError> {
+        if let Some(current) = &self.current_session {
+            if session_id.ct_eq(current.session_id()).into() {
+                return Ok(Some(SessionLocation::Current));
+            }
+        }
+
+        for (i, previous) in self.archived_sessions().enumerate() {
+            if session_id.ct_eq(previous?.session_id()).into() {
+                return Ok(Some(SessionLocation::Archived(i)));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub(crate) fn get_session(
+        &self,
+        loc: SessionLocation,
+    ) -> Result<Option<SessionState>, SignalProtocolError> {
+        match loc {
+            SessionLocation::Current => Ok(self.current_session.clone()),
+            SessionLocation::Archived(idx) => {
+                assert!(
+                    idx < self.previous_sessions.len(),
+                    "get_session: archived index {idx} out of bounds (len {})",
+                    self.previous_sessions.len()
+                );
+                Ok(Some(SessionState {
+                    session: SessionStructure::decode(self.previous_sessions[idx].as_ref())
+                        .map_err(|_| {
+                            InvalidSessionError("failed to decode previous session protobuf")
+                        })?,
+                }))
+            }
+        }
+    }
+
+    pub(crate) fn update_session_state(
+        &mut self,
+        loc: SessionLocation,
+        state: SessionState,
+    ) -> Result<(), SignalProtocolError> {
+        match loc {
+            SessionLocation::Current => {
+                let current_session = self
+                    .current_session
+                    .as_ref()
+                    .expect("accessing current session at validated location");
+                assert!(current_session.alice_base_key() == state.alice_base_key());
+                self.current_session = Some(state);
+                Ok(())
+            }
+            SessionLocation::Archived(idx) => self.update_archived_session(idx, state),
+        }
+    }
+
+    /// Put a session directly into the archive (e.g., tiebreaker loser).
+    ///
+    /// Enforces [`MAX_ARCHIVED_SESSIONS`](consts::MAX_ARCHIVED_SESSIONS);
+    /// the oldest sessions are dropped until the archive has room.
+    pub(crate) fn archive_session(&mut self, mut session: SessionState) {
+        while self.previous_sessions.len() >= consts::MAX_ARCHIVED_SESSIONS {
+            self.previous_sessions.pop();
+        }
+        crate::tahini::on_archive(&mut session);
+        let structure: SessionStructure = session.into();
+        self.previous_sessions.insert(0, structure.encode_to_vec());
+    }
+}
+
+/// Result of [`SessionRecord::find_session_by_id`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SessionLocation {
+    Current,
+    Archived(usize),
 }

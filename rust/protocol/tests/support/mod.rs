@@ -12,6 +12,7 @@ use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libsignal_protocol::*;
+use libsignal_protocol_test_support::archive_active_session;
 use rand::rngs::OsRng;
 use rand::{CryptoRng, Rng, TryRngCore as _};
 
@@ -67,6 +68,53 @@ pub async fn decrypt(
     )
     .await
 }
+
+pub async fn initiate(
+    store: &mut InMemSignalProtocolStore,
+    remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
+    bundle: &PreKeyBundle,
+) -> Result<(), SignalProtocolError> {
+    initiate_at(
+        store,
+        remote_address,
+        local_address,
+        bundle,
+        SystemTime::now(),
+    )
+    .await
+}
+
+pub async fn initiate_at(
+    store: &mut InMemSignalProtocolStore,
+    remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
+    bundle: &PreKeyBundle,
+    now: SystemTime,
+) -> Result<(), SignalProtocolError> {
+    let mut csprng = OsRng.unwrap_err();
+    initiate_session(
+        remote_address,
+        local_address,
+        &mut store.session_store,
+        &mut store.identity_store,
+        bundle,
+        now,
+        &mut csprng,
+    )
+    .await
+}
+
+pub async fn archive_active(
+    store: &mut InMemSignalProtocolStore,
+    remote_address: &ProtocolAddress,
+) -> Result<(), SignalProtocolError> {
+    archive_active_session(remote_address, &mut store.session_store).await
+}
+
+// used by tests/session.rs but not the benches that also include this module
+#[allow(unused_imports)]
+pub use libsignal_protocol_test_support::deserialize_ciphertext;
 
 pub async fn create_pre_key_bundle<R: Rng + CryptoRng>(
     store: &mut dyn ProtocolStore,

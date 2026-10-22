@@ -12,6 +12,6 @@ mod signed_prekey;
 pub use bundle::{PreKeyBundle, PreKeyBundleContent};
 pub use kyber_prekey::{KyberPreKeyId, KyberPreKeyRecord};
 pub use prekey::{PreKeyId, PreKeyRecord};
-pub(crate) use session::{InvalidSessionError, SessionState};
+pub(crate) use session::{InvalidSessionError, SessionLocation, SessionState};
 pub use session::{SessionRecord, SessionUsabilityRequirements};
 pub use signed_prekey::{GenericSignedPreKey, SignedPreKeyId, SignedPreKeyRecord};

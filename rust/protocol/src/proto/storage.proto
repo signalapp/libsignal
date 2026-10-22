@@ -64,13 +64,44 @@ message SessionStructure {
   reserved 12; // no longer used
   bytes          alice_base_key            = 13;
   bytes          pq_ratchet_state          = 15;
-  // Next index: 16
+
+  // Tahini session management: how this session was established (from the
+  // local device's perspective). LEGACY indicates a pre-Tahini session and
+  // is treated as REMOTE for policy purposes.
+  enum Origin {
+    LEGACY      = 0;
+    LOCAL_NEW   = 1;
+    LOCAL_ACKED = 2;
+    REMOTE      = 3;
+  }
+  Origin         origin                    = 16;
+  // Next index: 17
+}
+
+message TahiniSessionManagementState {
+  enum LastAct {
+    SEND             = 0;
+    RECEIVE_ACTIVE   = 1;
+    RECEIVE_INACTIVE = 2;
+    // A freshly established active session has no prior action; its history is
+    // empty until the first send or receive on it. Distinct from SEND so the
+    // first send does not count a phantom direction change (see on_initiate).
+    UNSET            = 3;
+  }
+  LastAct last_act             = 1;
+  uint32  direction_change_ctr = 2;
 }
 
 message RecordStructure {
   SessionStructure current_session = 1;
   // The order is significant; sessions at the end are "older" and will get trimmed.
   repeated /*SessionStructure*/ bytes previous_sessions = 2;
+
+  // Per-device-record session management state. Absence of this oneof
+  // indicates a pre-Tahini (Sesame/legacy) record.
+  oneof session_management_state {
+    TahiniSessionManagementState tahini = 3;
+  }
 }
 
 message PreKeyRecordStructure {

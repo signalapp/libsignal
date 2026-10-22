@@ -8,23 +8,30 @@ use libsignal_protocol_current::{
     ContentHint, DeviceId, KeyPair, SealedSenderV2SentMessage, SenderCertificate,
     ServerCertificate, Timestamp,
 };
-use rand::rng;
+use rand::SeedableRng as _;
+use rand::rngs::StdRng;
+
+// OS-seeded so each run exercises different key material; swap for
+// `StdRng::seed_from_u64(N)` to reproduce a specific run.
 
 const BOB_UUID: uuid::Uuid = uuid::uuid!("b000000b-6199-486a-ba89-2ba2bb4f2154");
 const ALICE_UUID: uuid::Uuid = uuid::uuid!("a11ce000-6199-486a-ba89-2ba2bb4f2154");
 
-fn make_alice_sender_cert(alice_store: &mut dyn LibSignalProtocolStore) -> SenderCertificate {
-    let fake_trust_root = KeyPair::generate(&mut rng());
-    let signer_key = KeyPair::generate(&mut rng());
+fn make_alice_sender_cert(
+    alice_store: &mut dyn LibSignalProtocolStore,
+    rng: &mut StdRng,
+) -> SenderCertificate {
+    let fake_trust_root = KeyPair::generate(rng);
+    let signer_key = KeyPair::generate(rng);
     let server_cert = ServerCertificate::new(
         0xfa75e,
         signer_key.public_key,
         &fake_trust_root.private_key,
-        &mut rng(),
+        rng,
     )
     .expect("valid");
     let identity_key = *alice_store
-        .create_pre_key_bundle()
+        .create_pre_key_bundle(rng)
         .identity_key()
         .expect("has identity key");
     SenderCertificate::new(
@@ -35,7 +42,7 @@ fn make_alice_sender_cert(alice_store: &mut dyn LibSignalProtocolStore) -> Sende
         Timestamp::from_epoch_millis(0),
         server_cert,
         &signer_key.private_key,
-        &mut rng(),
+        rng,
     )
     .expect("valid")
 }
@@ -84,28 +91,35 @@ fn assert_eq_usmc(
 
 #[test]
 fn ssv1() {
-    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV74::new())]);
+    let mut rng = StdRng::from_os_rng();
+    try_all_combinations(
+        run,
+        &[|rng| Box::new(LibSignalProtocolV74::new(rng))],
+        &mut rng,
+    );
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,
         bob_store: &mut dyn LibSignalProtocolStore,
+        rng: &mut StdRng,
     ) {
         alice_store.process_pre_key_bundle(
             &BOB_UUID.to_string(),
             &ALICE_UUID.to_string(),
-            bob_store.create_pre_key_bundle(),
+            bob_store.create_pre_key_bundle(rng),
+            rng,
         );
 
         let message = UnidentifiedSenderMessageContent::new(
             CiphertextMessageType::SenderKey,
-            make_alice_sender_cert(alice_store),
+            make_alice_sender_cert(alice_store, rng),
             b"payload".to_vec(),
             ContentHint::Resendable,
             Some(b"group".to_vec()),
         )
         .expect("valid");
 
-        let encrypted = alice_store.encrypt_sealed_sender_v1(&BOB_UUID.to_string(), &message);
+        let encrypted = alice_store.encrypt_sealed_sender_v1(&BOB_UUID.to_string(), &message, rng);
         let decrypted = bob_store.decrypt_sealed_sender(&encrypted);
 
         assert_eq_usmc(&message, &decrypted);
@@ -114,21 +128,28 @@ fn ssv1() {
 
 #[test]
 fn ssv2() {
-    try_all_combinations(run, &[|| Box::new(LibSignalProtocolV74::new())]);
+    let mut rng = StdRng::from_os_rng();
+    try_all_combinations(
+        run,
+        &[|rng| Box::new(LibSignalProtocolV74::new(rng))],
+        &mut rng,
+    );
 
     fn run(
         alice_store: &mut dyn LibSignalProtocolStore,
         bob_store: &mut dyn LibSignalProtocolStore,
+        rng: &mut StdRng,
     ) {
         alice_store.process_pre_key_bundle(
             &BOB_UUID.to_string(),
             &ALICE_UUID.to_string(),
-            bob_store.create_pre_key_bundle(),
+            bob_store.create_pre_key_bundle(rng),
+            rng,
         );
 
         let message = UnidentifiedSenderMessageContent::new(
             CiphertextMessageType::SenderKey,
-            make_alice_sender_cert(alice_store),
+            make_alice_sender_cert(alice_store, rng),
             b"payload".to_vec(),
             ContentHint::Resendable,
             Some(b"group".to_vec()),
@@ -136,7 +157,7 @@ fn ssv2() {
         .expect("valid");
 
         let encrypted_to_send =
-            alice_store.encrypt_sealed_sender_v2(&BOB_UUID.to_string(), &message);
+            alice_store.encrypt_sealed_sender_v2(&BOB_UUID.to_string(), &message, rng);
 
         let parsed_encrypted_to_send =
             SealedSenderV2SentMessage::parse(&encrypted_to_send).expect("valid");

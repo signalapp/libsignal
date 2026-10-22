@@ -7,20 +7,21 @@ use std::time::SystemTime;
 
 use futures_util::FutureExt;
 use libsignal_protocol_v74::*;
-use rand::{Rng, rng};
+use rand::Rng;
+use rand::rngs::StdRng;
 
 fn address(id: &str) -> ProtocolAddress {
     ProtocolAddress::new(id.into(), 1.into())
 }
 
+#[derive(Clone)]
 pub struct LibSignalProtocolV74(InMemSignalProtocolStore);
 
 impl LibSignalProtocolV74 {
-    pub fn new() -> Self {
-        let mut csprng = rng();
-        let identity_key = IdentityKeyPair::generate(&mut csprng);
+    pub fn new(rng: &mut StdRng) -> Self {
+        let identity_key = IdentityKeyPair::generate(rng);
         // Valid registration IDs fit in 14 bits.
-        let registration_id: u8 = csprng.r#gen();
+        let registration_id: u8 = rng.random();
 
         Self(
             InMemSignalProtocolStore::new(identity_key, registration_id as u32)
@@ -34,11 +35,18 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         "v74"
     }
 
-    fn create_pre_key_bundle(&mut self) -> super::PreKeyBundle {
-        let mut csprng = rng();
-        let pre_key_pair = KeyPair::generate(&mut csprng);
-        let signed_pre_key_pair = KeyPair::generate(&mut csprng);
-        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, &mut csprng);
+    fn box_clone(&self) -> Box<dyn super::LibSignalProtocolStore> {
+        Box::new(self.clone())
+    }
+
+    fn to_current_for_remote(&self, _remote: &str) -> Box<dyn super::LibSignalProtocolStore> {
+        panic!("migration to current is not implemented for v74")
+    }
+
+    fn create_pre_key_bundle(&mut self, rng: &mut StdRng) -> super::PreKeyBundle {
+        let pre_key_pair = KeyPair::generate(rng);
+        let signed_pre_key_pair = KeyPair::generate(rng);
+        let signed_pq_pre_key_pair = kem::KeyPair::generate(kem::KeyType::Kyber1024, rng);
 
         let identity_key = self
             .0
@@ -49,19 +57,19 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         let signed_pre_key_public = signed_pre_key_pair.public_key.serialize();
         let signed_pre_key_signature = identity_key
             .private_key()
-            .calculate_signature(&signed_pre_key_public, &mut csprng)
+            .calculate_signature(&signed_pre_key_public, rng)
             .expect("can calculate signatures");
 
         let signed_pq_pre_key_public = signed_pq_pre_key_pair.public_key.serialize();
         let signed_pq_pre_key_signature = identity_key
             .private_key()
-            .calculate_signature(&signed_pq_pre_key_public, &mut csprng)
+            .calculate_signature(&signed_pq_pre_key_public, rng)
             .expect("can sign");
 
-        let device_id: u32 = csprng.gen_range(1..=127);
-        let pre_key_id: u32 = csprng.r#gen();
-        let signed_pre_key_id: u32 = csprng.r#gen();
-        let kyber_pre_key_id: u32 = csprng.r#gen();
+        let device_id: u32 = rng.random_range(1..=127);
+        let pre_key_id: u32 = rng.random();
+        let signed_pre_key_id: u32 = rng.random();
+        let kyber_pre_key_id: u32 = rng.random();
 
         let pre_key_bundle = super::PreKeyBundle::new(
             self.0
@@ -96,7 +104,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
             .expect("synchronous")
             .expect("can save pre-keys");
 
-        let timestamp = csprng.r#gen();
+        let timestamp = rng.random();
 
         self.0
             .save_signed_pre_key(
@@ -134,6 +142,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         remote: &str,
         _local: &str,
         pre_key_bundle: super::PreKeyBundle,
+        rng: &mut StdRng,
     ) {
         let pre_key_bundle = (|| {
             let bundle = PreKeyBundle::new(
@@ -168,7 +177,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
             &mut self.0.identity_store,
             &pre_key_bundle,
             SystemTime::now(),
-            &mut rng(),
+            rng,
             UsePQRatchet::Yes,
         )
         .now_or_never()
@@ -176,27 +185,79 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         .expect("can process pre-key bundles")
     }
 
-    fn encrypt(
+    fn has_active_session(&self, remote: &str) -> bool {
+        self.0
+            .load_session(&address(remote))
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can fetch sessions")
+            .is_some_and(|session| session.alice_base_key().is_ok())
+    }
+
+    fn archive_active_session(&mut self, remote: &str) {
+        if let Some(mut session) = self
+            .0
+            .load_session(&address(remote))
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can fetch sessions")
+        {
+            session.archive_current_state().expect("can archive state");
+            self.0
+                .store_session(&address(remote), &session)
+                .now_or_never()
+                .expect("synchronous")
+                .expect("can store session");
+        }
+    }
+
+    fn active_session_id(&self, remote: &str) -> Option<Vec<u8>> {
+        self.0
+            .load_session(&address(remote))
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can fetch sessions")
+            .and_then(|session| session.alice_base_key().ok().map(ToOwned::to_owned))
+    }
+
+    fn current_ratchet_key_matches(&self, remote: &str, ratchet_key: &[u8]) -> bool {
+        let Ok(ratchet_key) = PublicKey::deserialize(ratchet_key) else {
+            return false;
+        };
+        self.0
+            .load_session(&address(remote))
+            .now_or_never()
+            .expect("synchronous")
+            .expect("can fetch sessions")
+            .is_some_and(|session| {
+                session
+                    .current_ratchet_key_matches(&ratchet_key)
+                    .expect("structurally valid session")
+            })
+    }
+
+    fn try_encrypt(
         &mut self,
         remote: &str,
         _local: &str,
         msg: &[u8],
-    ) -> (Vec<u8>, super::CiphertextMessageType) {
+        rng: &mut StdRng,
+    ) -> Result<(Vec<u8>, super::CiphertextMessageType), Box<dyn std::error::Error>> {
         let encrypted = message_encrypt(
             msg,
             &address(remote),
             &mut self.0.session_store,
             &mut self.0.identity_store,
             SystemTime::now(),
-            &mut rng(),
+            rng,
         )
         .now_or_never()
         .expect("synchronous")
-        .expect("can encrypt messages");
-        (
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+        Ok((
             encrypted.serialize().to_vec(),
             encrypted.message_type().into_current(),
-        )
+        ))
     }
 
     fn decrypt(
@@ -205,6 +266,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         _local: &str,
         msg: &[u8],
         msg_type: super::CiphertextMessageType,
+        rng: &mut StdRng,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         match ConvertVersion::from_current(msg_type) {
             CiphertextMessageType::Whisper => message_decrypt_signal(
@@ -212,7 +274,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
                 &address(remote),
                 &mut self.0.session_store,
                 &mut self.0.identity_store,
-                &mut rng(),
+                rng,
             )
             .now_or_never()
             .expect("synchronous")
@@ -225,7 +287,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
                 &mut self.0.pre_key_store,
                 &self.0.signed_pre_key_store,
                 &mut self.0.kyber_pre_key_store,
-                &mut rng(),
+                rng,
                 UsePQRatchet::Yes,
             )
             .now_or_never()
@@ -239,6 +301,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         &self,
         remote: &str,
         msg: &libsignal_protocol_current::UnidentifiedSenderMessageContent,
+        rng: &mut StdRng,
     ) -> Vec<u8> {
         // We don't use ConvertVersion for this because we're passed a reference and USMC doesn't
         // implement Clone.
@@ -246,7 +309,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
             msg.serialized().expect("can re-serialize"),
         )
         .expect("compatible serialization");
-        sealed_sender_encrypt_from_usmc(&address(remote), &msg, &self.0, &mut rng())
+        sealed_sender_encrypt_from_usmc(&address(remote), &msg, &self.0, rng)
             .now_or_never()
             .expect("synchronous")
             .expect("can encrypt messages")
@@ -256,6 +319,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
         &self,
         remote: &str,
         msg: &libsignal_protocol_current::UnidentifiedSenderMessageContent,
+        rng: &mut StdRng,
     ) -> Vec<u8> {
         let msg = UnidentifiedSenderMessageContent::deserialize(
             msg.serialized().expect("can re-serialize"),
@@ -274,7 +338,7 @@ impl super::LibSignalProtocolStore for LibSignalProtocolV74 {
             [],
             &msg,
             &self.0,
-            &mut rng(),
+            rng,
         )
         .now_or_never()
         .expect("synchronous")

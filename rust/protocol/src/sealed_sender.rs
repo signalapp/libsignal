@@ -2077,6 +2077,7 @@ pub async fn sealed_sender_decrypt(
                 &mut rng,
             )
             .await?
+            .plaintext
         }
         msg_type => {
             return Err(SignalProtocolError::InvalidMessage(

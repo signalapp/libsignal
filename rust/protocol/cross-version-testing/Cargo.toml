@@ -9,20 +9,24 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-trait = "0.1"
 env_logger = "0.11.4"
 futures-util = "0.3.7"
 log = "0.4"
-rand = "0.9"
+rand = "0.9.4"
 rand_v7 = { package = "rand", version = "0.7" }
 rand_v8 = { package = "rand", version = "0.8" }
 uuid = "1.0"
 
 libsignal-protocol-current = { path = "..", package = "libsignal-protocol" }
+libsignal-protocol-pre-tahini = { git = "https://github.com/signalapp/libsignal", tag = "v0.102.0", package = "libsignal-protocol" }
 libsignal-protocol-v73 = { git = "https://github.com/signalapp/libsignal", tag = "v0.73.0", package = "libsignal-protocol" }
 libsignal-protocol-v74 = { git = "https://github.com/signalapp/libsignal", tag = "v0.74.0", package = "libsignal-protocol" }
 
 [dev-dependencies]
 assert_matches = "1.5"
+libsignal-protocol-test-support = { path = "../test-support" }
+proptest = "1.7"
 
 # Prevent this crate from being included in the top-level workspace
 [workspace]

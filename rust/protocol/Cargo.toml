@@ -57,7 +57,6 @@ mlkem1024 = []
 
 [dev-dependencies]
 libsignal-protocol-test-support = { path = "test-support" }
-test-case = { workspace = true }
 
 clap = { workspace = true, features = ["derive"] }
 criterion = { workspace = true }
@@ -68,6 +67,8 @@ proptest = { workspace = true }
 proptest-arbitrary-interop = { workspace = true }
 rand_chacha = { workspace = true }
 rand_core = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+test-case = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }
