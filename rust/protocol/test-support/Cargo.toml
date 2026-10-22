@@ -18,5 +18,7 @@ workspace = true
 libsignal-protocol = { path = ".." }
 
 arbitrary = { workspace = true, features = ["derive"] }
+async-trait = { workspace = true }
 log = { workspace = true }
 rand = { workspace = true }
+thiserror = { workspace = true }

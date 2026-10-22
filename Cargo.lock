@@ -3295,6 +3295,7 @@ dependencies = [
  "signal-crypto",
  "spqr",
  "subtle",
+ "test-case",
  "thiserror 2.0.18",
  "uuid",
  "zerocopy",
@@ -3305,9 +3306,11 @@ name = "libsignal-protocol-test-support"
 version = "0.1.0"
 dependencies = [
  "arbitrary",
+ "async-trait",
  "libsignal-protocol",
  "log",
  "rand 0.9.4",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

@@ -12,6 +12,8 @@ use libsignal_protocol::*;
 use rand::seq::SliceRandom as _;
 use rand::{CryptoRng, Rng};
 
+pub mod client_stores;
+
 /// Represents the part of [`Participant`] state that can be backed up by the OS.
 ///
 /// (whether or not we want it to be)

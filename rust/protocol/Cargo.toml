@@ -57,6 +57,7 @@ mlkem1024 = []
 
 [dev-dependencies]
 libsignal-protocol-test-support = { path = "test-support" }
+test-case = { workspace = true }
 
 clap = { workspace = true, features = ["derive"] }
 criterion = { workspace = true }
