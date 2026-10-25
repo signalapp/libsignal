@@ -867,10 +867,9 @@ impl SessionRecord {
     // ctr=0). The first write auto-promotes the record to Tahini.
     //
     // last_act defaults to Send (the proto enum-0 value) when a record carries no
-    // Tahini state: a legacy record predates the counter, and Send is a safe
-    // starting point -- it costs at most one direction change, against a threshold
-    // of MAX_DIR_CHANGES, if that record's first Tahini action is a receive on an
-    // inactive session.
+    // Tahini state: a legacy record predates the counter. Any value other than
+    // ReceiveInactive behaves the same for an inactive receive (it counts as a
+    // direction change), so the default only matters for the first send.
     //
     // LastAct::Unset is a distinct value, never the default. It is written by
     // `on_initiate` for a freshly established session that has taken no action
