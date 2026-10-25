@@ -173,9 +173,9 @@ async fn crossed_initiations() -> (Peer, Peer, CiphertextMessage, StdRng) {
 }
 
 #[test_case(LastAct::Send, 0, 1, false; "first direction change")]
-#[test_case(LastAct::Send, MAX_DIR_CHANGES - 1, MAX_DIR_CHANGES, false; "reaches threshold")]
-#[test_case(LastAct::Send, MAX_DIR_CHANGES, 0, true; "crosses threshold")]
-#[test_case(LastAct::ReceiveInactive, MAX_DIR_CHANGES, MAX_DIR_CHANGES, false; "consecutive inactive receive")]
+#[test_case(LastAct::Send, MAX_DIR_CHANGES - 2, MAX_DIR_CHANGES - 1, false; "below threshold")]
+#[test_case(LastAct::Send, MAX_DIR_CHANGES - 1, 0, true; "reaches threshold")]
+#[test_case(LastAct::ReceiveInactive, MAX_DIR_CHANGES - 1, MAX_DIR_CHANGES - 1, false; "consecutive inactive receive")]
 #[test_case(LastAct::ReceiveActive, 3, 3, false; "receive after active receive")]
 #[test_case(LastAct::Unset, 0, 0, false; "no preceding send")]
 fn fresh_losing_initiation_records_receive(
@@ -262,7 +262,7 @@ fn rejected_losing_initiation_preserves_receive_history(replay: bool) {
     async {
         let (mut receiver, sender, message, mut rng) = crossed_initiations().await;
         receiver
-            .set_history(&sender, LastAct::Send, MAX_DIR_CHANGES)
+            .set_history(&sender, LastAct::Send, MAX_DIR_CHANGES - 1)
             .await;
         let before = receiver.record(&sender).await.serialize().unwrap();
         let identity_before = receiver.store.get_identity(&sender.address).await.unwrap();

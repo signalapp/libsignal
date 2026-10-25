@@ -44,8 +44,12 @@ use crate::{IdentityKey, SessionRecord};
 
 // ── Policy constants ─────────────────────────────────────────────────────────
 
-/// Maximum number of Send ↔ ReceiveInactive direction changes before the
-/// deadlock detector archives the active session and forces re-establishment.
+/// Number of Send ↔ ReceiveInactive direction changes at which the deadlock
+/// detector archives the active session and forces re-establishment.
+///
+/// Matches the `DiscardAfter5ReceiveFromOOO` restrictions in
+/// `models/tahini/Tahini.spthy`: once the count reaches 5, the active session
+/// must not be sent on again.
 pub(crate) const MAX_DIR_CHANGES: u32 = 5;
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -97,7 +101,7 @@ pub(crate) fn on_receive_active(record: &mut SessionRecord) {
 /// Mark a successful decrypt on an archived (inactive) session.
 ///
 /// If the prior action was a send, increments the direction-change counter.
-/// If the counter then exceeds [`MAX_DIR_CHANGES`], archives the active
+/// If the counter then reaches [`MAX_DIR_CHANGES`], archives the active
 /// session and resets the counter (deadlock break).
 pub(crate) fn on_receive_inactive(
     record: &mut SessionRecord,
@@ -107,7 +111,7 @@ pub(crate) fn on_receive_inactive(
     }
     record.set_last_act(LastAct::ReceiveInactive);
 
-    if record.direction_change_ctr() > MAX_DIR_CHANGES {
+    if record.direction_change_ctr() >= MAX_DIR_CHANGES {
         log::info!(
             "Tahini deadlock detected (direction_change_ctr={}), \
              archiving active session on receive",
@@ -284,7 +288,7 @@ mod tests {
             SessionRecord::new(SessionState::from_session_structure(SessionStructure {
                 ..Default::default()
             }));
-        for _i in 0..=MAX_DIR_CHANGES {
+        for _i in 0..MAX_DIR_CHANGES {
             record.increment_direction_change_ctr();
         }
         record.set_last_act(LastAct::ReceiveActive);
