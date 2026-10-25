@@ -314,3 +314,96 @@ fn rejected_losing_initiation_preserves_receive_history(replay: bool) {
     .now_or_never()
     .unwrap();
 }
+
+/// Our own initiation went unanswered until it is too old to send on; a later
+/// initiation from the peer with a lower SID must still become active when the
+/// current time is known, so the conversation can continue on it.
+#[test_case(false; "without clock keeps stale session")]
+#[test_case(true; "with clock adopts peer session")]
+fn stale_unacknowledged_session_yields_tiebreak(with_clock: bool) {
+    async {
+        let later = SystemTime::UNIX_EPOCH
+            + crate::consts::MAX_UNACKNOWLEDGED_SESSION_AGE
+            + std::time::Duration::from_secs(1);
+        let (mut alice, mut bob, mut rng) = (0..)
+            .find_map(|seed| {
+                async move {
+                    let mut rng = StdRng::seed_from_u64(seed);
+                    let mut alice = Peer::new("alice", &mut rng).await;
+                    let mut bob = Peer::new("bob", &mut rng).await;
+                    alice.initiate(&bob, &mut rng).await;
+                    bob.initiate(&alice, &mut rng).await;
+                    let alice_sid = alice.record(&bob).await.alice_base_key().unwrap().to_vec();
+                    let bob_sid = bob.record(&alice).await.alice_base_key().unwrap().to_vec();
+                    (bob_sid < alice_sid).then_some((alice, bob, rng))
+                }
+                .now_or_never()
+                .unwrap()
+            })
+            .unwrap();
+        let bob_sid = bob.record(&alice).await.alice_base_key().unwrap().to_vec();
+
+        let CiphertextMessage::PreKeySignalMessage(message) = bob.send(&alice, &mut rng).await
+        else {
+            panic!("expected a PreKey message");
+        };
+        let store = &mut alice.store;
+        let result = if with_clock {
+            message_decrypt_prekey_at(
+                &message,
+                &bob.address,
+                &alice.address,
+                &mut store.session_store,
+                &mut store.identity_store,
+                &mut store.pre_key_store,
+                &store.signed_pre_key_store,
+                &mut store.kyber_pre_key_store,
+                later,
+                &mut rng,
+            )
+            .await
+        } else {
+            message_decrypt_prekey(
+                &message,
+                &bob.address,
+                &alice.address,
+                &mut store.session_store,
+                &mut store.identity_store,
+                &mut store.pre_key_store,
+                &store.signed_pre_key_store,
+                &mut store.kyber_pre_key_store,
+                &mut rng,
+            )
+            .await
+        };
+        assert_eq!(result.unwrap().plaintext, b"hello");
+
+        let reply = message_encrypt(
+            b"reply",
+            &bob.address,
+            &alice.address,
+            &mut alice.store.session_store,
+            &mut alice.store.identity_store,
+            later,
+            &mut rng,
+        )
+        .await;
+        if with_clock {
+            assert_eq!(alice.record(&bob).await.alice_base_key().unwrap(), bob_sid);
+            let reply = reply.unwrap();
+            assert!(matches!(reply, CiphertextMessage::SignalMessage(_)));
+            assert_eq!(
+                bob.receive(&alice, &reply, &mut rng).await.unwrap(),
+                b"reply"
+            );
+        } else {
+            // Today's behavior: the stale session stays active and cannot send.
+            assert!(matches!(
+                reply,
+                Err(SignalProtocolError::SessionNotFound(_))
+            ));
+        }
+    }
+    .now_or_never()
+    .unwrap();
+}

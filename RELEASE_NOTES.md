@@ -12,5 +12,8 @@ v0.106.0
 - Rust: `process_prekey` is no longer public and `message_decrypt_prekey` now
   returns a `PreKeyDecryptResult` instead of a `Vec<u8>`. There is a new export:
   `initiate_session`. Java, Swift, and Typescript APIs are unchanged.
+- Rust: New `message_decrypt_prekey_at`, which takes the current time. With it,
+  an incoming session wins the simultaneous-initiation tiebreak when our own
+  unacknowledged session is too old to send on.
 
 
