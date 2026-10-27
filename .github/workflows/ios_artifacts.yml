@@ -48,9 +48,9 @@ jobs:
           }
 
     - id: archive-name
-      run: echo "name=libsignal-client-ios-build-v$(sed -En "s/${VERSION_REGEX}/\1/p" LibSignalClient.podspec).tar.gz" >> "$GITHUB_OUTPUT"
+      run: echo "name=libsignal-client-ios-build-v$(sed -En "s/${VERSION_REGEX}/\1/p" Cargo.toml).xcframework.zip" >> "$GITHUB_OUTPUT"
       env:
-        VERSION_REGEX: "^.*[.]version += '(.+)'$"
+        VERSION_REGEX: '^version = "(.+)"$'
 
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal --target x86_64-apple-ios,aarch64-apple-ios,aarch64-apple-ios-sim --component rust-src
 
@@ -71,7 +71,9 @@ jobs:
       env:
         CARGO_BUILD_TARGET: aarch64-apple-ios-sim
 
-    - run: tar -c --auto-compress --no-mac-metadata -f '${{ steps.archive-name.outputs.name }}' target/*/release/libsignal_ffi.a
+    - run: swift/build_xcframework.py --zip
+
+    - run: mv target/LibSignalFfi.xcframework.zip '${{ steps.archive-name.outputs.name }}'
 
     - run: shasum -a 256 '${{ steps.archive-name.outputs.name }}' | tee -a "$GITHUB_STEP_SUMMARY" '${{ steps.archive-name.outputs.name }}.sha256'
       shell: bash # Explicitly setting the shell turns on pipefail in GitHub Actions

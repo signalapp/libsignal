@@ -121,6 +121,10 @@ internal func convertError(_ error: SignalFfiErrorRef?) -> Error? {
 
 internal func checkError(_ error: SignalFfiErrorRef?) throws {
     guard let error = error else { return }
+    // Makes a mismatched libsignal_ffi fail to link (see checkFfiVersion()). It's in checkError
+    // because every app links it, and it's after the nil check so successful calls don't pay for
+    // the extra call.
+    checkFfiVersion()
 
     let errType = signal_error_get_type(error)
     // If this actually throws we'd have an infinite loop before we hit the 'try!'.

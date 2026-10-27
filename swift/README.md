@@ -1,45 +1,44 @@
 # Overview
 
-This is a binding to the Signal client code in rust/, implemented on top of the C FFI produced by rust/bridge/ffi/. It's set up as a CocoaPod for integration into the Signal iOS client and as a Swift Package for local development.
+This is a binding to the Signal client code in rust/, implemented on top of the C FFI produced by rust/bridge/ffi/. It's set up as a Swift Package, both for integration into the Signal iOS client and for local development.
 
 
-# Use as CocoaPod
+# Use as a Swift Package
 
-1. Make sure you are using `use_frameworks!` in your Podfile. LibSignalClient is a Swift pod and as such cannot be compiled as a plain library.
+The Swift code is built from source as part of your app, but the Rust library is distributed separately as a prebuilt XCFramework, so you need two dependencies, both targeting the same release:
 
-2. Add 'LibSignalClient' as a dependency in your Podfile, as well as the prebuild checksum for the latest release. You can find the checksum in the [GitHub Releases][] for the project.
+1. Add this repository as a package dependency pinned to the release, and link the `LibSignalClient` product.
 
-        pod 'LibSignalClient', git: 'https://github.com/signalapp/libsignal.git'
-        ENV['LIBSIGNAL_FFI_PREBUILD_CHECKSUM'] = '...'
+        .package(url: "https://github.com/signalapp/libsignal", exact: "X.Y.Z")
 
-3. Use `pod install` or `pod update` as appropriate.
+2. In a package defined in the app, add a binary target for the XCFramework and link it into the same target(s) as `LibSignalClient`. You can find the checksum in the [GitHub Releases][] for the project.
 
-4. Either disable "Swift Compiler - General - Explicitly Built Modules" (`SWIFT_ENABLE_EXPLICIT_MODULES`), or add a (non-recursive) header search path to `$(PODS_ROOT)/LibSignalClient/swift/Sources/SignalFfi`. (Sorry.)
+        .binaryTarget(
+            name: "LibSignalFfi",
+            url: "https://build-artifacts.signal.org/libraries/libsignal-client-ios-build-vX.Y.Z.xcframework.zip",
+            checksum: "..."
+        )
 
-5. Build as usual. The Rust library will automatically be fetched and linked into the built LibSignalClient.framework.
+If the two versions don't match, linking will fail with an undefined `signal_ffi_version_X_Y_Z` symbol.
 
 [GitHub Releases]: https://github.com/signalapp/libsignal/releases
 
 
-## Development as a CocoaPod
+## Development with an App
 
-Instead of a git-based dependency, use a path-based dependency to treat LibSignalClient as a development pod. Since [`prepare_command`s][pc] are not run for path-based dependencies, you will need to build the Rust library yourself. (Xcode should prompt you to do this if you forget.)
+Build the Rust library for each iOS target, then package the results as `target/LibSignalFfi.xcframework`:
 
     CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
     CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
+    swift/build_xcframework.py
 
-The CocoaPod is configured to use the release build of the Rust library. Use `LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES=1 pod lib lint` to validate locally. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
+If you only need the simulator, build just `aarch64-apple-ios-sim` and pass `--simulator-only` to `build_xcframework.py`. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
+
+In the app, replace the libsignal package dependency with a local package pointing at this checkout. Then copy the XCFramework into the package that declares the `LibSignalFfi` binary target, and change that target to `.binaryTarget(name: "LibSignalFfi", path: "LibSignalFfi.xcframework")`. When you're done, revert both changes.
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.
-
-[pc]: https://guides.cocoapods.org/syntax/podspec.html#prepare_command
-
-
-## Testing a local build with Signal-iOS
-
-The iOS Podfile has a commented-out line to use a checkout of libsignal as a path-based dependency. Uncomment that and run `pod install` (or `bundle exec pod install`, see the iOS app repo for more details). Run the build commands in "Development as a CocoaPod", and then build the iOS app from its Xcode workspace as usual. When you're done, revert the changes to the Podfile and run `pod install` again.
 
 
 # Development as a Swift Package
@@ -48,13 +47,10 @@ The iOS Podfile has a commented-out line to use a checkout of libsignal as a pat
 
 2. Use `swift build` and `swift test` as usual.
 
+To run the tests on an iOS simulator instead, use `swift/run_ios_tests.sh`. Extra arguments go to `xcodebuild`, for example `swift/run_ios_tests.sh -only-testing:LibSignalClientTests/PublicAPITests`. Any `LIBSIGNAL_TESTING_*` environment variables are forwarded to the tests.
+
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.
-
-
-## Use as a Swift Package
-
-...is not supported. In theory we could make this work through the use of a custom pkg-config file and requiring clients to set `PKG_CONFIG_PATH` (or install the Rust build products), but since Signal itself does not use this configuration it's considered extra maintenance burden. Development as a package is supported as a lightweight convenience (as well as a cross-platform one), but the CocoaPods build is considered the canonical one.
 
 
 # Benchmarks

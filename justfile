@@ -99,3 +99,7 @@ check-pre-commit: check-format-all check-python check-acknowledgments
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
     env "RUSTUP_TOOLCHAIN=$(cat .nightly-rust-version)" "CARGO_TARGET_DIR=$PWD/target/without_building_boring" "CARGO_RESOLVER_LOCKFILE_PATH=$(mktemp -d)/Cargo.lock" bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --keep-going -Zdirect-minimal-versions -Zlockfile-path
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
+
+# Run the Swift tests on an iOS simulator, linking LibSignalFfi.xcframework; extra args go to xcodebuild.
+test-swift-ios *args:
+    swift/run_ios_tests.sh {{args}}

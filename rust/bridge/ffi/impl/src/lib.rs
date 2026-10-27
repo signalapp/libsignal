@@ -28,6 +28,11 @@ pub unsafe extern "C" fn signal_print_ptr(p: *const std::ffi::c_void) {
     println!("In rust that's {p:?}");
 }
 
+// Referenced by LibSignalClient so a Swift/Rust version mismatch causes linking to fail.
+#[unsafe(no_mangle)]
+#[c_export]
+pub extern "C" fn signal_ffi_version_0_106_1() {}
+
 #[unsafe(no_mangle)]
 #[c_export]
 pub unsafe extern "C" fn signal_free_string(buf: *const c_char) {
