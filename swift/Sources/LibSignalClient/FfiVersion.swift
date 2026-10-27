@@ -17,5 +17,5 @@ import SignalFfi
 // this function gets inlined into checkError, so the reference shows up in Error.swift.o, not
 // FfiVersion.swift.o.
 internal func checkFfiVersion() {
-    signal_ffi_version_0_106_1()
+    signal_ffi_version_0_106_2()
 }
