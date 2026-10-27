@@ -2802,7 +2802,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-debug"
-version = "0.106.1"
+version = "0.1.0"
 dependencies = [
  "cfg-if",
 ]
@@ -2907,7 +2907,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-keytrans"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "assert_matches",
  "const-str",

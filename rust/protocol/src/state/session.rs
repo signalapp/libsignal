@@ -290,13 +290,13 @@ impl SessionState {
         if self.session.sender_chain.is_none() {
             return Ok(false);
         }
-        if requirements.contains(SessionUsabilityRequirements::NotStale) {
-            if let Some(pending_pre_key) = &self.session.pending_pre_key {
-                let creation_timestamp =
-                    SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp);
-                if creation_timestamp + consts::MAX_UNACKNOWLEDGED_SESSION_AGE < now {
-                    return Ok(false);
-                }
+        if requirements.contains(SessionUsabilityRequirements::NotStale)
+            && let Some(pending_pre_key) = &self.session.pending_pre_key
+        {
+            let creation_timestamp =
+                SystemTime::UNIX_EPOCH + Duration::from_secs(pending_pre_key.timestamp);
+            if creation_timestamp + consts::MAX_UNACKNOWLEDGED_SESSION_AGE < now {
+                return Ok(false);
             }
         }
         #[allow(clippy::collapsible_if)]
@@ -942,10 +942,10 @@ impl SessionRecord {
         &self,
         session_id: &[u8],
     ) -> Result<Option<SessionLocation>, InvalidSessionError> {
-        if let Some(current) = &self.current_session {
-            if session_id.ct_eq(current.session_id()).into() {
-                return Ok(Some(SessionLocation::Current));
-            }
+        if let Some(current) = &self.current_session
+            && session_id.ct_eq(current.session_id()).into()
+        {
+            return Ok(Some(SessionLocation::Current));
         }
 
         for (i, previous) in self.archived_sessions().enumerate() {

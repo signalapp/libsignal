@@ -46,19 +46,21 @@ fn get_encoded_string(fprint: &[u8]) -> Result<String, Error> {
         ));
     }
 
-    fn read5_mod_100k(fprint: &[u8]) -> u64 {
-        assert_eq!(fprint.len(), 5);
+    fn read5_mod_100k(fprint: &[u8; 5]) -> u64 {
         let x = fprint.iter().fold(0u64, |acc, &x| (acc << 8) | (x as u64));
         x % 100_000
     }
 
-    let s = fprint.chunks_exact(5).take(6).map(read5_mod_100k).fold(
-        String::with_capacity(5 * 6),
-        |mut s, n| {
+    let s = fprint
+        .as_chunks::<5>()
+        .0
+        .iter()
+        .take(6)
+        .map(read5_mod_100k)
+        .fold(String::with_capacity(5 * 6), |mut s, n| {
             write!(s, "{n:05}").expect("can always write to a String");
             s
-        },
-    );
+        });
 
     Ok(s)
 }

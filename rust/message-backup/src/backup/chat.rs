@@ -557,10 +557,10 @@ impl<
         }
 
         let pinned_order = pinnedOrder.map(PinOrder);
-        if let Some(pinned_order) = pinned_order {
-            if let Some(_recipient) = context.lookup(&pinned_order) {
-                return Err(ChatError::DuplicatePinnedOrder(pinned_order));
-            }
+        if let Some(pinned_order) = pinned_order
+            && let Some(_recipient) = context.lookup(&pinned_order)
+        {
+            return Err(ChatError::DuplicatePinnedOrder(pinned_order));
         };
 
         let style = style
@@ -716,10 +716,9 @@ impl<
 
         if let (crate::backup::Purpose::TakeoutExport, ChatItemMessage::ViewOnce(view_once)) =
             (purpose, &message)
+            && view_once.attachment.is_some()
         {
-            if view_once.attachment.is_some() {
-                return Err(InvalidExpiration::NotAllowedForPurpose(purpose).into());
-            }
+            return Err(InvalidExpiration::NotAllowedForPurpose(purpose).into());
         }
 
         if !revisions.is_empty() {

@@ -30,7 +30,7 @@ where
     D: FixedOutput,
 {
     assert!(
-        0 == TARGET_TOTAL_DIGEST_SIZE % D::OutputSize::USIZE,
+        TARGET_TOTAL_DIGEST_SIZE.is_multiple_of(D::OutputSize::USIZE),
         "Target digest size should be a multiple of digest size"
     );
     let target_chunk_count = TARGET_TOTAL_DIGEST_SIZE / D::OutputSize::USIZE;

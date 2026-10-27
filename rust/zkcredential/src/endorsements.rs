@@ -438,7 +438,9 @@ impl EndorsementResponse {
         const SMALL_SCALAR_BYTES: usize = 16;
         let randomness = hasher.squeeze_and_ratchet((E.len() - 1) * SMALL_SCALAR_BYTES);
         randomness
-            .chunks_exact(SMALL_SCALAR_BYTES)
+            .as_chunks::<SMALL_SCALAR_BYTES>()
+            .0
+            .iter()
             .map(|chunk| {
                 let mut scalar_bytes = [0; 32];
                 scalar_bytes[..16].copy_from_slice(chunk);

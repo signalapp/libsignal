@@ -85,10 +85,11 @@ check-format-all:
 
 check-python:
     $(command -v flake8 || echo python3 -m flake8) . --exclude target,node/node_modules,node/build
-    $(command -v mypy || echo python3 -m mypy) . --python-version 3.9 --strict --exclude target --exclude node/node_modules --exclude node/build
+    $(command -v mypy || echo python3 -m mypy) . --python-version 3.11 --strict --exclude target --exclude node/node_modules --exclude node/build
 
 # Runs some quick local checks; useful to make sure CI will not fail immediately after push.
 check-pre-commit: check-format-all check-python check-acknowledgments
+    bin/verify-cargo-toml.py
     (cd node && npm run lint)
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)

@@ -387,6 +387,9 @@ jobs:
     - name: Cargo.toml formatting check
       run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
 
+    - name: Lint Cargo.toml
+      run: bin/verify-cargo-toml.py
+
     - name: Rustfmt check
       run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-toolchain }} fmt --all -- --check
 

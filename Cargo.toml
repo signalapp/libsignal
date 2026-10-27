@@ -1,22 +1,8 @@
 [workspace]
 # When adding new members, consider updating the log filter in rust/bridge/shared/src/logging.rs.
 members = [
-    "rust/attest",
-    "rust/crypto",
-    "rust/debug",
-    "rust/device-transfer",
-    "rust/keytrans",
-    "rust/media",
-    "rust/message-backup",
-    "rust/net",
-    "rust/net/chat",
-    "rust/net/infra",
     "rust/account-keys",
-    "rust/poksho",
-    "rust/protocol",
-    "rust/usernames",
-    "rust/zkcredential",
-    "rust/zkgroup",
+    "rust/attest",
     "rust/bridge/ffi",
     "rust/bridge/ffi/impl",
     "rust/bridge/ffi/native_swift",
@@ -26,6 +12,30 @@ members = [
     "rust/bridge/jni/testing",
     "rust/bridge/node",
     "rust/bridge/node/native_ts",
+    "rust/bridge/shared",
+    "rust/bridge/shared/macros",
+    "rust/bridge/shared/testing",
+    "rust/bridge/shared/types",
+    "rust/cli-utils",
+    "rust/core",
+    "rust/crypto",
+    "rust/debug",
+    "rust/device-transfer",
+    "rust/keytrans",
+    "rust/media",
+    "rust/message-backup",
+    "rust/message-backup/macros",
+    "rust/net",
+    "rust/net/chat",
+    "rust/net/grpc",
+    "rust/net/infra",
+    "rust/poksho",
+    "rust/protocol",
+    "rust/protocol/test-support",
+    "rust/svrb",
+    "rust/usernames",
+    "rust/zkcredential",
+    "rust/zkgroup",
 ]
 default-members = [
     "rust/crypto",
@@ -39,12 +49,13 @@ default-members = [
     "rust/zkcredential",
     "rust/zkgroup",
 ]
-resolver = "2" # so that our dev-dependency features don't leak into products
+resolver = "3"
 
 [workspace.package]
 version = "0.106.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
+edition = "2024"
 rust-version = "1.93.1"
 
 [workspace.lints.clippy]
