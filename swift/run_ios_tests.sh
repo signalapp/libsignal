@@ -24,8 +24,8 @@ if [[ -z "${SIMULATOR}" ]]; then
 fi
 
 # xcodebuild only passes TEST_RUNNER_-prefixed variables through to the tests.
-while IFS='=' read -r name value; do
-  export "TEST_RUNNER_${name}=${value}"
-done < <(env | grep '^LIBSIGNAL_TESTING_')
+for name in "${!LIBSIGNAL_TESTING_@}"; do
+  export "TEST_RUNNER_${name}=${!name}"
+done
 
 echo_then_run xcodebuild test -scheme LibSignalClient -destination "platform=iOS Simulator,id=${SIMULATOR}" "$@"
