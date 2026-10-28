@@ -40,7 +40,7 @@ pub fn aes_256_cbc_decrypt(
     iv: &[u8],
 ) -> Result<Vec<u8>, DecryptionError> {
     let _trace = libsignal_debug::trace_block!("aes_256_cbc_decrypt");
-    if ctext.is_empty() || ctext.len() % 16 != 0 {
+    if ctext.is_empty() || !ctext.len().is_multiple_of(16) {
         return Err(DecryptionError::BadCiphertext(
             "ciphertext length must be a non-zero multiple of 16",
         ));

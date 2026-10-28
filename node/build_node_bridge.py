@@ -153,6 +153,7 @@ def main(args: Optional[List[str]] = None) -> int:
     cargo_env['CARGO_PROFILE_RELEASE_DEBUG'] = '1'
     # Use full LTO to reduce binary size
     cargo_env['CARGO_PROFILE_RELEASE_LTO'] = 'fat'
+    cargo_env['CARGO_PROFILE_RELEASE_CODEGEN_UNITS'] = '1'
     # Enable ARMv8 cryptography acceleration when available
     cargo_env['RUSTFLAGS'] += ' --cfg aes_armv8'
     # Access tokio's unstable metrics

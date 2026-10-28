@@ -370,8 +370,8 @@ jobs:
       run: npm run build -- --arch arm64 --copy-to-prebuilds
       working-directory: node
 
-  swift-cocoapod:
-    name: Swift CocoaPod (all architectures)
+  swift-ios:
+    name: Swift iOS
     runs-on: ${{ inputs.ios_runner || 'macos-15-xlarge' }}
     if: ${{ github.event_name != 'schedule' || (github.repository_owner == 'signalapp' && endsWith(github.repository, '-private')) }}
     timeout-minutes: 45
@@ -395,40 +395,31 @@ jobs:
 
       - run: brew install protobuf
 
+      # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
+      - name: Build and test on an iOS simulator
+        run: swift/run_ios_tests.sh
+
       - name: Build for aarch64-apple-ios
         run: swift/build_ffi.sh --release
         env:
           CARGO_BUILD_TARGET: aarch64-apple-ios
 
-      # Build the simulator architectures for `pod lib lint` below.
       - name: Build for x86_64-apple-ios
         run: swift/build_ffi.sh --release
         env:
           CARGO_BUILD_TARGET: x86_64-apple-ios
 
-      - name: Build for aarch64-apple-ios-sim
-        run: swift/build_ffi.sh --release
+      - run: swift/build_xcframework.py
+
+      # Make sure we can build for device, just for completeness. This uses its own derived data so
+      # Xcode doesn't reuse the simulator-only XCFramework from the test run above.
+      - name: Build tests for device
+        run: xcodebuild build-for-testing -scheme LibSignalClient -destination 'generic/platform=iOS' -derivedDataPath target/xcode-device CODE_SIGNING_ALLOWED=NO
         env:
-          CARGO_BUILD_TARGET: aarch64-apple-ios-sim
-
-      # We run this for the non-hermetic tests; it's otherwise the same as regular CI.
-      - name: Run pod lint
-        run: pod lib lint --verbose --platforms=ios
-        env:
-          LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES: 1
-
-      # Make sure we can build for device, just for completeness.
-      - name: Set up testing workspace
-        run: pod install
-        working-directory: swift/cocoapods-testing
-
-      - name: Manually build for device
-        run: xcodebuild -scheme LibSignalClient -sdk iphoneos build-for-testing
-        working-directory: swift/cocoapods-testing
+          LIBSIGNAL_FFI_XCFRAMEWORK: target/LibSignalFfi.xcframework
 
       - name: Build in Release for device as well
-        run: xcodebuild -scheme LibSignalClient -sdk iphoneos -configuration Release
-        working-directory: swift/cocoapods-testing
+        run: xcodebuild build -scheme LibSignalClient -destination 'generic/platform=iOS' -configuration Release CODE_SIGNING_ALLOWED=NO
 
   rust-audit:
     name: Rust security audit
@@ -563,7 +554,7 @@ jobs:
     - node-docker
     - node-reproducibility
     - node-windows-arm64
-    - swift-cocoapod
+    - swift-ios
     - rust-audit
     - rust-stable-testing
     - rust-fuzzing

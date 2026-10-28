@@ -71,7 +71,7 @@ impl Timestamp {
 
     #[inline]
     pub const fn is_day_aligned(&self) -> bool {
-        self.0 % SECONDS_PER_DAY == 0
+        self.0.is_multiple_of(SECONDS_PER_DAY)
     }
 
     #[inline]

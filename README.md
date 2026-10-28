@@ -44,7 +44,8 @@ increases to the minimum supported tools versions.
 ### Toolchain Installation
 
 To build anything in this repository you must have [Rust](https://rust-lang.org) installed, as well
-as recent versions of Clang, libclang, [CMake](https://cmake.org), Make, protoc, Python (3.9+), and git.
+as recent versions of Clang, libclang, [CMake](https://cmake.org), Make, protoc, Python (3.11+),
+and git.
 
 #### Linux/Debian
 

@@ -1,15 +1,9 @@
-v0.106.0
+v0.106.1
 
-- protocol: Session management now uses Tahini instead of Sesame. Archived
-  sessions are never made active again, a tiebreaker is used to pick an active
-  session in common race conditions, and conversations that keep switching back
-  and forth between sessions are detected and settled. There are no wire format
-  changes. Session records gain new fields but are readable by earlier libsignal
-  versions.
-- protocol: Each session record now keeps at most 3 archived sessions
-  (previously 40). Records with more are trimmed when they are loaded.
-- Rust: `process_prekey` is no longer public and `message_decrypt_prekey` now
-  returns a `PreKeyDecryptResult` instead of a `Vec<u8>`. There is a new export:
-  `initiate_session`. Java, Swift, and Typescript APIs are unchanged.
+- Swift: LibSignalClient is now distributed using Swift Package Manager instead
+  of CocoaPods. See swift/README.md for more information.
+- protocol: Session records that hold more archived sessions than the limit
+  (such as records written before Tahini) are now trimmed when they are loaded,
+  rather than the next time a session is archived.
 
 

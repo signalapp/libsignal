@@ -49,12 +49,13 @@ def _main() -> int:
         return 1
 
     # This should be replaced with a `match` when we drop Python 3.9.
-    if args.action == 'print-rust-paths-to-remap':
-        for path in rust_paths_to_remap():
-            print(path)
-        return 0
-    else:
-        raise NotImplementedError(args.action)
+    match args.action:
+        case 'print-rust-paths-to-remap':
+            for path in rust_paths_to_remap():
+                print(path)
+            return 0
+        case _:
+            raise NotImplementedError(args.action)
 
 
 if __name__ == '__main__':
