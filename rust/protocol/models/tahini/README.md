@@ -17,7 +17,10 @@ Tahini refines the proposal from the following works: <br/>
 The folder contains three files defining protocol models and their security properties:
 - [Sesame.spthy](Sesame.spthy) - The abstracted model of Sesame's session management [1] with an unbounded number of sessions, instead of N=40 sessions.
 - [Proposal.spthy](Proposal.spthy) -  The model proposed in [2], defining a policy of sequential sessions and N=2 number of sessions (active and inactive).
-- [Tahini.spthy](Tahini.spthy) - Signal's new session management: the model refines the Proposal.spthy model by adding a restriction to archive an active session after a threshold of 5 missed chances to perform the DH ratchet.
+- [Tahini.spthy](Tahini.spthy) - Signal's new session management: the model refines the Proposal.spthy model by adding a restriction to archive an active session after a threshold of 5 missed chances to perform the DH ratchet, and by allowing N=4 sessions (the active session plus 3 archived sessions, matching `MAX_ARCHIVED_SESSIONS` in the implementation) instead of N=2.
+
+> [!NOTE]
+> The N=4 bound in `Tahini.spthy` has not yet been re-verified; the expected outputs recorded in that file were produced with N=2.
 
 These models are based on the work in [2] and [3], and refined during the development of Tahini.
 
