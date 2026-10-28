@@ -5544,7 +5544,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## chacha20 0.10.2, chacha20poly1305 0.11.0, ghash 0.6.0, polyval 0.7.3, zeroize_derive 1.5.0
+## aes-gcm 0.11.1, chacha20 0.10.2, chacha20poly1305 0.11.0, ghash 0.6.0, polyval 0.7.3, zeroize_derive 1.5.0
 
 ```
 Copyright (c) 2019-2026 The RustCrypto Project Developers

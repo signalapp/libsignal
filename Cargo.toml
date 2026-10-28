@@ -108,6 +108,7 @@ spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag 
 tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.3.0", package = "tokio-boring" }
 
 aes = "0.9.1"
+aes-gcm = "0.11.1"
 aes-gcm-siv = "0.12.0"
 anyhow = "1.0.97"
 arbitrary = "1.4.2"
@@ -169,6 +170,7 @@ itertools = "0.15.0"
 jni = "0.22.4"
 libc = "0.2.186"
 libcrux-ml-kem = { version = "0.0.10", default-features = false }
+libcrux-sha3 = "0.0.10"
 linkme = "0.3.33"
 log = "0.4.21"
 macro_rules_attribute = "0.2.0"

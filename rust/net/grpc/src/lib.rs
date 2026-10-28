@@ -4,6 +4,7 @@
 //
 
 #![warn(clippy::unwrap_used)]
+#![allow(clippy::doc_overindented_list_items, clippy::doc_lazy_continuation)]
 
 pub mod proto {
     // Mirror the protobuf package structure so relative references work correctly.
