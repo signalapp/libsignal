@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+//
+// Copyright 2026 Signal Messenger, LLC.
+// SPDX-License-Identifier: AGPL-3.0-only
+//
+
+package signal.proto.provisioning;
+
+message ProvisionEnvelope {
+  optional bytes publicKey = 1;
+  optional bytes body      = 2; // Encrypted ProvisionMessage or RegistrationProvisionMessage
+}

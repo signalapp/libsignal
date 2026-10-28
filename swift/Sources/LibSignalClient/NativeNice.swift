@@ -2840,6 +2840,20 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
 }
 
+internal enum FixedByteArrayHelper33: FixedByteArrayHelper {
+    typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8
+    )
+    static func count() -> Int {
+        33
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -6067,6 +6081,75 @@ internal enum NativeNice {
                 DerivedReturnConverterChargeFailure, SignalOptionalOfChargeFailureFfiResult
             >.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func Provisioning_EncryptProvisionMessage(
+        secondaryPublicKey secondary_public_key: Data,
+        provisionMessage provision_message: Data,
+    ) throws -> Data {
+        try FixedByteArrayConverter<FixedByteArrayHelper33>.convertArgBorrowed(secondary_public_key) {
+            secondary_public_keyFfi in
+            try DataConverter.convertArgBorrowed(provision_message) { provision_messageFfi in
+                var rawOutput = DataConverter.emptyFfiReturn()
+                try checkError(
+                    SignalFfi.signal_provisioning_encrypt_provision_message(
+                        &rawOutput,
+                        secondary_public_keyFfi,
+                        provision_messageFfi,
+                    )
+                )
+                return try DataConverter.convertReturn(consuming: rawOutput)
+            }
+        }
+
+    }
+    internal static func RecvProvisionCiphertextState_DecryptEnvelope(
+        state: RecvProvisionCiphertextState,
+        envelope: Data,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
+            .convertArgBorrowed(state) { stateFfi in
+                try DataConverter.convertArgBorrowed(envelope) { envelopeFfi in
+                    var rawOutput = DataConverter.emptyFfiReturn()
+                    try checkError(
+                        SignalFfi.signal_recv_provision_ciphertext_state_decrypt_envelope(
+                            &rawOutput,
+                            stateFfi,
+                            envelopeFfi,
+                        )
+                    )
+                    return try DataConverter.convertReturn(consuming: rawOutput)
+                }
+            }
+
+    }
+    internal static func RecvProvisionCiphertextState_Generate() throws -> RecvProvisionCiphertextState {
+        var rawOutput = BridgeHandleConverter<
+            SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_recv_provision_ciphertext_state_generate(
+                &rawOutput,
+            )
+        )
+        return try BridgeHandleConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
+            .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func RecvProvisionCiphertextState_GetPublicKey(
+        state: RecvProvisionCiphertextState,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
+            .convertArgBorrowed(state) { stateFfi in
+                var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper33>.emptyFfiReturn()
+                try checkError(
+                    SignalFfi.signal_recv_provision_ciphertext_state_get_public_key(
+                        &rawOutput,
+                        stateFfi,
+                    )
+                )
+                return try FixedByteArrayConverter<FixedByteArrayHelper33>.convertReturn(consuming: rawOutput)
+            }
 
     }
     internal static func SvrKey_DeriveLoggingKey(

@@ -76,6 +76,12 @@ static_assert_64bit(alignof(SignalType_FixedArray329_uint8_t) == 1);
 typedef const SignalType_FixedArray329_uint8_t* SignalType_ConstPointer_FixedArray329_uint8_t;
 static_assert_64bit(sizeof(SignalType_ConstPointer_FixedArray329_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_FixedArray329_uint8_t) == 8);
+typedef uint8_t SignalType_FixedArray33_uint8_t[33];
+static_assert_64bit(sizeof(SignalType_FixedArray33_uint8_t) == 33);
+static_assert_64bit(alignof(SignalType_FixedArray33_uint8_t) == 1);
+typedef const SignalType_FixedArray33_uint8_t* SignalType_ConstPointer_FixedArray33_uint8_t;
+static_assert_64bit(sizeof(SignalType_ConstPointer_FixedArray33_uint8_t) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_FixedArray33_uint8_t) == 8);
 typedef uint8_t SignalType_FixedArray409_uint8_t[409];
 static_assert_64bit(sizeof(SignalType_FixedArray409_uint8_t) == 409);
 static_assert_64bit(alignof(SignalType_FixedArray409_uint8_t) == 1);
@@ -1692,6 +1698,10 @@ static_assert_64bit(alignof(SignalType_ConstPointer_SignalPreKeyRecord) == 8);
 typedef const SignalSignedPreKeyRecord* SignalType_ConstPointer_SignalSignedPreKeyRecord;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalSignedPreKeyRecord) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalSignedPreKeyRecord) == 8);
+typedef struct SignalRecvProvisionCiphertextState SignalRecvProvisionCiphertextState;
+typedef const SignalRecvProvisionCiphertextState* SignalType_ConstPointer_SignalRecvProvisionCiphertextState;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalRecvProvisionCiphertextState) == 8);
 typedef const uint32_t* SignalType_ConstPointer_uint32_t;
 static_assert_64bit(sizeof(SignalType_ConstPointer_uint32_t) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_uint32_t) == 8);
@@ -1730,6 +1740,9 @@ static_assert_64bit(alignof(SignalType_MutPointer_FixedArray329_uint8_t) == 8);
 typedef SignalType_FixedArray32_uint8_t* SignalType_MutPointer_FixedArray32_uint8_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_FixedArray32_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_FixedArray32_uint8_t) == 8);
+typedef SignalType_FixedArray33_uint8_t* SignalType_MutPointer_FixedArray33_uint8_t;
+static_assert_64bit(sizeof(SignalType_MutPointer_FixedArray33_uint8_t) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_FixedArray33_uint8_t) == 8);
 typedef SignalType_FixedArray409_uint8_t* SignalType_MutPointer_FixedArray409_uint8_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_FixedArray409_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_FixedArray409_uint8_t) == 8);
@@ -2256,6 +2269,18 @@ static_assert_64bit(alignof(SignalMutPointerUnidentifiedSenderMessageContent) ==
 typedef SignalMutPointerUnidentifiedSenderMessageContent* SignalType_MutPointer_SignalMutPointerUnidentifiedSenderMessageContent;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerUnidentifiedSenderMessageContent) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerUnidentifiedSenderMessageContent) == 8);
+typedef SignalRecvProvisionCiphertextState* SignalType_MutPointer_SignalRecvProvisionCiphertextState;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalRecvProvisionCiphertextState) == 8);
+typedef struct {
+  SignalRecvProvisionCiphertextState* raw;
+} SignalMutPointerRecvProvisionCiphertextState;
+static_assert_64bit(offsetof(SignalMutPointerRecvProvisionCiphertextState, raw) == 0);
+static_assert_64bit(sizeof(SignalMutPointerRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalMutPointerRecvProvisionCiphertextState) == 8);
+typedef SignalMutPointerRecvProvisionCiphertextState* SignalType_MutPointer_SignalMutPointerRecvProvisionCiphertextState;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerRecvProvisionCiphertextState) == 8);
 typedef struct SignalAes256Ctr32 SignalAes256Ctr32;
 typedef SignalAes256Ctr32* SignalType_MutPointer_SignalAes256Ctr32;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalAes256Ctr32) == 8);
@@ -3560,6 +3585,12 @@ typedef struct {
 static_assert_64bit(offsetof(SignalConstPointerSignedPreKeyRecord, raw) == 0);
 static_assert_64bit(sizeof(SignalConstPointerSignedPreKeyRecord) == 8);
 static_assert_64bit(alignof(SignalConstPointerSignedPreKeyRecord) == 8);
+typedef struct {
+  const SignalRecvProvisionCiphertextState* raw;
+} SignalConstPointerRecvProvisionCiphertextState;
+static_assert_64bit(offsetof(SignalConstPointerRecvProvisionCiphertextState, raw) == 0);
+static_assert_64bit(sizeof(SignalConstPointerRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalConstPointerRecvProvisionCiphertextState) == 8);
 typedef struct {
   const SignalServerPublicParams* raw;
 } SignalConstPointerServerPublicParams;
@@ -5954,6 +5985,11 @@ SignalFfiError* signal_provisioning_chat_connection_init_listener(
   SignalConstPointerProvisioningChatConnection chat,
   SignalConstPointerFfiProvisioningListenerStruct listener
 );
+SignalFfiError* signal_provisioning_encrypt_provision_message(
+  SignalOwnedBuffer* out,
+  const SignalType_FixedArray33_uint8_t* secondary_public_key,
+  SignalBorrowedBuffer provision_message
+);
 SignalFfiError* signal_publickey_clone(
   SignalMutPointerPublicKey* new_obj,
   SignalConstPointerPublicKey obj
@@ -6029,6 +6065,21 @@ SignalFfiError* signal_receipt_credential_request_context_get_request(
 );
 SignalFfiError* signal_receipt_credential_response_check_valid_contents(
   SignalBorrowedBuffer buffer
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_decrypt_envelope(
+  SignalOwnedBuffer* out,
+  SignalConstPointerRecvProvisionCiphertextState state,
+  SignalBorrowedBuffer envelope
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_destroy(
+  SignalMutPointerRecvProvisionCiphertextState p
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_generate(
+  SignalMutPointerRecvProvisionCiphertextState* out
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_get_public_key(
+  SignalType_FixedArray33_uint8_t* out,
+  SignalConstPointerRecvProvisionCiphertextState state
 );
 SignalFfiError* signal_register_account_request_create(
   SignalMutPointerRegisterAccountRequest* out

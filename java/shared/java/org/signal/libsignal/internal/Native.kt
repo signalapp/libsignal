@@ -2286,6 +2286,13 @@ internal object Native {
 
   @JvmStatic
   @Throws(Exception::class)
+  public external fun Provisioning_EncryptProvisionMessage(
+    secondaryPublicKey: ByteArray,
+    provisionMessage: ByteArray,
+  ): ByteArray
+
+  @JvmStatic
+  @Throws(Exception::class)
   public external fun ReceiptCredentialPresentation_CheckValidContents(buffer: ByteArray): Unit
 
   @JvmStatic
@@ -2321,6 +2328,22 @@ internal object Native {
 
   @JvmStatic
   public external fun ReceiptCredential_GetReceiptLevel(receiptCredential: ByteArray): Long
+
+  @JvmStatic
+  @Throws(Exception::class)
+  public external fun RecvProvisionCiphertextState_DecryptEnvelope(
+    state: SimpleOwner,
+    envelope: ByteArray,
+  ): ByteArray
+
+  @JvmStatic
+  public external fun RecvProvisionCiphertextState_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun RecvProvisionCiphertextState_Generate(): ObjectHandle
+
+  @JvmStatic
+  public external fun RecvProvisionCiphertextState_GetPublicKey(state: SimpleOwner): ByteArray
 
   @JvmStatic
   public external fun RegisterAccountRequest_Create(): ObjectHandle

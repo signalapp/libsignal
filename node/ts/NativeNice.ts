@@ -3553,6 +3553,46 @@ export async function DeleteBackupMediaStream_next({
   );
 }
 
+export function Provisioning_EncryptProvisionMessage({
+  secondaryPublicKey: secondary_public_key,
+  provisionMessage: provision_message,
+}: {
+  secondaryPublicKey: Bytes;
+  provisionMessage: Bytes;
+}): Bytes {
+  return identity(
+    Native.Provisioning_EncryptProvisionMessage(
+      identity(secondary_public_key),
+      identity(provision_message)
+    )
+  );
+}
+
+export function RecvProvisionCiphertextState_DecryptEnvelope({
+  state: state,
+  envelope: envelope,
+}: {
+  state: Native.Wrapper<Native.RecvProvisionCiphertextState>;
+  envelope: Bytes;
+}): Bytes {
+  return identity(
+    Native.RecvProvisionCiphertextState_DecryptEnvelope(
+      identity(state),
+      identity(envelope)
+    )
+  );
+}
+
+export function RecvProvisionCiphertextState_GetPublicKey({
+  state: state,
+}: {
+  state: Native.Wrapper<Native.RecvProvisionCiphertextState>;
+}): Bytes {
+  return identity(
+    Native.RecvProvisionCiphertextState_GetPublicKey(identity(state))
+  );
+}
+
 export function SvrKey_DeriveLoggingKey({
   svrKey: svr_key,
 }: {

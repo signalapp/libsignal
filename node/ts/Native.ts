@@ -2362,6 +2362,10 @@ type NativeFunctions = {
     chat: Wrapper<ProvisioningChatConnection>,
     listener: ProvisioningListener
   ) => void;
+  Provisioning_EncryptProvisionMessage: (
+    secondary_public_key: Bytes,
+    provision_message: Bytes
+  ) => Bytes;
   PublicKey_Deserialize: (data: Bytes) => PublicKey;
   PublicKey_Equals: (
     lhs: Wrapper<PublicKey>,
@@ -2403,6 +2407,14 @@ type NativeFunctions = {
   ReceiptCredential_GetReceiptLevel: (
     receipt_credential: Serialized<ReceiptCredential>
   ) => bigint;
+  RecvProvisionCiphertextState_DecryptEnvelope: (
+    state: Wrapper<RecvProvisionCiphertextState>,
+    envelope: Bytes
+  ) => Bytes;
+  RecvProvisionCiphertextState_Generate: () => RecvProvisionCiphertextState;
+  RecvProvisionCiphertextState_GetPublicKey: (
+    state: Wrapper<RecvProvisionCiphertextState>
+  ) => Bytes;
   RegisterAccountRequest_Create: () => RegisterAccountRequest;
   RegisterAccountRequest_SetAccountPassword: (
     register_account: Wrapper<RegisterAccountRequest>,
@@ -4323,6 +4335,7 @@ const {
   ProvisioningChatConnection_disconnect,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_init_listener,
+  Provisioning_EncryptProvisionMessage,
   PublicKey_Deserialize,
   PublicKey_Equals,
   PublicKey_GetPublicKeyBytes,
@@ -4340,6 +4353,9 @@ const {
   ReceiptCredential_CheckValidContents,
   ReceiptCredential_GetReceiptExpirationTime,
   ReceiptCredential_GetReceiptLevel,
+  RecvProvisionCiphertextState_DecryptEnvelope,
+  RecvProvisionCiphertextState_Generate,
+  RecvProvisionCiphertextState_GetPublicKey,
   RegisterAccountRequest_Create,
   RegisterAccountRequest_SetAccountPassword,
   RegisterAccountRequest_SetIdentityPqLastResortPreKey,
@@ -5160,6 +5176,7 @@ export {
   ProvisioningChatConnection_disconnect,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_init_listener,
+  Provisioning_EncryptProvisionMessage,
   PublicKey_Deserialize,
   PublicKey_Equals,
   PublicKey_GetPublicKeyBytes,
@@ -5177,6 +5194,9 @@ export {
   ReceiptCredential_CheckValidContents,
   ReceiptCredential_GetReceiptExpirationTime,
   ReceiptCredential_GetReceiptLevel,
+  RecvProvisionCiphertextState_DecryptEnvelope,
+  RecvProvisionCiphertextState_Generate,
+  RecvProvisionCiphertextState_GetPublicKey,
   RegisterAccountRequest_Create,
   RegisterAccountRequest_SetAccountPassword,
   RegisterAccountRequest_SetIdentityPqLastResortPreKey,
@@ -5900,6 +5920,9 @@ export interface ReceiptCredentialRequestContext {
   readonly __type: unique symbol;
 }
 export interface ReceiptCredentialResponse {
+  readonly __type: unique symbol;
+}
+export interface RecvProvisionCiphertextState {
   readonly __type: unique symbol;
 }
 export interface RegisterAccountRequest {

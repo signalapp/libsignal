@@ -716,6 +716,12 @@ impl MessageOnlyExceptionJniError for SignalCryptoError {
     }
 }
 
+impl MessageOnlyExceptionJniError for libsignal_provisioning::ProvisioningError {
+    fn exception_class(&self) -> ClassName<'static> {
+        ClassName("org.signal.libsignal.protocol.InvalidMessageException")
+    }
+}
+
 impl MessageOnlyExceptionJniError for DeviceTransferError {
     fn exception_class(&self) -> ClassName<'static> {
         match self {

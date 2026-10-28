@@ -2634,6 +2634,7 @@ dependencies = [
  "libsignal-net",
  "libsignal-net-chat",
  "libsignal-protocol",
+ "libsignal-provisioning",
  "linkme",
  "log",
  "neon",
@@ -2745,6 +2746,7 @@ dependencies = [
  "libsignal-net-chat",
  "libsignal-net-grpc",
  "libsignal-protocol",
+ "libsignal-provisioning",
  "libsignal-svrb",
  "linkme",
  "log",
@@ -3328,6 +3330,29 @@ dependencies = [
  "libsignal-protocol",
  "log",
  "rand 0.9.4",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "libsignal-provisioning"
+version = "0.1.0"
+dependencies = [
+ "aes 0.9.1",
+ "assert_matches",
+ "cbc",
+ "displaydoc",
+ "hex",
+ "hkdf",
+ "hmac",
+ "libsignal-core",
+ "prost",
+ "prost-build",
+ "rand 0.9.4",
+ "rand_core 0.9.5",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "test-case",
  "thiserror 2.0.18",
 ]
 
