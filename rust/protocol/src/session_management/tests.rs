@@ -173,9 +173,9 @@ async fn crossed_initiations() -> (Peer, Peer, CiphertextMessage, StdRng) {
 }
 
 #[test_case(LastAct::Send, 0, 1, false; "first direction change")]
-#[test_case(LastAct::Send, MAX_DIR_CHANGES - 1, MAX_DIR_CHANGES, false; "reaches threshold")]
-#[test_case(LastAct::Send, MAX_DIR_CHANGES, 0, true; "crosses threshold")]
-#[test_case(LastAct::ReceiveInactive, MAX_DIR_CHANGES, MAX_DIR_CHANGES, false; "consecutive inactive receive")]
+#[test_case(LastAct::Send, MAX_DIR_CHANGES - 2, MAX_DIR_CHANGES - 1, false; "below threshold")]
+#[test_case(LastAct::Send, MAX_DIR_CHANGES - 1, 0, true; "reaches threshold")]
+#[test_case(LastAct::ReceiveInactive, MAX_DIR_CHANGES - 1, MAX_DIR_CHANGES - 1, false; "consecutive inactive receive")]
 #[test_case(LastAct::ReceiveActive, 3, 3, false; "receive after active receive")]
 #[test_case(LastAct::Unset, 0, 0, false; "no preceding send")]
 fn fresh_losing_initiation_records_receive(
@@ -262,7 +262,7 @@ fn rejected_losing_initiation_preserves_receive_history(replay: bool) {
     async {
         let (mut receiver, sender, message, mut rng) = crossed_initiations().await;
         receiver
-            .set_history(&sender, LastAct::Send, MAX_DIR_CHANGES)
+            .set_history(&sender, LastAct::Send, MAX_DIR_CHANGES - 1)
             .await;
         let before = receiver.record(&sender).await.serialize().unwrap();
         let identity_before = receiver.store.get_identity(&sender.address).await.unwrap();
@@ -310,6 +310,99 @@ fn rejected_losing_initiation_preserves_receive_history(replay: bool) {
             );
             assert!(receiver.record(&sender).await.active_session().is_none());
         }
+    }
+    .now_or_never()
+    .unwrap();
+}
+
+/// Re-store `peer`'s record for `other` after editing its raw protobuf form.
+async fn edit_raw_record(
+    peer: &mut Peer,
+    other: &Peer,
+    edit: impl FnOnce(&mut crate::proto::storage::RecordStructure),
+) {
+    use prost::Message as _;
+    let bytes = peer.record(other).await.serialize().unwrap();
+    let mut raw = crate::proto::storage::RecordStructure::decode(bytes.as_slice()).unwrap();
+    edit(&mut raw);
+    let record = SessionRecord::deserialize(&raw.encode_to_vec()).unwrap();
+    peer.store
+        .store_session(&other.address, &record)
+        .await
+        .unwrap();
+}
+
+#[test]
+fn corrupt_archived_session_does_not_block_new_initiation() {
+    async {
+        let mut rng = StdRng::seed_from_u64(1);
+        let mut alice = Peer::new("alice", &mut rng).await;
+        let mut bob = Peer::new("bob", &mut rng).await;
+        alice.initiate(&bob, &mut rng).await;
+        let message = alice.send(&bob, &mut rng).await;
+        bob.receive(&alice, &message, &mut rng).await.unwrap();
+        edit_raw_record(&mut bob, &alice, |raw| {
+            raw.previous_sessions.push(vec![0xff, 0xff, 0xff]);
+        })
+        .await;
+
+        // A fresh initiation from Alice must still be accepted.
+        alice.initiate(&bob, &mut rng).await;
+        let new_sid = alice.record(&bob).await.alice_base_key().unwrap().to_vec();
+        let message = alice.send(&bob, &mut rng).await;
+        assert_eq!(
+            bob.receive(&alice, &message, &mut rng).await.unwrap(),
+            b"hello"
+        );
+        assert_eq!(bob.record(&alice).await.alice_base_key().unwrap(), new_sid);
+    }
+    .now_or_never()
+    .unwrap();
+}
+
+#[test]
+fn legacy_record_archive_is_capped_on_load() {
+    async {
+        let mut rng = StdRng::seed_from_u64(2);
+        let mut alice = Peer::new("alice", &mut rng).await;
+        let mut bob = Peer::new("bob", &mut rng).await;
+        let mut sessions = vec![];
+        let mut held = vec![];
+        for _ in 0..crate::consts::MAX_ARCHIVED_SESSIONS + 3 {
+            alice.initiate(&bob, &mut rng).await;
+            let message = alice.send(&bob, &mut rng).await;
+            bob.receive(&alice, &message, &mut rng).await.unwrap();
+            held.push(alice.send(&bob, &mut rng).await);
+            sessions.push(bob.record(&alice).await.active_session().unwrap().clone());
+        }
+        let active = sessions.pop().unwrap();
+        // Pre-Tahini layout: no session management state, newest archive first.
+        edit_raw_record(&mut bob, &alice, |raw| {
+            use prost::Message as _;
+            raw.current_session = Some(active.into());
+            raw.previous_sessions = sessions
+                .into_iter()
+                .rev()
+                .map(|s| crate::proto::storage::SessionStructure::from(s).encode_to_vec())
+                .collect();
+            raw.session_management_state = None;
+        })
+        .await;
+
+        assert_eq!(
+            bob.record(&alice).await.archived_session_count(),
+            crate::consts::MAX_ARCHIVED_SESSIONS
+        );
+        // A message on the oldest session is past the cap and no longer decrypts.
+        assert!(bob.receive(&alice, &held[0], &mut rng).await.is_err());
+        // The newest archived session is retained.
+        let newest_archived = &held[held.len() - 2];
+        assert_eq!(
+            bob.receive(&alice, newest_archived, &mut rng)
+                .await
+                .unwrap(),
+            b"hello"
+        );
     }
     .now_or_never()
     .unwrap();
