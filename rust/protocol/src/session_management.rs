@@ -257,6 +257,10 @@ pub struct PreKeyDecryptResult {
 /// commits the session + consumes pre-keys + saves identity on AEAD success.
 /// This enforces the protocol invariant that a session is committed only after
 /// AEAD decrypts.
+///
+/// Without a current time, a simultaneous-initiation tiebreak cannot tell that
+/// our own unacknowledged session has gone stale; prefer
+/// [`message_decrypt_prekey_at`].
 #[allow(clippy::too_many_arguments)]
 pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     ciphertext: &PreKeySignalMessage,
@@ -267,6 +271,69 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     pre_key_store: &mut dyn PreKeyStore,
     signed_pre_key_store: &dyn SignedPreKeyStore,
     kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    csprng: &mut R,
+) -> Result<PreKeyDecryptResult> {
+    message_decrypt_prekey_impl(
+        ciphertext,
+        remote_address,
+        local_address,
+        session_store,
+        identity_store,
+        pre_key_store,
+        signed_pre_key_store,
+        kyber_pre_key_store,
+        None,
+        csprng,
+    )
+    .await
+}
+
+/// Like [`message_decrypt_prekey`], with the current time.
+///
+/// `now` lets a simultaneous-initiation tiebreak yield when our own
+/// unacknowledged session is older than
+/// [`MAX_UNACKNOWLEDGED_SESSION_AGE`](crate::consts::MAX_UNACKNOWLEDGED_SESSION_AGE):
+/// [`message_encrypt`] refuses to send on such a session, so keeping it active
+/// would strand the peer's working session in the archive.
+#[allow(clippy::too_many_arguments)]
+pub async fn message_decrypt_prekey_at<R: Rng + CryptoRng>(
+    ciphertext: &PreKeySignalMessage,
+    remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    pre_key_store: &mut dyn PreKeyStore,
+    signed_pre_key_store: &dyn SignedPreKeyStore,
+    kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    now: SystemTime,
+    csprng: &mut R,
+) -> Result<PreKeyDecryptResult> {
+    message_decrypt_prekey_impl(
+        ciphertext,
+        remote_address,
+        local_address,
+        session_store,
+        identity_store,
+        pre_key_store,
+        signed_pre_key_store,
+        kyber_pre_key_store,
+        Some(now),
+        csprng,
+    )
+    .await
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn message_decrypt_prekey_impl<R: Rng + CryptoRng>(
+    ciphertext: &PreKeySignalMessage,
+    remote_address: &ProtocolAddress,
+    local_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+    identity_store: &mut dyn IdentityKeyStore,
+    pre_key_store: &mut dyn PreKeyStore,
+    signed_pre_key_store: &dyn SignedPreKeyStore,
+    kyber_pre_key_store: &mut dyn KyberPreKeyStore,
+    now: Option<SystemTime>,
     csprng: &mut R,
 ) -> Result<PreKeyDecryptResult> {
     let mut session_record = session_store
@@ -392,6 +459,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
             pre_key_store,
             signed_pre_key_store,
             kyber_pre_key_store,
+            now,
         )
         .await
         {
