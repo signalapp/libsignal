@@ -5022,6 +5022,7 @@ SignalFfiError* signal_expiring_profile_key_credential_get_expiration_time(
 SignalFfiError* signal_expiring_profile_key_credential_response_check_valid_contents(
   SignalBorrowedBuffer buffer
 );
+void signal_ffi_version_0_106_1(void);
 SignalFfiError* signal_fingerprint_clone(
   SignalMutPointerFingerprint* new_obj,
   SignalConstPointerFingerprint obj

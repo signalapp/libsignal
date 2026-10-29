@@ -8,8 +8,8 @@ name = "libsignal-bridge-testing"
 version = "0.1.0"
 authors.workspace = true
 license.workspace = true
+edition.workspace = true
 rust-version.workspace = true
-edition = "2024"
 
 [lints]
 workspace = true

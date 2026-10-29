@@ -85,10 +85,11 @@ check-format-all:
 
 check-python:
     $(command -v flake8 || echo python3 -m flake8) . --exclude target,node/node_modules,node/build
-    $(command -v mypy || echo python3 -m mypy) . --python-version 3.9 --strict --exclude target --exclude node/node_modules --exclude node/build
+    $(command -v mypy || echo python3 -m mypy) . --python-version 3.11 --strict --exclude target --exclude node/node_modules --exclude node/build
 
 # Runs some quick local checks; useful to make sure CI will not fail immediately after push.
 check-pre-commit: check-format-all check-python check-acknowledgments
+    bin/verify-cargo-toml.py
     (cd node && npm run lint)
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)
@@ -98,3 +99,7 @@ check-pre-commit: check-format-all check-python check-acknowledgments
     cargo clippy --workspace --all-targets --all-features --keep-going -- -D warnings
     env "RUSTUP_TOOLCHAIN=$(cat .nightly-rust-version)" "CARGO_TARGET_DIR=$PWD/target/without_building_boring" "CARGO_RESOLVER_LOCKFILE_PATH=$(mktemp -d)/Cargo.lock" bin/without_building_boring.sh cargo check --workspace --all-targets --all-features --keep-going -Zdirect-minimal-versions -Zlockfile-path
     @printf "\e[32mBasic pre-commit checks passed! ✅ Hopefully good to push! 🤞\e[0m\n"
+
+# Run the Swift tests on an iOS simulator, linking LibSignalFfi.xcframework; extra args go to xcodebuild.
+test-swift-ios *args:
+    swift/run_ios_tests.sh {{args}}

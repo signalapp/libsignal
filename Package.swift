@@ -17,10 +17,17 @@ let rustBuildDir: String = {
     }
 }()
 
+var testDependencies: [Target.Dependency] = ["LibSignalClient"]
+var binaryTargets: [Target] = []
+if let ffiXCFrameworkPath = Context.environment["LIBSIGNAL_FFI_XCFRAMEWORK"] {
+    testDependencies.append("LibSignalFfi")
+    binaryTargets.append(.binaryTarget(name: "LibSignalFfi", path: ffiXCFrameworkPath))
+}
+
 let package = Package(
     name: "LibSignalClient",
     platforms: [
-        .macOS(.v10_15), .iOS(.v13),
+        .macOS(.v10_15), .iOS(.v15),
     ],
     products: [
         .library(
@@ -44,11 +51,11 @@ let package = Package(
         ),
         .testTarget(
             name: "LibSignalClientTests",
-            dependencies: ["LibSignalClient"],
+            dependencies: testDependencies,
             path: "swift/Tests/LibSignalClientTests",
             resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
         ),
-    ]
+    ] + binaryTargets
 )

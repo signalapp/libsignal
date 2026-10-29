@@ -3783,11 +3783,9 @@ fn proptest_session_resets() {
                     let b_to_a_session_id = b_to_a_session.alice_base_key().ok();
                     if let (Some(a_to_b_session_id), Some(b_to_a_session_id)) =
                         (a_to_b_session_id, b_to_a_session_id)
-                    {
-                        if a_to_b_session_id == b_to_a_session_id {
+                        && a_to_b_session_id == b_to_a_session_id {
                             return true;
                         }
-                    }
                 }
                 false
             }

@@ -91,8 +91,7 @@ if [[ "${CARGO_BUILD_TARGET:-}" =~ -ios(-sim|-macabi)?$ ]]; then
 
   # Use full LTO to reduce binary size
   export CARGO_PROFILE_RELEASE_LTO=fat
-  export CFLAGS="-flto=full ${CFLAGS:-}"
-  export CXXFLAGS="-flto=full ${CXXFLAGS:-}"
+  export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
 
   # Use small BoringSSL curve tables to reduce binary size
   export CFLAGS="-DOPENSSL_SMALL ${CFLAGS:-}"

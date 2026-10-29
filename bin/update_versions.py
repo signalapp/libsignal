@@ -31,12 +31,12 @@ def update_version(file: str, pattern: re.Pattern[str], new_version: str) -> Non
 
 
 # Note that all of these capture three groups; update_version() relies on that.
-PODSPEC_PATTERN = re.compile(r"^(.*\.version\s+=\s+')(.*)(')")
 GRADLE_PATTERN = re.compile(r'^(\s+version\s+=\s+")(.*)(")')
 NODE_PATTERN = re.compile(r'^(\s+"version": ")(.*)(")')
 CARGO_PATTERN = re.compile(r'^(version = ")(.*)(")')
 RUST_PATTERN = re.compile(r'^(pub const VERSION: &str = ")(.*)(")')
 RELEASE_NOTES_PATTERN = re.compile(r'^(v)(.*)()$')
+FFI_VERSION_SYMBOL_PATTERN = re.compile(r'^(.*\bsignal_ffi_version_)([0-9_]+)(.*)$')
 
 
 def bridge_path(*bridge: str) -> str:
@@ -45,11 +45,16 @@ def bridge_path(*bridge: str) -> str:
 
 VERSION_FILES = [
     ('RELEASE_NOTES.md', RELEASE_NOTES_PATTERN),
-    ('LibSignalClient.podspec', PODSPEC_PATTERN),
     (os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
     (os.path.join('node', 'package.json'), NODE_PATTERN),
     (os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN),
     ('Cargo.toml', CARGO_PATTERN),
+]
+
+FFI_VERSION_SYMBOL_FILES = [
+    os.path.join('rust', 'bridge', 'ffi', 'impl', 'src', 'lib.rs'),
+    os.path.join('swift', 'Sources', 'SignalFfi', 'signal_ffi.h'),
+    os.path.join('swift', 'Sources', 'LibSignalClient', 'FfiVersion.swift'),
 ]
 
 
@@ -62,6 +67,8 @@ def main() -> int:
             new_version = new_version[1:]
         for (path, pattern) in VERSION_FILES:
             update_version(path, pattern, new_version)
+        for path in FFI_VERSION_SYMBOL_FILES:
+            update_version(path, FFI_VERSION_SYMBOL_PATTERN, new_version.replace('.', '_'))
         # It's hard to update the package-lock.json file in a straightforward way with regexes, so use the appropriate
         # tool.
         subprocess.run(['npm', 'install', '--package-lock-only'], cwd='node')
@@ -71,6 +78,9 @@ def main() -> int:
     found_versions = collections.defaultdict(list)
     for (path, pattern) in VERSION_FILES:
         version = read_version(path, pattern)
+        found_versions[version].append(path)
+    for path in FFI_VERSION_SYMBOL_FILES:
+        version = read_version(path, FFI_VERSION_SYMBOL_PATTERN).replace('_', '.')
         found_versions[version].append(path)
 
     if len(found_versions) != 1:

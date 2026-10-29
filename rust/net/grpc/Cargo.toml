@@ -1,9 +1,13 @@
 [package]
 name = "libsignal-net-grpc"
 version = "0.1.0"
-edition = "2021"
-authors = ["Signal Messenger LLC"]
-license = "AGPL-3.0-only"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
 
 [dependencies]
 libsignal-core = { workspace = true }

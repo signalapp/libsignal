@@ -5,7 +5,6 @@
 brew bundle install --file=- << EOF
 brew "awscli"
 brew "cmake"
-brew "cocoapods"
 brew "coreutils"
 brew "fnm"
 brew "gh"
