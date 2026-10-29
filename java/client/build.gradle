@@ -108,6 +108,45 @@ processResources {
     dependsOn ':makeJniLibrariesDesktop'
 }
 
+def androidJniClassifiers = [
+    'android-aarch64': 'arm64-v8a',
+    'android-arm'    : 'armeabi-v7a',
+    'android-x86_64' : 'x86_64',
+    'android-x86'    : 'x86',
+]
+
+def androidJniOutputDirectory = layout.buildDirectory.dir('generated/android-jni')
+
+task collectAndroidJniLibrariesForJvm(type: Sync) {
+    dependsOn ':android:makeJniLibraries'
+    includeEmptyDirs = false
+
+    androidJniClassifiers.each { classifier, abi ->
+        from(rootProject.file("android/src/main/jniLibs/${abi}")) {
+            include 'libsignal_jni.so'
+            into classifier
+        }
+    }
+
+    into androidJniOutputDirectory
+}
+
+def androidJniJarTasks = [
+    'android-aarch64': 'androidAarch64Jar',
+    'android-arm'    : 'androidArmJar',
+    'android-x86_64' : 'androidX86_64Jar',
+    'android-x86'    : 'androidX86Jar',
+].collectEntries { classifier, taskName ->
+    [(classifier): task(taskName, type: Jar) {
+        dependsOn collectAndroidJniLibrariesForJvm
+        archiveClassifier.set(classifier)
+
+        from(androidJniOutputDirectory.map { it.dir(classifier) }) {
+            include 'libsignal_jni.so'
+        }
+    }]
+}
+
 // MARK: Publishing
 
 publishing {
@@ -117,6 +156,7 @@ publishing {
             from components.java
             artifact dokkaHtmlJar
             artifact dokkaJavadocJar
+            androidJniJarTasks.values().each { artifact it }
 
             pom {
                 name = base.archivesName.get()
