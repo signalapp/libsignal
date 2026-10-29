@@ -11,13 +11,28 @@ const FIXED_KEY: &[u8] = &[
     0xd8, 0x21, 0xf8, 0x79, 0xd, 0x97, 0x70, 0x97, 0x96, 0xb4, 0xd7, 0x90, 0x33, 0x57, 0xc3, 0xf5,
 ];
 
-pub fn commit(search_key: &[u8], data: &[u8], nonce: &[u8; 16]) -> Vec<u8> {
+#[derive(Clone, Copy, Debug, displaydoc::Display, Eq, PartialEq)]
+pub enum Error {
+    /// search key is too large to be encoded
+    SearchKeyTooLarge,
+    /// data is too large to be encoded
+    DataTooLarge,
+}
+
+impl std::error::Error for Error {}
+
+type Result<T> = std::result::Result<T, Error>;
+
+pub fn commit(search_key: &[u8], data: &[u8], nonce: &[u8; 16]) -> Result<Vec<u8>> {
     // The expected search_key inputs to this function are: an ACI, an E164,
     // or a username. None should reach 2^16 bound.
-    let key_len: u16 = search_key.len().try_into().expect("search key too large");
+    let key_len: u16 = search_key
+        .len()
+        .try_into()
+        .map_err(|_| Error::SearchKeyTooLarge)?;
     // The expected data inputs to this function are: an ACI, or
     // a serialized public key. Neither should reach 2^32 bound.
-    let data_len: u32 = data.len().try_into().expect("data too large");
+    let data_len: u32 = data.len().try_into().map_err(|_| Error::DataTooLarge)?;
 
     let mut mac = HmacSha256::new_from_slice(FIXED_KEY).expect("can create hmac from fixed key");
     mac.update(nonce);
@@ -26,12 +41,12 @@ pub fn commit(search_key: &[u8], data: &[u8], nonce: &[u8; 16]) -> Vec<u8> {
     mac.update(&data_len.to_be_bytes());
     mac.update(data);
 
-    mac.finalize().into_bytes().to_vec()
+    Ok(mac.finalize().into_bytes().to_vec())
 }
 
-pub fn verify(search_key: &[u8], commitment: &[u8], data: &[u8], nonce: &[u8; 16]) -> bool {
+pub fn verify(search_key: &[u8], commitment: &[u8], data: &[u8], nonce: &[u8; 16]) -> Result<bool> {
     // No concern about timing attacks here, as commitments are public.
-    commit(search_key, data, nonce) == commitment
+    Ok(commit(search_key, data, nonce)? == commitment)
 }
 
 #[cfg(test)]
@@ -46,7 +61,21 @@ mod test {
     #[test_case(b"foo1", b"bar", &hex!("6c31a163a7660d1467fc1c997bd78b0a70b8921ca76b7eb0c6ca077f1e5e121e") ; "case_2")]
     #[test_case(b"foo", b"bar1", &hex!("5de6c6c9ed4bf48122f6c851c80e6eacbf885947f02f974cdc794b14c8e975f1") ; "case_3")]
     fn test_commit(key: &[u8], data: &[u8], expected: &[u8]) {
-        let got = commit(key, data, &[0u8; 16]);
+        let got = commit(key, data, &[0u8; 16]).expect("valid input sizes");
         assert_eq!(got, expected);
+    }
+
+    #[test]
+    fn oversized_search_key_is_rejected() {
+        let search_key = vec![0u8; usize::from(u16::MAX) + 1];
+
+        assert_eq!(
+            commit(&search_key, b"data", &[0u8; 16]),
+            Err(Error::SearchKeyTooLarge)
+        );
+        assert_eq!(
+            verify(&search_key, b"commitment", b"data", &[0u8; 16]),
+            Err(Error::SearchKeyTooLarge)
+        );
     }
 }
