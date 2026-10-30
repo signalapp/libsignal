@@ -48,6 +48,16 @@ impl CertChain {
         &self.certs[0]
     }
 
+    /// Returns a reference to a chain cert, where index 0 is the root,
+    /// index 1 is the cert signed by the root, etc...
+    pub fn idx_from_root(&self, idx: usize) -> Option<&X509> {
+        if idx >= self.certs.len() {
+            None
+        } else {
+            Some(&self.certs[self.certs.len() - idx - 1])
+        }
+    }
+
     pub fn leaf_pub_key(&self) -> Result<EcKey<Public>> {
         self.leaf()
             .public_key()
@@ -76,16 +86,28 @@ impl CertChain {
             .map_err(|e| Error::from(e).context("cert stack"))?;
         let mut ctx = X509StoreContext::new().expect("can allocate a fresh X509StoreContext");
 
-        let verify_result = ctx
+        let (verify_result, chain_matches) = ctx
             .init(trust, self.leaf(), &cert_stack, |c| {
                 c.verify_cert_with_crls(crl_stack)?;
-                Ok(c.verify_result())
+                Ok((
+                    c.verify_result(),
+                    c.chain().is_some_and(|chain| {
+                        // Need to compare lengths as `zip` is as long as the shortest input.
+                        chain.len() == self.certs.len() &&
+                        std::iter::zip(chain, &self.certs)
+                            .all(|(verified, unverified)| {
+                                matches!((verified.to_der(), unverified.to_der()), (Ok(a), Ok(b)) if a == b)
+                            })
+                    }),
+                ))
             })
-            .unwrap_or(Err(X509VerifyError::UNSPECIFIED));
+            .unwrap_or((Err(X509VerifyError::UNSPECIFIED), false));
 
+        #[cfg(not(fuzzing))]
         if let Err(e) = verify_result {
-            #[cfg(not(fuzzing))]
             return Err(Error::new(format!("invalid certificate: {e:?}")));
+        } else if !chain_matches {
+            return Err(Error::new("verified chain does not match provided chain"));
         }
 
         Ok(())
@@ -206,8 +228,24 @@ pub mod testutil {
             Self::new(Some(self), cn)
         }
 
+        /// Create an X509/key pair that names this certificate as its issuer, but is signed with
+        /// the new cert's own key, so the signature does not verify against this certificate
+        pub fn forge(&self, cn: &str) -> TestCert {
+            Self::new_signed_by(Some(self), None, cn)
+        }
+
         /// creates a test x509/key pair, self-signed if no issuer
         pub fn new(issuer: Option<&TestCert>, cn: &str) -> TestCert {
+            Self::new_signed_by(issuer, issuer, cn)
+        }
+
+        /// creates a test x509/key pair naming `issuer` as its issuer (self-issued if none) and
+        /// signed by `signer` (self-signed if none)
+        fn new_signed_by(
+            issuer: Option<&TestCert>,
+            signer: Option<&TestCert>,
+            cn: &str,
+        ) -> TestCert {
             let pkey = pkey();
 
             let mut name = X509Name::builder().unwrap();
@@ -232,7 +270,7 @@ pub mod testutil {
             let issuer_name = issuer.map(|c| c.x509.subject_name()).unwrap_or(&name);
             builder.set_issuer_name(issuer_name).unwrap();
 
-            let signer = issuer.map(|c| &c.pkey).unwrap_or(&pkey);
+            let signer = signer.map(|c| &c.pkey).unwrap_or(&pkey);
             builder.sign(signer, MessageDigest::sha256()).unwrap();
 
             TestCert {
@@ -269,12 +307,13 @@ pub mod testutil {
             builder.build()
         }
 
-        /// Create a chain of test certificates issued by this certificate
-        pub fn issue_chain(&self, len: usize) -> Vec<TestCert> {
+        /// Create a chain of test certificates issued by this certificate, with the given common
+        /// names.
+        pub fn issue_chain(&self, cns: &[&str]) -> Vec<TestCert> {
             let mut vs = Vec::new();
             vs.push(self.clone());
-            for i in 0..len {
-                vs.push(vs.last().unwrap().issue(&i.to_string()));
+            for cn in cns {
+                vs.push(vs.last().unwrap().issue(cn.as_ref()));
             }
             vs.reverse();
             vs
@@ -479,5 +518,42 @@ mod test {
         assert_matches!(CertChain::new(certs), Ok(CertChain { certs: actual }) => {
             assert_eq!(names(&actual), expected);
         });
+    }
+
+    #[test]
+    fn validate_checks_chains_match() {
+        let c1 = TestCert::chain(2);
+        let c2 = TestCert::chain(2);
+        let trust = trust_store(&c1.last().unwrap().x509, None);
+        let cert_chain = CertChain {
+            certs: [
+                c1[0].x509.clone(),
+                c2[0].x509.clone(),
+                c2[1].x509.clone(),
+                c1[1].x509.clone(),
+            ]
+            .to_vec(),
+        };
+        cert_chain
+            .validate_chain(&trust, &[])
+            .expect_err("provided chain does not match validated chain");
+    }
+
+    #[test]
+    fn validate_checks_chain_lengths_match() {
+        // The validated chain stops at the trusted root, so it matches the start of this one.
+        let certs = TestCert::chain(2);
+        let trust = trust_store(&certs.last().unwrap().x509, None);
+        let cert_chain = CertChain {
+            certs: [
+                certs[0].x509.clone(),
+                certs[1].x509.clone(),
+                certs[1].x509.clone(),
+            ]
+            .to_vec(),
+        };
+        cert_chain
+            .validate_chain(&trust, &[])
+            .expect_err("provided chain is longer than validated chain");
     }
 }
