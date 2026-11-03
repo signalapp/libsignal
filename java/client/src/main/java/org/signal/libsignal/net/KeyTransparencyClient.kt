@@ -36,7 +36,12 @@ import org.signal.libsignal.protocol.ServiceId
  *
  * Example usage:
  * ```
- * val net = Network(Network.Environment.STAGING, "key-transparency-example")
+ * val net = Network(
+ *   Network.Environment.STAGING,
+ *   "key-transparency-example",
+ *   mapOf(),
+ *   Network.BuildVariant.PRODUCTION,
+ * )
  * val chat = net.connectUnauthChat(Listener()).get()
  * chat.start()
  *

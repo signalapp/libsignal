@@ -49,7 +49,7 @@ class SecureValueRecoveryBackupTest {
   fun setUp() {
     testBackupKey = BackupKey.generateRandom()
     testInvalidSecretData = TEST_INVALID_SECRET_DATA.toByteArray()
-    net = Network(Network.Environment.STAGING, "test")
+    net = Network(Network.Environment.STAGING, "test", mapOf(), Network.BuildVariant.PRODUCTION)
     val authSecret = System.getenv("LIBSIGNAL_TESTING_SVRB_ENCLAVE_SECRET")
     if (authSecret != null) {
       testUsername = Hex.toStringCondensed(testBackupKey.deriveBackupId(TEST_ACI))
