@@ -64,6 +64,11 @@ extension LibsignalLogger {
 
     /// Can only be called once in the lifetime of a program; later calls will result in a warning and will not change the active logger.
     public func setUpLibsignalLogging(level: LibsignalLogLevel) {
+        // Makes a mismatched libsignal_ffi fail to link (see checkFfiVersion()). It's here because
+        // this method is (a) public, (b) called in all serious production setups, and (c) called
+        // only once.
+        checkFfiVersion()
+
         let bridge = LoggerBridge(logger: self)
         let opaqueBridge = Unmanaged.passRetained(bridge)
         let success = signal_init_logger(
