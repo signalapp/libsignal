@@ -3804,6 +3804,25 @@ typedef enum {
 static_assert_64bit(sizeof(SignalBadgeVisibilityFfiArg) == 4);
 static_assert_64bit(alignof(SignalBadgeVisibilityFfiArg) == 4);
 typedef enum {
+  SignalBridgeChallengeAnswerFfiArgPush,
+  SignalBridgeChallengeAnswerFfiArgCaptcha,
+} SignalBridgeChallengeAnswerFfiArg_Tag;
+typedef struct {
+  const int8_t* _0;
+} SignalBridgeChallengeAnswerFfiArgSignalPush_Body;
+typedef struct {
+  const int8_t* _0;
+} SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body;
+typedef struct {
+  SignalBridgeChallengeAnswerFfiArg_Tag tag;
+  union {
+    SignalBridgeChallengeAnswerFfiArgSignalPush_Body push;
+    SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body captcha;
+  };
+} SignalBridgeChallengeAnswerFfiArg;
+static_assert_64bit(sizeof(SignalBridgeChallengeAnswerFfiArg) == 16);
+static_assert_64bit(alignof(SignalBridgeChallengeAnswerFfiArg) == 8);
+typedef enum {
   SignalBridgeMfaVerificationCredentialFfiArgTotp,
   SignalBridgeMfaVerificationCredentialFfiArgWebAuthn,
 } SignalBridgeMfaVerificationCredentialFfiArg_Tag;
@@ -4047,6 +4066,13 @@ SignalFfiError* signal_auth_credential_with_pni_check_valid_contents(
 );
 SignalFfiError* signal_auth_credential_with_pni_response_check_valid_contents(
   SignalBorrowedBuffer bytes
+);
+SignalFfiError* signal_authenticated_chat_connection_answer_challenge(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const int8_t* token,
+  SignalBridgeChallengeAnswerFfiArg answer
 );
 SignalFfiError* signal_authenticated_chat_connection_clear_push_token(
   SignalCPromisebool* promise,

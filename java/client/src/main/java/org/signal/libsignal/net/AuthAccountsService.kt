@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net
 
+import org.signal.libsignal.internal.BridgeChallengeAnswer
 import org.signal.libsignal.internal.BridgeConfirmedMfaKey
 import org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata
 import org.signal.libsignal.internal.BridgeMfaKeyKind
@@ -328,6 +329,16 @@ public data class BackupEntitlement(
   public val level: Long,
   public val expiration: Instant,
 )
+
+public sealed class ChallengeAnswer {
+  public data class Push(
+    public val challenge: String,
+  ) : ChallengeAnswer()
+
+  public data class Captcha(
+    public val captcha: String,
+  ) : ChallengeAnswer()
+}
 
 /**
  * Errors that [AuthAccountsService.generateTotpKey] can produce, in addition to the generic
@@ -809,6 +820,35 @@ public class AuthAccountsService(
       onSuccess = { capabilities ->
         RequestResult.Success(capabilities.map { DeviceCapability.fromInternal(it) }.toSet())
       },
+      onError = { err -> err.toRequestResult() },
+    )
+
+  /**
+   * Submit proof of a challenge completion.
+   *
+   * Returns `true` if the answer is accepted.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun answerChallenge(
+    token: String,
+    answer: ChallengeAnswer,
+  ): CompletableFuture<RequestResult<Boolean, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_answer_challenge(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          token = token,
+          answer =
+            when (answer) {
+              is ChallengeAnswer.Push -> BridgeChallengeAnswer.Push(answer.challenge)
+              is ChallengeAnswer.Captcha -> BridgeChallengeAnswer.Captcha(answer.captcha)
+            },
+        )
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult() },
     )
 }

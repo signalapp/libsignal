@@ -3054,6 +3054,16 @@ internal enum BadgeVisibility {
 
 */
 
+/*
+// ChallengeAnswer
+
+internal enum BridgeChallengeAnswer {
+    case push(String)
+    case captcha(String)
+}
+
+*/
+
 internal struct BridgeConfirmedMfaKey {
     var id: Int32
     var metadata: BridgeConfirmedMfaKeyMetadata
@@ -4076,6 +4086,119 @@ internal enum DerivedArgConverterBadgeVisibility: NiceArgConverter {
     }
 }
 
+internal enum BridgeChallengeAnswerArgConverterKeepAlive {
+    case push((StringConverter.KeepAlive?))
+    case captcha((StringConverter.KeepAlive?))
+}
+
+internal enum DerivedArgConverterBridgeChallengeAnswer: NiceArgConverter {
+    typealias NiceArg = ChallengeAnswer
+    typealias FfiArg = SignalBridgeChallengeAnswerFfiArg
+    typealias KeepAlive = BridgeChallengeAnswerArgConverterKeepAlive
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+        case .push(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    StringConverter.FfiArg,
+                    StringConverter.KeepAlive?,
+                ) = StringConverter.convertArg(_0)
+
+            let ffiStructArg = SignalBridgeChallengeAnswerFfiArgSignalPush_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (StringConverter.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalBridgeChallengeAnswerFfiArg.init(
+                    tag: SignalBridgeChallengeAnswerFfiArgPush,
+                    .init(push: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .push($0) },
+            )
+
+        case .captcha(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    StringConverter.FfiArg,
+                    StringConverter.KeepAlive?,
+                ) = StringConverter.convertArg(_0)
+
+            let ffiStructArg = SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (StringConverter.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalBridgeChallengeAnswerFfiArg.init(
+                    tag: SignalBridgeChallengeAnswerFfiArgCaptcha,
+                    .init(captcha: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .captcha($0) },
+            )
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .push(
+            let _0,
+        ):
+
+            return try StringConverter.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalBridgeChallengeAnswerFfiArg.init(
+                        tag: SignalBridgeChallengeAnswerFfiArgPush,
+                        .init(
+                            push:
+                                SignalBridgeChallengeAnswerFfiArgSignalPush_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        case .captcha(
+            let _0,
+        ):
+
+            return try StringConverter.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalBridgeChallengeAnswerFfiArg.init(
+                        tag: SignalBridgeChallengeAnswerFfiArgCaptcha,
+                        .init(
+                            captcha:
+                                SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        }
+    }
+}
+
 internal enum DerivedArgConverterBridgeCopyBackupMediaItem: NiceArgConverter {
     typealias NiceArg = BridgeCopyBackupMediaItem
     typealias FfiArg = SignalBridgeCopyBackupMediaItemFfiArg
@@ -4928,6 +5051,34 @@ internal enum DerivedArgConverterPaymentProvider: NiceArgConverter {
 }
 
 internal enum NativeNice {
+    internal static func AuthenticatedChatConnection_answer_challenge(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        token: String,
+        answer: ChallengeAnswer,
+    ) async throws -> Bool {
+        let rawOutput: IdentityResultConverter<Bool>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        StringConverter.convertArgBorrowed(token) { tokenFfi in
+                            DerivedArgConverterBridgeChallengeAnswer.convertArgBorrowed(answer) { answerFfi in
+                                SignalFfi.signal_authenticated_chat_connection_answer_challenge(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    tokenFfi,
+                                    answerFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try IdentityResultConverter<Bool>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_clear_push_token(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

@@ -81,6 +81,16 @@ public sealed class BadgeVisibility {
 
 */
 
+public sealed class BridgeChallengeAnswer {
+  public data class Push(
+    public val _0: String,
+  ) : BridgeChallengeAnswer()
+
+  public data class Captcha(
+    public val _0: String,
+  ) : BridgeChallengeAnswer()
+}
+
 public data class BridgeConfirmedMfaKey(
   public val id: Int,
   public val metadata: org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata,
@@ -1098,6 +1108,50 @@ public fun org.signal.libsignal.net.BadgeVisibility.toFfiArgTypeObject(): Object
     },
   )
 
+public sealed class BridgeChallengeAnswer_FfiArgType
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class BridgeChallengeAnswer_Push_FfiArgType : BridgeChallengeAnswer_FfiArgType {
+  @CalledFromNative
+  internal val _0: Any?
+  internal constructor(
+    _0: Any?,
+  ) {
+    this._0 = _0
+  }
+}
+
+public fun BridgeChallengeAnswer.Push.toFfiArgType(): BridgeChallengeAnswer_Push_FfiArgType =
+  BridgeChallengeAnswer_Push_FfiArgType(
+    _0 = identity(_0),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class BridgeChallengeAnswer_Captcha_FfiArgType : BridgeChallengeAnswer_FfiArgType {
+  @CalledFromNative
+  internal val _0: Any?
+  internal constructor(
+    _0: Any?,
+  ) {
+    this._0 = _0
+  }
+}
+
+public fun BridgeChallengeAnswer.Captcha.toFfiArgType(): BridgeChallengeAnswer_Captcha_FfiArgType =
+  BridgeChallengeAnswer_Captcha_FfiArgType(
+    _0 = identity(_0),
+  )
+
+public fun BridgeChallengeAnswer.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is BridgeChallengeAnswer.Push -> this.toFfiArgType()
+      is BridgeChallengeAnswer.Captcha -> this.toFfiArgType()
+    },
+  )
+
 @CalledFromNative
 @Suppress("ktlint:standard:backing-property-naming")
 public class BridgeCopyBackupMediaItem_FfiArgType {
@@ -1477,6 +1531,28 @@ public fun org.signal.libsignal.net.PaymentProvider.toFfiArgTypeObject(): Object
   )
 
 public object NativeNice {
+  public fun AuthenticatedChatConnection_answer_challenge(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    token: String,
+    answer: org.signal.libsignal.internal.BridgeChallengeAnswer,
+  ): CompletableFuture<Boolean> {
+    val ffi_chat = identity(chat)
+    val ffi_token = identity(token)
+    val ffi_answer = (org.signal.libsignal.internal.BridgeChallengeAnswer::toFfiArgTypeObject)(answer)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_answer_challenge(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_token,
+          ffi_answer,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_clear_push_token(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

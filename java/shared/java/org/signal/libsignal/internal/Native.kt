@@ -270,6 +270,14 @@ internal object Native {
   public external fun AuthenticatedChatConnection_Destroy(handle: ObjectHandle): Unit
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_answer_challenge(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    token: String,
+    answer: Object,
+  ): CompletableFuture<Boolean>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_clear_push_token(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

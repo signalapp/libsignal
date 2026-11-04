@@ -13,6 +13,7 @@ import type {
   GrpcTestCase,
   StringMapFfiContents,
   ArgFfiBadgeVisibility,
+  ArgFfiBridgeChallengeAnswer,
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
   ArgFfiBridgeMfaVerificationCredential,
@@ -27,10 +28,12 @@ import type {
   ArgFfiMyTestStruct,
   ArgFfiPaymentProvider,
   ReturnFfiAccountEntitlements,
+  ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
   ReturnFfiBackupEntitlement,
   ReturnFfiBadgeEntitlement,
   ReturnFfiBadgeVisibility,
+  ReturnFfiBridgeChallengeAnswer,
   ReturnFfiBridgeConfirmedMfaKey,
   ReturnFfiBridgeConfirmedMfaKeyMetadata,
   ReturnFfiBridgeCopyBackupMediaItem,
@@ -159,6 +162,11 @@ export type AccountEntitlements = {
   backup: BackupEntitlement | null;
 };
 
+export type AnswerChallengeArgs = {
+  token: string;
+  answer: BridgeChallengeAnswer;
+};
+
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
 
 export type BackupEntitlement = {
@@ -173,6 +181,14 @@ export type BadgeEntitlement = {
 };
 
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
+
+export type BridgeChallengeAnswer =
+  | {
+      push: string;
+    }
+  | {
+      captcha: string;
+    };
 
 export type BridgeConfirmedMfaKey = {
   id: number;
@@ -793,6 +809,15 @@ export function returnConverterAccountEntitlements(
   };
 }
 
+export function returnConverterAnswerChallengeArgs(
+  ffiInput: Native.ReturnFfiAnswerChallengeArgs
+): AnswerChallengeArgs {
+  return {
+    token: identity(ffiInput.token),
+    answer: returnConverterBridgeChallengeAnswer(ffiInput.answer),
+  };
+}
+
 export function returnConverterAuthCheckResult(
   ffiInput: Native.ReturnFfiAuthCheckResult
 ): AuthCheckResult {
@@ -843,6 +868,24 @@ export function returnConverterBadgeVisibility(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for BadgeVisibility');
+  }
+}
+
+export function returnConverterBridgeChallengeAnswer(
+  ffiInput: Native.ReturnFfiBridgeChallengeAnswer
+): BridgeChallengeAnswer {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        push: identity(ffiInput._0),
+      };
+    case 1:
+      return {
+        captcha: identity(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for BridgeChallengeAnswer');
   }
 }
 
@@ -2338,6 +2381,27 @@ export function argConverterBadgeVisibility(
   throw new Error('Cannot match on BadgeVisibility argument');
 }
 
+export function argConverterBridgeChallengeAnswer(
+  niceInput: BridgeChallengeAnswer
+): Native.ArgFfiBridgeChallengeAnswer {
+  if ('push' in niceInput) {
+    return {
+      __type: 0,
+      _0: identity(niceInput.push),
+    };
+  }
+
+  if ('captcha' in niceInput) {
+    return {
+      __type: 1,
+      _0: identity(niceInput.captcha),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on BridgeChallengeAnswer argument');
+}
+
 export function argConverterBridgeCopyBackupMediaItem(
   niceInput: BridgeCopyBackupMediaItem
 ): Native.ArgFfiBridgeCopyBackupMediaItem {
@@ -2642,6 +2706,31 @@ export function argConverterPaymentProvider(
   throw new Error('Cannot match on PaymentProvider argument');
 }
 
+export async function AuthenticatedChatConnection_answer_challenge({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  token: token,
+  answer: answer,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  token: string;
+  answer: BridgeChallengeAnswer;
+}): Promise<boolean> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_answer_challenge(
+        asyncContext,
+        identity(chat),
+        identity(token),
+        argConverterBridgeChallengeAnswer(answer)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_clear_push_token({
   asyncContext,
   abortSignal,
@@ -3625,6 +3714,15 @@ export function SvrKey_DeriveStorageServiceKey({
   svrKey: Bytes;
 }): Bytes {
   return identity(Native.SvrKey_DeriveStorageServiceKey(identity(svr_key)));
+}
+
+export function TESTING_AnswerChallengeTests(): Array<
+  GrpcTestCase<AnswerChallengeArgs, boolean>
+> {
+  return grpcTestCaseConverter(
+    returnConverterAnswerChallengeArgs,
+    identity
+  )(Native.TESTING_AnswerChallengeTests());
 }
 
 export function TESTING_BackupDeleteAllTests(): Array<

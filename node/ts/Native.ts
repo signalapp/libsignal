@@ -164,6 +164,11 @@ export type ReturnFfiAccountEntitlements = {
   backup: ReturnFfiBackupEntitlement | null;
 };
 
+export type ReturnFfiAnswerChallengeArgs = {
+  token: string;
+  answer: ReturnFfiBridgeChallengeAnswer;
+};
+
 export type ReturnFfiAuthCheckResult =
   | {
       __type: 0;
@@ -195,6 +200,16 @@ export type ReturnFfiBadgeVisibility =
     }
   | {
       __type: 2;
+    };
+
+export type ReturnFfiBridgeChallengeAnswer =
+  | {
+      __type: 0;
+      _0: string;
+    }
+  | {
+      __type: 1;
+      _0: string;
     };
 
 export type ReturnFfiBridgeConfirmedMfaKey = {
@@ -1038,6 +1053,16 @@ export type ArgFfiBadgeVisibility =
       __type: 2;
     };
 
+export type ArgFfiBridgeChallengeAnswer =
+  | {
+      __type: 0;
+      _0: string;
+    }
+  | {
+      __type: 1;
+      _0: string;
+    };
+
 export type ArgFfiBridgeCopyBackupMediaItem = {
   source_attachment_cdn: number;
   source_key: string;
@@ -1256,6 +1281,12 @@ type NativeFunctions = {
   ) => Serialized<UuidCiphertext>;
   AuthCredentialWithPniResponse_CheckValidContents: (bytes: Bytes) => void;
   AuthCredentialWithPni_CheckValidContents: (bytes: Bytes) => void;
+  AuthenticatedChatConnection_answer_challenge: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    token: string,
+    answer: ArgFfiBridgeChallengeAnswer
+  ) => CancellablePromise<boolean>;
   AuthenticatedChatConnection_clear_push_token: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3053,6 +3084,9 @@ type NativeFunctions = {
   SvrKey_DeriveRegistrationLock: (svr_key: Bytes) => Bytes;
   SvrKey_DeriveRegistrationRecoveryPassword: (svr_key: Bytes) => Bytes;
   SvrKey_DeriveStorageServiceKey: (svr_key: Bytes) => Bytes;
+  TESTING_AnswerChallengeTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiAnswerChallengeArgs, boolean>
+  >;
   TESTING_BackupDeleteAllTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiSimpleBackupTestOut>
   >;
@@ -4006,6 +4040,7 @@ const {
   AuthCredentialPresentation_GetUuidCiphertext,
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
+  AuthenticatedChatConnection_answer_challenge,
   AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_confirm_totp_key,
@@ -4528,6 +4563,7 @@ const {
   SvrKey_DeriveRegistrationLock,
   SvrKey_DeriveRegistrationRecoveryPassword,
   SvrKey_DeriveStorageServiceKey,
+  TESTING_AnswerChallengeTests,
   TESTING_BackupDeleteAllTests,
   TESTING_BackupListMediaTests,
   TESTING_BackupRefreshTests,
@@ -4847,6 +4883,7 @@ export {
   AuthCredentialPresentation_GetUuidCiphertext,
   AuthCredentialWithPniResponse_CheckValidContents,
   AuthCredentialWithPni_CheckValidContents,
+  AuthenticatedChatConnection_answer_challenge,
   AuthenticatedChatConnection_clear_push_token,
   AuthenticatedChatConnection_clear_registration_lock,
   AuthenticatedChatConnection_confirm_totp_key,
@@ -5369,6 +5406,7 @@ export {
   SvrKey_DeriveRegistrationLock,
   SvrKey_DeriveRegistrationRecoveryPassword,
   SvrKey_DeriveStorageServiceKey,
+  TESTING_AnswerChallengeTests,
   TESTING_BackupDeleteAllTests,
   TESTING_BackupListMediaTests,
   TESTING_BackupRefreshTests,

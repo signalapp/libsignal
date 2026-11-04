@@ -29,6 +29,11 @@ use libsignal_net_grpc::proto::chat::account::{
     finish_web_authn_registration_response, generate_totp_key_response, list_mfa_keys_response,
     set_mfa_key_metadata_response, start_web_authn_registration_response,
 };
+use libsignal_net_grpc::proto::chat::challenge::answer_challenge_request::{
+    self, AnswerCaptchaChallengeRequest, AnswerPushChallengeRequest,
+};
+use libsignal_net_grpc::proto::chat::challenge::challenge_client::ChallengeClient;
+use libsignal_net_grpc::proto::chat::challenge::{AnswerChallengeRequest, AnswerChallengeResponse};
 use libsignal_net_grpc::proto::chat::errors;
 
 use crate::api::{Auth, RequestError};
@@ -298,6 +303,11 @@ impl TryFrom<libsignal_net_grpc::proto::chat::account::get_entitlements_response
     }
 }
 
+pub enum ChallengeAnswer {
+    Push(String),
+    Captcha(String),
+}
+
 fn parse_mfa_key_id<E>(key_id: u32) -> Result<MfaKeyId, RequestError<E>> {
     MfaKeyId::try_from(key_id).map_err(|e| RequestError::Unexpected {
         log_safe: e.to_string(),
@@ -506,6 +516,23 @@ impl std::fmt::Display for Redact<GetCapabilitiesRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(GetCapabilitiesRequest {}) = self;
         f.debug_struct("GetCapabilitiesRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<AnswerChallengeRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(AnswerChallengeRequest { token, request }) = self;
+        f.debug_struct("AnswerChallengeRequest")
+            .field("token.len", &token.len())
+            .field(
+                "request",
+                &match request {
+                    Some(answer_challenge_request::Request::Push(_)) => "push",
+                    Some(answer_challenge_request::Request::Captcha(_)) => "captcha",
+                    None => "<missing>",
+                },
+            )
+            .finish()
     }
 }
 
@@ -1075,6 +1102,35 @@ impl<T: GrpcServiceProvider> Auth<T> {
             log::warn!("Unsupported capabilities in server response: {:?}", diff);
         }
         Ok(converted)
+    }
+
+    pub async fn answer_challenge(
+        &self,
+        token: String,
+        answer: ChallengeAnswer,
+    ) -> Result<bool, RequestError<Infallible>> {
+        let mut client = ChallengeClient::new(self.0.service());
+        let request = AnswerChallengeRequest {
+            token,
+            request: Some(match answer {
+                ChallengeAnswer::Push(challenge) => {
+                    answer_challenge_request::Request::Push(AnswerPushChallengeRequest {
+                        challenge,
+                    })
+                }
+                ChallengeAnswer::Captcha(captcha) => {
+                    answer_challenge_request::Request::Captcha(AnswerCaptchaChallengeRequest {
+                        captcha,
+                    })
+                }
+            }),
+        };
+        let desc = Redact(&request).to_string();
+        let AnswerChallengeResponse { success } =
+            log_and_send(Self::LOG_TAG, &desc, || client.answer_challenge(request))
+                .await?
+                .into_inner();
+        Ok(success)
     }
 }
 
@@ -2127,6 +2183,55 @@ pub mod test_cases {
             },
         ]
     }
+
+    pub struct AnswerChallengeArgs {
+        pub token: String,
+        pub answer: ChallengeAnswer,
+    }
+
+    pub fn answer_challenge_test_cases()
+    -> Vec<GrpcTestCase<AnswerChallengeArgs, AnswerChallengeRequest, AnswerChallengeResponse, bool>>
+    {
+        let method = "/org.signal.chat.challenge.Challenge/AnswerChallenge";
+        vec![
+            GrpcTestCase {
+                name: "success push".to_string(),
+                method: method.to_string(),
+                request: AnswerChallengeArgs {
+                    token: "token".to_owned(),
+                    answer: ChallengeAnswer::Push("push".to_owned()),
+                },
+                request_grpc: AnswerChallengeRequest {
+                    token: "token".to_owned(),
+                    request: Some(answer_challenge_request::Request::Push(
+                        AnswerPushChallengeRequest {
+                            challenge: "push".to_owned(),
+                        },
+                    )),
+                },
+                response_grpc: AnswerChallengeResponse { success: true },
+                response: true,
+            },
+            GrpcTestCase {
+                name: "failure captcha".to_string(),
+                method: method.to_string(),
+                request: AnswerChallengeArgs {
+                    token: "token".to_owned(),
+                    answer: ChallengeAnswer::Captcha("captcha".to_owned()),
+                },
+                request_grpc: AnswerChallengeRequest {
+                    token: "token".to_owned(),
+                    request: Some(answer_challenge_request::Request::Captcha(
+                        AnswerCaptchaChallengeRequest {
+                            captcha: "captcha".to_owned(),
+                        },
+                    )),
+                },
+                response_grpc: AnswerChallengeResponse { success: false },
+                response: false,
+            },
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -2839,6 +2944,20 @@ mod test {
                 GetCapabilitiesOut::Malformed => {
                     assert_matches!(result, Err(RequestError::Unexpected { log_safe: _ }))
                 }
+            },
+        );
+    }
+
+    #[test]
+    fn test_answer_challenge() {
+        use test_cases::*;
+        run_tests(
+            answer_challenge_test_cases(),
+            |chat: Auth<_>, AnswerChallengeArgs { token, answer }| async move {
+                chat.answer_challenge(token, answer).await
+            },
+            |expected, result| {
+                assert_eq!(expected, result.expect("success"));
             },
         );
     }

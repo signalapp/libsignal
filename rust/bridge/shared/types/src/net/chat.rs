@@ -1664,6 +1664,17 @@ pub mod remote_derives {
             }
         }
     }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::accounts::ChallengeAnswer,
+        ffi_nice_type = "ChallengeAnswer",
+    )]
+    #[allow(unused)]
+    enum BridgeChallengeAnswer {
+        Push(String),
+        Captcha(String),
+    }
 }
 
 #[cfg(test)]

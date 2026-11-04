@@ -212,6 +212,8 @@ export type BadgeEntitlement = {
   visible: boolean;
 };
 
+export type ChallengeAnswer = { push: string } | { captcha: string };
+
 export interface AuthAccountsService {
   /**
    * Deletes the authenticated account, purging all associated data in the process.
@@ -535,6 +537,18 @@ export interface AuthAccountsService {
     request: EmptyObject,
     options?: RequestOptions
   ) => Promise<Set<DeviceCapability>>;
+
+  /**
+   * Submit proof of a challenge completion.
+   *
+   * Returns `true` if the answer is accepted.
+   *
+   * @throws {StandardNetworkError}
+   */
+  answerChallenge: (
+    request: { token: string } & ChallengeAnswer,
+    options?: RequestOptions
+  ) => Promise<boolean>;
 }
 
 AuthenticatedChatConnection.prototype.deleteAccount = async function (
@@ -784,4 +798,17 @@ AuthenticatedChatConnection.prototype.getAccountCapabilities = async function (
       chat: this.chatService,
     })
   );
+};
+
+AuthenticatedChatConnection.prototype.answerChallenge = async function (
+  request,
+  options?
+) {
+  return await NativeNice.AuthenticatedChatConnection_answer_challenge({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    token: request.token,
+    answer: request,
+  });
 };
