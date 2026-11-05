@@ -41,6 +41,26 @@ When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag 
 `build_ffi.sh` invocation.
 
 
+### macOS
+
+macOS apps can use a locally built XCFramework. Signal does not publish macOS prebuilds or officially support this configuration.
+
+Install the [build prerequisites](../README.md#building), then run these commands from the repository root to build a universal macOS XCFramework:
+
+    rustup target add aarch64-apple-darwin x86_64-apple-darwin
+    MACOSX_DEPLOYMENT_TARGET=12.0 CARGO_BUILD_TARGET=aarch64-apple-darwin swift/build_ffi.sh --release
+    MACOSX_DEPLOYMENT_TARGET=12.0 CARGO_BUILD_TARGET=x86_64-apple-darwin swift/build_ffi.sh --release
+    swift/build_xcframework.py --macos-only
+
+Use the same deployment target for your app and Rust builds; these examples use macOS 12.0. For a single architecture, build only the corresponding Rust target and use `--macos-only arm64` or `--macos-only x86_64`.
+
+Use the local package dependency and `LibSignalFfi` binary target described above, building both from the same checkout. The generated `target/LibSignalFfi.xcframework` contains only macOS libraries. Add `--zip` to also create a ZIP archive.
+
+To run the package tests against this XCFramework on your Mac:
+
+    LIBSIGNAL_FFI_XCFRAMEWORK=target/LibSignalFfi.xcframework swift test
+
+
 # Development as a Swift Package
 
 1. Build the Rust library using `swift/build_ffi.sh`. The Swift Package.swift is configured to use the debug build of the Rust library.
