@@ -23,7 +23,8 @@
 //! Callers invoke a verb that names the protocol event:
 //!
 //! - [`on_send`] — about to encrypt a message.
-//! - [`on_receive_active`] — successfully decrypted on the active session.
+//! - [`on_receive_active`] — successfully decrypted on the active session
+//!   (leaves the deadlock history untouched).
 //! - [`on_receive_inactive`] — successfully decrypted on an archived session
 //!   (also fires the deadlock breaker if the threshold is exceeded).
 //! - [`on_receive_session_state`] — per-state bookkeeping on any successful
@@ -89,20 +90,27 @@ pub(crate) fn on_send(record: &mut SessionRecord) {
 
 // ── Receive path ─────────────────────────────────────────────────────────────
 
-/// Mark a successful decrypt on the active session.
-pub(crate) fn on_receive_active(record: &mut SessionRecord) {
-    record.set_last_act(LastAct::ReceiveActive);
-}
+/// Record a successful decrypt on the active session.
+///
+/// This deliberately leaves the deadlock history untouched. The Tahini model
+/// (`DiscardAfter5ReceiveFromOOO_*` in `models/tahini/Tahini.spthy`) counts the
+/// alternation between inactive receives and sends regardless of any
+/// active-session receives in between, so an active receive must neither reset
+/// that alternation nor stand in for one of its steps. `LastAct::ReceiveActive`
+/// is no longer written; a stored value is treated like `Send`.
+pub(crate) fn on_receive_active(_record: &mut SessionRecord) {}
 
 /// Mark a successful decrypt on an archived (inactive) session.
 ///
-/// If the prior action was a send, increments the direction-change counter.
-/// If the counter then exceeds [`MAX_DIR_CHANGES`], archives the active
+/// Unless the prior action was also an inactive receive, this starts a new
+/// step of the alternation the model counts (including the first one, with no
+/// send before it), so it increments the direction-change counter. If the
+/// counter then exceeds [`MAX_DIR_CHANGES`], archives the active
 /// session and resets the counter (deadlock break).
 pub(crate) fn on_receive_inactive(
     record: &mut SessionRecord,
 ) -> Result<(), crate::SignalProtocolError> {
-    if record.last_act() == LastAct::Send {
+    if record.last_act() != LastAct::ReceiveInactive {
         record.increment_direction_change_ctr();
     }
     record.set_last_act(LastAct::ReceiveInactive);
@@ -223,8 +231,8 @@ pub(crate) fn decide_initiation_placement(
 /// Stamps origin `Remote`, writes `new_session` into the slot indicated by
 /// `placement`, and applies post-decrypt bookkeeping:
 /// - On `Active`: the active session is replaced, so its deadlock history is
-///   reset — direction-change counter to zero and `last_act = ReceiveActive`
-///   (the winning initiation was received on the now-active session).
+///   reset — direction-change counter to zero and `last_act = Unset`, as in
+///   [`on_initiate`].
 /// - On `Archived` (tiebreaker loser): the active session is unchanged, so the
 ///   deadlock history is left untouched by placement. The caller must then
 ///   invoke [`on_receive_inactive`] for the successfully decrypted enclosed
@@ -239,7 +247,7 @@ pub(crate) fn commit_received_initiation(
         NewSessionLocation::Active => {
             record.replace_active_session(new_session);
             record.reset_direction_change_ctr();
-            on_receive_active(record);
+            record.set_last_act(LastAct::Unset);
             Ok(())
         }
         NewSessionLocation::Archived => {
@@ -270,12 +278,31 @@ mod tests {
     #[test_case(LastAct::Send)]
     #[test_case(LastAct::ReceiveInactive)]
     #[test_case(LastAct::ReceiveActive)]
-    fn recv_active_no_increment(prev: LastAct) {
+    fn recv_active_leaves_history_untouched(prev: LastAct) {
         let mut record = SessionRecord::new_fresh();
         record.set_last_act(prev);
         on_receive_active(&mut record);
         assert_eq!(record.direction_change_ctr(), 0);
-        assert_eq!(record.last_act(), LastAct::ReceiveActive);
+        assert_eq!(record.last_act(), prev);
+    }
+
+    #[test]
+    fn active_receives_do_not_interrupt_model_alternation() {
+        // The model's trace: inactive receive, send, inactive receive, send,
+        // inactive receive — here with active receives interleaved, which the
+        // model ignores. Each step counts, including the first.
+        let mut record = SessionRecord::new_fresh();
+        record.set_last_act(LastAct::Unset);
+        for expected in 1..MAX_DIR_CHANGES {
+            if expected % 2 == 1 {
+                on_receive_active(&mut record);
+                on_receive_inactive(&mut record).unwrap();
+            } else {
+                on_receive_active(&mut record);
+                on_send(&mut record);
+            }
+            assert_eq!(record.direction_change_ctr(), expected);
+        }
     }
 
     #[test]
