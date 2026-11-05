@@ -24,23 +24,6 @@ If the two versions don't match, linking will fail with an undefined `signal_ffi
 [GitHub Releases]: https://github.com/signalapp/libsignal/releases
 
 
-## Development with an App
-
-Build the Rust library for each iOS target, then package the results as `target/LibSignalFfi.xcframework`:
-
-    CARGO_BUILD_TARGET=x86_64-apple-ios swift/build_ffi.sh --release
-    CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
-    CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
-    swift/build_xcframework.py
-
-If you only need the simulator, build just `aarch64-apple-ios-sim` and pass `--simulator-only` to `build_xcframework.py`. You can pass `--debug-level-logs` to `build_ffi.sh` to turn on debug- and verbose-level logs.
-
-In the app, replace the libsignal package dependency with a local package pointing at this checkout. Then copy the XCFramework into the package that declares the `LibSignalFfi` binary target, and change that target to `.binaryTarget(name: "LibSignalFfi", path: "LibSignalFfi.xcframework")`. When you're done, revert both changes.
-
-When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
-`build_ffi.sh` invocation.
-
-
 # Development as a Swift Package
 
 1. Build the Rust library using `swift/build_ffi.sh`. The Swift Package.swift is configured to use the debug build of the Rust library.
@@ -51,6 +34,22 @@ To run the tests on an iOS simulator instead, use `swift/run_ios_tests.sh`. Extr
 
 When exposing new APIs to Swift, you will need to add the `--generate-ffi` flag to your
 `build_ffi.sh` invocation.
+
+
+## Development with an App
+
+0. Make sure the directory containing the checkout of the git repository is named "libsignal", matching the last component of the package URL you normally depend on. Xcode won't see it as the same package otherwise!
+
+1. Build the Rust library for simulator or device.
+
+        CARGO_BUILD_TARGET=aarch64-apple-ios swift/build_ffi.sh --release
+        CARGO_BUILD_TARGET=aarch64-apple-ios-sim swift/build_ffi.sh --release
+
+2. Uncomment the appropriate line in Package.swift for `extraLinkerSettingsForUseAsLocalDependency`.
+
+3. Add the top-level directory (the one named "libsignal") to your Xcode workspace, choosing "reference files in place". (If you only have a project file, you can add it there too, that'll work fine.) Xcode will take a while to think about this---do not be alarmed by the wait cursor---but should then allow the local package to supersede the remote dependency.
+
+When you're done, remove the package from the Xcode workspace, and then revert the change from step #2.
 
 
 # Benchmarks

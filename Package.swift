@@ -7,16 +7,27 @@
 
 import PackageDescription
 
-// This is only used for local builds; the directory won't exist when used as a (remote) dependency.
-let rustBuildDir: String = {
-    let manifestPath = #filePath
-    if let lastDirectorySep = manifestPath.lastIndex(of: "/") {
-        return manifestPath[...lastDirectorySep] + "target/debug/"
+// This instructs Xcode to link against a local static library instead of the xcframework-sourced libsignal_ffi.
+// This is useful for local development, to avoid the hassle of generating a new xcframework and replacing it on the app side.
+let extraLinkerSettingsForUseAsLocalDependency: [LinkerSetting] = [
+    // Uncomment this line for **simulator** builds.
+    // .unsafeFlags(["\(Context.packageDirectory)/target/aarch64-apple-ios-sim/release/libsignal_ffi.a"]),
+
+    // Uncomment this line for **device** builds.
+    // .unsafeFlags(["\(Context.packageDirectory)/target/aarch64-apple-ios/release/libsignal_ffi.a"]),
+]
+
+// This is only used for local testing; the directory won't exist when used as a (remote) dependency.
+let rustDebugBuildDir: String = {
+    let packageDir = Context.packageDirectory
+    if !packageDir.isEmpty {
+        return packageDir + "/target/debug/"
     } else {
         return "target/debug/"
     }
 }()
 
+// This allows us to test the xcframework distribution of the Rust part of libsignal.
 var testDependencies: [Target.Dependency] = ["LibSignalClient"]
 var binaryTargets: [Target] = []
 if let ffiXCFrameworkPath = Context.environment["LIBSIGNAL_FFI_XCFRAMEWORK"] {
@@ -46,8 +57,8 @@ let package = Package(
             path: "swift/Sources/LibSignalClient",
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
             linkerSettings: [
-                .linkedLibrary("stdc++", .when(platforms: [.linux]))
-            ]
+                .linkedLibrary("stdc++", .when(platforms: [.linux])),
+            ] + extraLinkerSettingsForUseAsLocalDependency
         ),
         .testTarget(
             name: "LibSignalClientTests",
@@ -55,7 +66,7 @@ let package = Package(
             path: "swift/Tests/LibSignalClientTests",
             resources: [.process("Resources")],
             swiftSettings: [.enableExperimentalFeature("StrictConcurrency")],
-            linkerSettings: [.unsafeFlags(["-L\(rustBuildDir)"])]
+            linkerSettings: [.unsafeFlags(["-L\(rustDebugBuildDir)"])]
         ),
     ] + binaryTargets
 )
