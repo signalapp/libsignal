@@ -8,6 +8,11 @@ use std::time::Duration;
 pub const MAX_FORWARD_JUMPS: usize = 25_000;
 pub const MAX_MESSAGE_KEYS: usize = 2000;
 pub const MAX_RECEIVER_CHAINS: usize = 5;
+/// Archived sessions kept per session record, in addition to the active one.
+///
+/// The Tahini model's `OutOfOrderA`/`OutOfOrderB` restrictions
+/// (`rust/protocol/models/tahini/Tahini.spthy`) assume one active session plus
+/// this many archived sessions; keep the two in sync.
 pub const MAX_ARCHIVED_SESSIONS: usize = 3;
 pub const MAX_SENDER_KEY_STATES: usize = 5;
 
