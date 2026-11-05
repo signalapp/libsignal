@@ -22,6 +22,10 @@ SLICES = [
 SIMULATOR_ONLY_SLICES = [
     ['aarch64-apple-ios-sim'],
 ]
+MACOS_TARGETS = {
+    'arm64': 'aarch64-apple-darwin',
+    'x86_64': 'x86_64-apple-darwin',
+}
 
 
 def run(*args: str) -> None:
@@ -38,7 +42,12 @@ def main() -> int:
         description='Packages release builds of libsignal_ffi.a into LibSignalFfi.xcframework.',
         epilog='Build each target first with `CARGO_BUILD_TARGET=<target> swift/build_ffi.sh --release`.',
     )
-    parser.add_argument('--simulator-only', action='store_true', help='package only aarch64-apple-ios-sim')
+    platforms = parser.add_mutually_exclusive_group()
+    platforms.add_argument('--simulator-only', action='store_true', help='package only aarch64-apple-ios-sim')
+    platforms.add_argument(
+        '--macos-only', nargs='?', choices=[*MACOS_TARGETS, 'universal'], const='universal',
+        help='package only macOS (default: universal; optionally choose arm64 or x86_64)',
+    )
     parser.add_argument('--zip', action='store_true', help='also write LibSignalFfi.xcframework.zip')
     args = parser.parse_args()
 
@@ -46,7 +55,12 @@ def main() -> int:
     target_dir = Path(os.environ.get('CARGO_TARGET_DIR', 'target'))
     output = target_dir / 'LibSignalFfi.xcframework'
     zip_output = target_dir / 'LibSignalFfi.xcframework.zip'
-    slices = SIMULATOR_ONLY_SLICES if args.simulator_only else SLICES
+    if args.macos_only == 'universal':
+        slices = [list(MACOS_TARGETS.values())]
+    elif args.macos_only:
+        slices = [[MACOS_TARGETS[args.macos_only]]]
+    else:
+        slices = SIMULATOR_ONLY_SLICES if args.simulator_only else SLICES
 
     missing = [
         target
