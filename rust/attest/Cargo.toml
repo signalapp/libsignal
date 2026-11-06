@@ -26,6 +26,7 @@ blake2 = { workspace = true }
 boring-signal = { workspace = true }
 chacha20poly1305 = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
+ciborium = { workspace = true }
 const-str = { workspace = true }
 displaydoc = { workspace = true }
 hex = { workspace = true, features = ["serde"] }
@@ -40,6 +41,7 @@ sha2 = { workspace = true }
 snow = { workspace = true, features = ["hfs"] }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
+subtle = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 x25519-dalek = { workspace = true }

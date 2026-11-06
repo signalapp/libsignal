@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::time::SystemTime;
 
 use attest::svr2::RaftConfig;
-use attest::{cds2, enclave};
+use attest::{cds2, enclave, nitro};
 use derive_where::derive_where;
 use http::uri::PathAndQuery;
 use libsignal_core::LogSafeDisplay;
@@ -54,6 +54,8 @@ pub enum Cdsi {}
 
 pub enum SvrSgx {}
 
+pub enum SvrNitro {}
+
 impl EnclaveKind for Cdsi {
     type RaftConfigType = ();
     fn url_path(enclave: &[u8]) -> PathAndQuery {
@@ -69,7 +71,20 @@ impl EnclaveKind for SvrSgx {
     }
 }
 
+impl EnclaveKind for SvrNitro {
+    type RaftConfigType = &'static RaftConfig;
+    fn url_path(enclave: &[u8]) -> PathAndQuery {
+        PathAndQuery::try_from(format!(
+            "/v1/{}",
+            std::str::from_utf8(enclave).expect("valid utf8")
+        ))
+        .expect("valid path")
+    }
+}
+
 impl SvrBFlavor for SvrSgx {}
+
+impl SvrBFlavor for SvrNitro {}
 
 /// Log-safe human-readable label for a connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -332,6 +347,23 @@ impl NewHandshake for SvrSgx {
                 .raft_config
                 .as_raft_config()
                 .expect("Raft config must be present for SGX"),
+        )
+    }
+}
+
+impl NewHandshake for SvrNitro {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake> {
+        nitro::new_handshake(
+            params.mr_enclave.as_ref(),
+            attestation_message,
+            SystemTime::now(),
+            params
+                .raft_config
+                .as_raft_config()
+                .expect("Raft config must be present for Nitro"),
         )
     }
 }

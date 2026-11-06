@@ -5,6 +5,7 @@
 
 use const_str::hex;
 
+use crate::nitro;
 use crate::svr2::RaftConfig;
 use crate::util::SmallMap;
 
@@ -73,6 +74,11 @@ def_enclaves! {
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
 pub(crate) const DEFAULT_SW_ADVISORIES: &[&str] = &[];
+
+/// Expected PCR values for each known Nitro enclave ID.
+///
+/// Empty until a Nitro SVRB backend is deployed.
+pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 0> = SmallMap::new([]);
 
 pub const RAFT_CONFIG_SVR2_2026Q2_STAGING: &RaftConfig = &RaftConfig {
     min_voting_replicas: 3,

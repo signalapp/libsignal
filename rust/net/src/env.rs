@@ -251,6 +251,46 @@ const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
     ],
 };
 
+#[expect(unused)]
+const DOMAIN_CONFIG_BTS_PRODUCTION: DomainConfig = DomainConfig {
+    connect: ConnectionConfig {
+        service: ServiceName("bts"),
+        hostname: "bts.signal.org",
+        port: DEFAULT_HTTPS_PORT,
+        cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
+        confirmation_header_name: None,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/bts",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        }),
+    },
+    // TODO: replace with actual IPs prior to use
+    ip_v4: &[ip_addr!(v4, "75.2.91.98")],
+    ip_v6: &[],
+};
+
+#[expect(unused)]
+const DOMAIN_CONFIG_BTS_STAGING: DomainConfig = DomainConfig {
+    connect: ConnectionConfig {
+        service: ServiceName("bts"),
+        hostname: "bts.staging.signal.org",
+        port: DEFAULT_HTTPS_PORT,
+        cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
+        confirmation_header_name: None,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/bts-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        }),
+    },
+    // TODO: replace with actual IPs prior to use
+    ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
+    ip_v6: &[],
+};
+
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-signal.global.ssl.fastly.net",
