@@ -125,6 +125,8 @@ export enum ErrorCode {
   ProfileNotFound,
 
   ReceiptAlreadyRedeemed,
+
+  InvalidProvisioningMessage,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -645,6 +647,15 @@ export type ReceiptAlreadyRedeemed = LibSignalErrorCommon & {
   code: ErrorCode.ReceiptAlreadyRedeemed;
 };
 
+/**
+ * A provisioning envelope could not be decrypted (e.g., it was malformed, was not encrypted to the
+ * expected public key, or was tampered with), or a provisioning public key was invalid. The error
+ * message contains the specific cause.
+ */
+export type InvalidProvisioningMessageError = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidProvisioningMessage;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -730,4 +741,5 @@ export type LibSignalError =
   | MfaKeyNotFound
   | WebAuthnRegistrationUnsuccessful
   | ProfileNotFound
-  | ReceiptAlreadyRedeemed;
+  | ReceiptAlreadyRedeemed
+  | InvalidProvisioningMessageError;

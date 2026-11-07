@@ -7,6 +7,7 @@ package org.signal.libsignal.net;
 
 import static org.junit.Assert.*;
 
+import java.util.Collections;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -62,7 +63,12 @@ public class ChatServiceConnectTests {
     final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
     Assume.assumeNotNull(ENABLE_TEST);
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.STAGING,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
     final Listener listener = new Listener();
     var chat = net.connectUnauthChat(listener).get();
     chat.start();
@@ -79,7 +85,12 @@ public class ChatServiceConnectTests {
     final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
     Assume.assumeNotNull(ENABLE_TEST);
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.STAGING,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
     final Listener listener = new Listener();
     final CompletableFuture<UnauthenticatedChatConnection> connectFuture =
         net.connectUnauthChat(listener);
@@ -94,7 +105,12 @@ public class ChatServiceConnectTests {
     final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
     Assume.assumeNotNull(ENABLE_TEST);
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.STAGING,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
     final Listener listener = new Listener();
 
     final var e =
@@ -111,7 +127,12 @@ public class ChatServiceConnectTests {
     final String ENABLE_TEST = TestEnvironment.get("LIBSIGNAL_TESTING_RUN_NONHERMETIC_TESTS");
     Assume.assumeNotNull(ENABLE_TEST);
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.STAGING,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
     final Listener listener = new Listener();
     net.preconnectChat().get();
 
@@ -130,7 +151,12 @@ public class ChatServiceConnectTests {
   public void testConnectUnauthThroughProxy() throws Exception {
     final String PROXY_SERVER = getProxyServer();
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.STAGING,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
     final String[] proxyComponents = PROXY_SERVER.split(":");
     switch (proxyComponents.length) {
       case 1:
@@ -161,7 +187,12 @@ public class ChatServiceConnectTests {
   public void testConnectUnauthThroughProxyByParts() throws Exception {
     final String PROXY_SERVER = getProxyServer();
 
-    final Network net = new Network(Network.Environment.STAGING, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.STAGING,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
 
     String host;
     Integer port;

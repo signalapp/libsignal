@@ -91,15 +91,16 @@ impl SigningInfo {
 impl Default for SigningInfo {
     fn default() -> Self {
         let root = TestCert::self_issued("root");
-        let pck_chain = root.issue_chain(2);
+        let pck_chain =
+            root.issue_chain(&["Intel SGX PCK Platform CA", "Intel SGX PCK Processor CA"]);
         assert_eq!(pck_chain.len(), 3);
 
         // should be the root and the pck intermediate cert
         let pck_issuer_crl_chain = vec![pck_chain[1].clone(), root.clone()];
 
         // in intel collateral, these are the same, but they could theoretically be different
-        let tcb_issuer_chain = root.issue_chain(1);
-        let qe_id_issuer_chain = root.issue_chain(1);
+        let tcb_issuer_chain = root.issue_chain(&["Intel SGX TCB Signing"]);
+        let qe_id_issuer_chain = root.issue_chain(&["Intel SGX TCB Signing"]);
 
         let group = EcGroup::from_curve_name(Nid::X9_62_PRIME256V1).unwrap();
         let attest_key = EcKey::generate(&group).unwrap();

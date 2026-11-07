@@ -13,6 +13,7 @@ import type {
   GrpcTestCase,
   StringMapFfiContents,
   ArgFfiBadgeVisibility,
+  ArgFfiBridgeChallengeAnswer,
   ArgFfiBridgeCopyBackupMediaItem,
   ArgFfiBridgeDeleteBackupMediaItem,
   ArgFfiBridgeMfaVerificationCredential,
@@ -25,12 +26,14 @@ import type {
   ArgFfiMyTestEnum,
   ArgFfiMyTestPoint,
   ArgFfiMyTestStruct,
-  ArgFfiPaymentProvider,
+  ArgFfiPaymentProviderInternal,
   ReturnFfiAccountEntitlements,
+  ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
   ReturnFfiBackupEntitlement,
   ReturnFfiBadgeEntitlement,
   ReturnFfiBadgeVisibility,
+  ReturnFfiBridgeChallengeAnswer,
   ReturnFfiBridgeConfirmedMfaKey,
   ReturnFfiBridgeConfirmedMfaKeyMetadata,
   ReturnFfiBridgeCopyBackupMediaItem,
@@ -97,7 +100,7 @@ import type {
   ReturnFfiMyTestEnum,
   ReturnFfiMyTestPoint,
   ReturnFfiMyTestStruct,
-  ReturnFfiPaymentProvider,
+  ReturnFfiPaymentProviderInternal,
   ReturnFfiProfileKeyCredentialRequestError,
   ReturnFfiReceiptCredentialError,
   ReturnFfiRedeemBackupReceiptOut,
@@ -159,6 +162,11 @@ export type AccountEntitlements = {
   backup: BackupEntitlement | null;
 };
 
+export type AnswerChallengeArgs = {
+  token: string;
+  answer: BridgeChallengeAnswer;
+};
+
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
 
 export type BackupEntitlement = {
@@ -173,6 +181,14 @@ export type BadgeEntitlement = {
 };
 
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
+
+export type BridgeChallengeAnswer =
+  | {
+      push: string;
+    }
+  | {
+      captcha: string;
+    };
 
 export type BridgeConfirmedMfaKey = {
   id: number;
@@ -352,7 +368,7 @@ export type CreateDonationPermitsOut =
     };
 
 export type CreateLoginReceiptCredentialArgs = {
-  paymentProcessor: PaymentProvider;
+  paymentProcessor: PaymentProviderInternal;
   purchaseIdentifier: string;
   receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
   serverParams: ServerPublicParamsSerialized;
@@ -622,7 +638,7 @@ export type MyTestStruct = {
   myStringField: string;
 };
 
-export type PaymentProvider =
+export type PaymentProviderInternal =
   | 'googlePlayBilling'
   | 'appleAppStore'
   | 'stripe'
@@ -793,6 +809,15 @@ export function returnConverterAccountEntitlements(
   };
 }
 
+export function returnConverterAnswerChallengeArgs(
+  ffiInput: Native.ReturnFfiAnswerChallengeArgs
+): AnswerChallengeArgs {
+  return {
+    token: identity(ffiInput.token),
+    answer: returnConverterBridgeChallengeAnswer(ffiInput.answer),
+  };
+}
+
 export function returnConverterAuthCheckResult(
   ffiInput: Native.ReturnFfiAuthCheckResult
 ): AuthCheckResult {
@@ -843,6 +868,24 @@ export function returnConverterBadgeVisibility(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for BadgeVisibility');
+  }
+}
+
+export function returnConverterBridgeChallengeAnswer(
+  ffiInput: Native.ReturnFfiBridgeChallengeAnswer
+): BridgeChallengeAnswer {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        push: identity(ffiInput._0),
+      };
+    case 1:
+      return {
+        captcha: identity(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for BridgeChallengeAnswer');
   }
 }
 
@@ -1235,7 +1278,7 @@ export function returnConverterCreateLoginReceiptCredentialArgs(
   ffiInput: Native.ReturnFfiCreateLoginReceiptCredentialArgs
 ): CreateLoginReceiptCredentialArgs {
   return {
-    paymentProcessor: returnConverterPaymentProvider(
+    paymentProcessor: returnConverterPaymentProviderInternal(
       ffiInput.payment_processor
     ),
     purchaseIdentifier: identity(ffiInput.purchase_identifier),
@@ -1892,9 +1935,9 @@ export function returnConverterMyTestStruct(
   };
 }
 
-export function returnConverterPaymentProvider(
-  ffiInput: Native.ReturnFfiPaymentProvider
-): PaymentProvider {
+export function returnConverterPaymentProviderInternal(
+  ffiInput: Native.ReturnFfiPaymentProviderInternal
+): PaymentProviderInternal {
   switch (ffiInput.__type) {
     case 0:
       return 'googlePlayBilling';
@@ -1907,7 +1950,9 @@ export function returnConverterPaymentProvider(
 
     default:
       ffiInput satisfies never;
-      throw new Error('Unknown FFI return enum type for PaymentProvider');
+      throw new Error(
+        'Unknown FFI return enum type for PaymentProviderInternal'
+      );
   }
 }
 
@@ -2338,6 +2383,27 @@ export function argConverterBadgeVisibility(
   throw new Error('Cannot match on BadgeVisibility argument');
 }
 
+export function argConverterBridgeChallengeAnswer(
+  niceInput: BridgeChallengeAnswer
+): Native.ArgFfiBridgeChallengeAnswer {
+  if ('push' in niceInput) {
+    return {
+      __type: 0,
+      _0: identity(niceInput.push),
+    };
+  }
+
+  if ('captcha' in niceInput) {
+    return {
+      __type: 1,
+      _0: identity(niceInput.captcha),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on BridgeChallengeAnswer argument');
+}
+
 export function argConverterBridgeCopyBackupMediaItem(
   niceInput: BridgeCopyBackupMediaItem
 ): Native.ArgFfiBridgeCopyBackupMediaItem {
@@ -2619,9 +2685,9 @@ export function argConverterMyTestStruct(
   };
 }
 
-export function argConverterPaymentProvider(
-  niceInput: PaymentProvider
-): Native.ArgFfiPaymentProvider {
+export function argConverterPaymentProviderInternal(
+  niceInput: PaymentProviderInternal
+): Native.ArgFfiPaymentProviderInternal {
   if (niceInput === 'googlePlayBilling') {
     return { __type: 0 };
   }
@@ -2639,9 +2705,34 @@ export function argConverterPaymentProvider(
   }
 
   niceInput satisfies never;
-  throw new Error('Cannot match on PaymentProvider argument');
+  throw new Error('Cannot match on PaymentProviderInternal argument');
 }
 
+export async function AuthenticatedChatConnection_answer_challenge({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  token: token,
+  answer: answer,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  token: string;
+  answer: BridgeChallengeAnswer;
+}): Promise<boolean> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_answer_challenge(
+        asyncContext,
+        identity(chat),
+        identity(token),
+        argConverterBridgeChallengeAnswer(answer)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_clear_push_token({
   asyncContext,
   abortSignal,
@@ -3553,6 +3644,46 @@ export async function DeleteBackupMediaStream_next({
   );
 }
 
+export function Provisioning_EncryptProvisionMessage({
+  secondaryPublicKey: secondary_public_key,
+  provisionMessage: provision_message,
+}: {
+  secondaryPublicKey: Bytes;
+  provisionMessage: Bytes;
+}): Bytes {
+  return identity(
+    Native.Provisioning_EncryptProvisionMessage(
+      identity(secondary_public_key),
+      identity(provision_message)
+    )
+  );
+}
+
+export function RecvProvisionCiphertextState_DecryptEnvelope({
+  state: state,
+  envelope: envelope,
+}: {
+  state: Native.Wrapper<Native.RecvProvisionCiphertextState>;
+  envelope: Bytes;
+}): Bytes {
+  return identity(
+    Native.RecvProvisionCiphertextState_DecryptEnvelope(
+      identity(state),
+      identity(envelope)
+    )
+  );
+}
+
+export function RecvProvisionCiphertextState_GetPublicKey({
+  state: state,
+}: {
+  state: Native.Wrapper<Native.RecvProvisionCiphertextState>;
+}): Bytes {
+  return identity(
+    Native.RecvProvisionCiphertextState_GetPublicKey(identity(state))
+  );
+}
+
 export function SvrKey_DeriveLoggingKey({
   svrKey: svr_key,
 }: {
@@ -3585,6 +3716,15 @@ export function SvrKey_DeriveStorageServiceKey({
   svrKey: Bytes;
 }): Bytes {
   return identity(Native.SvrKey_DeriveStorageServiceKey(identity(svr_key)));
+}
+
+export function TESTING_AnswerChallengeTests(): Array<
+  GrpcTestCase<AnswerChallengeArgs, boolean>
+> {
+  return grpcTestCaseConverter(
+    returnConverterAnswerChallengeArgs,
+    identity
+  )(Native.TESTING_AnswerChallengeTests());
 }
 
 export function TESTING_BackupDeleteAllTests(): Array<
@@ -5543,7 +5683,7 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
-  paymentProcessor: PaymentProvider;
+  paymentProcessor: PaymentProviderInternal;
   purchaseIdentifier: string;
   receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
   serverParams: Native.Wrapper<Native.ServerPublicParams>;
@@ -5556,7 +5696,7 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
       Native.UnauthenticatedChatConnection_create_login_receipt_credential(
         asyncContext,
         identity(chat),
-        argConverterPaymentProvider(payment_processor),
+        argConverterPaymentProviderInternal(payment_processor),
         identity(purchase_identifier),
         ByteArray.prototype.getContents.call(
           receipt_credential_request_context

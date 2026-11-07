@@ -7,6 +7,9 @@ set -euo pipefail
 #   ./run_with_network_isolation.sh bash    # interactive shell
 #
 # If no command is provided, defaults to bash
+#
+# Note that because setting up the namespace uses sudo,
+# environment variables besides PATH are not preserved.
 
 if [[ "$(uname -s)" != "Linux" ]]; then
     echo "Error: This script uses network namespaces, and so it only works on Linux." >&2
@@ -25,9 +28,9 @@ else
     CMD="$*"
 fi
 
-DEESCALATE_AND_RUN_CMD="setpriv --reuid=${RUN_UID} --regid=${RUN_GID} --clear-groups -- bash -c \"${CMD}\""
+DEESCALATE_AND_RUN_CMD="setpriv --reuid=${RUN_UID} --regid=${RUN_GID} --clear-groups --reset-env -- env PATH='$ORIG_PATH' bash -c '${CMD}'"
 SETUP_NETWORKING="ip link set lo up"
 
 # Enter a network-isolated namespace as root, set up loopback, then run the command as the original user
 # We have to pass PATH separetely to the de-escalated environment because it is stripped by sudo for safety.
-sudo -E env PATH="$ORIG_PATH" unshare --net -- bash -c "${SETUP_NETWORKING} && ${DEESCALATE_AND_RUN_CMD}"
+sudo unshare --net -- bash -c "${SETUP_NETWORKING} && ${DEESCALATE_AND_RUN_CMD}"

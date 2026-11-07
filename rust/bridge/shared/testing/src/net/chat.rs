@@ -1256,6 +1256,13 @@ mod remote_derives {
         Success(BridgeVec<DeviceCapability>),
         Malformed,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::accounts::test_cases::AnswerChallengeArgs)]
+    pub(super) struct AnswerChallengeArgs {
+        token: String,
+        answer: libsignal_net_chat::grpc::accounts::ChallengeAnswer,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1595,4 +1602,9 @@ fn TESTING_GetEntitlementsTests() -> GrpcTestCases<(), remote_derives::GetEntitl
 #[bridge_fn(nice = true)]
 fn TESTING_GetCapabilitiesTests() -> GrpcTestCases<(), remote_derives::GetCapabilitiesOut> {
     libsignal_net_chat::grpc::accounts::test_cases::get_capabilities_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_AnswerChallengeTests() -> GrpcTestCases<remote_derives::AnswerChallengeArgs, bool> {
+    libsignal_net_chat::grpc::accounts::test_cases::answer_challenge_test_cases().into()
 }

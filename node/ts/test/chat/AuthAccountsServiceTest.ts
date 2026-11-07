@@ -511,4 +511,15 @@ describe('AuthAccountsService', () => {
       }
     );
   });
+
+  describe('answerChallenge', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_AnswerChallengeTests(),
+      connectAuth<AuthAccountsService>,
+      async (chat, args, resp: boolean) => {
+        const out = chat.answerChallenge({ token: args.token, ...args.answer });
+        expect(await out).to.equal(resp);
+      }
+    );
+  });
 });

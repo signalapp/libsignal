@@ -9,6 +9,7 @@ fn main() {
     const SERVICE_PROTOS: &[&str] = &[
         "proto/google/rpc/error_details.proto",
         "proto/google/rpc/status.proto",
+        "proto/org/signal/chat/PlaintextProfileData.proto",
         "proto/org/signal/chat/account.proto",
         "proto/org/signal/chat/attachments.proto",
         "proto/org/signal/chat/backups.proto",

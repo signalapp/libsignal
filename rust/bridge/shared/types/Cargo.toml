@@ -26,6 +26,7 @@ libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
 libsignal-protocol = { workspace = true }
+libsignal-provisioning = { workspace = true }
 libsignal-svrb = { workspace = true }
 signal-crypto = { workspace = true }
 signal-media = { workspace = true, optional = true }

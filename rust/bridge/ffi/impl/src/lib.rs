@@ -31,7 +31,7 @@ pub unsafe extern "C" fn signal_print_ptr(p: *const std::ffi::c_void) {
 // Referenced by LibSignalClient so a Swift/Rust version mismatch causes linking to fail.
 #[unsafe(no_mangle)]
 #[c_export]
-pub extern "C" fn signal_ffi_version_0_106_1() {}
+pub extern "C" fn signal_ffi_version_0_106_2() {}
 
 #[unsafe(no_mangle)]
 #[c_export]

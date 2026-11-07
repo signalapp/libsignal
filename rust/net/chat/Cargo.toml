@@ -19,6 +19,7 @@ libsignal-protocol = { workspace = true }
 usernames = { workspace = true }
 zkgroup = { workspace = true }
 
+aes-gcm = { workspace = true }
 assert_matches = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
@@ -34,15 +35,18 @@ http = { workspace = true }
 http-body = { workspace = true }
 http-body-util = { workspace = true }
 itertools = { workspace = true }
+libcrux-sha3 = { workspace = true }
 log = { workspace = true }
 pin-project = { workspace = true }
 prost = { workspace = true }
 prost-types = { workspace = true }
 rand = { workspace = true }
+rand_chacha = { workspace = true }
 ref-cast = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["base64"] }
+sha2 = { workspace = true }
 static_assertions = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 subtle = { workspace = true }

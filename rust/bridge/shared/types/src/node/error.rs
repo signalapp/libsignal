@@ -254,6 +254,12 @@ impl SimpleNodeError for attest::enclave::Error {}
 
 impl SimpleNodeError for signal_crypto::Error {}
 
+impl SimpleNodeError for libsignal_provisioning::ProvisioningError {
+    fn js_error_name(&self) -> Option<&'static str> {
+        Some("InvalidProvisioningMessage")
+    }
+}
+
 impl SimpleNodeError for libsignal_account_keys::Error {}
 
 impl SignalNodeError for libsignal_net::svr2::Error {

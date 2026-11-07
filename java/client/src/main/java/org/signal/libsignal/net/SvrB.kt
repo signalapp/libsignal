@@ -62,7 +62,12 @@ import org.signal.libsignal.messagebackup.BackupKey
  *
  * ## Usage
  * ```kotlin
- * val net = Network(Network.Environment.PRODUCTION, "Signal Android")
+ * val net = Network(
+ *   Network.Environment.PRODUCTION,
+ *   "Signal Android",
+ *   mapOf(),
+ *   Network.BuildVariant.PRODUCTION,
+ * )
  * val auth = Network.Auth(username = "myUsername", password = "myPassword")
  * val svrB = net.svrB(auth)
  *

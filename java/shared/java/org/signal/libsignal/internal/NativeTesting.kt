@@ -80,6 +80,9 @@ public object NativeTesting {
   ): CompletableFuture<Int>
 
   @JvmStatic
+  public external fun TESTING_AnswerChallengeTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_BackupDeleteAllTests(): Array<Object>
 
   @JvmStatic

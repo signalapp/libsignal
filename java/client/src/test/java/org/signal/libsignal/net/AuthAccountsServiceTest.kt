@@ -6,6 +6,7 @@
 package org.signal.libsignal.net
 
 import kotlinx.coroutines.test.runTest
+import org.signal.libsignal.internal.BridgeChallengeAnswer
 import org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata
 import org.signal.libsignal.internal.BridgeMfaKeyKind
 import org.signal.libsignal.internal.ConfirmTotpKeyOut
@@ -503,6 +504,28 @@ class AuthAccountsServiceTest {
               )
             }
           }
+        },
+      )
+    }
+
+  @Test
+  fun testAnswerChallenge() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_AnswerChallengeTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, req ->
+          chat.answerChallenge(
+            req.token,
+            when (req.answer) {
+              is BridgeChallengeAnswer.Push -> ChallengeAnswer.Push(req.answer._0)
+              is BridgeChallengeAnswer.Captcha -> ChallengeAnswer.Captcha(req.answer._0)
+            },
+          )
+        },
+        check = { expected, actual ->
+          assertEquals(expected, assertIs<RequestResult.Success<Boolean>>(actual).result)
         },
       )
     }
