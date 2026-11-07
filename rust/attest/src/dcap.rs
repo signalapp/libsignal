@@ -38,6 +38,7 @@ use boring_signal::x509::{X509, X509Ref};
 use hex::ToHex;
 use uuid::Uuid;
 
+use crate::cert_chain::CertChain;
 use crate::dcap::ecdsa::EcdsaSigned;
 use crate::dcap::endorsements::{
     EnclaveType, QeTcbStatus, SgxEndorsements, TcbInfo, TcbLevel, TcbStatus,
@@ -271,6 +272,24 @@ static INTEL_PKEY: LazyLock<PKey<Public>> = LazyLock::new(|| {
     PKey::from_ec_key(trusted_root_pubkey).expect("ec key should convert")
 });
 
+fn first_subject_entry(cert: &X509, nid: Nid) -> Option<String> {
+    let entry = cert.subject_name().entries_by_nid(nid).next()?;
+    entry.data().as_utf8().map(|x| x.to_string()).ok()
+}
+
+fn verify_issuer_cn(certchain: &CertChain, cn: &str) -> Result<()> {
+    let issuer = certchain
+        .idx_from_root(1)
+        .ok_or_else(|| ContextError::new("issuer chain too short"))?;
+    if first_subject_entry(issuer, Nid::COMMONNAME).is_some_and(|x| x == cn) {
+        Ok(())
+    } else {
+        Err(ContextError::new(format!(
+            "issuer CN mismatch, expected: {cn}"
+        )))
+    }
+}
+
 /// Verify that the various certificate chains and CRLs are rooted
 /// in `trusted_pkey`
 fn verify_certificates(
@@ -285,11 +304,23 @@ fn verify_certificates(
     let trusted = root_trust_store(root_ca, root_crl, trusted_pkey, current_time)
         .context("root trust store")?;
 
-    // note: Since we already must trust the intel root key,
-    // this does not check for specific chain lengths or for
-    // specific subjects on the certificate chains (contrast
-    // with the intel code). This only checks that they are
-    // valid chains in the RFC 5280 section 6 sense
+    // Intel uses a single root-level key with multiple issuing
+    // keys one level down.  Make sure we're seeing the correct
+    // issuing keys for each of our chains.
+    verify_issuer_cn(&endorsements.tcb_issuer_chain, "Intel SGX TCB Signing")
+        .context("tcb issuer")?;
+    verify_issuer_cn(&endorsements.qe_id_issuer_chain, "Intel SGX TCB Signing")
+        .context("qe id issuer")?;
+    verify_issuer_cn(
+        &evidence.quote.support.pck_cert_chain,
+        "Intel SGX PCK Platform CA",
+    )
+    .context("pck")?;
+    verify_issuer_cn(
+        &endorsements.pck_issuer_crl_chain,
+        "Intel SGX PCK Platform CA",
+    )
+    .context("pck crl")?;
 
     // validate the PCK crl against the root trust store, add it as trusted if it all checks out
     endorsements
@@ -645,6 +676,7 @@ mod test {
     use prost::Message;
 
     use super::*;
+    use crate::cert_chain::testutil::TestCert;
     use crate::constants::SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
     use crate::dcap::endorsements::{QeTcbLevel, TcbInfoVersion};
     use crate::dcap::fakes::FakeAttestation;
@@ -1048,5 +1080,177 @@ mod test {
         assert!(
             matches!(attest.tcb_standing, TcbStanding::SWHardeningNeeded {advisory_ids} if advisory_ids == expected_ids)
         )
+    }
+
+    #[test]
+    fn tcb_signed_with_pck_should_fail() {
+        let mut builder = FakeAttestation::builder();
+        builder.signing_info.tcb_issuer_chain = builder
+            .signing_info
+            .root
+            .issue_chain(&["Intel SGX PCK Platform CA", "Intel SGX PCK Processor CA"]);
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because tcb signed with PCK CA");
+    }
+
+    #[test]
+    fn qe_id_signed_with_pck_should_fail() {
+        let mut builder = FakeAttestation::builder();
+        builder.signing_info.qe_id_issuer_chain = builder
+            .signing_info
+            .root
+            .issue_chain(&["Intel SGX PCK Platform CA", "Intel SGX PCK Processor CA"]);
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because qe_id signed with PCK CA");
+    }
+
+    #[test]
+    fn pck_crl_signed_with_nonsgx_cert_should_fail() {
+        let mut builder = FakeAttestation::builder();
+        builder.signing_info.pck_issuer_crl_chain = builder
+            .signing_info
+            .root
+            .issue_chain(&["Intel Some Other CA"]);
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because PCK CRL signed with non-PCK CA");
+    }
+
+    #[test]
+    fn pck_signed_with_nonsgx_cert_should_fail() {
+        let mut builder = FakeAttestation::builder();
+        builder.signing_info.pck_chain = builder
+            .signing_info
+            .root
+            .issue_chain(&["Intel Some Other CA"]);
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because PCK signed with non-PCK CA");
+    }
+
+    /// Parses `certs` the way real collateral is parsed, and checks that parsing keeps their
+    /// order (`FakeAttestation` skips parsing) and that the result passes the issuer CN check,
+    /// so only chain validation is left to reject it.
+    fn assert_parses_as_tcb_signing_chain(certs: &[TestCert]) {
+        let parsed = CertChain::new(certs.iter().map(|c| c.x509.clone())).expect("valid by name");
+        for (idx, cert) in certs.iter().rev().enumerate() {
+            assert_eq!(
+                parsed.idx_from_root(idx).unwrap().to_der().unwrap(),
+                cert.x509.to_der().unwrap()
+            );
+        }
+        verify_issuer_cn(&parsed, "Intel SGX TCB Signing").expect("CN matches");
+    }
+
+    #[test]
+    fn tcb_signed_with_pck_extra_certs_before_root_should_fail() {
+        // TCB info must be signed by Intel's TCB signing key. Here it is signed by a PCK key, and
+        // the TCB issuer chain has the PCK cert as its leaf. The chain also has two certs whose
+        // signatures don't verify: one named "Intel SGX TCB Signing" that names the root as its
+        // issuer, and one with the root's name that names the first one as its issuer.
+        // `CertChain::sort` only matches names, so it orders the chain like this (each cert
+        // issued by the one to its left):
+        //
+        //   root <- fake TCB <- fake root <- PCK CA <- PCK leaf
+        //
+        // The cert right below the root is named "Intel SGX TCB Signing", so the issuer CN check
+        // passes. BoringSSL doesn't use the two fake certs: its verified path goes from the PCK
+        // CA straight to the root. This checks that `validate_chain` rejects the chain when the
+        // path BoringSSL verifies from the leaf to the trusted root leaves out some of the
+        // chain's certs.
+        let mut builder = FakeAttestation::builder();
+        let signing_info = &builder.signing_info;
+        let root_cn = first_subject_entry(&signing_info.root.x509, Nid::COMMONNAME).unwrap();
+
+        let fake_tcb = signing_info.root.forge("Intel SGX TCB Signing");
+        let fake_root = fake_tcb.forge(&root_cn);
+        let chain = vec![
+            signing_info.pck_chain[0].clone(),
+            signing_info.pck_chain[1].clone(),
+            fake_root,
+            fake_tcb,
+            signing_info.root.clone(),
+        ];
+        assert_parses_as_tcb_signing_chain(&chain);
+
+        builder.signing_info.tcb_issuer_chain = chain;
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because tcb signed with PCK");
+    }
+
+    #[test]
+    fn tcb_signed_with_pck_extra_certs_after_root_should_fail() {
+        // Same as `tcb_signed_with_pck_extra_certs_before_root_should_fail`, except the chain
+        // starts with the full path up to the root, and the two fake certs come after it,
+        // followed by a second copy of the root:
+        //
+        //   root <- fake TCB <- fake root <- root <- PCK CA <- PCK leaf
+        //
+        // `CertChain::sort` treats the last self-issued cert as the root, so the issuer CN check
+        // passes, and so does the check of the chain's root against the trusted key. BoringSSL's
+        // verified path stops at the first copy of the root, so it is a shorter version of the
+        // supplied chain. This checks that `validate_chain` also compares the lengths.
+        let mut builder = FakeAttestation::builder();
+        let signing_info = &builder.signing_info;
+        let root_cn = first_subject_entry(&signing_info.root.x509, Nid::COMMONNAME).unwrap();
+
+        let fake_tcb = signing_info.root.forge("Intel SGX TCB Signing");
+        let fake_root = fake_tcb.forge(&root_cn);
+        let chain = vec![
+            signing_info.pck_chain[0].clone(),
+            signing_info.pck_chain[1].clone(),
+            signing_info.root.clone(),
+            fake_root,
+            fake_tcb,
+            signing_info.root.clone(),
+        ];
+        assert_parses_as_tcb_signing_chain(&chain);
+
+        builder.signing_info.tcb_issuer_chain = chain;
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because tcb signed with PCK");
+    }
+
+    #[test]
+    fn qe_id_signed_with_pck_extra_certs_after_root_should_fail() {
+        // Same as `tcb_signed_with_pck_extra_certs_after_root_should_fail`, but for the QE
+        // identity chain, whose root is not checked against the trusted key. The chain ends in an
+        // untrusted self-signed root, which issued the cert named "Intel SGX TCB Signing":
+        //
+        //   untrusted root <- TCB-named cert <- fake root <- root <- PCK CA <- PCK leaf
+        //
+        // This checks that the length comparison covers the QE identity chain too.
+        let mut builder = FakeAttestation::builder();
+        let signing_info = &builder.signing_info;
+        let root_cn = first_subject_entry(&signing_info.root.x509, Nid::COMMONNAME).unwrap();
+
+        let untrusted_root = TestCert::self_issued("untrusted root");
+        let fake_tcb = untrusted_root.issue("Intel SGX TCB Signing");
+        let fake_root = fake_tcb.forge(&root_cn);
+        let chain = vec![
+            signing_info.pck_chain[0].clone(),
+            signing_info.pck_chain[1].clone(),
+            signing_info.root.clone(),
+            fake_root,
+            fake_tcb,
+            untrusted_root,
+        ];
+        assert_parses_as_tcb_signing_chain(&chain);
+
+        builder.signing_info.qe_id_issuer_chain = chain;
+        builder
+            .sign()
+            .attest()
+            .expect_err("should fail because qe_id signed with PCK");
     }
 }

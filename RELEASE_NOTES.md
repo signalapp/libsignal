@@ -6,4 +6,10 @@ v0.106.1
   an incoming session wins the simultaneous-initiation tiebreak when our own
   unacknowledged session is too old to send on.
 
+v0.106.2
 
+- Implement cryptography used in device provisioning
+- Typed APIs
+  - AuthAccountsService.answerChallenge
+  - Added `getProfile()` (auth) and `setProfile()`. (Not yet bridged to clients)
+- SGX attestation: Veryify correct Intel intermediate certs used for signing.

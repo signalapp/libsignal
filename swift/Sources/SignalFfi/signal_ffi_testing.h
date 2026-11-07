@@ -766,6 +766,33 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeCopyBackupMediaIte
 typedef SignalChargeFailureFfiResult* SignalType_MutPointer_SignalChargeFailureFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
+typedef enum {
+  SignalBridgeChallengeAnswerFfiResultPush,
+  SignalBridgeChallengeAnswerFfiResultCaptcha,
+} SignalBridgeChallengeAnswerFfiResult_Tag;
+typedef struct {
+  const int8_t* _0;
+} SignalBridgeChallengeAnswerFfiResultSignalPush_Body;
+typedef struct {
+  const int8_t* _0;
+} SignalBridgeChallengeAnswerFfiResultSignalCaptcha_Body;
+typedef struct {
+  SignalBridgeChallengeAnswerFfiResult_Tag tag;
+  union {
+    SignalBridgeChallengeAnswerFfiResultSignalPush_Body push;
+    SignalBridgeChallengeAnswerFfiResultSignalCaptcha_Body captcha;
+  };
+} SignalBridgeChallengeAnswerFfiResult;
+static_assert_64bit(sizeof(SignalBridgeChallengeAnswerFfiResult) == 16);
+static_assert_64bit(alignof(SignalBridgeChallengeAnswerFfiResult) == 8);
+typedef struct {
+  const int8_t* token;
+  SignalBridgeChallengeAnswerFfiResult answer;
+} SignalAnswerChallengeArgsFfiResult;
+static_assert_64bit(offsetof(SignalAnswerChallengeArgsFfiResult, token) == 0);
+static_assert_64bit(offsetof(SignalAnswerChallengeArgsFfiResult, answer) == 8);
+static_assert_64bit(sizeof(SignalAnswerChallengeArgsFfiResult) == 24);
+static_assert_64bit(alignof(SignalAnswerChallengeArgsFfiResult) == 8);
 typedef struct {
   const int8_t* number;
   SignalOwnedBufferOfMaxAlignedCStringPtr passwords;
@@ -866,7 +893,7 @@ typedef enum {
 static_assert_64bit(sizeof(SignalLoginReceiptLevelFfiResult) == 4);
 static_assert_64bit(alignof(SignalLoginReceiptLevelFfiResult) == 4);
 typedef struct {
-  SignalPaymentProviderFfiResult payment_processor;
+  SignalPaymentProviderInternalFfiResult payment_processor;
   const int8_t* purchase_identifier;
   SignalOwnedBuffer receipt_credential_request_context;
   SignalServerPublicParamsSerializedFfiResult server_params;
@@ -1855,6 +1882,9 @@ SignalFfiError* signal_test_stream_destroy(
 );
 SignalFfiError* signal_testing_NonSuspendingBackgroundThreadRuntime_destroy(
   SignalMutPointerNonSuspendingBackgroundThreadRuntime p
+);
+SignalFfiError* signal_testing_answer_challenge_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_backup_delete_all_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out

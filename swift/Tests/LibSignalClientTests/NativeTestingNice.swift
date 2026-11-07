@@ -1004,6 +1004,12 @@ internal enum FixedByteArrayHelper473: FixedByteArrayHelper {
     }
 }
 
+internal struct AnswerChallengeArgs {
+    var token: String
+    var answer: ChallengeAnswer
+
+}
+
 internal struct CheckSvrCredentialsArgs {
     var number: String
     var passwords: [String]
@@ -1455,6 +1461,23 @@ extension ProfileKeyCredentialRequestError: Equatable {}
 
 extension ReceiptCredentialError: Equatable {}
 
+internal enum DerivedReturnConverterAnswerChallengeArgs: NiceReturnConverter {
+    typealias NiceReturn = AnswerChallengeArgs
+    typealias FfiReturn = SignalAnswerChallengeArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalAnswerChallengeArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let token = Result { try StringConverter.convertReturn(consuming: ffiValue.token) }
+        let answer = Result {
+            try DerivedReturnConverterBridgeChallengeAnswer.convertReturn(consuming: ffiValue.answer)
+        }
+
+        return AnswerChallengeArgs(token: try token.get(), answer: try answer.get())
+    }
+}
+
 internal enum DerivedReturnConverterBadgeVisibility: NiceReturnConverter {
     typealias NiceReturn = BadgeVisibility
     typealias FfiReturn = SignalBadgeVisibilityFfiResult
@@ -1472,6 +1495,35 @@ internal enum DerivedReturnConverterBadgeVisibility: NiceReturnConverter {
             return BadgeVisibility.setPrimary
         default:
             throw SignalError.internalError("Unexpected enum tag for BadgeVisibility: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterBridgeChallengeAnswer: NiceReturnConverter {
+    typealias NiceReturn = ChallengeAnswer
+    typealias FfiReturn = SignalBridgeChallengeAnswerFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeChallengeAnswerFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalBridgeChallengeAnswerFfiResultPush:
+            let _0 = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.push._0
+                )
+            }
+            return ChallengeAnswer.push(try _0.get())
+        case SignalBridgeChallengeAnswerFfiResultCaptcha:
+            let _0 = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.captcha._0
+                )
+            }
+            return ChallengeAnswer.captcha(try _0.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for BridgeChallengeAnswer: \(ffiTag)")
         }
     }
 }
@@ -1856,7 +1908,7 @@ internal enum DerivedReturnConverterCreateLoginReceiptCredentialArgs: NiceReturn
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
 
         let payment_processor = Result {
-            try DerivedReturnConverterPaymentProvider.convertReturn(consuming: ffiValue.payment_processor)
+            try DerivedReturnConverterPaymentProviderInternal.convertReturn(consuming: ffiValue.payment_processor)
         }
         let purchase_identifier = Result { try StringConverter.convertReturn(consuming: ffiValue.purchase_identifier) }
         let receipt_credential_request_context = Result {
@@ -4131,6 +4183,19 @@ internal enum DerivedArgConverterMyTestStruct: NiceArgConverter {
 }
 
 internal enum NativeTestingNice {
+    internal static func TESTING_AnswerChallengeTests() throws -> [GrpcTestCase<AnswerChallengeArgs, Bool>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterAnswerChallengeArgs, IdentityResultConverter<Bool>
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_answer_challenge_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterAnswerChallengeArgs, IdentityResultConverter<Bool>>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_BackupDeleteAllTests() throws -> [GrpcTestCase<Void, SimpleBackupTestOut>] {
         var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>
             .emptyFfiReturn()

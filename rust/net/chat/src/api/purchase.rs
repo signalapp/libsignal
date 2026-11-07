@@ -11,6 +11,20 @@ pub enum PaymentProvider {
     Braintree,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PaymentMethod {
+    // A credit card or debit card, including those from Apple Pay and Google Pay
+    Card,
+    // A SEPA debit account
+    SepaDebit,
+    // An iDEAL account
+    Ideal,
+    // A PayPal account
+    PayPal,
+    GooglePlayBilling,
+    AppleAppStore,
+}
+
 /// Information about a charge failure.
 ///
 /// Meaningfully interpreting chargeFailure response fields requires inspecting the processor field

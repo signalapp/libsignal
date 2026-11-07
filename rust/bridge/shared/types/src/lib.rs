@@ -42,6 +42,18 @@ mod pin {
     bridge_as_handle!(PinHash);
 }
 
+mod provisioning {
+    use ::libsignal_provisioning::RecvProvisionCiphertextState;
+
+    use crate::*;
+
+    bridge_as_handle!(
+        RecvProvisionCiphertextState,
+        swift_type = "RecvProvisionCiphertextState",
+        jni_class = "org.signal.libsignal.provisioning.RecvProvisionCiphertextState"
+    );
+}
+
 pub mod incremental_mac;
 pub mod message_backup;
 

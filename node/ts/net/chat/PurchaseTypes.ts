@@ -20,10 +20,10 @@ export type PaymentProvider =
   | 'stripe'
   | 'braintree';
 
-// Must be kept in sync with PaymentProvider in rust/bridge/shared/types/src/net/chat.rs. This fails
-// to compile if the generated NativeNice.PaymentProvider has different cases.
+// Must be kept in sync with PaymentProviderInternal in rust/bridge/shared/types/src/net/chat.rs.
+// This fails to compile if the generated NativeNice.PaymentProviderInternal has different cases.
 type _PaymentProviderMatchesBridge = AssertTrue<
-  IsEqual<PaymentProvider, NativeNice.PaymentProvider>
+  IsEqual<PaymentProvider, NativeNice.PaymentProviderInternal>
 >;
 
 export type ReceiptCredentialError =

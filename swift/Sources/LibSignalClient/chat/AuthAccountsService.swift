@@ -226,6 +226,11 @@ public struct AccountEntitlements: Sendable {
     }
 }
 
+public enum ChallengeAnswer: Sendable {
+    case push(String)
+    case captcha(String)
+}
+
 public protocol AuthAccountsService: Sendable {
     /// Deletes the authenticated account, purging all associated data in the
     /// process.
@@ -465,6 +470,14 @@ public protocol AuthAccountsService: Sendable {
     /// - Throws:
     ///   - the standard Signal network errors
     func getAccountCapabilities() async throws -> Set<DeviceCapability>
+
+    /// Submit proof of a challenge completion.
+    ///
+    /// Returns `true` if the answer is accepted.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func answerChallenge(_ token: String, answer: ChallengeAnswer) async throws -> Bool
 }
 
 extension AuthenticatedChatConnection: AuthAccountsService {
@@ -603,6 +616,15 @@ extension AuthenticatedChatConnection: AuthAccountsService {
                 asyncContext: self.tokioAsyncContext,
                 chat: self
             )
+        )
+    }
+
+    public func answerChallenge(_ token: String, answer: ChallengeAnswer) async throws -> Bool {
+        return try await NativeNice.AuthenticatedChatConnection_answer_challenge(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            token: token,
+            answer: answer
         )
     }
 }

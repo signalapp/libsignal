@@ -76,6 +76,12 @@ static_assert_64bit(alignof(SignalType_FixedArray329_uint8_t) == 1);
 typedef const SignalType_FixedArray329_uint8_t* SignalType_ConstPointer_FixedArray329_uint8_t;
 static_assert_64bit(sizeof(SignalType_ConstPointer_FixedArray329_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_FixedArray329_uint8_t) == 8);
+typedef uint8_t SignalType_FixedArray33_uint8_t[33];
+static_assert_64bit(sizeof(SignalType_FixedArray33_uint8_t) == 33);
+static_assert_64bit(alignof(SignalType_FixedArray33_uint8_t) == 1);
+typedef const SignalType_FixedArray33_uint8_t* SignalType_ConstPointer_FixedArray33_uint8_t;
+static_assert_64bit(sizeof(SignalType_ConstPointer_FixedArray33_uint8_t) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_FixedArray33_uint8_t) == 8);
 typedef uint8_t SignalType_FixedArray409_uint8_t[409];
 static_assert_64bit(sizeof(SignalType_FixedArray409_uint8_t) == 409);
 static_assert_64bit(alignof(SignalType_FixedArray409_uint8_t) == 1);
@@ -1692,6 +1698,10 @@ static_assert_64bit(alignof(SignalType_ConstPointer_SignalPreKeyRecord) == 8);
 typedef const SignalSignedPreKeyRecord* SignalType_ConstPointer_SignalSignedPreKeyRecord;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalSignedPreKeyRecord) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalSignedPreKeyRecord) == 8);
+typedef struct SignalRecvProvisionCiphertextState SignalRecvProvisionCiphertextState;
+typedef const SignalRecvProvisionCiphertextState* SignalType_ConstPointer_SignalRecvProvisionCiphertextState;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalRecvProvisionCiphertextState) == 8);
 typedef const uint32_t* SignalType_ConstPointer_uint32_t;
 static_assert_64bit(sizeof(SignalType_ConstPointer_uint32_t) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_uint32_t) == 8);
@@ -1730,6 +1740,9 @@ static_assert_64bit(alignof(SignalType_MutPointer_FixedArray329_uint8_t) == 8);
 typedef SignalType_FixedArray32_uint8_t* SignalType_MutPointer_FixedArray32_uint8_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_FixedArray32_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_FixedArray32_uint8_t) == 8);
+typedef SignalType_FixedArray33_uint8_t* SignalType_MutPointer_FixedArray33_uint8_t;
+static_assert_64bit(sizeof(SignalType_MutPointer_FixedArray33_uint8_t) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_FixedArray33_uint8_t) == 8);
 typedef SignalType_FixedArray409_uint8_t* SignalType_MutPointer_FixedArray409_uint8_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_FixedArray409_uint8_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_FixedArray409_uint8_t) == 8);
@@ -2256,6 +2269,18 @@ static_assert_64bit(alignof(SignalMutPointerUnidentifiedSenderMessageContent) ==
 typedef SignalMutPointerUnidentifiedSenderMessageContent* SignalType_MutPointer_SignalMutPointerUnidentifiedSenderMessageContent;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerUnidentifiedSenderMessageContent) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerUnidentifiedSenderMessageContent) == 8);
+typedef SignalRecvProvisionCiphertextState* SignalType_MutPointer_SignalRecvProvisionCiphertextState;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalRecvProvisionCiphertextState) == 8);
+typedef struct {
+  SignalRecvProvisionCiphertextState* raw;
+} SignalMutPointerRecvProvisionCiphertextState;
+static_assert_64bit(offsetof(SignalMutPointerRecvProvisionCiphertextState, raw) == 0);
+static_assert_64bit(sizeof(SignalMutPointerRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalMutPointerRecvProvisionCiphertextState) == 8);
+typedef SignalMutPointerRecvProvisionCiphertextState* SignalType_MutPointer_SignalMutPointerRecvProvisionCiphertextState;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerRecvProvisionCiphertextState) == 8);
 typedef struct SignalAes256Ctr32 SignalAes256Ctr32;
 typedef SignalAes256Ctr32* SignalType_MutPointer_SignalAes256Ctr32;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalAes256Ctr32) == 8);
@@ -2294,15 +2319,15 @@ typedef SignalMutPointerServerSecretParams* SignalType_MutPointer_SignalMutPoint
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
 typedef enum {
-  SignalPaymentProviderFfiResultGooglePlayBilling,
-  SignalPaymentProviderFfiResultAppleAppStore,
-  SignalPaymentProviderFfiResultStripe,
-  SignalPaymentProviderFfiResultBraintree,
-} SignalPaymentProviderFfiResult;
-static_assert_64bit(sizeof(SignalPaymentProviderFfiResult) == 4);
-static_assert_64bit(alignof(SignalPaymentProviderFfiResult) == 4);
+  SignalPaymentProviderInternalFfiResultGooglePlayBilling,
+  SignalPaymentProviderInternalFfiResultAppleAppStore,
+  SignalPaymentProviderInternalFfiResultStripe,
+  SignalPaymentProviderInternalFfiResultBraintree,
+} SignalPaymentProviderInternalFfiResult;
+static_assert_64bit(sizeof(SignalPaymentProviderInternalFfiResult) == 4);
+static_assert_64bit(alignof(SignalPaymentProviderInternalFfiResult) == 4);
 typedef struct {
-  SignalPaymentProviderFfiResult processor;
+  SignalPaymentProviderInternalFfiResult processor;
   const int8_t* code;
   const int8_t* message;
   const int8_t* outcome_network_status;
@@ -3561,6 +3586,12 @@ static_assert_64bit(offsetof(SignalConstPointerSignedPreKeyRecord, raw) == 0);
 static_assert_64bit(sizeof(SignalConstPointerSignedPreKeyRecord) == 8);
 static_assert_64bit(alignof(SignalConstPointerSignedPreKeyRecord) == 8);
 typedef struct {
+  const SignalRecvProvisionCiphertextState* raw;
+} SignalConstPointerRecvProvisionCiphertextState;
+static_assert_64bit(offsetof(SignalConstPointerRecvProvisionCiphertextState, raw) == 0);
+static_assert_64bit(sizeof(SignalConstPointerRecvProvisionCiphertextState) == 8);
+static_assert_64bit(alignof(SignalConstPointerRecvProvisionCiphertextState) == 8);
+typedef struct {
   const SignalServerPublicParams* raw;
 } SignalConstPointerServerPublicParams;
 static_assert_64bit(offsetof(SignalConstPointerServerPublicParams, raw) == 0);
@@ -3773,6 +3804,25 @@ typedef enum {
 static_assert_64bit(sizeof(SignalBadgeVisibilityFfiArg) == 4);
 static_assert_64bit(alignof(SignalBadgeVisibilityFfiArg) == 4);
 typedef enum {
+  SignalBridgeChallengeAnswerFfiArgPush,
+  SignalBridgeChallengeAnswerFfiArgCaptcha,
+} SignalBridgeChallengeAnswerFfiArg_Tag;
+typedef struct {
+  const int8_t* _0;
+} SignalBridgeChallengeAnswerFfiArgSignalPush_Body;
+typedef struct {
+  const int8_t* _0;
+} SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body;
+typedef struct {
+  SignalBridgeChallengeAnswerFfiArg_Tag tag;
+  union {
+    SignalBridgeChallengeAnswerFfiArgSignalPush_Body push;
+    SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body captcha;
+  };
+} SignalBridgeChallengeAnswerFfiArg;
+static_assert_64bit(sizeof(SignalBridgeChallengeAnswerFfiArg) == 16);
+static_assert_64bit(alignof(SignalBridgeChallengeAnswerFfiArg) == 8);
+typedef enum {
   SignalBridgeMfaVerificationCredentialFfiArgTotp,
   SignalBridgeMfaVerificationCredentialFfiArgWebAuthn,
 } SignalBridgeMfaVerificationCredentialFfiArg_Tag;
@@ -3846,13 +3896,13 @@ typedef enum {
 static_assert_64bit(sizeof(SignalLoginReceiptLevelFfiArg) == 4);
 static_assert_64bit(alignof(SignalLoginReceiptLevelFfiArg) == 4);
 typedef enum {
-  SignalPaymentProviderFfiArgGooglePlayBilling,
-  SignalPaymentProviderFfiArgAppleAppStore,
-  SignalPaymentProviderFfiArgStripe,
-  SignalPaymentProviderFfiArgBraintree,
-} SignalPaymentProviderFfiArg;
-static_assert_64bit(sizeof(SignalPaymentProviderFfiArg) == 4);
-static_assert_64bit(alignof(SignalPaymentProviderFfiArg) == 4);
+  SignalPaymentProviderInternalFfiArgGooglePlayBilling,
+  SignalPaymentProviderInternalFfiArgAppleAppStore,
+  SignalPaymentProviderInternalFfiArgStripe,
+  SignalPaymentProviderInternalFfiArgBraintree,
+} SignalPaymentProviderInternalFfiArg;
+static_assert_64bit(sizeof(SignalPaymentProviderInternalFfiArg) == 4);
+static_assert_64bit(alignof(SignalPaymentProviderInternalFfiArg) == 4);
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
@@ -4016,6 +4066,13 @@ SignalFfiError* signal_auth_credential_with_pni_check_valid_contents(
 );
 SignalFfiError* signal_auth_credential_with_pni_response_check_valid_contents(
   SignalBorrowedBuffer bytes
+);
+SignalFfiError* signal_authenticated_chat_connection_answer_challenge(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const int8_t* token,
+  SignalBridgeChallengeAnswerFfiArg answer
 );
 SignalFfiError* signal_authenticated_chat_connection_clear_push_token(
   SignalCPromisebool* promise,
@@ -5022,7 +5079,7 @@ SignalFfiError* signal_expiring_profile_key_credential_get_expiration_time(
 SignalFfiError* signal_expiring_profile_key_credential_response_check_valid_contents(
   SignalBorrowedBuffer buffer
 );
-void signal_ffi_version_0_106_1(void);
+void signal_ffi_version_0_106_2(void);
 SignalFfiError* signal_fingerprint_clone(
   SignalMutPointerFingerprint* new_obj,
   SignalConstPointerFingerprint obj
@@ -5954,6 +6011,11 @@ SignalFfiError* signal_provisioning_chat_connection_init_listener(
   SignalConstPointerProvisioningChatConnection chat,
   SignalConstPointerFfiProvisioningListenerStruct listener
 );
+SignalFfiError* signal_provisioning_encrypt_provision_message(
+  SignalOwnedBuffer* out,
+  const SignalType_FixedArray33_uint8_t* secondary_public_key,
+  SignalBorrowedBuffer provision_message
+);
 SignalFfiError* signal_publickey_clone(
   SignalMutPointerPublicKey* new_obj,
   SignalConstPointerPublicKey obj
@@ -6029,6 +6091,21 @@ SignalFfiError* signal_receipt_credential_request_context_get_request(
 );
 SignalFfiError* signal_receipt_credential_response_check_valid_contents(
   SignalBorrowedBuffer buffer
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_decrypt_envelope(
+  SignalOwnedBuffer* out,
+  SignalConstPointerRecvProvisionCiphertextState state,
+  SignalBorrowedBuffer envelope
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_destroy(
+  SignalMutPointerRecvProvisionCiphertextState p
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_generate(
+  SignalMutPointerRecvProvisionCiphertextState* out
+);
+SignalFfiError* signal_recv_provision_ciphertext_state_get_public_key(
+  SignalType_FixedArray33_uint8_t* out,
+  SignalConstPointerRecvProvisionCiphertextState state
 );
 SignalFfiError* signal_register_account_request_create(
   SignalMutPointerRegisterAccountRequest* out
@@ -6960,7 +7037,7 @@ SignalFfiError* signal_unauthenticated_chat_connection_create_login_receipt_cred
   SignalCPromiseOwnedBuffer* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerUnauthenticatedChatConnection chat,
-  SignalPaymentProviderFfiArg payment_processor,
+  SignalPaymentProviderInternalFfiArg payment_processor,
   const int8_t* purchase_identifier,
   SignalBorrowedBuffer receipt_credential_request_context,
   SignalConstPointerServerPublicParams server_params,

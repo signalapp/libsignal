@@ -4,14 +4,15 @@
 //
 
 #![warn(clippy::unwrap_used)]
+#![allow(clippy::doc_overindented_list_items, clippy::doc_lazy_continuation)]
 
 pub mod proto {
     // Mirror the protobuf package structure so relative references work correctly.
     // We'll export org::signal::chat for a more flat interface elsewhere.
     mod org {
         pub(super) mod signal {
-            // The comments in proto files shouldn't be held to strict rustdoc standards.
-            #[allow(rustdoc::bare_urls)]
+            // The generated code shouldn't be held to strict clippy/rustdoc standards.
+            #[allow(rustdoc::bare_urls, clippy::style)]
             pub mod chat {
                 pub mod common {
                     tonic::include_proto!("org.signal.chat.common");
@@ -30,6 +31,9 @@ pub mod proto {
                 }
                 pub mod call_quality {
                     tonic::include_proto!("org.signal.chat.calling.quality");
+                }
+                pub mod challenge {
+                    tonic::include_proto!("org.signal.chat.challenge");
                 }
                 pub mod credentials {
                     tonic::include_proto!("org.signal.chat.credentials");
@@ -68,20 +72,19 @@ pub mod proto {
 
     // Key transparency is served by chat, but its protos are in their own top-level
     // package rather than under org.signal.chat.
-    //
-    // The doc comments in this proto use bulleted lists that aren't valid Markdown.
-    #[expect(clippy::doc_lazy_continuation)]
+    #[allow(clippy::style)]
     pub mod kt_query {
         tonic::include_proto!("kt_query");
     }
 
+    #[allow(clippy::style)]
     pub mod textsecure {
         tonic::include_proto!("textsecure");
     }
 
     // These protos come directly from Google and their doc comments aren't necessarily valid Markdown.
     #[allow(
-        clippy::doc_overindented_list_items,
+        clippy::style,
         rustdoc::bare_urls,
         rustdoc::broken_intra_doc_links,
         rustdoc::invalid_html_tags

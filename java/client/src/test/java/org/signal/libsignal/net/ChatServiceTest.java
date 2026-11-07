@@ -10,6 +10,7 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -122,7 +123,12 @@ public class ChatServiceTest {
 
   @Test
   public void testInvalidProxyRejected() throws Exception {
-    final Network net = new Network(Network.Environment.PRODUCTION, USER_AGENT);
+    final Network net =
+        new Network(
+            Network.Environment.PRODUCTION,
+            USER_AGENT,
+            Collections.emptyMap(),
+            Network.BuildVariant.PRODUCTION);
 
     final Consumer<ThrowingRunnable> check =
         (callback) -> {
