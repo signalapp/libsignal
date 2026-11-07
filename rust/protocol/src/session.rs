@@ -88,6 +88,7 @@ pub(crate) async fn build_prekey_session<'a>(
     pre_key_store: &dyn PreKeyStore,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
+    now: Option<SystemTime>,
 ) -> Result<(PreKeySessionCandidate, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
 
@@ -109,6 +110,7 @@ pub(crate) async fn build_prekey_session<'a>(
         kyber_prekey_store,
         pre_key_store,
         identity_store,
+        now,
     )
     .await?;
 
@@ -129,6 +131,7 @@ async fn build_prekey_session_inner(
     kyber_prekey_store: &dyn KyberPreKeyStore,
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
+    now: Option<SystemTime>,
 ) -> Result<PreKeySessionCandidate> {
     // The incoming PreKey message's base (ephemeral) key serves as the session ID.
     let incoming_session_id = message.base_key().serialize();
@@ -203,6 +206,7 @@ async fn build_prekey_session_inner(
         session_record,
         &incoming_session_id,
         message.identity_key(),
+        now,
     )?;
 
     let pre_keys_used = PreKeysUsed {

@@ -39,6 +39,9 @@
 //!   where it should land (pure, read-only), then install it at that slot
 //!   (stamps origin `Remote`).
 
+use std::time::SystemTime;
+
+use crate::consts::MAX_UNACKNOWLEDGED_SESSION_AGE;
 use crate::state::{InvalidSessionError, SessionState};
 use crate::{IdentityKey, SessionRecord};
 
@@ -186,6 +189,12 @@ pub(crate) fn on_initiate(record: &mut SessionRecord, mut new_session: SessionSt
 ///   still carrying a pending pre-key), and the identities match, this is a
 ///   simultaneous initiation: compare session IDs lexicographically. The higher
 ///   SID wins the active slot; the loser is destined for the archive.
+/// - Exception: if `now` is given and the unacknowledged active session is
+///   older than [`MAX_UNACKNOWLEDGED_SESSION_AGE`], the incoming session takes
+///   the active slot regardless of SID. `message_encrypt` refuses to send on
+///   such a stale session, so letting it win would leave the record with an
+///   unusable active session while the peer's working session sits archived.
+///   Without `now` the age is unknown and the plain SID tiebreak applies.
 ///
 /// Deduplication is handled separately by the caller (a session with this ID
 /// may already exist, in which case the caller skips placement entirely).
@@ -193,6 +202,7 @@ pub(crate) fn decide_initiation_placement(
     record: &SessionRecord,
     incoming_session_id: &[u8],
     incoming_identity: &IdentityKey,
+    now: Option<SystemTime>,
 ) -> Result<NewSessionLocation, InvalidSessionError> {
     Ok(match record.active_session() {
         None => NewSessionLocation::Active,
@@ -207,6 +217,7 @@ pub(crate) fn decide_initiation_placement(
             );
             if active.is_known_by_peer()
                 || active.remote_identity_key()? != Some(*incoming_identity)
+                || is_stale_unacknowledged(active, now)?
                 || incoming_session_id > active.session_id()
             {
                 NewSessionLocation::Active
@@ -215,6 +226,22 @@ pub(crate) fn decide_initiation_placement(
             }
         }
     })
+}
+
+/// Whether `state` is an unacknowledged session that `message_encrypt` would
+/// refuse as stale at `now`.
+fn is_stale_unacknowledged(
+    state: &SessionState,
+    now: Option<SystemTime>,
+) -> Result<bool, InvalidSessionError> {
+    // Without a clock, keep the plain SID tiebreak (and don't touch the pending
+    // pre-key at all).
+    let Some(now) = now else {
+        return Ok(false);
+    };
+    Ok(state
+        .unacknowledged_pre_key_message_items()?
+        .is_some_and(|items| items.timestamp() + MAX_UNACKNOWLEDGED_SESSION_AGE < now))
 }
 
 /// Install a peer-initiated session at the previously-decided slot, after
@@ -382,7 +409,8 @@ mod tests {
             decide_initiation_placement(
                 &record,
                 &[0x01],
-                &IdentityKey::decode(&[0x05; 33]).unwrap()
+                &IdentityKey::decode(&[0x05; 33]).unwrap(),
+                None,
             )
             .unwrap(),
             NewSessionLocation::Active
@@ -404,7 +432,8 @@ mod tests {
             decide_initiation_placement(
                 &record,
                 &[0x02],
-                &IdentityKey::decode(&[0x05; 33]).unwrap()
+                &IdentityKey::decode(&[0x05; 33]).unwrap(),
+                None,
             )
             .unwrap(),
             NewSessionLocation::Active
@@ -435,6 +464,43 @@ mod tests {
         assert_eq!(state.is_known_by_peer(), expected_known);
     }
 
+    // A lower incoming SID normally loses to our unacknowledged session, but
+    // not once that session is too old for `message_encrypt` to send on.
+    #[test_case(None, NewSessionLocation::Archived; "no clock")]
+    #[test_case(Some(MAX_UNACKNOWLEDGED_SESSION_AGE), NewSessionLocation::Archived; "at max age")]
+    #[test_case(
+        Some(MAX_UNACKNOWLEDGED_SESSION_AGE + std::time::Duration::from_secs(1)),
+        NewSessionLocation::Active;
+        "stale"
+    )]
+    fn decide_initiation_stale_unacknowledged_yields(
+        age: Option<std::time::Duration>,
+        expected: NewSessionLocation,
+    ) {
+        use crate::proto::storage::session_structure::PendingPreKey;
+        let record = SessionRecord::new(SessionState::from_session_structure(SessionStructure {
+            origin: SessionOrigin::LocalNew.into(),
+            alice_base_key: vec![0x02],
+            remote_identity_public: vec![0x05; 33],
+            pending_pre_key: Some(PendingPreKey {
+                base_key: vec![0x05; 33],
+                timestamp: 0,
+                ..Default::default()
+            }),
+            ..Default::default()
+        }));
+        assert_eq!(
+            decide_initiation_placement(
+                &record,
+                &[0x01],
+                &IdentityKey::decode(&[0x05; 33]).unwrap(),
+                age.map(|age| SystemTime::UNIX_EPOCH + age),
+            )
+            .unwrap(),
+            expected
+        );
+    }
+
     #[test]
     fn cross_upgrade_simultaneous_init_converges() {
         use crate::proto::storage::session_structure::PendingPreKey;
@@ -463,6 +529,7 @@ mod tests {
                 &record,
                 incoming,
                 &IdentityKey::decode(&[0x05; 33]).unwrap(),
+                None,
             )
             .unwrap()
             {
