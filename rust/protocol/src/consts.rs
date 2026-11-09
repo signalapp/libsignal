@@ -8,7 +8,7 @@ use std::time::Duration;
 pub const MAX_FORWARD_JUMPS: usize = 25_000;
 pub const MAX_MESSAGE_KEYS: usize = 2000;
 pub const MAX_RECEIVER_CHAINS: usize = 5;
-pub const ARCHIVED_STATES_MAX_LENGTH: usize = 40;
+pub const MAX_ARCHIVED_SESSIONS: usize = 3;
 pub const MAX_SENDER_KEY_STATES: usize = 5;
 
 /// Sessions that have not gotten a response after this interval will be considered "soft archived"

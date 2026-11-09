@@ -56,10 +56,6 @@ macro_rules! def_enclaves {
 }
 
 def_enclaves! {
-    ENCLAVE_ID_SVR2_2026Q1_STAGING => ("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535", common),
-    ENCLAVE_ID_SVR2_2026Q1_PROD => ("1240acbd4aa26974184844c8a46b1022d3957ac8a76c1fd8f5b1a15141ee0708", common),
-    ENCLAVE_ID_SVRB_2026Q1_STAGING => ("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535", common),
-    ENCLAVE_ID_SVRB_2026Q1_PROD => ("bee62050df1072e3d9fdf7660bfaf4e4b71f5622db9de8b30fc5f4b9852d8359", common),
     ENCLAVE_ID_SVR2_2026Q2_STAGING => ("3c699f4975aaa3d172c0aad042f94f031b2b03e10b9c19a45116a01693d83302", common),
     ENCLAVE_ID_SVR2_2026Q2_PROD => ("ced8217b26228e4b210c985786999d095c4958a94faf37b14acaf25c4cbb02a4", common),
     ENCLAVE_ID_SVRB_2026Q2_STAGING => ("3c699f4975aaa3d172c0aad042f94f031b2b03e10b9c19a45116a01693d83302", common),
@@ -77,46 +73,6 @@ def_enclaves! {
 /// SW advisories known to be mitigated by default. If an MREnclave is provided that
 /// is not contained in `ACCEPTABLE_SW_ADVISORIES`, this will be used
 pub(crate) const DEFAULT_SW_ADVISORIES: &[&str] = &[];
-
-pub const RAFT_CONFIG_SVR2_2026Q1_STAGING: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 3,
-    max_voting_replicas: 9,
-    super_majority: 0,
-    group_id: 2330628069874851020,
-    db_version: 2,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
-pub const RAFT_CONFIG_SVR2_2026Q1_PROD: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 4,
-    max_voting_replicas: 13,
-    super_majority: 2,
-    group_id: 2076725645304009823,
-    db_version: 2,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
-pub const RAFT_CONFIG_SVRB_2026Q1_STAGING: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 3,
-    max_voting_replicas: 9,
-    super_majority: 0,
-    group_id: 1416305463306398324,
-    db_version: 4,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
-pub const RAFT_CONFIG_SVRB_2026Q1_PROD: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 4,
-    max_voting_replicas: 13,
-    super_majority: 2,
-    group_id: 16652830871035963553,
-    db_version: 4,
-    attestation_timeout: 604800,
-    simulated: false,
-};
 
 pub const RAFT_CONFIG_SVR2_2026Q2_STAGING: &RaftConfig = &RaftConfig {
     min_voting_replicas: 3,
@@ -210,13 +166,8 @@ pub const RAFT_CONFIG_SVRB_2026Q3_PROD: &RaftConfig = &RaftConfig {
 
 // This is left here primarily to support SVR2 bridging code that does
 // not expose the notion of environment to the clients.
-pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 7> =
+pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 5> =
     SmallMap::new([
-        (
-            ENCLAVE_ID_SVR2_2026Q1_STAGING,
-            RAFT_CONFIG_SVR2_2026Q1_STAGING,
-        ),
-        (ENCLAVE_ID_SVR2_2026Q1_PROD, RAFT_CONFIG_SVR2_2026Q1_PROD),
         (
             ENCLAVE_ID_SVR2_2026Q2_STAGING,
             RAFT_CONFIG_SVR2_2026Q2_STAGING,
@@ -237,16 +188,12 @@ pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static Ra
 /// by SVR.  If false, enforcement will be applied.
 pub(crate) fn skip_tcb_minimums_enforcement_svr(mrenclave: &[u8]) -> bool {
     const TO_SKIP: &[&[u8]] = &[
-        ENCLAVE_ID_SVR2_2026Q1_STAGING,
-        ENCLAVE_ID_SVR2_2026Q1_PROD,
         ENCLAVE_ID_SVR2_2026Q2_STAGING,
         ENCLAVE_ID_SVR2_2026Q2_PROD,
-        ENCLAVE_ID_SVRB_2026Q1_STAGING,
-        ENCLAVE_ID_SVRB_2026Q1_PROD,
         ENCLAVE_ID_SVRB_2026Q2_STAGING,
         ENCLAVE_ID_SVRB_2026Q2_PROD,
     ];
     // We should never add any new SVR enclaves to this map.
-    const _SKIP_TCB_MINIMUMS_ENFORCEMENT_SVR_DOES_NOT_GROW: () = assert!(TO_SKIP.len() <= 8);
+    const _SKIP_TCB_MINIMUMS_ENFORCEMENT_SVR_DOES_NOT_GROW: () = assert!(TO_SKIP.len() <= 4);
     TO_SKIP.contains(&mrenclave)
 }

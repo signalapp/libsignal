@@ -1,0 +1,40 @@
+#
+# Copyright (C) 2026 Signal Messenger, LLC.
+# SPDX-License-Identifier: AGPL-3.0-only
+#
+
+[package]
+name = "libsignal-provisioning"
+authors.workspace = true
+license.workspace = true
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "Shared client logic for linking (provisioning) a new device"
+
+[lints]
+workspace = true
+
+[dependencies]
+aes = { workspace = true }
+cbc = { workspace = true }
+hkdf = { workspace = true }
+hmac = { workspace = true }
+libsignal-core = { workspace = true }
+prost = { workspace = true }
+rand_core = { workspace = true }
+sha2 = { workspace = true }
+
+displaydoc = { workspace = true }
+thiserror = { workspace = true }
+
+[build-dependencies]
+prost-build = { workspace = true }
+
+[dev-dependencies]
+assert_matches = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+test-case = { workspace = true }

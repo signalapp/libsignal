@@ -555,6 +555,15 @@ impl IntoFfiError for PinError {
     }
 }
 
+impl IntoFfiError for libsignal_provisioning::ProvisioningError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            SignalErrorCode::InvalidMessage,
+            format!("Provisioning failed: {self}"),
+        )
+    }
+}
+
 impl IntoFfiError for SignalCryptoError {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let code = match self {

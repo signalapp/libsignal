@@ -8,8 +8,8 @@ name = "libsignal-protocol"
 version = "0.1.0"
 authors.workspace = true
 license.workspace = true
-edition = "2024"
-rust-version = "1.85"
+edition.workspace = true
+rust-version.workspace = true
 
 [lints]
 workspace = true
@@ -67,6 +67,8 @@ proptest = { workspace = true }
 proptest-arbitrary-interop = { workspace = true }
 rand_chacha = { workspace = true }
 rand_core = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+test-case = { workspace = true }
 
 [build-dependencies]
 prost-build = { workspace = true }

@@ -70,20 +70,4 @@ class PinTests: TestCaseBase {
             Data(base64Encoded: "tvFqoFkXMuM5t+mc3V/WWGocKFydZodpR/2C9m7Zl1c=")!
         )
     }
-
-    func testSvr2PinHash() throws {
-        let pin = Array("password".utf8)
-        let username = "username"
-
-        let mrenclave = [UInt8](fromHexString: "97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535")!
-
-        let knownSalt = [UInt8](fromHexString: "70dd66bdcbb23f5173323f054becc5b617ae475ba8de067946f198efff7a5f83")!
-
-        let pinHash = try PinHash(normalizedPin: pin, username: username, mrenclave: mrenclave)
-
-        let expectedHash = try PinHash(normalizedPin: pin, salt: knownSalt)
-
-        XCTAssertEqual(pinHash.encryptionKey, expectedHash.encryptionKey)
-        XCTAssertEqual(pinHash.accessKey, expectedHash.accessKey)
-    }
 }

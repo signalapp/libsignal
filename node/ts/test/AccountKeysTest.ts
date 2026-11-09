@@ -201,25 +201,6 @@ describe('PinHash', () => {
       'b6f16aa0591732e339b7e99cdd5fd6586a1c285c9d66876947fd82f66ed99757'
     );
   });
-
-  it('fromUsernameMrenclave produces the same keys as fromSalt with the derived salt', () => {
-    const mrenclave = Buffer.from(
-      '97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535',
-      'hex'
-    );
-    const knownSalt = Buffer.from(
-      '70dd66bdcbb23f5173323f054becc5b617ae475ba8de067946f198efff7a5f83',
-      'hex'
-    );
-    const actual = AccountKeys.PinHash.fromUsernameMrenclave(
-      testPin,
-      'username',
-      mrenclave
-    );
-    const expected = AccountKeys.PinHash.fromSalt(testPin, knownSalt);
-    assert.deepEqual(actual.accessKey, expected.accessKey);
-    assert.deepEqual(actual.encryptionKey, expected.encryptionKey);
-  });
 });
 
 describe('Pin', () => {

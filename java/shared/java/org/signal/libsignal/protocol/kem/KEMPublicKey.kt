@@ -19,6 +19,8 @@ public class KEMPublicKey :
   public constructor(serialized: ByteArray, offset: Int) :
     this(serialized, offset, length = serialized.size - offset)
 
+  // The Rust side checks that offset and length are in bounds, and throws IllegalArgumentException
+  // if they aren't.
   @Throws(InvalidKeyException::class)
   public constructor(serialized: ByteArray, offset: Int, length: Int) :
     super(Native.KyberPublicKey_DeserializeWithOffsetLength(serialized, offset, length))

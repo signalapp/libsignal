@@ -1266,7 +1266,7 @@ pub mod remote_derives {
         jni_nice_type = "org.signal.libsignal.net.PaymentProvider",
     )]
     #[allow(unused)]
-    pub enum PaymentProvider {
+    pub enum PaymentProviderInternal {
         GooglePlayBilling,
         AppleAppStore,
         Stripe,
@@ -1663,6 +1663,17 @@ pub mod remote_derives {
                     .expect("expiration is not too far in the future"),
             }
         }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::accounts::ChallengeAnswer,
+        ffi_nice_type = "ChallengeAnswer",
+    )]
+    #[allow(unused)]
+    enum BridgeChallengeAnswer {
+        Push(String),
+        Captcha(String),
     }
 }
 

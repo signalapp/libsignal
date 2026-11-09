@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use attest::svr2::lookup_groupid;
 use futures_util::stream::FuturesOrdered;
 use futures_util::{FutureExt as _, StreamExt as _};
 use libsignal_account_keys::PinHash;
@@ -43,9 +42,8 @@ fn svr2_client<'a>(
 }
 
 fn derive_svr2_pin_hash(mrenclave: &[u8], username: &str, normalized_pin: &[u8]) -> PinHash {
-    let group_id = lookup_groupid(mrenclave).expect("SVR2 enclave has a known group id");
-    let salt = PinHash::make_salt(username, group_id);
-    PinHash::create(normalized_pin, &salt).expect("valid Argon2 parameters")
+    crate::account_keys::svr2_pin_hash(normalized_pin, username, mrenclave)
+        .expect("env SVR2 enclave has a known group id")
 }
 
 async fn connect_and_backup(

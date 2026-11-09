@@ -98,7 +98,6 @@ jobs:
           swift:
           - *rust_ios
           - 'swift/**'
-          - 'LibSignalClient.podspec'
           - 'Package.resolved'
           - 'Package.swift'
           ignored:
@@ -386,6 +385,9 @@ jobs:
 
     - name: Cargo.toml formatting check
       run: PATH="$PATH:$PWD/local-tools/bin" taplo format -c .taplo.toml --check
+
+    - name: Lint Cargo.toml
+      run: bin/verify-cargo-toml.py
 
     - name: Rustfmt check
       run: cargo +${{ steps.rust-fmt-toolchain.outputs.pinned-toolchain }} fmt --all -- --check
@@ -690,8 +692,8 @@ jobs:
 #    - name: Build Swift package documentation
 #      run: swift package plugin generate-documentation --analyze --warnings-as-errors
 
-  swift_cocoapod:
-    name: Swift CocoaPod
+  swift_ios:
+    name: Swift iOS
 
     runs-on: macos-15-xlarge
 
@@ -702,7 +704,6 @@ jobs:
     timeout-minutes: 45
 
     env:
-      LIBSIGNAL_TESTING_ONLY_ACTIVE_ARCH: 1
       # For Swift 6.2. Can be removed when advancing to the macos-26 runner.
       DEVELOPER_DIR: /Applications/Xcode_26.3.app
 
@@ -734,17 +735,10 @@ jobs:
           RUNS_ON_S3_BUCKET_CACHE: ${{ secrets.R2_BUCKET_NAME }}
           RUNS_ON_S3_BUCKET_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
         with:
-          job-name: swift-cocoapod
+          job-name: swift-ios
 
-      - name: Build for aarch64-apple-ios-sim
-        run: swift/build_ffi.sh --release
-        env:
-          CARGO_BUILD_TARGET: aarch64-apple-ios-sim
-
-      - name: Run pod lint
-        run: pod lib lint --verbose --platforms=ios --skip-tests
-        env:
-          LIBSIGNAL_TESTING_DISABLE_EXPLICIT_MODULES: 1
+      - name: Build and test on an iOS simulator
+        run: swift/run_ios_tests.sh
 
       - name: Save cargo cache
         if: ${{ env.SHOULD_USE_CARGO_CACHE == 'true' }}

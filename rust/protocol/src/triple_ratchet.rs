@@ -17,7 +17,6 @@ use rand::{CryptoRng, Rng};
 
 use crate::double_ratchet::RatchetState;
 use crate::ratchet::ChainKey;
-use crate::session_management::CurrentOrPrevious;
 use crate::state::SessionState;
 use crate::{
     CiphertextMessageType, IdentityKey, KeyPair, ProtocolAddress, Result, SignalMessage,
@@ -218,7 +217,6 @@ impl TripleRatchet {
         recipient_address: &ProtocolAddress,
         ciphertext: &SignalMessage,
         original_message_type: CiphertextMessageType,
-        current_or_previous_for_logging: CurrentOrPrevious,
         csprng: &mut R,
     ) -> Result<Vec<u8>> {
         // DR: ensure we have a receiver chain, then consume the message key
@@ -276,9 +274,7 @@ impl TripleRatchet {
         ) {
             Ok(ptext) => ptext,
             Err(signal_crypto::DecryptionError::BadKeyOrIv) => {
-                log::warn!(
-                    "{current_or_previous_for_logging} session state corrupt for {sender_address}",
-                );
+                log::warn!("session state corrupt for {sender_address}");
                 return Err(SignalProtocolError::InvalidSessionStructure(
                     "invalid receiver chain message keys",
                 ));

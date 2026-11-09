@@ -21,6 +21,7 @@ import type {
 } from '../../Errors.js';
 import { SvrKey } from '../../AccountKeys.js';
 import type { Rng } from '../../RngForTesting.js';
+import type { DeviceCapability } from './AuthDevicesService.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -210,6 +211,8 @@ export type BadgeEntitlement = {
   expiration: Date;
   visible: boolean;
 };
+
+export type ChallengeAnswer = { push: string } | { captcha: string };
 
 export interface AuthAccountsService {
   /**
@@ -522,6 +525,30 @@ export interface AuthAccountsService {
     request: EmptyObject,
     options?: RequestOptions
   ) => Promise<AccountEntitlements>;
+
+  /**
+   * Gets the capabilities of the authenticated account.
+   *
+   * Capabilities that are not recognized are filtered out.
+   *
+   * @throws {StandardNetworkError}
+   */
+  getAccountCapabilities: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<Set<DeviceCapability>>;
+
+  /**
+   * Submit proof of a challenge completion.
+   *
+   * Returns `true` if the answer is accepted.
+   *
+   * @throws {StandardNetworkError}
+   */
+  answerChallenge: (
+    request: { token: string } & ChallengeAnswer,
+    options?: RequestOptions
+  ) => Promise<boolean>;
 }
 
 AuthenticatedChatConnection.prototype.deleteAccount = async function (
@@ -758,4 +785,30 @@ AuthenticatedChatConnection.prototype.getAccountEntitlements = async function (
       ? { level: backup.level, expiration: new Date(backup.expiration) }
       : null,
   };
+};
+
+AuthenticatedChatConnection.prototype.getAccountCapabilities = async function (
+  _request,
+  options?
+): Promise<Set<DeviceCapability>> {
+  return new Set(
+    await NativeNice.AuthenticatedChatConnection_get_capabilities({
+      asyncContext: this.asyncContext,
+      abortSignal: options?.abortSignal,
+      chat: this.chatService,
+    })
+  );
+};
+
+AuthenticatedChatConnection.prototype.answerChallenge = async function (
+  request,
+  options?
+) {
+  return await NativeNice.AuthenticatedChatConnection_answer_challenge({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    token: request.token,
+    answer: request,
+  });
 };

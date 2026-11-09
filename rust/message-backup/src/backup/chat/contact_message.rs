@@ -130,17 +130,15 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactAttachment, C> for proto::Con
             nickname,
             special_fields: _,
         }) = name.as_ref()
+            && givenName.is_empty()
+            && familyName.is_empty()
+            && prefix.is_empty()
+            && suffix.is_empty()
+            && middleName.is_empty()
+            && nickname.is_empty()
         {
-            if givenName.is_empty()
-                && familyName.is_empty()
-                && prefix.is_empty()
-                && suffix.is_empty()
-                && middleName.is_empty()
-                && nickname.is_empty()
-            {
-                // We could disallow just sending a prefix or suffix, but that seems overly nitpicky.
-                return Err(ContactAttachmentError::EmptyName);
-            }
+            // We could disallow just sending a prefix or suffix, but that seems overly nitpicky.
+            return Err(ContactAttachmentError::EmptyName);
         }
 
         let nickname = nickname.into_option();
@@ -149,10 +147,10 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactAttachment, C> for proto::Con
             family,
             special_fields: _,
         }) = nickname.as_ref()
+            && given.is_empty()
+            && family.is_empty()
         {
-            if given.is_empty() && family.is_empty() {
-                return Err(ContactAttachmentError::EmptyNickname);
-            }
+            return Err(ContactAttachmentError::EmptyNickname);
         }
 
         let aci = if aci.is_empty() {

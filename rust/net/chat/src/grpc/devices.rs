@@ -112,6 +112,26 @@ impl From<DeviceCapability> for GrpcDeviceCapability {
     }
 }
 
+#[derive(Debug)]
+pub struct UnspecifiedCapability;
+
+impl TryFrom<GrpcDeviceCapability> for DeviceCapability {
+    type Error = UnspecifiedCapability;
+
+    fn try_from(value: GrpcDeviceCapability) -> Result<Self, Self::Error> {
+        match value {
+            GrpcDeviceCapability::Unspecified => Err(UnspecifiedCapability),
+            GrpcDeviceCapability::Storage => Ok(Self::Storage),
+            GrpcDeviceCapability::Transfer => Ok(Self::Transfer),
+            GrpcDeviceCapability::AttachmentBackfill => Ok(Self::AttachmentBackfill),
+            GrpcDeviceCapability::SparsePostQuantumRatchet => Ok(Self::SparsePostQuantumRatchet),
+            GrpcDeviceCapability::ProfilesV2 => Ok(Self::ProfilesV2),
+            GrpcDeviceCapability::UsernameChangeSyncMessage => Ok(Self::UsernameChangeSyncMessage),
+            GrpcDeviceCapability::OptionalPhoneNumber => Ok(Self::OptionalPhoneNumber),
+        }
+    }
+}
+
 #[derive(Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub struct LinkedDevice {

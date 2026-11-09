@@ -86,6 +86,20 @@ public enum class DeviceCapability {
 
   /** Support for accounts without a phone number. */
   OPTIONAL_PHONE_NUMBER,
+  ;
+
+  internal companion object {
+    internal fun fromInternal(it: DeviceCapabilityInternal): DeviceCapability =
+      when (it) {
+        DeviceCapabilityInternal.Storage -> STORAGE
+        DeviceCapabilityInternal.Transfer -> TRANSFER
+        DeviceCapabilityInternal.AttachmentBackfill -> ATTACHMENT_BACKFILL
+        DeviceCapabilityInternal.SparsePostQuantumRatchet -> SPARSE_POST_QUANTUM_RATCHET
+        DeviceCapabilityInternal.ProfilesV2 -> PROFILES_V2
+        DeviceCapabilityInternal.UsernameChangeSyncMessage -> USERNAME_CHANGE_SYNC_MESSAGE
+        DeviceCapabilityInternal.OptionalPhoneNumber -> OPTIONAL_PHONE_NUMBER
+      }
+  }
 }
 
 private fun DeviceCapability.toInternal(): DeviceCapabilityInternal =

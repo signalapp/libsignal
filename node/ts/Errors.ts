@@ -125,6 +125,8 @@ export enum ErrorCode {
   ProfileNotFound,
 
   ReceiptAlreadyRedeemed,
+
+  InvalidProvisioningMessage,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -242,15 +244,17 @@ export class LibSignalErrorBase extends Error {
     return `${this.name} - ${this.operation}: ${this.message}`;
   }
 
-  /// Like `error.code === code`, but also providing access to any additional properties.
+  /** Like `error.code === code`, but also providing access to any additional properties. */
   public is<E extends ErrorCode>(
     code: E
   ): this is Extract<LibSignalError, { code: E }> {
     return this.code === code;
   }
 
-  /// Like `error instanceof LibSignalErrorBase && error.code === code`, but all in one expression,
-  /// and providing access to any additional properties.
+  /**
+   * Like `error instanceof LibSignalErrorBase && error.code === code`, but all in one expression,
+   * and providing access to any additional properties.
+   */
   public static is<E extends ErrorCode>(
     error: unknown,
     code: E
@@ -643,6 +647,15 @@ export type ReceiptAlreadyRedeemed = LibSignalErrorCommon & {
   code: ErrorCode.ReceiptAlreadyRedeemed;
 };
 
+/**
+ * A provisioning envelope could not be decrypted (e.g., it was malformed, was not encrypted to the
+ * expected public key, or was tampered with), or a provisioning public key was invalid. The error
+ * message contains the specific cause.
+ */
+export type InvalidProvisioningMessageError = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidProvisioningMessage;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -728,4 +741,5 @@ export type LibSignalError =
   | MfaKeyNotFound
   | WebAuthnRegistrationUnsuccessful
   | ProfileNotFound
-  | ReceiptAlreadyRedeemed;
+  | ReceiptAlreadyRedeemed
+  | InvalidProvisioningMessageError;

@@ -12,6 +12,39 @@ use libsignal_protocol::*;
 use rand::seq::SliceRandom as _;
 use rand::{CryptoRng, Rng};
 
+pub mod client_stores;
+
+/// Returns whether there is a current, fully-usable active session for
+/// `remote_address`.
+pub async fn has_active_session(
+    remote_address: &ProtocolAddress,
+    session_store: &dyn SessionStore,
+) -> Result<bool, SignalProtocolError> {
+    match session_store.load_session(remote_address).await? {
+        Some(record) => record
+            .has_usable_sender_chain(SystemTime::UNIX_EPOCH, SessionUsabilityRequirements::all()),
+        None => Ok(false),
+    }
+}
+
+/// Archive the current active session for `remote_address`, if any.
+///
+/// Test helper. Production code archives sessions via the explicit
+/// load / [`SessionRecord::archive_current_state`] / store sequence.
+pub async fn archive_active_session(
+    remote_address: &ProtocolAddress,
+    session_store: &mut dyn SessionStore,
+) -> Result<(), SignalProtocolError> {
+    let Some(mut session_record) = session_store.load_session(remote_address).await? else {
+        return Ok(());
+    };
+    session_record.archive_current_state()?;
+    session_store
+        .store_session(remote_address, &session_record)
+        .await?;
+    Ok(())
+}
+
 /// Represents the part of [`Participant`] state that can be backed up by the OS.
 ///
 /// (whether or not we want it to be)
@@ -179,7 +212,7 @@ impl Participant {
         )
         .unwrap();
 
-        process_prekey_bundle(
+        initiate_session(
             &them.address,
             &self.address,
             &mut self.state.store.session_store,
@@ -192,16 +225,8 @@ impl Participant {
         .unwrap();
 
         assert!(
-            self.state
-                .store
-                .load_session(&them.address)
+            has_active_session(&them.address, &self.state.store.session_store)
                 .await
-                .unwrap()
-                .expect("just created")
-                .has_usable_sender_chain(
-                    SystemTime::UNIX_EPOCH,
-                    SessionUsabilityRequirements::all()
-                )
                 .unwrap()
         );
     }
@@ -219,21 +244,9 @@ impl Participant {
         rng: &mut (impl Rng + CryptoRng),
     ) {
         log::info!("{}: sending message {id}", self.name);
-        if !self
-            .state
-            .store
-            .load_session(&them.address)
+        if !has_active_session(&them.address, &self.state.store.session_store)
             .await
             .unwrap()
-            .and_then(|session| {
-                session
-                    .has_usable_sender_chain(
-                        SystemTime::UNIX_EPOCH,
-                        SessionUsabilityRequirements::all(),
-                    )
-                    .ok()
-            })
-            .unwrap_or(false)
         {
             self.process_pre_key(them, rng.random_bool(0.75), rng).await;
         }
@@ -248,19 +261,21 @@ impl Participant {
             SystemTime::UNIX_EPOCH,
             rng,
         )
-        .await
-        .unwrap();
+        .await;
+
+        let outgoing_message = outgoing_message.unwrap_or_else(|e| {
+            panic!(
+                "message_encrypt failed for {} sending to {}: {e}",
+                self.name, them.name
+            )
+        });
 
         // Test serialization ahead of time.
-        let incoming_message = match outgoing_message.message_type() {
-            CiphertextMessageType::PreKey => CiphertextMessage::PreKeySignalMessage(
-                PreKeySignalMessage::try_from(outgoing_message.serialize()).unwrap(),
-            ),
-            CiphertextMessageType::Whisper => CiphertextMessage::SignalMessage(
-                SignalMessage::try_from(outgoing_message.serialize()).unwrap(),
-            ),
-            other_type => panic!("unexpected type {:?}", other_type),
-        };
+        let incoming_message = deserialize_ciphertext(
+            outgoing_message.serialize(),
+            outgoing_message.message_type(),
+        )
+        .expect("serialized ciphertext should round-trip");
 
         them.message_queue.push((incoming_message, id));
     }
@@ -386,12 +401,16 @@ impl Participant {
     }
 
     pub async fn archive_session(&mut self, their_address: &ProtocolAddress) {
-        if let Some(mut session) = self.state.store.load_session(their_address).await.unwrap() {
+        if self
+            .state
+            .store
+            .load_session(their_address)
+            .await
+            .unwrap()
+            .is_some()
+        {
             log::info!("{}: archiving session", self.name);
-            session.archive_current_state().unwrap();
-            self.state
-                .store
-                .store_session(their_address, &session)
+            archive_active_session(their_address, &mut self.state.store.session_store)
                 .await
                 .unwrap();
         }
@@ -437,6 +456,26 @@ impl Participant {
                 panic!("acked message {id} that was already delivered");
             }
         }
+    }
+}
+
+pub fn deserialize_ciphertext(
+    bytes: &[u8],
+    message_type: CiphertextMessageType,
+) -> Result<CiphertextMessage, SignalProtocolError> {
+    match message_type {
+        CiphertextMessageType::PreKey => Ok(CiphertextMessage::PreKeySignalMessage(
+            PreKeySignalMessage::try_from(bytes)?,
+        )),
+        CiphertextMessageType::Whisper => Ok(CiphertextMessage::SignalMessage(
+            SignalMessage::try_from(bytes)?,
+        )),
+        CiphertextMessageType::SenderKey => Ok(CiphertextMessage::SenderKeyMessage(
+            SenderKeyMessage::try_from(bytes)?,
+        )),
+        CiphertextMessageType::Plaintext => Ok(CiphertextMessage::PlaintextContent(
+            PlaintextContent::try_from(bytes)?,
+        )),
     }
 }
 

@@ -15,20 +15,18 @@ use crate::{
 
 /// An identifier for a particular (profile key, ACI) combination.
 ///
-/// A profile key version, properly encoded, is a hexadecimal ASCII string, meant to be put directly
-/// into, e.g. HTTP requests.
-///
 /// Note that it is not a "*profile* version"; a Signal user can change their profile without
 /// rotating their profile key, and the profile key version will not change either.
-#[derive(Copy, Clone)]
+///
+/// It is serialized as a hexadecimal string.
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct ProfileKeyVersion {
-    ascii: ProfileKeyVersionEncodedBytes,
+    pub bytes: ProfileKeyVersionBytes,
 }
 
-impl AsRef<str> for ProfileKeyVersion {
-    fn as_ref(&self) -> &str {
-        // An "encoded" profile key version is hexadecimal ASCII.
-        std::str::from_utf8(&self.ascii).expect("ASCII")
+impl AsRef<ProfileKeyVersionBytes> for ProfileKeyVersion {
+    fn as_ref(&self) -> &ProfileKeyVersionBytes {
+        &self.bytes
     }
 }
 
@@ -37,8 +35,11 @@ impl Serialize for ProfileKeyVersion {
     where
         S: Serializer,
     {
-        let mut seq = serializer.serialize_tuple(self.ascii.len())?;
-        for b in self.ascii.iter() {
+        let mut ascii: [u8; PROFILE_KEY_VERSION_ENCODED_LEN] =
+            [0u8; PROFILE_KEY_VERSION_ENCODED_LEN];
+        hex::encode_to_slice(self.bytes, &mut ascii).expect("lengths match");
+        let mut seq = serializer.serialize_tuple(ascii.len())?;
+        for b in ascii.iter() {
             seq.serialize_element(b)?;
         }
         seq.end()
@@ -61,15 +62,34 @@ impl ProfileKey {
             &combined_array,
         );
 
-        let mut pkv_hex_array: [u8; PROFILE_KEY_VERSION_ENCODED_LEN] =
-            [0u8; PROFILE_KEY_VERSION_ENCODED_LEN];
-        hex::encode_to_slice(
-            sho.squeeze_as_array::<PROFILE_KEY_VERSION_LEN>(),
-            &mut pkv_hex_array,
-        )
-        .expect("lengths match");
         api::profiles::ProfileKeyVersion {
-            ascii: pkv_hex_array,
+            bytes: sho.squeeze_as_array::<PROFILE_KEY_VERSION_LEN>(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use libsignal_core::Aci;
+    use test_case::test_case;
+
+    use super::*;
+
+    #[test_case(
+        Aci::from_uuid_bytes([0xa; 16]), &[1; 32],
+        b"540169ba2813a4d92326faec4a07de372db4319ab3bb812827019fc8a771a38f"
+    )]
+    #[test_case(
+        Aci::from_uuid_bytes([0xb; 16]), &[2; 32],
+        b"4a471108a53e1b278f43be5a8d18c6b5f26cd038ebec80c2cf3058059f3e8950"
+    )]
+    fn test_vectors(aci: Aci, profile_key: &[u8; PROFILE_KEY_LEN], serialized: &[u8]) {
+        let profile_key = ProfileKey {
+            bytes: *profile_key,
+        };
+        assert_eq!(
+            crate::serialize(&profile_key.get_profile_key_version(aci)).as_slice(),
+            serialized
+        );
     }
 }

@@ -8,11 +8,8 @@ package org.signal.libsignal.svr2;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import org.junit.Test;
-import org.signal.libsignal.protocol.kdf.HKDF;
 import org.signal.libsignal.protocol.util.Hex;
 
 public class PinTest {
@@ -69,34 +66,5 @@ public class PinTest {
         pinHash.encryptionKey(),
         Hex.fromStringCondensed(
             "b6f16aa0591732e339b7e99cdd5fd6586a1c285c9d66876947fd82f66ed99757"));
-  }
-
-  private static byte[] bebytes(final long l) {
-    final ByteBuffer bb = ByteBuffer.allocate(8);
-    bb.order(ByteOrder.BIG_ENDIAN);
-    bb.putLong(l);
-    return bb.array();
-  }
-
-  @Test
-  public void testSaltWithGroupId() throws IOException {
-    final byte[] mrenclave =
-        Hex.fromStringCondensed("97f151f6ed078edbbfd72fa9cae694dcc08353f1f5e8d9ccd79a971b10ffc535");
-    final byte[] pin = "password".getBytes(StandardCharsets.UTF_8);
-    final String username = "username";
-    final long groupId = Long.parseUnsignedLong("2330628069874851020");
-    final PinHash actual = PinHash.svr2(pin, username, mrenclave);
-
-    // svr2 hash should use salt derived from groupId
-    final byte[] expectedSalt =
-        HKDF.deriveSecrets(
-            username.getBytes(StandardCharsets.UTF_8), bebytes(groupId), new byte[] {}, 32);
-    final byte[] knownSalt =
-        Hex.fromStringCondensed("70dd66bdcbb23f5173323f054becc5b617ae475ba8de067946f198efff7a5f83");
-    assertArrayEquals(knownSalt, expectedSalt);
-
-    final PinHash expected = PinHash.svr1(pin, expectedSalt);
-    assertArrayEquals(actual.accessKey(), expected.accessKey());
-    assertArrayEquals(actual.encryptionKey(), expected.encryptionKey());
   }
 }

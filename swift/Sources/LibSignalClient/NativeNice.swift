@@ -1282,6 +1282,43 @@ extension SignalCPromiseOwnedBufferOfMaxAlignedBridgeConfirmedMfaKeyFfiResult: S
 
 }
 
+extension SignalCPromiseOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: SignalCPromise {
+
+    typealias Result = SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: SignalCPromise {
 
     typealias Result = SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult
@@ -2352,6 +2389,40 @@ extension SignalOwnedBufferOfMaxAlignedCurrencyInternalFfiResult: SignalOwnedBuf
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalDeviceCapabilityInternalFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedLinkedDeviceInternalFfiResult: SignalOwnedBufferOfMaxAligned {
 
     typealias Element = SignalLinkedDeviceInternalFfiResult
@@ -2769,6 +2840,20 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
 }
 
+internal enum FixedByteArrayHelper33: FixedByteArrayHelper {
+    typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+        UInt8
+    )
+    static func count() -> Int {
+        33
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -2965,6 +3050,16 @@ internal enum BadgeVisibility {
     case doNotSet
     case setVisible
     case setPrimary
+}
+
+*/
+
+/*
+// ChallengeAnswer
+
+internal enum BridgeChallengeAnswer {
+    case push(String)
+    case captcha(String)
 }
 
 */
@@ -3219,7 +3314,7 @@ internal enum LoginReceiptLevel {
 /*
 // PaymentProvider
 
-internal enum PaymentProvider {
+internal enum PaymentProviderInternal {
     case googlePlayBilling
     case appleAppStore
     case stripe
@@ -3650,7 +3745,7 @@ internal enum DerivedReturnConverterChargeFailure: NiceReturnConverter {
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
 
         let processor = Result {
-            try DerivedReturnConverterPaymentProvider.convertReturn(consuming: ffiValue.processor)
+            try DerivedReturnConverterPaymentProviderInternal.convertReturn(consuming: ffiValue.processor)
         }
         let code = Result { try StringConverter.convertReturn(consuming: ffiValue.code) }
         let message = Result { try StringConverter.convertReturn(consuming: ffiValue.message) }
@@ -3754,6 +3849,35 @@ internal enum DerivedReturnConverterDeleteBackupMediaNextChunk: NiceReturnConver
     }
 }
 
+internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverter {
+    typealias NiceReturn = DeviceCapability
+    typealias FfiReturn = SignalDeviceCapabilityInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalDeviceCapabilityInternalFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalDeviceCapabilityInternalFfiResultStorage:
+            return DeviceCapability.storage
+        case SignalDeviceCapabilityInternalFfiResultTransfer:
+            return DeviceCapability.transfer
+        case SignalDeviceCapabilityInternalFfiResultAttachmentBackfill:
+            return DeviceCapability.attachmentBackfill
+        case SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet:
+            return DeviceCapability.sparsePostQuantumRatchet
+        case SignalDeviceCapabilityInternalFfiResultProfilesV2:
+            return DeviceCapability.profilesV2
+        case SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage:
+            return DeviceCapability.usernameChangeSyncMessage
+        case SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber:
+            return DeviceCapability.optionalPhoneNumber
+        default:
+            throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
+        }
+    }
+}
+
 internal enum DerivedReturnConverterGetStickerUploadFormsResponse: NiceReturnConverter {
     typealias NiceReturn = GetStickerUploadFormsResponse
     typealias FfiReturn = SignalGetStickerUploadFormsResponseFfiResult
@@ -3854,25 +3978,25 @@ internal enum DerivedReturnConverterListMediaResponse: NiceReturnConverter {
     }
 }
 
-internal enum DerivedReturnConverterPaymentProvider: NiceReturnConverter {
+internal enum DerivedReturnConverterPaymentProviderInternal: NiceReturnConverter {
     typealias NiceReturn = PaymentProvider
-    typealias FfiReturn = SignalPaymentProviderFfiResult
+    typealias FfiReturn = SignalPaymentProviderInternalFfiResult
     static func emptyFfiReturn() -> FfiReturn {
-        SignalPaymentProviderFfiResult(0)
+        SignalPaymentProviderInternalFfiResult(0)
     }
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
         let ffiTag = ffiValue
         switch ffiTag {
-        case SignalPaymentProviderFfiResultGooglePlayBilling:
+        case SignalPaymentProviderInternalFfiResultGooglePlayBilling:
             return PaymentProvider.googlePlayBilling
-        case SignalPaymentProviderFfiResultAppleAppStore:
+        case SignalPaymentProviderInternalFfiResultAppleAppStore:
             return PaymentProvider.appleAppStore
-        case SignalPaymentProviderFfiResultStripe:
+        case SignalPaymentProviderInternalFfiResultStripe:
             return PaymentProvider.stripe
-        case SignalPaymentProviderFfiResultBraintree:
+        case SignalPaymentProviderInternalFfiResultBraintree:
             return PaymentProvider.braintree
         default:
-            throw SignalError.internalError("Unexpected enum tag for PaymentProvider: \(ffiTag)")
+            throw SignalError.internalError("Unexpected enum tag for PaymentProviderInternal: \(ffiTag)")
         }
     }
 }
@@ -3957,6 +4081,119 @@ internal enum DerivedArgConverterBadgeVisibility: NiceArgConverter {
 
         case .setPrimary:
             return try niceThunk(SignalBadgeVisibilityFfiArgSetPrimary)
+
+        }
+    }
+}
+
+internal enum BridgeChallengeAnswerArgConverterKeepAlive {
+    case push((StringConverter.KeepAlive?))
+    case captcha((StringConverter.KeepAlive?))
+}
+
+internal enum DerivedArgConverterBridgeChallengeAnswer: NiceArgConverter {
+    typealias NiceArg = ChallengeAnswer
+    typealias FfiArg = SignalBridgeChallengeAnswerFfiArg
+    typealias KeepAlive = BridgeChallengeAnswerArgConverterKeepAlive
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+        case .push(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    StringConverter.FfiArg,
+                    StringConverter.KeepAlive?,
+                ) = StringConverter.convertArg(_0)
+
+            let ffiStructArg = SignalBridgeChallengeAnswerFfiArgSignalPush_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (StringConverter.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalBridgeChallengeAnswerFfiArg.init(
+                    tag: SignalBridgeChallengeAnswerFfiArgPush,
+                    .init(push: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .push($0) },
+            )
+
+        case .captcha(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    StringConverter.FfiArg,
+                    StringConverter.KeepAlive?,
+                ) = StringConverter.convertArg(_0)
+
+            let ffiStructArg = SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (StringConverter.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalBridgeChallengeAnswerFfiArg.init(
+                    tag: SignalBridgeChallengeAnswerFfiArgCaptcha,
+                    .init(captcha: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .captcha($0) },
+            )
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .push(
+            let _0,
+        ):
+
+            return try StringConverter.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalBridgeChallengeAnswerFfiArg.init(
+                        tag: SignalBridgeChallengeAnswerFfiArgPush,
+                        .init(
+                            push:
+                                SignalBridgeChallengeAnswerFfiArgSignalPush_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        case .captcha(
+            let _0,
+        ):
+
+            return try StringConverter.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalBridgeChallengeAnswerFfiArg.init(
+                        tag: SignalBridgeChallengeAnswerFfiArgCaptcha,
+                        .init(
+                            captcha:
+                                SignalBridgeChallengeAnswerFfiArgSignalCaptcha_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
 
         }
     }
@@ -4770,24 +5007,24 @@ internal enum DerivedArgConverterLoginReceiptLevel: NiceArgConverter {
     }
 }
 
-internal enum DerivedArgConverterPaymentProvider: NiceArgConverter {
+internal enum DerivedArgConverterPaymentProviderInternal: NiceArgConverter {
     typealias NiceArg = PaymentProvider
-    typealias FfiArg = SignalPaymentProviderFfiArg
+    typealias FfiArg = SignalPaymentProviderInternalFfiArg
     typealias KeepAlive = ()
     static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
         switch niceArg {
 
         case .googlePlayBilling:
-            return (SignalPaymentProviderFfiArgGooglePlayBilling, nil)
+            return (SignalPaymentProviderInternalFfiArgGooglePlayBilling, nil)
 
         case .appleAppStore:
-            return (SignalPaymentProviderFfiArgAppleAppStore, nil)
+            return (SignalPaymentProviderInternalFfiArgAppleAppStore, nil)
 
         case .stripe:
-            return (SignalPaymentProviderFfiArgStripe, nil)
+            return (SignalPaymentProviderInternalFfiArgStripe, nil)
 
         case .braintree:
-            return (SignalPaymentProviderFfiArgBraintree, nil)
+            return (SignalPaymentProviderInternalFfiArgBraintree, nil)
 
         }
     }
@@ -4798,22 +5035,50 @@ internal enum DerivedArgConverterPaymentProvider: NiceArgConverter {
         switch niceArg {
 
         case .googlePlayBilling:
-            return try niceThunk(SignalPaymentProviderFfiArgGooglePlayBilling)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgGooglePlayBilling)
 
         case .appleAppStore:
-            return try niceThunk(SignalPaymentProviderFfiArgAppleAppStore)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgAppleAppStore)
 
         case .stripe:
-            return try niceThunk(SignalPaymentProviderFfiArgStripe)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgStripe)
 
         case .braintree:
-            return try niceThunk(SignalPaymentProviderFfiArgBraintree)
+            return try niceThunk(SignalPaymentProviderInternalFfiArgBraintree)
 
         }
     }
 }
 
 internal enum NativeNice {
+    internal static func AuthenticatedChatConnection_answer_challenge(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        token: String,
+        answer: ChallengeAnswer,
+    ) async throws -> Bool {
+        let rawOutput: IdentityResultConverter<Bool>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        StringConverter.convertArgBorrowed(token) { tokenFfi in
+                            DerivedArgConverterBridgeChallengeAnswer.convertArgBorrowed(answer) { answerFfi in
+                                SignalFfi.signal_authenticated_chat_connection_answer_challenge(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    tokenFfi,
+                                    answerFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try IdentityResultConverter<Bool>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_clear_push_token(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -5109,6 +5374,33 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgePendingTotpKey.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_capabilities(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> [DeviceCapability] {
+        let rawOutput:
+            ArrayReturnConverter<
+                DerivedReturnConverterDeviceCapabilityInternal,
+                SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            SignalFfi.signal_authenticated_chat_connection_get_capabilities(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                            )
+                        }
+                }
+        return try ArrayReturnConverter<
+            DerivedReturnConverterDeviceCapabilityInternal,
+            SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_currency_conversions(
@@ -5942,6 +6234,75 @@ internal enum NativeNice {
         }
 
     }
+    internal static func Provisioning_EncryptProvisionMessage(
+        secondaryPublicKey secondary_public_key: Data,
+        provisionMessage provision_message: Data,
+    ) throws -> Data {
+        try FixedByteArrayConverter<FixedByteArrayHelper33>.convertArgBorrowed(secondary_public_key) {
+            secondary_public_keyFfi in
+            try DataConverter.convertArgBorrowed(provision_message) { provision_messageFfi in
+                var rawOutput = DataConverter.emptyFfiReturn()
+                try checkError(
+                    SignalFfi.signal_provisioning_encrypt_provision_message(
+                        &rawOutput,
+                        secondary_public_keyFfi,
+                        provision_messageFfi,
+                    )
+                )
+                return try DataConverter.convertReturn(consuming: rawOutput)
+            }
+        }
+
+    }
+    internal static func RecvProvisionCiphertextState_DecryptEnvelope(
+        state: RecvProvisionCiphertextState,
+        envelope: Data,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
+            .convertArgBorrowed(state) { stateFfi in
+                try DataConverter.convertArgBorrowed(envelope) { envelopeFfi in
+                    var rawOutput = DataConverter.emptyFfiReturn()
+                    try checkError(
+                        SignalFfi.signal_recv_provision_ciphertext_state_decrypt_envelope(
+                            &rawOutput,
+                            stateFfi,
+                            envelopeFfi,
+                        )
+                    )
+                    return try DataConverter.convertReturn(consuming: rawOutput)
+                }
+            }
+
+    }
+    internal static func RecvProvisionCiphertextState_Generate() throws -> RecvProvisionCiphertextState {
+        var rawOutput = BridgeHandleConverter<
+            SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_recv_provision_ciphertext_state_generate(
+                &rawOutput,
+            )
+        )
+        return try BridgeHandleConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
+            .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func RecvProvisionCiphertextState_GetPublicKey(
+        state: RecvProvisionCiphertextState,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
+            .convertArgBorrowed(state) { stateFfi in
+                var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper33>.emptyFfiReturn()
+                try checkError(
+                    SignalFfi.signal_recv_provision_ciphertext_state_get_public_key(
+                        &rawOutput,
+                        stateFfi,
+                    )
+                )
+                return try FixedByteArrayConverter<FixedByteArrayHelper33>.convertReturn(consuming: rawOutput)
+            }
+
+    }
     internal static func SvrKey_DeriveLoggingKey(
         svrKey svr_key: Data,
     ) throws -> Data {
@@ -6502,7 +6863,7 @@ internal enum NativeNice {
                 asyncContextFfi in
                 BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
                     .convertArgBorrowed(chat) { chatFfi in
-                        DerivedArgConverterPaymentProvider.convertArgBorrowed(payment_processor) {
+                        DerivedArgConverterPaymentProviderInternal.convertArgBorrowed(payment_processor) {
                             payment_processorFfi in
                             StringConverter.convertArgBorrowed(purchase_identifier) { purchase_identifierFfi in
                                 ByteArrayConverter<ReceiptCredentialRequestContext>.convertArgBorrowed(

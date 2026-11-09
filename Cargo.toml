@@ -1,22 +1,8 @@
 [workspace]
 # When adding new members, consider updating the log filter in rust/bridge/shared/src/logging.rs.
 members = [
-    "rust/attest",
-    "rust/crypto",
-    "rust/debug",
-    "rust/device-transfer",
-    "rust/keytrans",
-    "rust/media",
-    "rust/message-backup",
-    "rust/net",
-    "rust/net/chat",
-    "rust/net/infra",
     "rust/account-keys",
-    "rust/poksho",
-    "rust/protocol",
-    "rust/usernames",
-    "rust/zkcredential",
-    "rust/zkgroup",
+    "rust/attest",
     "rust/bridge/ffi",
     "rust/bridge/ffi/impl",
     "rust/bridge/ffi/native_swift",
@@ -26,6 +12,31 @@ members = [
     "rust/bridge/jni/testing",
     "rust/bridge/node",
     "rust/bridge/node/native_ts",
+    "rust/bridge/shared",
+    "rust/bridge/shared/macros",
+    "rust/bridge/shared/testing",
+    "rust/bridge/shared/types",
+    "rust/cli-utils",
+    "rust/core",
+    "rust/crypto",
+    "rust/debug",
+    "rust/device-transfer",
+    "rust/keytrans",
+    "rust/media",
+    "rust/message-backup",
+    "rust/message-backup/macros",
+    "rust/net",
+    "rust/net/chat",
+    "rust/net/grpc",
+    "rust/net/infra",
+    "rust/poksho",
+    "rust/protocol",
+    "rust/protocol/test-support",
+    "rust/provisioning",
+    "rust/svrb",
+    "rust/usernames",
+    "rust/zkcredential",
+    "rust/zkgroup",
 ]
 default-members = [
     "rust/crypto",
@@ -35,16 +46,18 @@ default-members = [
     "rust/account-keys",
     "rust/poksho",
     "rust/protocol",
+    "rust/provisioning",
     "rust/usernames",
     "rust/zkcredential",
     "rust/zkgroup",
 ]
-resolver = "2" # so that our dev-dependency features don't leak into products
+resolver = "3"
 
 [workspace.package]
-version = "0.105.1"
+version = "0.106.2"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
+edition = "2024"
 rust-version = "1.93.1"
 
 [workspace.lints.clippy]
@@ -73,6 +86,7 @@ libsignal-net-chat = { path = "rust/net/chat" }
 libsignal-net-grpc = { path = "rust/net/grpc" }
 libsignal-node = { path = "rust/bridge/node" }
 libsignal-protocol = { path = "rust/protocol" }
+libsignal-provisioning = { path = "rust/provisioning" }
 libsignal-svr2 = { path = "rust/svr2" }
 libsignal-svrb = { path = "rust/svrb" }
 poksho = { path = "rust/poksho" }
@@ -92,11 +106,12 @@ signal-neon-futures = { path = "rust/bridge/node/futures" }
 # Our forks of some dependencies, accessible as xxx_signal so that usages of them are obvious in source code. Crates
 # that want to use the real things can depend on those directly.
 
-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.2.0", package = "boring", default-features = false }
+boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.3.0", package = "boring", default-features = false }
 spqr = { git = "https://github.com/signalapp/SparsePostQuantumRatchet.git", tag = "v1.6.0" }
-tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.2.0", package = "tokio-boring" }
+tokio-boring-signal = { git = "https://github.com/signalapp/boring", tag = "signal-v5.3.0", package = "tokio-boring" }
 
 aes = "0.9.1"
+aes-gcm = "0.11.1"
 aes-gcm-siv = "0.12.0"
 anyhow = "1.0.97"
 arbitrary = "1.4.2"
@@ -158,6 +173,7 @@ itertools = "0.15.0"
 jni = "0.22.4"
 libc = "0.2.186"
 libcrux-ml-kem = { version = "0.0.10", default-features = false }
+libcrux-sha3 = "0.0.10"
 linkme = "0.3.33"
 log = "0.4.21"
 macro_rules_attribute = "0.2.0"
@@ -194,7 +210,7 @@ rand_core = "0.9"
 rand_distr = "0.5.1"
 rangemap = "1.5.1"
 rayon = "1.8.0"
-rcgen = "0.14.0"
+rcgen = "0.14.8"
 ref-cast = "1.0.25"
 rustls = { version = "0.23.46", default-features = false }
 rustls-platform-verifier = "0.7.1"
@@ -218,7 +234,7 @@ test-log = "0.2.16"
 testing_logger = "0.1.1"
 thiserror = "2.0.18"
 tls-parser = "0.12.2"
-tokio = "1.52.2"
+tokio = "1.54"
 tokio-socks = "0.5.2"
 tokio-stream = "0.1.16"
 tokio-tungstenite = "0.29.0"
@@ -241,8 +257,8 @@ zeroize = "1.8.2"
 [patch.crates-io]
 # When building libsignal, just use our forks so we don't end up with two different versions of the libraries.
 
-boring = { git = 'https://github.com/signalapp/boring', tag = "signal-v5.2.0" }
-boring-sys = { git = 'https://github.com/signalapp/boring', tag = "signal-v5.2.0" }
+boring = { git = 'https://github.com/signalapp/boring', tag = "signal-v5.3.0" }
+boring-sys = { git = 'https://github.com/signalapp/boring', tag = "signal-v5.3.0" }
 
 [profile.dev.package.argon2]
 opt-level = 2 # libsignal-account-keys unit tests are too slow with an unoptimized argon2

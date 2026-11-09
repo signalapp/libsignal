@@ -7,9 +7,9 @@
 name = "usernames"
 authors.workspace = true
 license.workspace = true
-rust-version = "1.85"
 version = "0.1.0"
-edition = "2024"
+edition.workspace = true
+rust-version.workspace = true
 description = "A zero-knowledge usernames library"
 
 [lints]

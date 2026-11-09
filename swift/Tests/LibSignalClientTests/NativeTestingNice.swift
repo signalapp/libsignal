@@ -690,40 +690,6 @@ extension SignalOwnedBufferOfMaxAlignedChargeFailureFfiResult: SignalOwnedBuffer
 
 }
 
-extension SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult: SignalOwnedBufferOfMaxAligned {
-
-    public typealias Element = SignalDeviceCapabilityInternalFfiResult
-
-    public init(
-        generic_base: SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult?,
-        generic_length: size_t,
-        generic_size_bytes: size_t,
-    ) {
-        self.init(
-            base: generic_base,
-            length: generic_length,
-            size_bytes: generic_size_bytes,
-
-        )
-    }
-
-    public var generic_base: SignalType_MutPointer_SignalDeviceCapabilityInternalFfiResult? {
-        get { self.base }
-        set { base = newValue }
-    }
-
-    public var generic_length: size_t {
-        get { self.length }
-        set { length = newValue }
-    }
-
-    public var generic_size_bytes: size_t {
-        get { self.size_bytes }
-        set { size_bytes = newValue }
-    }
-
-}
-
 extension SignalPairOfCStringPtrMySimpleTestEnumFfiArg: SignalPairOf {
 
     public typealias First = SignalCStringPtr?
@@ -1038,6 +1004,12 @@ internal enum FixedByteArrayHelper473: FixedByteArrayHelper {
     }
 }
 
+internal struct AnswerChallengeArgs {
+    var token: String
+    var answer: ChallengeAnswer
+
+}
+
 internal struct CheckSvrCredentialsArgs {
     var number: String
     var passwords: [String]
@@ -1135,6 +1107,11 @@ internal enum GenerateTotpKeyOut {
     case success(BridgePendingTotpKey)
     case tooManyTotpKeys
     case tooManyMfaKeys
+}
+
+internal enum GetCapabilitiesOut {
+    case success([DeviceCapability])
+    case malformed
 }
 
 internal enum GetCdnCredentialsOut {
@@ -1484,6 +1461,23 @@ extension ProfileKeyCredentialRequestError: Equatable {}
 
 extension ReceiptCredentialError: Equatable {}
 
+internal enum DerivedReturnConverterAnswerChallengeArgs: NiceReturnConverter {
+    typealias NiceReturn = AnswerChallengeArgs
+    typealias FfiReturn = SignalAnswerChallengeArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalAnswerChallengeArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let token = Result { try StringConverter.convertReturn(consuming: ffiValue.token) }
+        let answer = Result {
+            try DerivedReturnConverterBridgeChallengeAnswer.convertReturn(consuming: ffiValue.answer)
+        }
+
+        return AnswerChallengeArgs(token: try token.get(), answer: try answer.get())
+    }
+}
+
 internal enum DerivedReturnConverterBadgeVisibility: NiceReturnConverter {
     typealias NiceReturn = BadgeVisibility
     typealias FfiReturn = SignalBadgeVisibilityFfiResult
@@ -1501,6 +1495,35 @@ internal enum DerivedReturnConverterBadgeVisibility: NiceReturnConverter {
             return BadgeVisibility.setPrimary
         default:
             throw SignalError.internalError("Unexpected enum tag for BadgeVisibility: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterBridgeChallengeAnswer: NiceReturnConverter {
+    typealias NiceReturn = ChallengeAnswer
+    typealias FfiReturn = SignalBridgeChallengeAnswerFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeChallengeAnswerFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalBridgeChallengeAnswerFfiResultPush:
+            let _0 = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.push._0
+                )
+            }
+            return ChallengeAnswer.push(try _0.get())
+        case SignalBridgeChallengeAnswerFfiResultCaptcha:
+            let _0 = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.captcha._0
+                )
+            }
+            return ChallengeAnswer.captcha(try _0.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for BridgeChallengeAnswer: \(ffiTag)")
         }
     }
 }
@@ -1885,7 +1908,7 @@ internal enum DerivedReturnConverterCreateLoginReceiptCredentialArgs: NiceReturn
     static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
 
         let payment_processor = Result {
-            try DerivedReturnConverterPaymentProvider.convertReturn(consuming: ffiValue.payment_processor)
+            try DerivedReturnConverterPaymentProviderInternal.convertReturn(consuming: ffiValue.payment_processor)
         }
         let purchase_identifier = Result { try StringConverter.convertReturn(consuming: ffiValue.purchase_identifier) }
         let receipt_credential_request_context = Result {
@@ -1972,35 +1995,6 @@ internal enum DerivedReturnConverterDeleteBackupMediaOut: NiceReturnConverter {
             return DeleteBackupMediaOut.credentialRejectedWithoutAppropriateServerInfo
         default:
             throw SignalError.internalError("Unexpected enum tag for DeleteBackupMediaOut: \(ffiTag)")
-        }
-    }
-}
-
-internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverter {
-    typealias NiceReturn = DeviceCapability
-    typealias FfiReturn = SignalDeviceCapabilityInternalFfiResult
-    static func emptyFfiReturn() -> FfiReturn {
-        SignalDeviceCapabilityInternalFfiResult(0)
-    }
-    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
-        let ffiTag = ffiValue
-        switch ffiTag {
-        case SignalDeviceCapabilityInternalFfiResultStorage:
-            return DeviceCapability.storage
-        case SignalDeviceCapabilityInternalFfiResultTransfer:
-            return DeviceCapability.transfer
-        case SignalDeviceCapabilityInternalFfiResultAttachmentBackfill:
-            return DeviceCapability.attachmentBackfill
-        case SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet:
-            return DeviceCapability.sparsePostQuantumRatchet
-        case SignalDeviceCapabilityInternalFfiResultProfilesV2:
-            return DeviceCapability.profilesV2
-        case SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage:
-            return DeviceCapability.usernameChangeSyncMessage
-        case SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber:
-            return DeviceCapability.optionalPhoneNumber
-        default:
-            throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
         }
     }
 }
@@ -2100,6 +2094,33 @@ internal enum DerivedReturnConverterGenerateTotpKeyOut: NiceReturnConverter {
             return GenerateTotpKeyOut.tooManyMfaKeys
         default:
             throw SignalError.internalError("Unexpected enum tag for GenerateTotpKeyOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetCapabilitiesOut: NiceReturnConverter {
+    typealias NiceReturn = GetCapabilitiesOut
+    typealias FfiReturn = SignalGetCapabilitiesOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetCapabilitiesOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetCapabilitiesOutFfiResultSuccess:
+            let _0 = Result {
+                try ArrayReturnConverter<
+                    DerivedReturnConverterDeviceCapabilityInternal,
+                    SignalOwnedBufferOfMaxAlignedDeviceCapabilityInternalFfiResult
+                >.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetCapabilitiesOut.success(try _0.get())
+        case SignalGetCapabilitiesOutFfiResultMalformed:
+            return GetCapabilitiesOut.malformed
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetCapabilitiesOut: \(ffiTag)")
         }
     }
 }
@@ -4162,6 +4183,19 @@ internal enum DerivedArgConverterMyTestStruct: NiceArgConverter {
 }
 
 internal enum NativeTestingNice {
+    internal static func TESTING_AnswerChallengeTests() throws -> [GrpcTestCase<AnswerChallengeArgs, Bool>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterAnswerChallengeArgs, IdentityResultConverter<Bool>
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_answer_challenge_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterAnswerChallengeArgs, IdentityResultConverter<Bool>>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_BackupDeleteAllTests() throws -> [GrpcTestCase<Void, SimpleBackupTestOut>] {
         var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterSimpleBackupTestOut>
             .emptyFfiReturn()
@@ -4479,6 +4513,19 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetSvrBCredentialsOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_GetCapabilitiesTests() throws -> [GrpcTestCase<Void, GetCapabilitiesOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetCapabilitiesOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_capabilities_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetCapabilitiesOut>.convertReturn(
             consuming: rawOutput
         )
 

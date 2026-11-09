@@ -669,7 +669,7 @@ For more information on this, and how to apply and follow the GNU AGPL, see
 
 ```
 
-## libsignal-account-keys, attest, libsignal-node, signal-neon-futures, libsignal-bridge, libsignal-bridge-macros, libsignal-bridge-testing, libsignal-bridge-types, libsignal-core, signal-crypto, libsignal-debug, device-transfer, libsignal-keytrans, signal-media, libsignal-message-backup, libsignal-message-backup-macros, libsignal-net, libsignal-net-chat, libsignal-net-grpc, libsignal-net-infra, poksho, libsignal-protocol, libsignal-svrb, usernames, zkcredential, zkgroup
+## libsignal-account-keys, attest, libsignal-node, signal-neon-futures, libsignal-bridge, libsignal-bridge-macros, libsignal-bridge-testing, libsignal-bridge-types, libsignal-core, signal-crypto, libsignal-debug, device-transfer, libsignal-keytrans, signal-media, libsignal-message-backup, libsignal-message-backup-macros, libsignal-net, libsignal-net-chat, libsignal-net-grpc, libsignal-net-infra, poksho, libsignal-protocol, libsignal-provisioning, libsignal-svrb, usernames, zkcredential, zkgroup
 
 ```
 GNU AFFERO GENERAL PUBLIC LICENSE
@@ -1301,7 +1301,7 @@ You should also get your employer (if you work as a programmer) or school, if an
 
 ```
 
-## boring-sys 5.2.0
+## boring-sys 5.3.0
 
 ```
 
@@ -2836,7 +2836,7 @@ limitations under the License.
 
 ```
 
-## boring 5.2.0
+## boring 5.3.0
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -3184,7 +3184,7 @@ THIS SOFTWARE.
 
 ```
 
-## rustls-webpki 0.103.15
+## rustls-webpki 0.103.16
 
 ```
 Except as otherwise noted, this project is licensed under the following
@@ -3450,7 +3450,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 5.2.0
+## boring-sys 5.3.0
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -4297,7 +4297,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tokio-boring 5.2.0
+## tokio-boring 5.3.0
 
 ```
 Copyright (c) 2016 Tokio contributors
@@ -5659,7 +5659,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## chacha20 0.10.2, chacha20poly1305 0.11.0, ghash 0.6.0, polyval 0.7.3, zeroize_derive 1.5.0
+## aes-gcm 0.11.1, chacha20 0.10.2, chacha20poly1305 0.11.0, ghash 0.6.0, polyval 0.7.3, zeroize_derive 1.5.0
 
 ```
 Copyright (c) 2019-2026 The RustCrypto Project Developers
@@ -6308,7 +6308,7 @@ THE SOFTWARE.
 
 ```
 
-## ctutils 0.4.2
+## ctutils 0.4.5
 
 ```
 Copyright (c) 2025-2026 The RustCrypto Project Developers
@@ -7153,7 +7153,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tokio-stream 0.1.18, tokio-util 0.7.18, tokio 1.52.3
+## tokio-stream 0.1.18, tokio-util 0.7.18, tokio 1.54.1
 
 ```
 MIT License

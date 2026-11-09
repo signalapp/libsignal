@@ -9,7 +9,8 @@ use rand::{CryptoRng, Rng};
 
 use crate::protocol::CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION;
 use crate::ratchet::{AliceSignalProtocolParameters, BobSignalProtocolParameters};
-use crate::state::GenericSignedPreKey;
+use crate::state::{GenericSignedPreKey, SessionState};
+use crate::tahini::NewSessionLocation;
 use crate::{
     CiphertextMessageType, Direction, IdentityKey, IdentityKeyStore, KeyPair, KyberPreKeyId,
     KyberPreKeyStore, PreKeyBundle, PreKeyId, PreKeySignalMessage, PreKeyStore, ProtocolAddress,
@@ -23,15 +24,35 @@ pub struct PreKeysUsed {
     pub kyber_pre_key_id: Option<KyberPreKeyId>,
 }
 
-/// Expected [`IdentityKeyStore`] change when [`process_prekey`] succeeds.
+/// Expected [`IdentityKeyStore`] change when [`build_prekey_session`] succeeds.
 ///
 /// This represents a deferred action. Assuming later operations succeed, the
-/// caller of `process_prekey` should apply this to the `IdentityKeyStore` that
-/// was provided.
+/// caller should apply this to the `IdentityKeyStore` that was provided.
 #[must_use]
 pub struct IdentityToSave<'a> {
     pub remote_address: &'a ProtocolAddress,
     pub their_identity_key: &'a IdentityKey,
+}
+
+/// A new Bob-side session derived from an incoming PreKey envelope, *not yet
+/// installed* in the [`SessionRecord`].
+///
+/// Returned by [`build_prekey_session`]. The caller is expected to AEAD-verify
+/// the inner [`crate::SignalMessage`] against [`state`](Self::state) and only
+/// commit the candidate to the record on success — see
+/// [`crate::tahini::commit_received_initiation`]. This enforces the protocol
+/// invariant that a session is committed only after AEAD verification.
+#[must_use]
+pub(crate) struct PreKeySessionCandidate {
+    /// The freshly-derived session state. Mutate in place via
+    /// `try_decrypt_with_session`; the post-decrypt state is what gets installed.
+    pub state: SessionState,
+    /// Where this session lands in the record (active vs archive_0) per the
+    /// Tahini tiebreaker.
+    pub placement: NewSessionLocation,
+    /// Pre-keys consumed by deriving this session. Should be marked
+    /// used/removed only after AEAD success.
+    pub pre_keys_used: PreKeysUsed,
 }
 
 /*
@@ -43,16 +64,31 @@ its reference to the various data stores, instead the functions are
 free standing.
  */
 
-pub async fn process_prekey<'a>(
+/// Build (but do not install) a Bob-side session from an incoming PreKey
+/// envelope.
+///
+/// Cryptographic property: this function performs the trust check and the
+/// PQXDH handshake but **does not mutate `session_record`** and **does not
+/// consume any pre-keys**. The returned [`PreKeySessionCandidate`] (if any)
+/// must be AEAD-verified against the inner SignalMessage before being
+/// committed via [`crate::tahini::commit_received_initiation`]. This enforces
+/// the protocol invariant that a session is only valid once AEAD decrypts.
+///
+/// The caller must confirm there is no existing session for the incoming base
+/// key before calling this (a retransmitted PreKey for an existing session is
+/// decrypted against that session, not rebuilt). Returns
+/// `Ok((candidate, identity_to_save))` for the new session, or `Err` for trust
+/// failure / malformed handshake.
+pub(crate) async fn build_prekey_session<'a>(
     message: &'a PreKeySignalMessage,
     remote_address: &'a ProtocolAddress,
     local_address: &ProtocolAddress,
-    session_record: &mut SessionRecord,
+    session_record: &SessionRecord,
     identity_store: &dyn IdentityKeyStore,
     pre_key_store: &dyn PreKeyStore,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
-) -> Result<(Option<PreKeysUsed>, IdentityToSave<'a>)> {
+) -> Result<(PreKeySessionCandidate, IdentityToSave<'a>)> {
     let their_identity_key = message.identity_key();
 
     if !identity_store
@@ -64,7 +100,7 @@ pub async fn process_prekey<'a>(
         ));
     }
 
-    let pre_keys_used = process_prekey_impl(
+    let candidate = build_prekey_session_inner(
         message,
         remote_address,
         local_address,
@@ -81,46 +117,22 @@ pub async fn process_prekey<'a>(
         their_identity_key,
     };
 
-    Ok((pre_keys_used, identity_to_save))
+    Ok((candidate, identity_to_save))
 }
 
-async fn process_prekey_impl(
+async fn build_prekey_session_inner(
     message: &PreKeySignalMessage,
     remote_address: &ProtocolAddress,
     local_address: &ProtocolAddress,
-    session_record: &mut SessionRecord,
+    session_record: &SessionRecord,
     signed_prekey_store: &dyn SignedPreKeyStore,
     kyber_prekey_store: &dyn KyberPreKeyStore,
     pre_key_store: &dyn PreKeyStore,
     identity_store: &dyn IdentityKeyStore,
-) -> Result<Option<PreKeysUsed>> {
-    if session_record.promote_matching_session(
-        message.message_version() as u32,
-        &message.base_key().serialize(),
-    )? {
-        // We've already set up a session for this message, we can exit early as long as the
-        // identity key hasn't changed. (Note that this is a constant-time comparison as long as the
-        // keys have the same type: see PublicKey's PartialEq.)
-        if !session_record
-            .session_state()
-            .expect("just promoted a session")
-            .remote_identity_key()?
-            .is_some_and(|stored| *message.identity_key() == stored)
-        {
-            // We return this as InvalidMessage rather than any other error because there's no
-            // expected recovery; barring data corruption, the peer has just decided to send us the
-            // wrong identity key for no apparent reason. (Of course, it's possible it's the local
-            // state that's wrong, but that's true for the eventual MAC check as well.)
-            return Err(SignalProtocolError::InvalidMessage(
-                CiphertextMessageType::PreKey,
-                "remote identity key not consistent with previously-established session".to_owned(),
-            ));
-        }
-        return Ok(None);
-    }
+) -> Result<PreKeySessionCandidate> {
+    // The incoming PreKey message's base (ephemeral) key serves as the session ID.
+    let incoming_session_id = message.base_key().serialize();
 
-    // Check this *after* looking for an existing session; since we have already performed XDH for
-    // such a session, enforcing PQXDH *now* would be silly.
     if message.message_version() == CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION {
         // Specifically return InvalidMessage here rather than LegacyCiphertextVersion; the Signal
         // Android app treats LegacyCiphertextVersion as a structural issue rather than a retryable
@@ -185,14 +197,25 @@ async fn process_prekey_impl(
     new_session.set_local_registration_id(identity_store.get_local_registration_id().await?);
     new_session.set_remote_registration_id(message.registration_id());
 
-    session_record.promote_state(new_session);
+    // Pure placement decision based on current record state. Commit happens
+    // only after AEAD verification, in the caller.
+    let placement = crate::tahini::decide_initiation_placement(
+        session_record,
+        &incoming_session_id,
+        message.identity_key(),
+    )?;
 
     let pre_keys_used = PreKeysUsed {
         one_time_ec_pre_key_id: message.pre_key_id(),
         signed_ec_pre_key_id: message.signed_pre_key_id(),
         kyber_pre_key_id: message.kyber_pre_key_id(),
     };
-    Ok(Some(pre_keys_used))
+
+    Ok(PreKeySessionCandidate {
+        state: new_session,
+        placement,
+        pre_keys_used,
+    })
 }
 
 pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
@@ -282,7 +305,7 @@ pub async fn process_prekey_bundle<R: Rng + CryptoRng>(
         .save_identity(remote_address, their_identity_key)
         .await?;
 
-    session_record.promote_state(session);
+    crate::tahini::on_initiate(&mut session_record, session);
 
     session_store
         .store_session(remote_address, &session_record)

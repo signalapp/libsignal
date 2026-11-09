@@ -5,20 +5,26 @@
 
 use assert_matches::assert_matches;
 use libsignal_protocol_cross_version_testing::*;
+use rand::SeedableRng as _;
+use rand::rngs::StdRng;
+
+// OS-seeded so each run exercises different key material; swap for
+// `StdRng::seed_from_u64(N)` to reproduce a specific run.
 
 #[test]
 fn test_alice_lacks_spqr() {
+    let mut rng = StdRng::from_os_rng();
     let alice_name = "alice";
     let bob_name = "bob";
-    let mut alice_store = Box::new(LibSignalProtocolV73::new());
-    let mut bob_store = Box::new(LibSignalProtocolCurrent::new());
+    let mut alice_store = Box::new(LibSignalProtocolV73::new(&mut rng));
+    let mut bob_store = Box::new(LibSignalProtocolCurrent::new(&mut rng));
 
-    let bob_pre_key_bundle = bob_store.create_pre_key_bundle();
-    alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle);
+    let bob_pre_key_bundle = bob_store.create_pre_key_bundle(&mut rng);
+    alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle, &mut rng);
 
     let original_message = "L'homme est condamné à être libre".as_bytes();
     let (outgoing_message, outgoing_message_type) =
-        alice_store.encrypt(bob_name, alice_name, original_message);
+        alice_store.encrypt(bob_name, alice_name, original_message, &mut rng);
 
     let err = bob_store
         .decrypt(
@@ -26,6 +32,7 @@ fn test_alice_lacks_spqr() {
             bob_name,
             &outgoing_message,
             outgoing_message_type,
+            &mut rng,
         )
         .expect_err("decryption should fail");
     assert_matches!(
@@ -41,17 +48,18 @@ fn test_alice_lacks_spqr() {
 
 #[test]
 fn test_bob_lacks_spqr() {
+    let mut rng = StdRng::from_os_rng();
     let alice_name = "alice";
     let bob_name = "bob";
-    let mut alice_store = Box::new(LibSignalProtocolCurrent::new());
-    let mut bob_store = Box::new(LibSignalProtocolV73::new());
+    let mut alice_store = Box::new(LibSignalProtocolCurrent::new(&mut rng));
+    let mut bob_store = Box::new(LibSignalProtocolV73::new(&mut rng));
 
-    let bob_pre_key_bundle = bob_store.create_pre_key_bundle();
-    alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle);
+    let bob_pre_key_bundle = bob_store.create_pre_key_bundle(&mut rng);
+    alice_store.process_pre_key_bundle(bob_name, alice_name, bob_pre_key_bundle, &mut rng);
 
     let original_message = "L'homme est condamné à être libre".as_bytes();
     let (outgoing_message, outgoing_message_type) =
-        alice_store.encrypt(bob_name, alice_name, original_message);
+        alice_store.encrypt(bob_name, alice_name, original_message, &mut rng);
 
     let err = bob_store
         .decrypt(
@@ -59,6 +67,7 @@ fn test_bob_lacks_spqr() {
             bob_name,
             &outgoing_message,
             outgoing_message_type,
+            &mut rng,
         )
         .expect_err("decryption should fail");
     assert_matches!(

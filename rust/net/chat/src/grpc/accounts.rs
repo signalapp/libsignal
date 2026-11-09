@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use std::collections::HashSet;
 use std::convert::Infallible;
 use std::time::{Duration, SystemTime};
 
@@ -16,8 +17,9 @@ use libsignal_net_grpc::proto::chat::account::{
     ConfirmTotpKeyResponse, DeleteAccountRequest, DeleteAccountResponse,
     FinishMfaVerificationRequest, FinishMfaVerificationResponse, FinishWebAuthnRegistrationRequest,
     FinishWebAuthnRegistrationResponse, GenerateTotpKeyRequest, GenerateTotpKeyResponse,
-    GetEntitlementsRequest, GetEntitlementsResponse, ListMfaKeysRequest, ListMfaKeysResponse,
-    RemoveMfaKeyRequest, RemoveMfaKeyResponse, SetDiscoverableByPhoneNumberRequest,
+    GetCapabilitiesRequest, GetCapabilitiesResponse, GetEntitlementsRequest,
+    GetEntitlementsResponse, ListMfaKeysRequest, ListMfaKeysResponse, RemoveMfaKeyRequest,
+    RemoveMfaKeyResponse, SetDiscoverableByPhoneNumberRequest,
     SetDiscoverableByPhoneNumberResponse, SetMfaKeyMetadataRequest, SetMfaKeyMetadataResponse,
     SetRegistrationLockRequest, SetRegistrationLockResponse,
     SetRegistrationRecoveryPasswordRequest, SetRegistrationRecoveryPasswordResponse,
@@ -27,9 +29,15 @@ use libsignal_net_grpc::proto::chat::account::{
     finish_web_authn_registration_response, generate_totp_key_response, list_mfa_keys_response,
     set_mfa_key_metadata_response, start_web_authn_registration_response,
 };
+use libsignal_net_grpc::proto::chat::challenge::answer_challenge_request::{
+    self, AnswerCaptchaChallengeRequest, AnswerPushChallengeRequest,
+};
+use libsignal_net_grpc::proto::chat::challenge::challenge_client::ChallengeClient;
+use libsignal_net_grpc::proto::chat::challenge::{AnswerChallengeRequest, AnswerChallengeResponse};
 use libsignal_net_grpc::proto::chat::errors;
 
 use crate::api::{Auth, RequestError};
+use crate::grpc::devices::DeviceCapability;
 use crate::grpc::{GrpcServiceProvider, GrpcTestCase, log_and_send};
 use crate::logging::Redact;
 
@@ -295,6 +303,11 @@ impl TryFrom<libsignal_net_grpc::proto::chat::account::get_entitlements_response
     }
 }
 
+pub enum ChallengeAnswer {
+    Push(String),
+    Captcha(String),
+}
+
 fn parse_mfa_key_id<E>(key_id: u32) -> Result<MfaKeyId, RequestError<E>> {
     MfaKeyId::try_from(key_id).map_err(|e| RequestError::Unexpected {
         log_safe: e.to_string(),
@@ -496,6 +509,30 @@ impl std::fmt::Display for Redact<GetEntitlementsRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(GetEntitlementsRequest {}) = self;
         f.debug_struct("GetEntitlementsRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<GetCapabilitiesRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(GetCapabilitiesRequest {}) = self;
+        f.debug_struct("GetCapabilitiesRequest").finish()
+    }
+}
+
+impl std::fmt::Display for Redact<AnswerChallengeRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(AnswerChallengeRequest { token, request }) = self;
+        f.debug_struct("AnswerChallengeRequest")
+            .field("token.len", &token.len())
+            .field(
+                "request",
+                &match request {
+                    Some(answer_challenge_request::Request::Push(_)) => "push",
+                    Some(answer_challenge_request::Request::Captcha(_)) => "captcha",
+                    None => "<missing>",
+                },
+            )
+            .finish()
     }
 }
 
@@ -1027,6 +1064,74 @@ impl<T: GrpcServiceProvider> Auth<T> {
             backup: backup.map(TryInto::try_into).transpose()?,
         })
     }
+
+    /// Gets the capabilities of the authenticated account.
+    ///
+    /// Capabilities that are not recognized are filtered out.
+    pub async fn get_capabilities(
+        &self,
+    ) -> Result<HashSet<DeviceCapability>, RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = GetCapabilitiesRequest {};
+        let desc = Redact(&request).to_string();
+        let GetCapabilitiesResponse { capabilities } =
+            log_and_send(Self::LOG_TAG, &desc, || client.get_capabilities(request))
+                .await?
+                .into_inner();
+        let capabilities = capabilities.ok_or_else(|| RequestError::Unexpected {
+            log_safe: "missing capabilities".to_owned(),
+        })?;
+        // prost already filters out values that aren't in the proto enum:
+        // https://github.com/tokio-rs/prost/blob/v0.14.4/prost-derive/src/field/scalar.rs#L328-L344
+        let converted = capabilities
+            .capabilities()
+            .filter_map(|capability| DeviceCapability::try_from(capability).ok())
+            .collect::<HashSet<_>>();
+        if capabilities.capabilities.len() != converted.len() {
+            use libsignal_net_grpc::proto::chat::common::DeviceCapability as GrpcDeviceCapability;
+            let server_values = capabilities
+                .capabilities
+                .iter()
+                .copied()
+                .collect::<HashSet<_>>();
+            let supported_values = converted
+                .iter()
+                .map(|x| GrpcDeviceCapability::from(*x) as i32)
+                .collect::<HashSet<_>>();
+            let diff = server_values.difference(&supported_values);
+            log::warn!("Unsupported capabilities in server response: {:?}", diff);
+        }
+        Ok(converted)
+    }
+
+    pub async fn answer_challenge(
+        &self,
+        token: String,
+        answer: ChallengeAnswer,
+    ) -> Result<bool, RequestError<Infallible>> {
+        let mut client = ChallengeClient::new(self.0.service());
+        let request = AnswerChallengeRequest {
+            token,
+            request: Some(match answer {
+                ChallengeAnswer::Push(challenge) => {
+                    answer_challenge_request::Request::Push(AnswerPushChallengeRequest {
+                        challenge,
+                    })
+                }
+                ChallengeAnswer::Captcha(captcha) => {
+                    answer_challenge_request::Request::Captcha(AnswerCaptchaChallengeRequest {
+                        captcha,
+                    })
+                }
+            }),
+        };
+        let desc = Redact(&request).to_string();
+        let AnswerChallengeResponse { success } =
+            log_and_send(Self::LOG_TAG, &desc, || client.answer_challenge(request))
+                .await?
+                .into_inner();
+        Ok(success)
+    }
 }
 
 // Not cfg(test) so it can be accessed via bridging tests.
@@ -1034,8 +1139,10 @@ impl<T: GrpcServiceProvider> Auth<T> {
 pub mod test_cases {
     use libsignal_account_keys::MFA_METADATA_CIPHERTEXT_LEN;
     use libsignal_net_grpc::proto::chat::account::{
-        finish_mfa_verification_request, get_entitlements_response, start_mfa_verification_response,
+        Capabilities, finish_mfa_verification_request, get_entitlements_response,
+        start_mfa_verification_response,
     };
+    use libsignal_net_grpc::proto::chat::common::DeviceCapability as GrpcDeviceCapability;
     use libsignal_protocol::Timestamp;
 
     use super::*;
@@ -2004,6 +2111,127 @@ pub mod test_cases {
             },
         ]
     }
+
+    pub enum GetCapabilitiesOut {
+        Success(Vec<DeviceCapability>),
+        Malformed,
+    }
+
+    pub fn get_capabilities_test_cases()
+    -> Vec<GrpcTestCase<(), GetCapabilitiesRequest, GetCapabilitiesResponse, GetCapabilitiesOut>>
+    {
+        let method = "/org.signal.chat.account.Accounts/GetCapabilities";
+        vec![
+            GrpcTestCase {
+                name: "success".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetCapabilitiesRequest {},
+                response_grpc: GetCapabilitiesResponse {
+                    capabilities: Some(Capabilities {
+                        capabilities: vec![
+                            GrpcDeviceCapability::SparsePostQuantumRatchet.into(),
+                            GrpcDeviceCapability::AttachmentBackfill.into(),
+                            GrpcDeviceCapability::ProfilesV2.into(),
+                        ],
+                    }),
+                },
+                response: GetCapabilitiesOut::Success(vec![
+                    DeviceCapability::SparsePostQuantumRatchet,
+                    DeviceCapability::AttachmentBackfill,
+                    DeviceCapability::ProfilesV2,
+                ]),
+            },
+            GrpcTestCase {
+                name: "no capabilities".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetCapabilitiesRequest {},
+                response_grpc: GetCapabilitiesResponse {
+                    capabilities: Some(Capabilities {
+                        capabilities: vec![],
+                    }),
+                },
+                response: GetCapabilitiesOut::Success(vec![]),
+            },
+            GrpcTestCase {
+                name: "unrecognized capabilities are omitted".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetCapabilitiesRequest {},
+                response_grpc: GetCapabilitiesResponse {
+                    capabilities: Some(Capabilities {
+                        capabilities: vec![
+                            GrpcDeviceCapability::Unspecified.into(),
+                            GrpcDeviceCapability::UsernameChangeSyncMessage.into(),
+                            // An unknown capability
+                            1000,
+                        ],
+                    }),
+                },
+                response: GetCapabilitiesOut::Success(vec![
+                    DeviceCapability::UsernameChangeSyncMessage,
+                ]),
+            },
+            GrpcTestCase {
+                name: "missing capabilities".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetCapabilitiesRequest {},
+                response_grpc: GetCapabilitiesResponse { capabilities: None },
+                response: GetCapabilitiesOut::Malformed,
+            },
+        ]
+    }
+
+    pub struct AnswerChallengeArgs {
+        pub token: String,
+        pub answer: ChallengeAnswer,
+    }
+
+    pub fn answer_challenge_test_cases()
+    -> Vec<GrpcTestCase<AnswerChallengeArgs, AnswerChallengeRequest, AnswerChallengeResponse, bool>>
+    {
+        let method = "/org.signal.chat.challenge.Challenge/AnswerChallenge";
+        vec![
+            GrpcTestCase {
+                name: "success push".to_string(),
+                method: method.to_string(),
+                request: AnswerChallengeArgs {
+                    token: "token".to_owned(),
+                    answer: ChallengeAnswer::Push("push".to_owned()),
+                },
+                request_grpc: AnswerChallengeRequest {
+                    token: "token".to_owned(),
+                    request: Some(answer_challenge_request::Request::Push(
+                        AnswerPushChallengeRequest {
+                            challenge: "push".to_owned(),
+                        },
+                    )),
+                },
+                response_grpc: AnswerChallengeResponse { success: true },
+                response: true,
+            },
+            GrpcTestCase {
+                name: "failure captcha".to_string(),
+                method: method.to_string(),
+                request: AnswerChallengeArgs {
+                    token: "token".to_owned(),
+                    answer: ChallengeAnswer::Captcha("captcha".to_owned()),
+                },
+                request_grpc: AnswerChallengeRequest {
+                    token: "token".to_owned(),
+                    request: Some(answer_challenge_request::Request::Captcha(
+                        AnswerCaptchaChallengeRequest {
+                            captcha: "captcha".to_owned(),
+                        },
+                    )),
+                },
+                response_grpc: AnswerChallengeResponse { success: false },
+                response: false,
+            },
+        ]
+    }
 }
 
 #[cfg(test)]
@@ -2699,6 +2927,37 @@ mod test {
                 GetEntitlementsOut::Malformed => {
                     assert_matches!(result, Err(RequestError::Unexpected { log_safe: _ }))
                 }
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_capabilities() {
+        use test_cases::*;
+        run_tests(
+            get_capabilities_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.get_capabilities().await },
+            |expected, result| match expected {
+                GetCapabilitiesOut::Success(expected) => {
+                    assert_eq!(HashSet::from_iter(expected), result.expect("success"))
+                }
+                GetCapabilitiesOut::Malformed => {
+                    assert_matches!(result, Err(RequestError::Unexpected { log_safe: _ }))
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_answer_challenge() {
+        use test_cases::*;
+        run_tests(
+            answer_challenge_test_cases(),
+            |chat: Auth<_>, AnswerChallengeArgs { token, answer }| async move {
+                chat.answer_challenge(token, answer).await
+            },
+            |expected, result| {
+                assert_eq!(expected, result.expect("success"));
             },
         );
     }

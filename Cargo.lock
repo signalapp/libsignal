@@ -75,6 +75,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "aes-gcm"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f2b8006a0c83f52b62ba44a97b58bf76fe2f70a329e588f67f89691d93d498f"
+dependencies = [
+ "aead 0.6.1",
+ "aes 0.9.1",
+ "cipher 0.5.2",
+ "ctr 0.10.1",
+ "ctutils",
+ "ghash 0.6.0",
+]
+
+[[package]]
 name = "aes-gcm-siv"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -501,8 +515,8 @@ dependencies = [
 
 [[package]]
 name = "boring"
-version = "5.2.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v5.2.0#1405df0a23a0335618f88ed328c76f67646b088f"
+version = "5.3.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v5.3.0#b518db81426b8b53e84b1cb1cda43fdfd021022c"
 dependencies = [
  "bitflags 2.13.0",
  "boring-sys",
@@ -513,8 +527,8 @@ dependencies = [
 
 [[package]]
 name = "boring-sys"
-version = "5.2.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v5.2.0#1405df0a23a0335618f88ed328c76f67646b088f"
+version = "5.3.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v5.3.0#b518db81426b8b53e84b1cb1cda43fdfd021022c"
 dependencies = [
  "bindgen",
  "cmake",
@@ -1050,9 +1064,9 @@ dependencies = [
 
 [[package]]
 name = "ctutils"
-version = "0.4.2"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5515a3834141de9eafb9717ad39eea8247b5674e6066c404e8c4b365d2a29e"
+checksum = "38d28fb6aa7dd680b3ffd1a3e64e115c177bdba63c0ae7f9cd48129ff05c4fa0"
 dependencies = [
  "cmov",
 ]
@@ -2620,6 +2634,7 @@ dependencies = [
  "libsignal-net",
  "libsignal-net-chat",
  "libsignal-protocol",
+ "libsignal-provisioning",
  "linkme",
  "log",
  "neon",
@@ -2731,6 +2746,7 @@ dependencies = [
  "libsignal-net-chat",
  "libsignal-net-grpc",
  "libsignal-protocol",
+ "libsignal-provisioning",
  "libsignal-svrb",
  "linkme",
  "log",
@@ -2802,14 +2818,14 @@ dependencies = [
 
 [[package]]
 name = "libsignal-debug"
-version = "0.105.1"
+version = "0.1.0"
 dependencies = [
  "cfg-if",
 ]
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.105.1"
+version = "0.106.2"
 dependencies = [
  "cpufeatures 0.2.17",
  "libsignal-ffi-impl",
@@ -2818,7 +2834,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi-impl"
-version = "0.105.1"
+version = "0.106.2"
 dependencies = [
  "cpufeatures 0.2.17",
  "hex",
@@ -2855,7 +2871,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.105.1"
+version = "0.106.2"
 dependencies = [
  "libsignal-debug",
  "libsignal-jni-impl",
@@ -2863,7 +2879,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.105.1"
+version = "0.106.2"
 dependencies = [
  "assert_matches",
  "cfg-if",
@@ -2896,7 +2912,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.105.1"
+version = "0.106.2"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -2907,7 +2923,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-keytrans"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "assert_matches",
  "const-str",
@@ -3081,6 +3097,7 @@ dependencies = [
 name = "libsignal-net-chat"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm 0.11.1",
  "anyhow",
  "assert_matches",
  "async-trait",
@@ -3101,6 +3118,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "itertools 0.15.0",
+ "libcrux-sha3",
  "libsignal-account-keys",
  "libsignal-cli-utils",
  "libsignal-core",
@@ -3122,6 +3140,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "sha2 0.11.0",
  "static_assertions",
  "strum",
  "subtle",
@@ -3218,7 +3237,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.105.1"
+version = "0.106.2"
 dependencies = [
  "futures",
  "libsignal-bridge",
@@ -3294,7 +3313,9 @@ dependencies = [
  "sha2 0.11.0",
  "signal-crypto",
  "spqr",
+ "strum",
  "subtle",
+ "test-case",
  "thiserror 2.0.18",
  "uuid",
  "zerocopy",
@@ -3305,9 +3326,34 @@ name = "libsignal-protocol-test-support"
 version = "0.1.0"
 dependencies = [
  "arbitrary",
+ "async-trait",
  "libsignal-protocol",
  "log",
  "rand 0.9.4",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "libsignal-provisioning"
+version = "0.1.0"
+dependencies = [
+ "aes 0.9.1",
+ "assert_matches",
+ "cbc",
+ "displaydoc",
+ "hex",
+ "hkdf",
+ "hmac",
+ "libsignal-core",
+ "prost",
+ "prost-build",
+ "rand 0.9.4",
+ "rand_core 0.9.5",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "test-case",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -3337,9 +3383,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.29"
+version = "1.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85bc9657773828b90eeb625adff10eeac83cc21bbfd8e23a03eaa8a33c9e28d9"
+checksum = "ff20308ecabd635a2dc1dd5834a86c462cca20efba1d5d3ddab1f8aea3455cb2"
 dependencies = [
  "cc",
  "pkg-config",
@@ -4728,9 +4774,9 @@ checksum = "eec689c0bc40ff2458a5977b6619cb718087084a18e02a131c599b62d05e1a5f"
 
 [[package]]
 name = "rustls-webpki"
-version = "0.103.15"
+version = "0.103.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3c3cf1d8b1e7d4927e2d154c3fcb02979afb9939629c62cd9048d4f07b60ac2"
+checksum = "4443b1b6d39d7c663139942cc4558262562d2c84123bb6282ef177009ca8b281"
 dependencies = [
  "ring",
  "rustls-pki-types",
@@ -5164,7 +5210,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "599b506ccc4aff8cf7844bc42cf783009a434c1e26c964432560fb6d6ad02d82"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.10.3",
  "blake2",
  "chacha20poly1305 0.10.1",
  "curve25519-dalek 4.1.3",
@@ -5564,9 +5610,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.52.3"
+version = "1.54.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fc7f01b389ac15039e4dc9531aa973a135d7a4135281b12d7c1bc79fd57fffe"
+checksum = "b52fd3255258d26fac7264ab5a76b53c13367136dc011d3d6ad4f8ed070396a3"
 dependencies = [
  "bytes",
  "libc",
@@ -5579,8 +5625,8 @@ dependencies = [
 
 [[package]]
 name = "tokio-boring"
-version = "5.2.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v5.2.0#1405df0a23a0335618f88ed328c76f67646b088f"
+version = "5.3.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v5.3.0#b518db81426b8b53e84b1cb1cda43fdfd021022c"
 dependencies = [
  "boring",
  "boring-sys",
@@ -6120,9 +6166,9 @@ dependencies = [
 
 [[package]]
 name = "webpki-root-certs"
-version = "1.0.8"
+version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d46a5a140e6f7afeccd8eae97eff335163939eac8b929834875168b29b3d267"
+checksum = "58ec80e73fd8baf57bf0d9615554c75348bda990d6d5bbeab964dd068319fecb"
 dependencies = [
  "rustls-pki-types",
 ]

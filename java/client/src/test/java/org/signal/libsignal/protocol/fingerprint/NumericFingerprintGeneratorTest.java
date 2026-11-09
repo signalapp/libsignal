@@ -43,8 +43,8 @@ public class NumericFingerprintGeneratorTest {
 
   @Test
   public void testVectorsVersion1() throws Exception {
-    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
-    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY);
+    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY);
     byte[] aliceStableId = "+14152222222".getBytes();
     byte[] bobStableId = "+14153333333".getBytes();
 
@@ -75,8 +75,8 @@ public class NumericFingerprintGeneratorTest {
 
   @Test
   public void testVectorsVersion2() throws Exception {
-    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
-    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY);
+    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY);
     byte[] aliceStableId = "+14152222222".getBytes();
     byte[] bobStableId = "+14153333333".getBytes();
 
@@ -235,8 +235,8 @@ public class NumericFingerprintGeneratorTest {
 
   @Test
   public void testDifferentVersionsMakeSameFingerPrintsButDifferentScannable() throws Exception {
-    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
-    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY);
+    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY);
     byte[] aliceStableId = "+14152222222".getBytes();
     byte[] bobStableId = "+14153333333".getBytes();
 
@@ -264,8 +264,8 @@ public class NumericFingerprintGeneratorTest {
 
   @Test
   public void testDifferentVersionsThrowExpected() throws Exception {
-    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
-    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY);
+    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY);
     byte[] aliceStableId = "+14152222222".getBytes();
     byte[] bobStableId = "+14153333333".getBytes();
 
@@ -302,8 +302,8 @@ public class NumericFingerprintGeneratorTest {
 
   @Test
   public void testFingerprintParsingFail() throws Exception {
-    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY, 0);
-    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY, 0);
+    IdentityKey aliceIdentityKey = new IdentityKey(ALICE_IDENTITY);
+    IdentityKey bobIdentityKey = new IdentityKey(BOB_IDENTITY);
     byte[] aliceStableId = "+14152222222".getBytes();
     byte[] bobStableId = "+14153333333".getBytes();
 

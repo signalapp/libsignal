@@ -175,6 +175,19 @@ public class Curve25519Test {
         InvalidKeyException.class,
         () -> new ECPublicKey(serializedPublic, 1, serializedPublic.length - 1));
 
+    assertThrows(
+        "length out of bounds",
+        IllegalArgumentException.class,
+        () -> new ECPublicKey(serializedPublic, 0, serializedPublic.length + 1));
+    assertThrows(
+        "offset and length out of bounds",
+        IllegalArgumentException.class,
+        () -> new ECPublicKey(serializedPublic, 1, serializedPublic.length));
+    assertThrows(
+        "offset out of bounds",
+        IllegalArgumentException.class,
+        () -> new ECPublicKey(serializedPublic, serializedPublic.length + 1, 0));
+
     byte[] truncated = new byte[31];
     System.arraycopy(serializedPublic, 1, truncated, 0, truncated.length);
     assertThrows("too small", InvalidKeyException.class, () -> new ECPublicKey(truncated));

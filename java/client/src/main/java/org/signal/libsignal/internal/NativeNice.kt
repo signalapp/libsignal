@@ -81,6 +81,16 @@ public sealed class BadgeVisibility {
 
 */
 
+public sealed class BridgeChallengeAnswer {
+  public data class Push(
+    public val _0: String,
+  ) : BridgeChallengeAnswer()
+
+  public data class Captcha(
+    public val _0: String,
+  ) : BridgeChallengeAnswer()
+}
+
 public data class BridgeConfirmedMfaKey(
   public val id: Int,
   public val metadata: org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata,
@@ -366,14 +376,14 @@ public sealed class LoginReceiptLevel {
 /*
 // org.signal.libsignal.net.PaymentProvider
 
-public sealed class PaymentProvider {
-  public data object GooglePlayBilling : PaymentProvider()
+public sealed class PaymentProviderInternal {
+  public data object GooglePlayBilling : PaymentProviderInternal()
 
-  public data object AppleAppStore : PaymentProvider()
+  public data object AppleAppStore : PaymentProviderInternal()
 
-  public data object Stripe : PaymentProvider()
+  public data object Stripe : PaymentProviderInternal()
 
-  public data object Braintree : PaymentProvider()
+  public data object Braintree : PaymentProviderInternal()
 }
 
 */
@@ -852,6 +862,55 @@ public object DeleteBackupMediaNextChunk_ReturnConverter {
     )
 }
 
+public object DeviceCapabilityInternal_Storage_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.Storage
+}
+
+public object DeviceCapabilityInternal_Transfer_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.Transfer
+}
+
+public object DeviceCapabilityInternal_AttachmentBackfill_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.AttachmentBackfill
+}
+
+public object DeviceCapabilityInternal_SparsePostQuantumRatchet_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.SparsePostQuantumRatchet
+}
+
+public object DeviceCapabilityInternal_ProfilesV2_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ProfilesV2
+}
+
+public object DeviceCapabilityInternal_UsernameChangeSyncMessage_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.UsernameChangeSyncMessage
+}
+
+public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
+}
+
 public object GetStickerUploadFormsResponse_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -941,28 +1000,28 @@ public object ListMediaResponse_ReturnConverter {
     )
 }
 
-public object PaymentProvider_GooglePlayBilling_ReturnConverter {
+public object PaymentProviderInternal_GooglePlayBilling_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.GooglePlayBilling
 }
 
-public object PaymentProvider_AppleAppStore_ReturnConverter {
+public object PaymentProviderInternal_AppleAppStore_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.AppleAppStore
 }
 
-public object PaymentProvider_Stripe_ReturnConverter {
+public object PaymentProviderInternal_Stripe_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Stripe
 }
 
-public object PaymentProvider_Braintree_ReturnConverter {
+public object PaymentProviderInternal_Braintree_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
@@ -1046,6 +1105,50 @@ public fun org.signal.libsignal.net.BadgeVisibility.toFfiArgTypeObject(): Object
       is org.signal.libsignal.net.BadgeVisibility.DoNotSet -> this.toFfiArgType()
       is org.signal.libsignal.net.BadgeVisibility.SetVisible -> this.toFfiArgType()
       is org.signal.libsignal.net.BadgeVisibility.SetPrimary -> this.toFfiArgType()
+    },
+  )
+
+public sealed class BridgeChallengeAnswer_FfiArgType
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class BridgeChallengeAnswer_Push_FfiArgType : BridgeChallengeAnswer_FfiArgType {
+  @CalledFromNative
+  internal val _0: Any?
+  internal constructor(
+    _0: Any?,
+  ) {
+    this._0 = _0
+  }
+}
+
+public fun BridgeChallengeAnswer.Push.toFfiArgType(): BridgeChallengeAnswer_Push_FfiArgType =
+  BridgeChallengeAnswer_Push_FfiArgType(
+    _0 = identity(_0),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class BridgeChallengeAnswer_Captcha_FfiArgType : BridgeChallengeAnswer_FfiArgType {
+  @CalledFromNative
+  internal val _0: Any?
+  internal constructor(
+    _0: Any?,
+  ) {
+    this._0 = _0
+  }
+}
+
+public fun BridgeChallengeAnswer.Captcha.toFfiArgType(): BridgeChallengeAnswer_Captcha_FfiArgType =
+  BridgeChallengeAnswer_Captcha_FfiArgType(
+    _0 = identity(_0),
+  )
+
+public fun BridgeChallengeAnswer.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is BridgeChallengeAnswer.Push -> this.toFfiArgType()
+      is BridgeChallengeAnswer.Captcha -> this.toFfiArgType()
     },
   )
 
@@ -1391,31 +1494,31 @@ public fun org.signal.libsignal.net.LoginReceiptLevel.toFfiArgTypeObject(): Obje
     },
   )
 
-public sealed class PaymentProvider_FfiArgType
+public sealed class PaymentProviderInternal_FfiArgType
 
 @CalledFromNative
-public object PaymentProvider_GooglePlayBilling_FfiArgType : PaymentProvider_FfiArgType()
+public object PaymentProviderInternal_GooglePlayBilling_FfiArgType : PaymentProviderInternal_FfiArgType()
 
-public fun org.signal.libsignal.net.PaymentProvider.GooglePlayBilling.toFfiArgType(): PaymentProvider_GooglePlayBilling_FfiArgType =
-  PaymentProvider_GooglePlayBilling_FfiArgType
-
-@CalledFromNative
-public object PaymentProvider_AppleAppStore_FfiArgType : PaymentProvider_FfiArgType()
-
-public fun org.signal.libsignal.net.PaymentProvider.AppleAppStore.toFfiArgType(): PaymentProvider_AppleAppStore_FfiArgType =
-  PaymentProvider_AppleAppStore_FfiArgType
+public fun org.signal.libsignal.net.PaymentProvider.GooglePlayBilling.toFfiArgType(): PaymentProviderInternal_GooglePlayBilling_FfiArgType =
+  PaymentProviderInternal_GooglePlayBilling_FfiArgType
 
 @CalledFromNative
-public object PaymentProvider_Stripe_FfiArgType : PaymentProvider_FfiArgType()
+public object PaymentProviderInternal_AppleAppStore_FfiArgType : PaymentProviderInternal_FfiArgType()
 
-public fun org.signal.libsignal.net.PaymentProvider.Stripe.toFfiArgType(): PaymentProvider_Stripe_FfiArgType =
-  PaymentProvider_Stripe_FfiArgType
+public fun org.signal.libsignal.net.PaymentProvider.AppleAppStore.toFfiArgType(): PaymentProviderInternal_AppleAppStore_FfiArgType =
+  PaymentProviderInternal_AppleAppStore_FfiArgType
 
 @CalledFromNative
-public object PaymentProvider_Braintree_FfiArgType : PaymentProvider_FfiArgType()
+public object PaymentProviderInternal_Stripe_FfiArgType : PaymentProviderInternal_FfiArgType()
 
-public fun org.signal.libsignal.net.PaymentProvider.Braintree.toFfiArgType(): PaymentProvider_Braintree_FfiArgType =
-  PaymentProvider_Braintree_FfiArgType
+public fun org.signal.libsignal.net.PaymentProvider.Stripe.toFfiArgType(): PaymentProviderInternal_Stripe_FfiArgType =
+  PaymentProviderInternal_Stripe_FfiArgType
+
+@CalledFromNative
+public object PaymentProviderInternal_Braintree_FfiArgType : PaymentProviderInternal_FfiArgType()
+
+public fun org.signal.libsignal.net.PaymentProvider.Braintree.toFfiArgType(): PaymentProviderInternal_Braintree_FfiArgType =
+  PaymentProviderInternal_Braintree_FfiArgType
 
 public fun org.signal.libsignal.net.PaymentProvider.toFfiArgTypeObject(): Object =
   convertToObject(
@@ -1428,6 +1531,28 @@ public fun org.signal.libsignal.net.PaymentProvider.toFfiArgTypeObject(): Object
   )
 
 public object NativeNice {
+  public fun AuthenticatedChatConnection_answer_challenge(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    token: String,
+    answer: org.signal.libsignal.internal.BridgeChallengeAnswer,
+  ): CompletableFuture<Boolean> {
+    val ffi_chat = identity(chat)
+    val ffi_token = identity(token)
+    val ffi_answer = (org.signal.libsignal.internal.BridgeChallengeAnswer::toFfiArgTypeObject)(answer)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_answer_challenge(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_token,
+          ffi_answer,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun AuthenticatedChatConnection_clear_push_token(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
@@ -1673,6 +1798,27 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgePendingTotpKey>(it) }
+  }
+
+  public fun AuthenticatedChatConnection_get_capabilities(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<List<org.signal.libsignal.internal.DeviceCapabilityInternal>> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_capabilities(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapBridgeVecReturn<Object, org.signal.libsignal.internal.DeviceCapabilityInternal>({
+          downcastFromObject<org.signal.libsignal.internal.DeviceCapabilityInternal>(it)
+        })(it)
+      }
   }
 
   public fun AuthenticatedChatConnection_get_currency_conversions(
@@ -2272,6 +2418,56 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.internal.DeleteBackupMediaNextChunk>(it) }
+  }
+
+  public fun Provisioning_EncryptProvisionMessage(
+    secondaryPublicKey: ByteArray,
+    provisionMessage: ByteArray,
+  ): ByteArray {
+    val ffi_secondary_public_key = identity(secondaryPublicKey)
+    val ffi_provision_message = identity(provisionMessage)
+    val ffiOut =
+      Native.Provisioning_EncryptProvisionMessage(
+        ffi_secondary_public_key,
+        ffi_provision_message,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun RecvProvisionCiphertextState_DecryptEnvelope(
+    state: org.signal.libsignal.provisioning.RecvProvisionCiphertextState,
+    envelope: ByteArray,
+  ): ByteArray {
+    val ffi_state = identity(state)
+    val ffi_envelope = identity(envelope)
+    val ffiOut =
+      Native.RecvProvisionCiphertextState_DecryptEnvelope(
+        ffi_state,
+        ffi_envelope,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun RecvProvisionCiphertextState_Generate(): org.signal.libsignal.provisioning.RecvProvisionCiphertextState {
+    val ffiOut =
+      Native.RecvProvisionCiphertextState_Generate()
+
+    return org.signal.libsignal.provisioning
+      .RecvProvisionCiphertextState(ffiOut)
+  }
+
+  public fun RecvProvisionCiphertextState_GetPublicKey(
+    state: org.signal.libsignal.provisioning.RecvProvisionCiphertextState,
+  ): ByteArray {
+    val ffi_state = identity(state)
+    val ffiOut =
+      Native.RecvProvisionCiphertextState_GetPublicKey(
+        ffi_state,
+      )
+
+    return identity(ffiOut)
   }
 
   public fun SvrKey_DeriveLoggingKey(svrKey: ByteArray): ByteArray {

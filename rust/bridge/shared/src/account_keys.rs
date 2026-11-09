@@ -31,19 +31,24 @@ pub fn PinHash_FromSalt(pin: &[u8], salt: &[u8; 32]) -> Result<PinHash> {
     PinHash::create(pin, salt)
 }
 
+/// Hashes a pin for SVR2, salted with the username and the group id of the
+/// enclave identified by `mrenclave`.
+pub(crate) fn svr2_pin_hash(
+    normalized_pin: &[u8],
+    username: &str,
+    mrenclave: &[u8],
+) -> Result<PinHash> {
+    let group_id = lookup_groupid(mrenclave).ok_or(Error::MrenclaveLookupError)?;
+    PinHash::create(normalized_pin, &PinHash::make_salt(username, group_id))
+}
+
 #[bridge_fn]
 pub fn PinHash_FromUsernameMrenclave(
     pin: &[u8],
     username: String,
     mrenclave: &[u8],
 ) -> Result<PinHash> {
-    PinHash::create(
-        pin,
-        &PinHash::make_salt(
-            &username,
-            lookup_groupid(mrenclave).ok_or(Error::MrenclaveLookupError)?,
-        ),
-    )
+    svr2_pin_hash(pin, &username, mrenclave)
 }
 
 #[bridge_fn]

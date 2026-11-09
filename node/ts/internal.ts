@@ -21,8 +21,10 @@ export class BridgedStringMap {
   }
 }
 
-/// Fails to compile unless `T` is `true`. Use with `IsEqual` from type-fest to check at compile
-/// time that a hand-written type matches a generated one.
+/**
+ * Fails to compile unless `T` is `true`. Use with `IsEqual` from type-fest to check at compile
+ * time that a hand-written type matches a generated one.
+ */
 export type AssertTrue<T extends true> = T;
 
 export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
@@ -31,15 +33,17 @@ export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
   };
 }
 
-/// Produces a `ReadableStream` from a bulk-pull stream implementation.
-///
-/// Not intended to be called outside of libsignal.
-///
-/// `ops.cancel` will be called when the ReadableStream is cancelled, which will also cancel any
-/// active reads.
-///
-/// Note that unlike the other bridges, this doesn't handle transforming the stream's item type as
-/// part of `wrapStream`, because that would often lead to cyclic dependencies with NativeNice.ts.
+/**
+ * Produces a `ReadableStream` from a bulk-pull stream implementation.
+ *
+ * Not intended to be called outside of libsignal.
+ *
+ * `ops.cancel` will be called when the ReadableStream is cancelled, which will also cancel any
+ * active reads.
+ *
+ * Note that unlike the other bridges, this doesn't handle transforming the stream's item type as
+ * part of `wrapStream`, because that would often lead to cyclic dependencies with NativeNice.ts.
+ */
 export function wrapStream<T, S>(
   asyncContext: TokioAsyncContext,
   handle: S,
