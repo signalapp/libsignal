@@ -16,10 +16,16 @@ use zkgroup::receipts::ReceiptCredentialPresentation;
 
 use crate::backup::MY_STORY_UUID;
 use crate::proto::backup as proto;
+use crate::visit::Visit;
 
 mod randomize;
 use randomize::*;
 
+/// Scrambles a backup by visiting each of its protobuf messages.
+///
+/// The backup protobuf message types implement [`Visit`] with `Scrambler` as the visitor. In general
+/// any `string` or `bytes` fields are scrambled in *some* way (usually by randomization), most
+/// integers and enums are left intact (explicitly ignored), and sub-messages are recursed into.
 pub struct Scrambler {
     rng: rand::rngs::StdRng,
     e164s: intmap::IntMap<u64, u64>,
@@ -136,40 +142,6 @@ fn scramble_content_type(content_type: &mut String) {
         content_type.replace_range(split_point + 1.., "unknown");
     } else {
         *content_type = "unknown".to_owned();
-    }
-}
-
-/// A generic trait for visiting with state.
-///
-/// The backup protobuf message types implement this with [`Scrambler`] as the visitor. In general
-/// any `string` or `bytes` fields are scrambled in *some* way (usually by randomization), most
-/// integers and enums are left intact (explicitly ignored), and sub-messages are recursed into.
-///
-/// Note that `oneof`s are handled in the parent type rather than as a distinct impl of `Visit`.
-/// This is purely a stylistic choice for slightly more compact code; both ways would work.
-///
-/// There's no built-in traversal here, for a few reasons:
-/// - It makes it clearer that a scrambler is supposed to act on or ignore every field explicitly.
-/// - If there's ever a reason for scrambling to *not* recurse into a field, it's easier to do so.
-///
-/// But if we ever want another kind of stateful visitor, we may decide to revisit that decision.
-pub trait Visit<T> {
-    fn accept(&mut self, visitor: &mut T);
-}
-
-/// Recurse into a possibly-absent sub-message.
-impl<T: Visit<Scrambler>> Visit<Scrambler> for protobuf::MessageField<T> {
-    fn accept(&mut self, visitor: &mut Scrambler) {
-        if let Some(x) = self.as_mut() {
-            x.accept(visitor);
-        }
-    }
-}
-
-/// Recurse into a `repeated` sub-message.
-impl<T: Visit<Scrambler>> Visit<Scrambler> for Vec<T> {
-    fn accept(&mut self, visitor: &mut Scrambler) {
-        self.iter_mut().for_each(|x| x.accept(visitor));
     }
 }
 

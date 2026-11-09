@@ -368,17 +368,17 @@ describe('BackupJsonExporter', () => {
       (line) => JSON.parse(line) as Record<string, unknown>
     );
 
+    // Takeout exports strip sensitive keys from the header and account, even though
+    // those keys are present in the canonical backup and required for validation.
     const [backupInfoJson, firstFrame, ...rest] = parsedLines;
-    assert.containsAllKeys(backupInfoJson, ['version', 'mediaRootBackupKey']);
+    assert.property(backupInfoJson, 'version');
+    assert.notProperty(backupInfoJson, 'mediaRootBackupKey');
     assert.property(firstFrame, 'account');
     const accountValue = firstFrame.account;
     assert.isObject(accountValue);
     const accountRecord = accountValue as Record<string, unknown>;
-    assert.containsAllKeys(accountRecord, [
-      'profileKey',
-      'username',
-      'accountSettings',
-    ]);
+    assert.containsAllKeys(accountRecord, ['username', 'accountSettings']);
+    assert.notProperty(accountRecord, 'profileKey');
     assert.lengthOf(rest, frames.length - 1);
   });
 
@@ -406,7 +406,7 @@ describe('BackupJsonExporter', () => {
     assert.isUndefined(finishResult.errorMessage, 'ok');
   });
 
-  it('includes results without errors for otherwise legal filtered frames', () => {
+  it('complains about having to filter disappearing messages from the output', () => {
     const backupInfo = exampleBackupInfo;
     const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
       validate: true,
@@ -417,7 +417,7 @@ describe('BackupJsonExporter', () => {
     assert.lengthOf(results, 1);
     const [result] = results;
     assert.isUndefined(result.line);
-    assert.isUndefined(result.errorMessage);
+    assert.isNotEmpty(result.errorMessage);
     const finishResult = exporter.finish();
     // We should see an error here because we don't include an AccountData frame.
     assert.isNotEmpty(finishResult.errorMessage);
@@ -460,36 +460,6 @@ describe('BackupJsonExporter', () => {
 
     const finishResult = exporter.finish();
     assert.isUndefined(finishResult.errorMessage, 'ok');
-  });
-
-  it('filters disappearing messages from the output', () => {
-    const backupInfo = exampleBackupInfo;
-    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
-      validate: false,
-    });
-
-    const frame = createDisappearingChatItemFrame();
-    const results = exporter.exportFrames(frame);
-    assert.deepEqual(results, [{}]);
-
-    const finishResult = exporter.finish();
-    assert.isUndefined(finishResult.errorMessage, 'ok');
-  });
-
-  it('sanitizes frames before validation to avoid validation errors', () => {
-    const backupInfo = exampleBackupInfo;
-    const { exporter } = MessageBackup.BackupJsonExporter.start(backupInfo, {
-      validate: true,
-    });
-
-    const frame = createDisappearingChatItemFrame();
-    const results = exporter.exportFrames(frame);
-    assert.lengthOf(results, 1);
-    const [result] = results;
-    assert.isUndefined(result.line);
-    assert.isUndefined(result.errorMessage);
-    const finishResult = exporter.finish();
-    assert.isDefined(finishResult.errorMessage);
   });
 
   it('strips attachments from view-once messages', () => {

@@ -83,13 +83,14 @@ class BackupJsonExporterTests: TestCaseBase {
             XCTAssertEqual(results.count, 1)
             let result = try XCTUnwrap(results.first)
             XCTAssertNil(result.line)
-            XCTAssertNil(result.errorMessage)
             if validate {
+                XCTAssertFalse(try XCTUnwrap(result.errorMessage).isEmpty)
                 // No AccountData frame was provided.
                 XCTAssertThrowsError(try exporter.finishExport()) { error in
                     XCTAssertTrue(error is MessageBackupValidationError)
                 }
             } else {
+                XCTAssertNil(result.errorMessage)
                 try exporter.finishExport()
             }
         }
@@ -122,7 +123,7 @@ class BackupJsonExporterTests: TestCaseBase {
         let results = try exporter.exportFrames(Data([0]) + frames.reduce(Data(), +))
         XCTAssertEqual(results.count, frames.count + 1)
         let invalid = try XCTUnwrap(results.first)
-        XCTAssertEqual(invalid.line, "{}")
+        XCTAssertNil(invalid.line)
         XCTAssertFalse(try XCTUnwrap(invalid.errorMessage).isEmpty)
         for result in results.dropFirst() {
             XCTAssertNotNil(result.line)

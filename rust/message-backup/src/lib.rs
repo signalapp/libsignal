@@ -31,6 +31,7 @@ pub mod key;
 pub mod padding;
 pub mod parse;
 pub mod unknown;
+pub mod visit;
 
 #[cfg(feature = "json")]
 pub mod json;
