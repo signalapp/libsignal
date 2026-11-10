@@ -53,7 +53,7 @@ subtle = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt", "time", "macros"] }
 tokio-stream = { workspace = true }
-tonic = { workspace = true, default-features = false }
+tonic = { workspace = true, default-features = false, features = ["gzip"] }
 tonic-prost = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 visibility = { workspace = true }

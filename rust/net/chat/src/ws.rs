@@ -102,6 +102,13 @@ pub trait WsConnection: Sync {
         None::<Http2Client<chat::GrpcBody>>
     }
 
+    /// Whether the server may gzip its responses to key transparency requests.
+    ///
+    /// Only relevant when [`Self::grpc_service_to_use_instead`] picks gRPC for those requests.
+    fn offer_compression_for_key_transparency(&self) -> bool {
+        false
+    }
+
     fn self_aci(&self) -> Option<libsignal_core::Aci>;
 }
 
@@ -120,6 +127,10 @@ impl<T: WsConnection> WsConnection for &T {
         message: &'static str,
     ) -> Option<impl GrpcServiceProvider> {
         <T as WsConnection>::grpc_service_to_use_instead(self, message)
+    }
+
+    fn offer_compression_for_key_transparency(&self) -> bool {
+        <T as WsConnection>::offer_compression_for_key_transparency(self)
     }
 
     fn self_aci(&self) -> Option<libsignal_core::Aci> {
@@ -182,6 +193,10 @@ impl WsConnection for chat::ChatConnection {
             chat::GrpcOverride::UseGrpc => self.shared_h2_connection(),
             chat::GrpcOverride::UseWs => None,
         }
+    }
+
+    fn offer_compression_for_key_transparency(&self) -> bool {
+        self.offer_compression_for_key_transparency()
     }
 
     fn self_aci(&self) -> Option<libsignal_core::Aci> {

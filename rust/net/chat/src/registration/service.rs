@@ -554,8 +554,7 @@ mod test {
                 let (fake_chat, fake_remote) = ChatConnection::new_fake(
                     tokio::runtime::Handle::current(),
                     DropOnDisconnect::new(on_disconnect).into_listener(),
-                    [],
-                    [],
+                    libsignal_net::chat::fake::FakeChatOptions::default(),
                 );
                 fake_chat_tx.send(fake_remote).unwrap();
                 Ok(Unauth(fake_chat))

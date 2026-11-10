@@ -27,7 +27,7 @@ use libsignal_net::infra::{
 use rand::TryRngCore as _;
 
 pub use self::remote_config::BuildVariant;
-use self::remote_config::RemoteConfig;
+use self::remote_config::{RemoteConfig, RemoteConfigKey};
 use crate::*;
 
 pub mod cdsi;
@@ -263,6 +263,13 @@ impl ConnectionManager {
                 })
             })
             .collect()
+    }
+
+    fn offer_compression_for_key_transparency(&self) -> bool {
+        self.remote_config
+            .lock()
+            .expect("not poisoned")
+            .is_enabled(RemoteConfigKey::OfferCompressionForKeyTransparency)
     }
 
     const NETWORK_CHANGE_DEBOUNCE: Duration = Duration::from_secs(1);

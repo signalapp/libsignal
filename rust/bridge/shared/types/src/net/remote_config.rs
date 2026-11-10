@@ -104,6 +104,8 @@ pub enum RemoteConfigKey {
     /// How long to wait for a response to a chat request before checking whether the connection is
     /// still active.
     ChatRequestConnectionCheckTimeoutMilliseconds => "chatRequestConnectionCheckTimeoutMillis",
+    /// Lets the server gzip its responses to key transparency requests sent over gRPC.
+    OfferCompressionForKeyTransparency => "offerCompressionForKeyTransparency",
 
     // Typed API keys, based on gRPC request names.
     // These should all start with "grpc." and optionally end with ".{digit}"

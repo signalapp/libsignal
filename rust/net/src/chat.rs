@@ -171,6 +171,7 @@ pub struct ChatConnection {
     inner: self::ws::Chat,
     connection_info: ConnectionInfo,
     grpc_overrides: HashMap<&'static str, GrpcOverride>,
+    offer_compression_for_key_transparency: bool,
     self_aci: Option<libsignal_core::Aci>,
 }
 
@@ -383,6 +384,7 @@ impl ChatConnection {
         tokio_runtime: tokio::runtime::Handle,
         pending: PendingChatConnection,
         grpc_overrides: HashMap<&'static str, GrpcOverride>,
+        offer_compression_for_key_transparency: bool,
         listener: ws::EventListener,
     ) -> Self {
         let PendingChatConnection {
@@ -418,6 +420,7 @@ impl ChatConnection {
                 listener,
             ),
             grpc_overrides,
+            offer_compression_for_key_transparency,
             self_aci,
         }
     }
@@ -443,6 +446,10 @@ impl ChatConnection {
 
     pub fn grpc_overrides(&self) -> &HashMap<&'static str, GrpcOverride> {
         &self.grpc_overrides
+    }
+
+    pub fn offer_compression_for_key_transparency(&self) -> bool {
+        self.offer_compression_for_key_transparency
     }
 
     pub fn self_aci(&self) -> Option<libsignal_core::Aci> {
@@ -573,6 +580,7 @@ pub mod test_support {
             tokio_runtime,
             pending,
             HashMap::from_iter(grpc_overrides),
+            false,
             listener,
         );
 

@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use super::{CONTENT_TYPE_JSON, CustomError, TryIntoResponse as _, WsConnection};
 use crate::api::keytrans::*;
 use crate::api::{AllowRateLimitChallenges, RequestError, Unauth};
+use crate::grpc::GrpcServiceProvider;
 use crate::grpc::keytrans::KtOverGrpc;
 use crate::logging::DebugAsStrOrBytes;
 
@@ -302,6 +303,16 @@ fn kt_grpc_message() -> &'static str {
     services::KeyTransparencyQueryService::SearchV2.into()
 }
 
+impl<T: WsConnection> Unauth<T> {
+    fn kt_over_grpc(&self) -> Option<KtOverGrpc<impl GrpcServiceProvider>> {
+        let connection = self.grpc_service_to_use_instead(kt_grpc_message())?;
+        Some(KtOverGrpc {
+            connection,
+            offer_compression: self.offer_compression_for_key_transparency(),
+        })
+    }
+}
+
 #[async_trait]
 impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
     async fn search(
@@ -313,8 +324,8 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
         stored_account_data: Option<&AccountData>,
         distinguished_tree_head: &LastTreeHead,
     ) -> Result<Vec<u8>, RequestError<Error>> {
-        if let Some(grpc) = self.grpc_service_to_use_instead(kt_grpc_message()) {
-            return KtOverGrpc(grpc)
+        if let Some(grpc) = self.kt_over_grpc() {
+            return grpc
                 .search(
                     aci,
                     aci_identity_key,
@@ -341,8 +352,8 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
         &self,
         last_distinguished: Option<&LastTreeHead>,
     ) -> Result<Vec<u8>, RequestError<Error>> {
-        if let Some(grpc) = self.grpc_service_to_use_instead(kt_grpc_message()) {
-            return KtOverGrpc(grpc).distinguished(last_distinguished).await;
+        if let Some(grpc) = self.kt_over_grpc() {
+            return grpc.distinguished(last_distinguished).await;
         }
 
         let distinguished_size =
@@ -362,8 +373,8 @@ impl<T: WsConnection> LowLevelChatApi for Unauth<T> {
         account_data: &AccountData,
         last_distinguished_tree_head: &LastTreeHead,
     ) -> Result<Vec<u8>, RequestError<Error>> {
-        if let Some(grpc) = self.grpc_service_to_use_instead(kt_grpc_message()) {
-            return KtOverGrpc(grpc)
+        if let Some(grpc) = self.kt_over_grpc() {
+            return grpc
                 .monitor(
                     aci,
                     e164,

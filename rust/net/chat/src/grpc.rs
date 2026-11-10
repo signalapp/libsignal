@@ -776,10 +776,18 @@ pub mod test_case_util {
         response: Vec<impl prost::Message + 'static>,
         error: Option<tonic::Status>,
     ) -> http::Response<BodyWithTrailers> {
+        stream_with_encoding(response, error, None)
+    }
+
+    pub(crate) fn stream_with_encoding(
+        response: Vec<impl prost::Message + 'static>,
+        error: Option<tonic::Status>,
+        encoding: Option<tonic::codec::CompressionEncoding>,
+    ) -> http::Response<BodyWithTrailers> {
         let encoded = tonic::codec::EncodeBody::new_server(
             tonic_prost::ProstEncoder::new(Default::default()),
             futures_util::stream::iter(response.into_iter().map(Ok).chain(error.map(Err))),
-            None,
+            encoding,
             Default::default(),
             None,
         )
@@ -791,10 +799,17 @@ pub mod test_case_util {
         let trailers = encoded.trailers().cloned().unwrap_or_default();
         let body = encoded.to_bytes().into();
 
-        http::Response::new(BodyWithTrailers {
+        let mut response = http::Response::new(BodyWithTrailers {
             data: body,
             trailers,
-        })
+        });
+        if let Some(encoding) = encoding {
+            response.headers_mut().insert(
+                http::HeaderName::from_static("grpc-encoding"),
+                encoding.to_string().parse().expect("valid encoding header"),
+            );
+        }
+        response
     }
 
     pub(crate) fn status_for_server_side_error(
@@ -974,6 +989,16 @@ pub(crate) mod testutil {
 
     pub(crate) fn ok(response: impl prost::Message + 'static) -> http::Response<BodyWithTrailers> {
         stream(vec![response], None)
+    }
+
+    pub(crate) fn ok_compressed(
+        response: impl prost::Message + 'static,
+    ) -> http::Response<BodyWithTrailers> {
+        stream_with_encoding(
+            vec![response],
+            None,
+            Some(tonic::codec::CompressionEncoding::Gzip),
+        )
     }
 
     pub(crate) fn err(code: tonic::Code) -> http::Response<BodyWithTrailers> {

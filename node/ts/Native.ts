@@ -1221,6 +1221,7 @@ export type ArgFfiPaymentProviderInternal =
 
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
+  'offerCompressionForKeyTransparency',
   'grpc.AccountsAnonymousLookupUsernameHash',
   'grpc.AccountsAnonymousLookupUsernameLink.2',
   'grpc.AccountsAnonymousCheckAccountExistence.2',

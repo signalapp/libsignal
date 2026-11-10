@@ -59,11 +59,13 @@ impl AnyTransport {
         let chat = make_chat().await;
         let grpc = match transport {
             Transport::Ws => None,
-            Transport::Grpc => Some(KtOverGrpc(
-                chat.0
+            Transport::Grpc => Some(KtOverGrpc {
+                connection: chat
+                    .0
                     .shared_h2_connection()
                     .expect("chat connection provides HTTP/2"),
-            )),
+                offer_compression: false,
+            }),
         };
         AnyTransport { chat, grpc }
     }

@@ -115,6 +115,7 @@ enum MaybeChatConnection {
         runtime: tokio::runtime::Handle,
         pending: AsyncMutex<chat::PendingChatConnection>,
         grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
+        offer_compression_for_key_transparency: bool,
     },
     TemporarilyEvicted,
 }
@@ -139,6 +140,8 @@ impl UnauthenticatedChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides,
+                offer_compression_for_key_transparency: connection_manager
+                    .offer_compression_for_key_transparency(),
             }
             .into(),
         })
@@ -246,6 +249,8 @@ impl AuthenticatedChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides,
+                offer_compression_for_key_transparency: connection_manager
+                    .offer_compression_for_key_transparency(),
             }
             .into(),
         })
@@ -333,6 +338,7 @@ impl ProvisioningChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides: Default::default(),
+                offer_compression_for_key_transparency: false,
             }
             .into(),
         })
@@ -405,6 +411,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 runtime: _,
                 pending,
                 grpc_overrides: _,
+                offer_compression_for_key_transparency: _,
             } => pending.lock().await.disconnect().await,
             MaybeChatConnection::TemporarilyEvicted => {
                 unreachable!("unobservable state");
@@ -422,6 +429,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 runtime: _,
                 pending,
                 grpc_overrides: _,
+                offer_compression_for_key_transparency: _,
             } => pending.blocking_lock().connection_info(),
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         }
@@ -453,12 +461,13 @@ pub(crate) async fn connect_registration_chat(
         tokio_runtime.clone(),
         pending,
         Default::default(),
+        false,
         Box::new(listener),
     )))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::EventListener) {
-    let (tokio_runtime, pending, grpc_overrides) =
+    let (tokio_runtime, pending, grpc_overrides, offer_compression_for_key_transparency) =
         match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
             MaybeChatConnection::Running(chat_connection) => {
                 *connection = MaybeChatConnection::Running(chat_connection);
@@ -468,7 +477,13 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::Event
                 runtime,
                 pending,
                 grpc_overrides,
-            } => (runtime, pending, grpc_overrides),
+                offer_compression_for_key_transparency,
+            } => (
+                runtime,
+                pending,
+                grpc_overrides,
+                offer_compression_for_key_transparency,
+            ),
             MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
         };
 
@@ -476,6 +491,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::Event
         tokio_runtime,
         pending.into_inner(),
         grpc_overrides,
+        offer_compression_for_key_transparency,
         listener,
     ))
 }
@@ -489,8 +505,15 @@ impl FakeChatConnection {
         grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
-        let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener, grpc_overrides, alerts);
+        let (inner, remote) = ChatConnection::new_fake(
+            tokio_runtime,
+            listener,
+            chat::fake::FakeChatOptions {
+                grpc_overrides: grpc_overrides.into_iter().collect(),
+                offer_compression_for_key_transparency: false,
+                alerts: alerts.into_iter().collect(),
+            },
+        );
         (Self(inner), remote)
     }
 
