@@ -8,6 +8,7 @@ package org.signal.libsignal.protocol.groups;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.signal.libsignal.internal.FilterExceptions.filterExceptions;
@@ -246,6 +247,7 @@ public class GroupCipherTest {
           DuplicateMessageException,
           InvalidMessageException,
           InvalidVersionException,
+          InvalidKeyException,
           NoSessionException {
     InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
     InMemorySenderKeyStore bobStore = new InMemorySenderKeyStore();
@@ -295,6 +297,8 @@ public class GroupCipherTest {
       throws DuplicateMessageException,
           InvalidMessageException,
           LegacyMessageException,
+          InvalidVersionException,
+          InvalidKeyException,
           NoSessionException {
     InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
     InMemorySenderKeyStore bobStore = new InMemorySenderKeyStore();
@@ -356,6 +360,46 @@ public class GroupCipherTest {
     } catch (DuplicateMessageException e) {
       // good
     }
+  }
+
+  @Test
+  public void testUnrecognizedVersionWithoutSession() throws Exception {
+    InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
+    InMemorySenderKeyStore bobStore = new InMemorySenderKeyStore();
+
+    new GroupSessionBuilder(aliceStore).create(SENDER_ADDRESS, DISTRIBUTION_ID);
+
+    byte[] ciphertext =
+        new GroupCipher(aliceStore, SENDER_ADDRESS)
+            .encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes())
+            .serialize();
+    assertEquals(0x33, ciphertext[0]);
+    ciphertext[0] = 0x43;
+
+    GroupCipher bobGroupCipher = new GroupCipher(bobStore, SENDER_ADDRESS);
+    assertThrows(InvalidVersionException.class, () -> bobGroupCipher.decrypt(ciphertext));
+  }
+
+  @Test
+  public void testBadSignature() throws Exception {
+    InMemorySenderKeyStore aliceStore = new InMemorySenderKeyStore();
+    InMemorySenderKeyStore bobStore = new InMemorySenderKeyStore();
+
+    GroupCipher aliceGroupCipher = new GroupCipher(aliceStore, SENDER_ADDRESS);
+    GroupCipher bobGroupCipher = new GroupCipher(bobStore, SENDER_ADDRESS);
+
+    SenderKeyDistributionMessage aliceDistributionMessage =
+        new GroupSessionBuilder(aliceStore).create(SENDER_ADDRESS, DISTRIBUTION_ID);
+    new GroupSessionBuilder(bobStore).process(SENDER_ADDRESS, aliceDistributionMessage);
+
+    byte[] original =
+        aliceGroupCipher.encrypt(DISTRIBUTION_ID, "smert ze smert".getBytes()).serialize();
+    byte[] tampered = original.clone();
+    tampered[tampered.length - 1] ^= 0x01;
+
+    assertThrows(InvalidKeyException.class, () -> bobGroupCipher.decrypt(tampered));
+
+    assertArrayEquals("smert ze smert".getBytes(), bobGroupCipher.decrypt(original));
   }
 
   private int randomInt() {

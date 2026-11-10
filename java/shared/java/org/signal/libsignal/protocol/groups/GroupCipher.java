@@ -11,7 +11,9 @@ import java.util.UUID;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.DuplicateMessageException;
+import org.signal.libsignal.protocol.InvalidKeyException;
 import org.signal.libsignal.protocol.InvalidMessageException;
+import org.signal.libsignal.protocol.InvalidVersionException;
 import org.signal.libsignal.protocol.LegacyMessageException;
 import org.signal.libsignal.protocol.NoSessionException;
 import org.signal.libsignal.protocol.SignalProtocolAddress;
@@ -84,18 +86,26 @@ public class GroupCipher {
    * @throws LegacyMessageException
    * @throws InvalidMessageException
    * @throws DuplicateMessageException
+   * @throws NoSessionException if there is no sender key state for this message.
+   * @throws InvalidVersionException if the message version is newer than this library supports, or
+   *     does not match the sender key state.
+   * @throws InvalidKeyException if the message signature does not verify.
    */
   public byte[] decrypt(byte[] senderKeyMessageBytes)
       throws LegacyMessageException,
           DuplicateMessageException,
           InvalidMessageException,
-          NoSessionException {
+          NoSessionException,
+          InvalidVersionException,
+          InvalidKeyException {
     try (NativeHandleGuard sender = new NativeHandleGuard(this.sender)) {
       return filterExceptions(
           LegacyMessageException.class,
           DuplicateMessageException.class,
           InvalidMessageException.class,
           NoSessionException.class,
+          InvalidVersionException.class,
+          InvalidKeyException.class,
           () ->
               Native.GroupCipher_DecryptMessage(
                   sender.nativeHandle(), senderKeyMessageBytes, this.senderKeyStore));

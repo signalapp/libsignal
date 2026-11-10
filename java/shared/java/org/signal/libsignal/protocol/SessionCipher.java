@@ -189,13 +189,16 @@ public class SessionCipher {
    *     message.
    * @throws InvalidKeyException when the message is formatted incorrectly.
    * @throws UntrustedIdentityException when the {@link IdentityKey} of the sender is untrusted.
+   * @throws InvalidVersionException if the message version does not match the existing session with
+   *     the same base key.
    */
   public byte[] decrypt(PreKeySignalMessage ciphertext)
       throws DuplicateMessageException,
           InvalidMessageException,
           InvalidKeyIdException,
           InvalidKeyException,
-          UntrustedIdentityException {
+          UntrustedIdentityException,
+          InvalidVersionException {
     try (NativeHandleGuard ciphertextGuard = new NativeHandleGuard(ciphertext);
         NativeHandleGuard remoteAddressGuard = new NativeHandleGuard(this.remoteAddress);
         NativeHandleGuard localAddressGuard = new NativeHandleGuard(this.localAddress); ) {
@@ -205,6 +208,7 @@ public class SessionCipher {
           InvalidKeyIdException.class,
           InvalidKeyException.class,
           UntrustedIdentityException.class,
+          InvalidVersionException.class,
           () ->
               Native.SessionCipher_DecryptPreKeySignalMessage(
                   ciphertextGuard.nativeHandle(),

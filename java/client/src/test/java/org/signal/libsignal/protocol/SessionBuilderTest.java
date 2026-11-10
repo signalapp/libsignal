@@ -18,10 +18,12 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import kotlin.Pair;
+import kotlin.collections.ArraysKt;
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
@@ -230,6 +232,39 @@ public class SessionBuilderTest {
       alicePlaintext =
           aliceSessionCipher.decrypt(new SignalMessage(bobOutgoingMessage.serialize()));
       assertTrue(originalMessage.equals(new String(alicePlaintext)));
+    }
+
+    @Test
+    public void testRepeatBundleMessageWithMismatchedVersion() throws Exception {
+      SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+      SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+
+      new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS)
+          .process(bundleFactory.createBundle(bobStore));
+
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+      CiphertextMessage outgoingMessageOne = aliceSessionCipher.encrypt("one".getBytes());
+      CiphertextMessage outgoingMessageTwo = aliceSessionCipher.encrypt("two".getBytes());
+      assertEquals(CiphertextMessage.PREKEY_TYPE, outgoingMessageTwo.getType());
+
+      SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
+      bobSessionCipher.decrypt(new PreKeySignalMessage(outgoingMessageOne.serialize()));
+
+      byte[] original = outgoingMessageTwo.serialize();
+      byte[] inner = new PreKeySignalMessage(original).getWhisperMessage().serialize();
+      int innerOffset =
+          Collections.indexOfSubList(ArraysKt.asList(original), ArraysKt.asList(inner));
+      assertTrue(innerOffset > 0);
+      assertEquals((expectedVersion << 4) | expectedVersion, original[innerOffset]);
+
+      byte[] tampered = original.clone();
+      tampered[innerOffset] = (byte) (((expectedVersion - 1) << 4) | expectedVersion);
+      PreKeySignalMessage tamperedMessage = new PreKeySignalMessage(tampered);
+
+      assertThrows(InvalidVersionException.class, () -> bobSessionCipher.decrypt(tamperedMessage));
+
+      byte[] plaintext = bobSessionCipher.decrypt(new PreKeySignalMessage(original));
+      assertEquals("two", new String(plaintext));
     }
 
     @Test
