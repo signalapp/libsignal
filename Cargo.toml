@@ -54,7 +54,7 @@ default-members = [
 resolver = "3"
 
 [workspace.package]
-version = "0.107.0"
+version = "0.107.1"
 authors = ["Signal Messenger LLC"]
 license = "AGPL-3.0-only"
 edition = "2024"
