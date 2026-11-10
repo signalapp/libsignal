@@ -7,3 +7,5 @@ v0.107.0
 
 - Java: `GroupCipher.decrypt` now throws InvalidVersionException and InvalidKeyException, and `SessionCipher.decrypt(PreKeySignalMessage)` now throws InvalidVersionException, instead of wrapping them in an AssertionError.
   Callers will need to handle or declare the new checked exceptions.
+
+- Use different expiration time for sandbox login purchase permits
