@@ -341,14 +341,6 @@ impl<T> OptionalOf<T> {
 }
 
 #[repr(C)]
-#[derive(Default, IsCType)]
-pub struct OptionalPairOf<A, B> {
-    pub present: bool,
-    pub first: A,
-    pub second: B,
-}
-
-#[repr(C)]
 #[derive(Debug, IsCType)]
 pub struct FfiCdsiLookupResponseEntry {
     /// Telephone number, as an unformatted e164.

@@ -1023,6 +1023,43 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: SignalCPromise {
 
 }
 
+extension SignalCPromiseOptionalOfPairOfCStringPtrc_uchar32: SignalCPromise {
+
+    typealias Result = SignalOptionalOfPairOfCStringPtrc_uchar32
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOptionalOfUuid: SignalCPromise {
 
     typealias Result = SignalOptionalOfUuid
@@ -1043,43 +1080,6 @@ extension SignalCPromiseOptionalOfUuid: SignalCPromise {
 
     var generic_complete:
         SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?
-    {
-        get { self.complete }
-        set { complete = newValue }
-    }
-
-    var generic_context: SignalType_ConstPointer_void? {
-        get { self.context }
-        set { context = newValue }
-    }
-
-    var generic_cancellation_id: UInt64 {
-        get { self.cancellation_id }
-        set { cancellation_id = newValue }
-    }
-
-}
-
-extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
-
-    typealias Result = SignalOptionalPairOfCStringPtrc_uchar32
-
-    init(
-        generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?,
-        generic_context: SignalType_ConstPointer_void?,
-        generic_cancellation_id: UInt64,
-    ) {
-        self.init(
-            complete: generic_complete,
-            context: generic_context,
-            cancellation_id: generic_cancellation_id,
-
-        )
-    }
-
-    var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -2002,6 +2002,33 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
 
 }
 
+extension SignalOptionalOfPairOfCStringPtrc_uchar32: SignalOptionalOf {
+
+    typealias Contents = SignalPairOfCStringPtrc_uchar32
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfPairOfCStringPtrc_uchar32,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfPairOfCStringPtrc_uchar32 {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalOptionalOfUuid: SignalOptionalOf {
 
     typealias Contents = SignalUuid
@@ -2575,6 +2602,35 @@ extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
     }
 
     var generic_second: SignalCStringPtr? {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrc_uchar32: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalType_FixedArray32_uint8_t
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalType_FixedArray32_uint8_t,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalType_FixedArray32_uint8_t {
         get { self.second }
         set { second = newValue }
     }

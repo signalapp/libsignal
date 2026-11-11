@@ -1983,23 +1983,14 @@ impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTyp
     }
 }
 
-impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)>
-where
-    A::ResultType: Default,
-    B::ResultType: Default,
-{
-    type ResultType = OptionalPairOf<A::ResultType, B::ResultType>;
+impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)> {
+    type ResultType = OptionalOf<PairOf<A::ResultType, B::ResultType>>;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let Some(value) = self else {
-            return Ok(OptionalPairOf::default());
-        };
-        Ok(OptionalPairOf {
-            present: true,
-            first: value.0.convert_into()?,
-            // TODO: if self.1.convert_into() fails, we may leak memory
-            second: value.1.convert_into()?,
-        })
+        match self {
+            Some(value) => Ok(OptionalOf::some(value.convert_into()?)),
+            None => Ok(OptionalOf::NONE),
+        }
     }
 }
 

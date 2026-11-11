@@ -286,13 +286,13 @@ extension SignalCPromiseMutPointerFakeChatRemoteEnd: SignalCPromise {
 
 }
 
-extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: SignalCPromise {
+extension SignalCPromiseOptionalOfPairOfMutPointerHttpRequestu64: SignalCPromise {
 
-    public typealias Result = SignalOptionalPairOfMutPointerHttpRequestu64
+    public typealias Result = SignalOptionalOfPairOfMutPointerHttpRequestu64
 
     public init(
         generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64_ConstPointer_void?,
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfMutPointerHttpRequestu64_ConstPointer_void?,
         generic_context: SignalType_ConstPointer_void?,
         generic_cancellation_id: UInt64,
     ) {
@@ -305,7 +305,7 @@ extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: SignalCPromise {
     }
 
     public var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64_ConstPointer_void?
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfMutPointerHttpRequestu64_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -344,6 +344,33 @@ extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
     }
 
     public var generic_value: MaybeUninitOfOwnedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
+
+    public typealias Contents = SignalPairOfMutPointerHttpRequestu64
+
+    public init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfPairOfMutPointerHttpRequestu64,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    public var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    public var generic_value: MaybeUninitOfPairOfMutPointerHttpRequestu64 {
         get { self.value }
         set { value = newValue }
     }
@@ -800,6 +827,35 @@ extension SignalPairOfi32OwnedBuffer: SignalPairOf {
     }
 
     public var generic_second: SignalOwnedBuffer {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfMutPointerHttpRequestu64: SignalPairOf {
+
+    public typealias First = SignalMutPointerHttpRequest
+
+    public typealias Second = UInt64
+
+    public init(
+        generic_first: SignalMutPointerHttpRequest,
+        generic_second: UInt64,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalMutPointerHttpRequest {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: UInt64 {
         get { self.second }
         set { second = newValue }
     }

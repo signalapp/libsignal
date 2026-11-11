@@ -51,7 +51,7 @@ extension UnauthenticatedChatConnection: UnauthUsernamesService {
     }
 
     public func lookUpUsernameLink(_ uuid: UUID, entropy: Data) async throws -> Username? {
-        var rawResponse: SignalOptionalPairOfCStringPtrc_uchar32 = try await self.tokioAsyncContext
+        var rawResponse: SignalOptionalOfPairOfCStringPtrc_uchar32 = try await self.tokioAsyncContext
             .invokeAsyncFunction { promise, tokioAsyncContext in
                 withNativeHandle { chatService in
                     try! withAllBorrowed(uuid, entropy) { uuid, entropy in
@@ -68,9 +68,9 @@ extension UnauthenticatedChatConnection: UnauthUsernamesService {
         guard rawResponse.present else {
             return nil
         }
-        defer { signal_free_string(rawResponse.first) }
-        let name = String(cString: rawResponse.first!)
-        let hash = withUnsafeBytes(of: &rawResponse.second) { Data($0) }
+        defer { signal_free_string(rawResponse.value.first) }
+        let name = String(cString: rawResponse.value.first!)
+        let hash = withUnsafeBytes(of: &rawResponse.value.second) { Data($0) }
         return Username(name, uncheckedHash: hash)
     }
 }
