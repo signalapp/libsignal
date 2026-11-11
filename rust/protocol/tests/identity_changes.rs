@@ -197,11 +197,18 @@ fn archived_receives_preserve_identity(behavior: ClientBehavior, prekey: bool) {
     let mut new_alice = Client::new("alice", behavior, &mut rng);
     new_alice.initiate(&mut bob, &mut rng);
     let initiation = new_alice.send(&bob, b"new identity", &mut rng).unwrap();
+    let changes = bob.identities.safety_number_changes();
     bob.receive(&new_alice, &initiation, &mut rng).unwrap();
+    assert_eq!(
+        bob.identities.safety_number_changes(),
+        changes + 1,
+        "a replaced identity is reported once"
+    );
     bob.approve(&new_alice);
     new_alice.assert_exchange(&mut bob, &mut rng);
     let sid = bob.sid(&new_alice);
     let save_calls = bob.identities.save_calls();
+    let changes = bob.identities.safety_number_changes();
     for message in &delayed {
         assert_eq!(bob.receive(&alice, message, &mut rng).unwrap(), b"delayed");
         assert_eq!(bob.stored_identity(&new_alice), new_alice.identity());
@@ -211,8 +218,99 @@ fn archived_receives_preserve_identity(behavior: ClientBehavior, prekey: bool) {
             save_calls,
             "archived receives must not call save_identity"
         );
+        assert_eq!(
+            bob.identities.safety_number_changes(),
+            changes + 1,
+            "only the first receive under the retired identity is reported"
+        );
     }
     bob.assert_exchange(&mut new_alice, &mut rng);
+    assert_eq!(
+        bob.identities.safety_number_changes(),
+        changes + 2,
+        "returning to the current identity is reported"
+    );
+}
+
+/// An attacker holding a retired identity key and its session state can keep
+/// composing new messages on the archived session. Each switch between the
+/// retired and current identity must be reported, without replacing the stored
+/// identity or blocking sends to the current one.
+#[test_matrix([ClientBehavior::Android, ClientBehavior::Ios, ClientBehavior::Desktop])]
+fn retired_identity_receives_report_safety_number_changes(behavior: ClientBehavior) {
+    let mut rng = StdRng::seed_from_u64(0);
+    let mut old_alice = Client::new("alice", behavior, &mut rng);
+    let mut bob = Client::new("bob", behavior, &mut rng);
+    old_alice.initiate(&mut bob, &mut rng);
+    old_alice.assert_exchange(&mut bob, &mut rng);
+
+    let mut alice = Client::new("alice", behavior, &mut rng);
+    alice.initiate(&mut bob, &mut rng);
+    let initiation = alice.send(&bob, b"new identity", &mut rng).unwrap();
+    bob.receive(&alice, &initiation, &mut rng).unwrap();
+    bob.approve(&alice);
+    alice.assert_exchange(&mut bob, &mut rng);
+    let sid = bob.sid(&alice);
+
+    let mut changes = bob.identities.safety_number_changes();
+    for round in 0..3 {
+        for _ in 0..2 {
+            let injected = old_alice.send(&bob, b"injected", &mut rng).unwrap();
+            assert_eq!(
+                bob.receive(&old_alice, &injected, &mut rng).unwrap(),
+                b"injected"
+            );
+        }
+        changes += 1;
+        assert_eq!(
+            bob.identities.safety_number_changes(),
+            changes,
+            "receives under the retired identity are reported once (round {round})"
+        );
+
+        for _ in 0..2 {
+            let genuine = alice.send(&bob, b"genuine", &mut rng).unwrap();
+            assert_eq!(bob.receive(&alice, &genuine, &mut rng).unwrap(), b"genuine");
+        }
+        changes += 1;
+        assert_eq!(
+            bob.identities.safety_number_changes(),
+            changes,
+            "returning to the current identity is reported once (round {round})"
+        );
+
+        assert_eq!(bob.stored_identity(&alice), alice.identity());
+        assert_eq!(bob.sid(&alice), sid);
+    }
+    // The stored identity was never replaced, so sending needs no new approval.
+    bob.assert_exchange(&mut alice, &mut rng);
+}
+
+/// A client that learns a new identity from a fetched bundle reports the change
+/// when saving it, so the first message received under that identity must not
+/// report it again.
+#[test_matrix([ClientBehavior::Android, ClientBehavior::Ios, ClientBehavior::Desktop])]
+fn identity_learned_from_bundle_is_reported_once(behavior: ClientBehavior) {
+    let mut rng = StdRng::seed_from_u64(0);
+    let mut old_alice = Client::new("alice", behavior, &mut rng);
+    let mut bob = Client::new("bob", behavior, &mut rng);
+    old_alice.initiate(&mut bob, &mut rng);
+    old_alice.assert_exchange(&mut bob, &mut rng);
+
+    let mut alice = Client::new("alice", behavior, &mut rng);
+    let changes = bob.identities.safety_number_changes();
+    // Model the client learning the new key from a fetched bundle and
+    // approving it before initiating a fresh session.
+    bob.identities
+        .save_identity(&alice.address, &alice.identity())
+        .now_or_never()
+        .unwrap()
+        .unwrap();
+    assert_eq!(bob.identities.safety_number_changes(), changes + 1);
+    bob.approve(&alice);
+    bob.initiate(&mut alice, &mut rng);
+    bob.assert_exchange(&mut alice, &mut rng);
+    assert_eq!(bob.identities.safety_number_changes(), changes + 1);
 }
 
 #[test_matrix([ClientBehavior::Android, ClientBehavior::Ios, ClientBehavior::Desktop])]
@@ -485,11 +583,17 @@ fn identity_change_archives_siblings_without_losing_new_session(behavior: Client
     );
 
     let save_calls = bob.identities.save_calls();
+    let changes = bob.identities.safety_number_changes();
     assert_eq!(
         bob.receive(&sibling, &delayed, &mut rng).unwrap(),
         b"late sibling message"
     );
     assert_eq!(bob.identities.save_calls(), save_calls);
+    assert_eq!(
+        bob.identities.safety_number_changes(),
+        changes + 1,
+        "the last received identity is tracked per account, not per device"
+    );
     assert_eq!(bob.stored_identity(&sibling), alice.identity());
     assert!(bob.record(&sibling).alice_base_key().is_err());
     bob.approve(&alice);

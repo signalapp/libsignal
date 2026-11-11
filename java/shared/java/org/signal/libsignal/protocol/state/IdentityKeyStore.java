@@ -52,6 +52,10 @@ public interface IdentityKeyStore {
    *
    * <p>Store a remote client's identity key as trusted.
    *
+   * <p>libsignal calls this after every successful decrypt on the active session, and after every
+   * encrypt, even when {@code identityKey} is unchanged. Implementations that track the identity of
+   * the last received message (see {@link #recordReceivedIdentity}) should update it here too.
+   *
    * @param address The address of the remote client.
    * @param identityKey The remote client's identity key.
    * @return True if the identity key replaces a previous identity, false if not
@@ -86,4 +90,22 @@ public interface IdentityKeyStore {
    * @return The public identity key, or null if absent
    */
   public IdentityKey getIdentity(SignalProtocolAddress address);
+
+  /**
+   * Record that a message from a remote client was just decrypted under an identity key on an
+   * archived session.
+   *
+   * <p>After the trust check, each successful decrypt calls exactly one of {@link #saveIdentity}
+   * and this method: {@code saveIdentity} when the message was decrypted on the active session or
+   * established a new session, and this method when it was decrypted on an existing archived
+   * session. An archived session may belong to an identity that has since been replaced, so {@code
+   * identityKey} can differ from the saved identity.
+   *
+   * <p>The default implementation does nothing.
+   *
+   * @param address The address of the remote client.
+   * @param identityKey The identity key the message was decrypted under.
+   */
+  public default void recordReceivedIdentity(
+      SignalProtocolAddress address, IdentityKey identityKey) {}
 }

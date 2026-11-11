@@ -20,6 +20,37 @@ class BadStore: InMemorySignalProtocolStore {
     }
 }
 
+class RecordingIdentityStore: InMemorySignalProtocolStore {
+    struct ReceivedIdentity: Equatable {
+        var address: ProtocolAddress
+        var identity: IdentityKey
+    }
+
+    var receivedIdentities: [ReceivedIdentity] = []
+
+    override func recordReceivedIdentity(
+        _ identity: IdentityKey,
+        for address: ProtocolAddress,
+        context: StoreContext
+    ) throws {
+        self.receivedIdentities.append(.init(address: address, identity: identity))
+    }
+}
+
+class BadRecordReceivedIdentityStore: InMemorySignalProtocolStore {
+    enum Error: Swift.Error {
+        case badness
+    }
+
+    override func recordReceivedIdentity(
+        _ identity: IdentityKey,
+        for address: ProtocolAddress,
+        context: StoreContext
+    ) throws {
+        throw Error.badness
+    }
+}
+
 // Wrapped here so that the test files don't need to use @testable import.
 func sealedSenderMultiRecipientMessageForSingleRecipient(_ message: Data) throws -> Data {
     return try LibSignalClient.sealedSenderMultiRecipientMessageForSingleRecipient(message)

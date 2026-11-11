@@ -63,6 +63,11 @@ pub trait IdentityKeyStore {
     /// Record an identity into the store. The identity is then considered "trusted".
     ///
     /// The return value represents whether an existing identity was replaced.
+    ///
+    /// This is called after every successful decrypt on the active session, and after every
+    /// encrypt, even when `identity` is unchanged. Implementations that track the identity of
+    /// the last received message (see [`record_received_identity`](Self::record_received_identity))
+    /// should update it here too.
     async fn save_identity(
         &mut self,
         address: &ProtocolAddress,
@@ -79,6 +84,24 @@ pub trait IdentityKeyStore {
 
     /// Return the public identity for the given `address`, if known.
     async fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>>;
+
+    /// Record that a message from `address` was just decrypted under `identity` on an archived
+    /// session.
+    ///
+    /// After the trust check, each successful decrypt calls exactly one of
+    /// [`save_identity`](Self::save_identity) and this method: `save_identity` when the message
+    /// was decrypted on the active session or established a new session, and this method when it
+    /// was decrypted on an existing archived session. An archived session may belong to an
+    /// identity that has since been replaced, so `identity` can differ from the stored identity.
+    ///
+    /// The default implementation does nothing.
+    async fn record_received_identity(
+        &mut self,
+        _address: &ProtocolAddress,
+        _identity: &IdentityKey,
+    ) -> Result<()> {
+        Ok(())
+    }
 }
 
 /// Interface for storing pre-keys downloaded from a server.

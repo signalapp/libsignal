@@ -725,6 +725,73 @@ async function makePQXDHBundle(
   );
 }
 
+// Sets up a session in both directions, then has Bob archive his session with
+// Alice, so that Alice's next message is decrypted on an archived session.
+async function setUpArchivedSession(
+  makeBundle: typeof makePQXDHBundle
+): Promise<{
+  aliceStores: TestStores;
+  bobStores: TestStores;
+  aAddress: SignalClient.ProtocolAddress;
+  bAddress: SignalClient.ProtocolAddress;
+}> {
+  const aliceStores = new TestStores();
+  const bobStores = new TestStores();
+
+  const aAddress = SignalClient.ProtocolAddress.new('+14151111111', 1);
+  const bAddress = SignalClient.ProtocolAddress.new('+19192222222', 1);
+
+  await SignalClient.processPreKeyBundle(
+    await makeBundle(bAddress, bobStores),
+    bAddress,
+    aAddress,
+    aliceStores.session,
+    aliceStores.identity
+  );
+  const aCiphertext = await SignalClient.signalEncrypt(
+    Buffer.from('hello', 'utf8'),
+    bAddress,
+    aAddress,
+    aliceStores.session,
+    aliceStores.identity
+  );
+  await SignalClient.signalDecryptPreKey(
+    SignalClient.PreKeySignalMessage.deserialize(aCiphertext.serialize()),
+    aAddress,
+    bAddress,
+    bobStores.session,
+    bobStores.identity,
+    bobStores.prekey,
+    bobStores.signed,
+    bobStores.kyber
+  );
+  const bCiphertext = await SignalClient.signalEncrypt(
+    Buffer.from('hi', 'utf8'),
+    aAddress,
+    bAddress,
+    bobStores.session,
+    bobStores.identity
+  );
+  await SignalClient.signalDecrypt(
+    SignalClient.SignalMessage.deserialize(bCiphertext.serialize()),
+    bAddress,
+    aAddress,
+    aliceStores.session,
+    aliceStores.identity
+  );
+
+  // Decrypts on active sessions call saveIdentity, not recordReceivedIdentity.
+  assert.isEmpty(aliceStores.identity.receivedIdentities);
+  assert.isEmpty(bobStores.identity.receivedIdentities);
+
+  const session = await bobStores.session.getSession(aAddress);
+  assert(session !== null);
+  session.archiveCurrentState();
+  await bobStores.session.saveSession(aAddress, session);
+
+  return { aliceStores, bobStores, aAddress, bAddress };
+}
+
 for (const testCase of sessionVersionTestCases) {
   describe(`Session ${testCase.suffix}`, () => {
     it('BasicPreKeyMessaging', async () => {
@@ -825,6 +892,66 @@ for (const testCase of sessionVersionTestCases) {
         !session.currentRatchetKeyMatches(
           SignalClient.PrivateKey.generate().getPublicKey()
         )
+      );
+    });
+
+    it('reports archived-session decrypts through recordReceivedIdentity', async () => {
+      const { aliceStores, bobStores, aAddress, bAddress } =
+        await setUpArchivedSession(testCase.makeBundle);
+
+      const message = Buffer.from('on an archived session', 'utf8');
+      const ciphertext = await SignalClient.signalEncrypt(
+        message,
+        bAddress,
+        aAddress,
+        aliceStores.session,
+        aliceStores.identity
+      );
+      assert.deepEqual(
+        ciphertext.type(),
+        SignalClient.CiphertextMessageType.Whisper
+      );
+      const plaintext = await SignalClient.signalDecrypt(
+        SignalClient.SignalMessage.deserialize(ciphertext.serialize()),
+        aAddress,
+        bAddress,
+        bobStores.session,
+        bobStores.identity
+      );
+      assert.deepEqual(plaintext, message);
+
+      const aliceKey = (
+        await aliceStores.identity.getIdentityKey()
+      ).getPublicKey();
+      assert.equal(bobStores.identity.receivedIdentities.length, 1);
+      const [received] = bobStores.identity.receivedIdentities;
+      assert.equal(received.name.name(), aAddress.name());
+      assert.equal(received.name.deviceId(), aAddress.deviceId());
+      assert(received.key.equals(aliceKey));
+    });
+
+    it('fails decryption when recordReceivedIdentity throws', async () => {
+      const { aliceStores, bobStores, aAddress, bAddress } =
+        await setUpArchivedSession(testCase.makeBundle);
+
+      const ciphertext = await SignalClient.signalEncrypt(
+        Buffer.from('on an archived session', 'utf8'),
+        bAddress,
+        aAddress,
+        aliceStores.session,
+        aliceStores.identity
+      );
+
+      bobStores.identity.failRecordReceivedIdentity = true;
+      await assert.isRejected(
+        SignalClient.signalDecrypt(
+          SignalClient.SignalMessage.deserialize(ciphertext.serialize()),
+          aAddress,
+          bAddress,
+          bobStores.session,
+          bobStores.identity
+        ),
+        'recordReceivedIdentity failed'
       );
     });
 

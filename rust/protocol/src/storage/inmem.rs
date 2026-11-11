@@ -451,6 +451,16 @@ impl traits::IdentityKeyStore for InMemSignalProtocolStore {
     async fn get_identity(&self, address: &ProtocolAddress) -> Result<Option<IdentityKey>> {
         self.identity_store.get_identity(address).await
     }
+
+    async fn record_received_identity(
+        &mut self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+    ) -> Result<()> {
+        self.identity_store
+            .record_received_identity(address, identity)
+            .await
+    }
 }
 
 #[async_trait(?Send)]

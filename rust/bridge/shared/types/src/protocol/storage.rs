@@ -44,6 +44,11 @@ trait BridgeIdentityKeyStore {
         public_key: PublicKey,
         direction: /*Direction*/ u32,
     ) -> Result<bool, SignalProtocolError>;
+    async fn record_received_identity_key(
+        &self,
+        address: ProtocolAddress,
+        public_key: PublicKey,
+    ) -> Result<(), SignalProtocolError>;
 }
 
 #[derive(Debug, IsCType)]
@@ -105,6 +110,16 @@ impl<T: BridgeIdentityKeyStore> IdentityKeyStore for BridgedCallbacks<T> {
             .get_identity_key(address.clone())
             .await?
             .map(IdentityKey::new))
+    }
+
+    async fn record_received_identity(
+        &mut self,
+        address: &ProtocolAddress,
+        identity: &IdentityKey,
+    ) -> Result<(), SignalProtocolError> {
+        self.0
+            .record_received_identity_key(address.clone(), *identity.public_key())
+            .await
     }
 }
 

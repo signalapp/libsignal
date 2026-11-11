@@ -5746,6 +5746,10 @@ export /*trait*/ type IdentityKeyStore = {
     publicKey: PublicKey,
     direction: number
   ) => Promise<boolean>;
+  recordReceivedIdentityKey: (
+    address: ProtocolAddress,
+    publicKey: PublicKey
+  ) => Promise<void>;
 };
 
 export /*trait*/ type InputStream = {

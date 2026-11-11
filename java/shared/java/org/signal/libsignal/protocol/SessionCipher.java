@@ -116,6 +116,11 @@ public class SessionCipher {
       public NativeHandleGuard.Owner getIdentityKey(long rawAddress) {
         return identityKeyStore.getIdentity(new SignalProtocolAddress(rawAddress)).getPublicKey();
       }
+
+      public void recordReceivedIdentityKey(long rawAddress, long rawKey) throws Exception {
+        identityKeyStore.recordReceivedIdentity(
+            new SignalProtocolAddress(rawAddress), new IdentityKey(new ECPublicKey(rawKey)));
+      }
     };
   }
 

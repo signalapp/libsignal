@@ -50,6 +50,11 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
   private idKeys = new Map<string, SignalClient.PublicKey>();
   private localRegistrationId: number;
   private identityKey: SignalClient.PrivateKey;
+  receivedIdentities: Array<{
+    name: SignalClient.ProtocolAddress;
+    key: SignalClient.PublicKey;
+  }> = [];
+  failRecordReceivedIdentity = false;
 
   constructor(localRegistrationId?: number) {
     super();
@@ -96,6 +101,15 @@ export class InMemoryIdentityKeyStore extends SignalClient.IdentityKeyStore {
   ): Promise<SignalClient.PublicKey | null> {
     const idx = `${name.name()}::${name.deviceId()}`;
     return this.idKeys.get(idx) ?? null;
+  }
+  async recordReceivedIdentity(
+    name: SignalClient.ProtocolAddress,
+    key: SignalClient.PublicKey
+  ): Promise<void> {
+    if (this.failRecordReceivedIdentity) {
+      throw new Error('recordReceivedIdentity failed');
+    }
+    this.receivedIdentities.push({ name, key });
   }
 }
 
