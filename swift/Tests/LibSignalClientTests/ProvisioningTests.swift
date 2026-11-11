@@ -10,12 +10,15 @@ import XCTest
 class ProvisioningTests: TestCaseBase {
     func testRoundTrip() throws {
         let secondary = RecvProvisionCiphertextState.generate()
-        let publicKey = secondary.publicKey
-        XCTAssertEqual(33, publicKey.count)
-        XCTAssertEqual(0x05, publicKey.first)
+        let pubkeyBytes = secondary.publicKey.serialize()
+        XCTAssertEqual(33, pubkeyBytes.count)
+        XCTAssertEqual(0x05, pubkeyBytes.first)
 
         let message = Data("provision message".utf8)
-        let envelope = try encryptProvisionMessage(secondaryPublicKey: publicKey, provisionMessage: message)
+        let envelope = try encryptProvisionMessage(
+            secondaryPublicKey: ProvisioningPublicKey(pubkeyBytes),
+            provisionMessage: message
+        )
         XCTAssertEqual(message, try secondary.decryptEnvelope(envelope))
     }
 
@@ -47,21 +50,17 @@ class ProvisioningTests: TestCaseBase {
     }
 
     func testBadPublicKey() {
-        var publicKey = RecvProvisionCiphertextState.generate().publicKey
-        XCTAssertThrowsError(
-            try encryptProvisionMessage(secondaryPublicKey: publicKey.prefix(32), provisionMessage: [])
-        ) {
-            guard case SignalError.invalidType(_) = $0 else {
-                XCTFail("wrong error: \($0)")
-                return
-            }
-        }
-
-        publicKey[0] = 0x06
-        XCTAssertThrowsError(try encryptProvisionMessage(secondaryPublicKey: publicKey, provisionMessage: [])) {
-            guard case SignalError.invalidMessage(_) = $0 else {
-                XCTFail("wrong error: \($0)")
-                return
+        let pubkeyBytes = RecvProvisionCiphertextState.generate().publicKey.serialize()
+        var badVersion = pubkeyBytes
+        badVersion[0] = 0x06
+        for badKey in [pubkeyBytes.prefix(32), pubkeyBytes + [0], badVersion] {
+            XCTAssertThrowsError(
+                try encryptProvisionMessage(secondaryPublicKey: ProvisioningPublicKey(badKey), provisionMessage: [])
+            ) {
+                guard case SignalError.invalidKey(_) = $0 else {
+                    XCTFail("wrong error: \($0)")
+                    return
+                }
             }
         }
     }

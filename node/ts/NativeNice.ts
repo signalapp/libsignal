@@ -3644,11 +3644,19 @@ export async function DeleteBackupMediaStream_next({
   );
 }
 
+export function ProvisioningPublicKey_Serialize({
+  key: key,
+}: {
+  key: Native.Wrapper<Native.ProvisioningPublicKey>;
+}): Bytes {
+  return identity(Native.ProvisioningPublicKey_Serialize(identity(key)));
+}
+
 export function Provisioning_EncryptProvisionMessage({
   secondaryPublicKey: secondary_public_key,
   provisionMessage: provision_message,
 }: {
-  secondaryPublicKey: Bytes;
+  secondaryPublicKey: Native.Wrapper<Native.ProvisioningPublicKey>;
   provisionMessage: Bytes;
 }): Bytes {
   return identity(
@@ -3671,16 +3679,6 @@ export function RecvProvisionCiphertextState_DecryptEnvelope({
       identity(state),
       identity(envelope)
     )
-  );
-}
-
-export function RecvProvisionCiphertextState_GetPublicKey({
-  state: state,
-}: {
-  state: Native.Wrapper<Native.RecvProvisionCiphertextState>;
-}): Bytes {
-  return identity(
-    Native.RecvProvisionCiphertextState_GetPublicKey(identity(state))
   );
 }
 

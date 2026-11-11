@@ -2840,20 +2840,6 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
 }
 
-internal enum FixedByteArrayHelper33: FixedByteArrayHelper {
-    typealias Ffi = (
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8
-    )
-    static func count() -> Int {
-        33
-    }
-    static func emptyFfi() -> Ffi {
-        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    }
-}
-
 internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -6234,12 +6220,30 @@ internal enum NativeNice {
         }
 
     }
+    internal static func ProvisioningPublicKey_Serialize(
+        key: ProvisioningPublicKey,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>.convertArgBorrowed(
+            key
+        ) { keyFfi in
+            var rawOutput = DataConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_provisioning_public_key_serialize(
+                    &rawOutput,
+                    keyFfi,
+                )
+            )
+            return try DataConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func Provisioning_EncryptProvisionMessage(
-        secondaryPublicKey secondary_public_key: Data,
+        secondaryPublicKey secondary_public_key: ProvisioningPublicKey,
         provisionMessage provision_message: Data,
     ) throws -> Data {
-        try FixedByteArrayConverter<FixedByteArrayHelper33>.convertArgBorrowed(secondary_public_key) {
-            secondary_public_keyFfi in
+        try BridgeHandleRefConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>.convertArgBorrowed(
+            secondary_public_key
+        ) { secondary_public_keyFfi in
             try DataConverter.convertArgBorrowed(provision_message) { provision_messageFfi in
                 var rawOutput = DataConverter.emptyFfiReturn()
                 try checkError(
@@ -6289,17 +6293,19 @@ internal enum NativeNice {
     }
     internal static func RecvProvisionCiphertextState_GetPublicKey(
         state: RecvProvisionCiphertextState,
-    ) throws -> Data {
+    ) throws -> ProvisioningPublicKey {
         try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
             .convertArgBorrowed(state) { stateFfi in
-                var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper33>.emptyFfiReturn()
+                var rawOutput = BridgeHandleConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>
+                    .emptyFfiReturn()
                 try checkError(
                     SignalFfi.signal_recv_provision_ciphertext_state_get_public_key(
                         &rawOutput,
                         stateFfi,
                     )
                 )
-                return try FixedByteArrayConverter<FixedByteArrayHelper33>.convertReturn(consuming: rawOutput)
+                return try BridgeHandleConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>
+                    .convertReturn(consuming: rawOutput)
             }
 
     }

@@ -8,5 +8,5 @@ import SignalFfi
 // Called from setUpLibsignalLogging(level:), which every app that uses libsignal uses, so dead
 // stripping won't remove this reference. A mismatched libsignal_ffi causes linking to fail.
 internal func checkFfiVersion() {
-    signal_ffi_version_0_107_1()
+    signal_ffi_version_0_108_0()
 }

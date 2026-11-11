@@ -30,10 +30,10 @@ public class RecvProvisionCiphertextState internal constructor(
   }
 
   /**
-   * The 33-byte serialized public key that the primary should encrypt to. This is what the secondary puts
-   * in its provisioning QR code.
+   * The public key that the primary should encrypt to. This is what the secondary puts in its
+   * provisioning QR code.
    */
-  public val publicKey: ByteArray
+  public val publicKey: ProvisioningPublicKey
     get() = NativeNice.RecvProvisionCiphertextState_GetPublicKey(this)
 
   /**

@@ -2420,8 +2420,18 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.DeleteBackupMediaNextChunk>(it) }
   }
 
+  public fun ProvisioningPublicKey_Serialize(key: org.signal.libsignal.provisioning.ProvisioningPublicKey): ByteArray {
+    val ffi_key = identity(key)
+    val ffiOut =
+      Native.ProvisioningPublicKey_Serialize(
+        ffi_key,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun Provisioning_EncryptProvisionMessage(
-    secondaryPublicKey: ByteArray,
+    secondaryPublicKey: org.signal.libsignal.provisioning.ProvisioningPublicKey,
     provisionMessage: ByteArray,
   ): ByteArray {
     val ffi_secondary_public_key = identity(secondaryPublicKey)
@@ -2460,14 +2470,15 @@ public object NativeNice {
 
   public fun RecvProvisionCiphertextState_GetPublicKey(
     state: org.signal.libsignal.provisioning.RecvProvisionCiphertextState,
-  ): ByteArray {
+  ): org.signal.libsignal.provisioning.ProvisioningPublicKey {
     val ffi_state = identity(state)
     val ffiOut =
       Native.RecvProvisionCiphertextState_GetPublicKey(
         ffi_state,
       )
 
-    return identity(ffiOut)
+    return org.signal.libsignal.provisioning
+      .ProvisioningPublicKey(ffiOut)
   }
 
   public fun SvrKey_DeriveLoggingKey(svrKey: ByteArray): ByteArray {

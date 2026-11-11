@@ -2394,8 +2394,14 @@ type NativeFunctions = {
     chat: Wrapper<ProvisioningChatConnection>,
     listener: ProvisioningListener
   ) => void;
+  ProvisioningPublicKey_Deserialize: (
+    pubkey_bytes: Bytes
+  ) => ProvisioningPublicKey;
+  ProvisioningPublicKey_Serialize: (
+    key: Wrapper<ProvisioningPublicKey>
+  ) => Bytes;
   Provisioning_EncryptProvisionMessage: (
-    secondary_public_key: Bytes,
+    secondary_public_key: Wrapper<ProvisioningPublicKey>,
     provision_message: Bytes
   ) => Bytes;
   PublicKey_Deserialize: (data: Bytes) => PublicKey;
@@ -2446,7 +2452,7 @@ type NativeFunctions = {
   RecvProvisionCiphertextState_Generate: () => RecvProvisionCiphertextState;
   RecvProvisionCiphertextState_GetPublicKey: (
     state: Wrapper<RecvProvisionCiphertextState>
-  ) => Bytes;
+  ) => ProvisioningPublicKey;
   RegisterAccountRequest_Create: () => RegisterAccountRequest;
   RegisterAccountRequest_SetAccountPassword: (
     register_account: Wrapper<RegisterAccountRequest>,
@@ -4371,6 +4377,8 @@ const {
   ProvisioningChatConnection_disconnect,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_init_listener,
+  ProvisioningPublicKey_Deserialize,
+  ProvisioningPublicKey_Serialize,
   Provisioning_EncryptProvisionMessage,
   PublicKey_Deserialize,
   PublicKey_Equals,
@@ -5214,6 +5222,8 @@ export {
   ProvisioningChatConnection_disconnect,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_init_listener,
+  ProvisioningPublicKey_Deserialize,
+  ProvisioningPublicKey_Serialize,
   Provisioning_EncryptProvisionMessage,
   PublicKey_Deserialize,
   PublicKey_Equals,
@@ -5941,6 +5951,9 @@ export interface ProtocolAddress {
   readonly __type: unique symbol;
 }
 export interface ProvisioningChatConnection {
+  readonly __type: unique symbol;
+}
+export interface ProvisioningPublicKey {
   readonly __type: unique symbol;
 }
 export interface PublicKey {
