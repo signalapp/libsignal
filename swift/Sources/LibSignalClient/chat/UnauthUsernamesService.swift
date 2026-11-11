@@ -30,7 +30,7 @@ public protocol UnauthUsernamesService: Sendable {
 
 extension UnauthenticatedChatConnection: UnauthUsernamesService {
     public func lookUpUsernameHash(_ hash: Data) async throws -> Aci? {
-        let rawResponse: SignalOptionalUuid = try await self.tokioAsyncContext
+        let rawResponse: SignalOptionalOfUuid = try await self.tokioAsyncContext
             .invokeAsyncFunction { promise, tokioAsyncContext in
                 withNativeHandle { chatService in
                     hash.withUnsafeBorrowedBuffer { hash in

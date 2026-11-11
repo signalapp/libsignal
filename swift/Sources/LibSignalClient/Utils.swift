@@ -129,13 +129,13 @@ internal func invokeFnReturningUuid(fn: (UnsafeMutablePointer<SignalUuid>?) -> S
 }
 
 internal func invokeFnReturningOptionalUuid(
-    fn: (UnsafeMutablePointer<SignalOptionalUuid>?) -> SignalFfiErrorRef?
+    fn: (UnsafeMutablePointer<SignalOptionalOfUuid>?) -> SignalFfiErrorRef?
 ) throws -> UUID? {
     let output = try invokeFnReturningValueByPointer(.init(), fn: fn)
     if output.present == false {
         return nil
     }
-    return UUID(uuid: output.bytes)
+    return UUID(uuid: output.value.bytes)
 }
 
 internal func invokeFnReturningServiceId<Id: ServiceId>(

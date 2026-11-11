@@ -1023,6 +1023,43 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: SignalCPromise {
 
 }
 
+extension SignalCPromiseOptionalOfUuid: SignalCPromise {
+
+    typealias Result = SignalOptionalOfUuid
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
 
     typealias Result = SignalOptionalPairOfCStringPtrc_uchar32
@@ -1043,43 +1080,6 @@ extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
 
     var generic_complete:
         SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?
-    {
-        get { self.complete }
-        set { complete = newValue }
-    }
-
-    var generic_context: SignalType_ConstPointer_void? {
-        get { self.context }
-        set { context = newValue }
-    }
-
-    var generic_cancellation_id: UInt64 {
-        get { self.cancellation_id }
-        set { cancellation_id = newValue }
-    }
-
-}
-
-extension SignalCPromiseOptionalUuid: SignalCPromise {
-
-    typealias Result = SignalOptionalUuid
-
-    init(
-        generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalUuid_ConstPointer_void?,
-        generic_context: SignalType_ConstPointer_void?,
-        generic_cancellation_id: UInt64,
-    ) {
-        self.init(
-            complete: generic_complete,
-            context: generic_context,
-            cancellation_id: generic_cancellation_id,
-
-        )
-    }
-
-    var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalUuid_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1996,6 +1996,33 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
     }
 
     var generic_value: MaybeUninitOfBorrowedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfUuid: SignalOptionalOf {
+
+    typealias Contents = SignalUuid
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfUuid,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfUuid {
         get { self.value }
         set { value = newValue }
     }

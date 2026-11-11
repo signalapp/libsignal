@@ -2145,7 +2145,7 @@ SignalFfiError* signal_testing_conversion_uuid_to_string(
   SignalUuid x
 );
 SignalFfiError* signal_testing_convert_optional_uuid(
-  SignalOptionalUuid* out,
+  SignalOptionalOfUuid* out,
   bool present
 );
 SignalFfiError* signal_testing_copy_backup_media_tests(

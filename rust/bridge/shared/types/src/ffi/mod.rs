@@ -312,14 +312,6 @@ pub struct Uuid {
     pub bytes: [u8; 16],
 }
 
-#[derive(Default)]
-#[repr(C)]
-#[derive(IsCType)]
-pub struct OptionalUuid {
-    pub present: bool,
-    pub bytes: [u8; 16],
-}
-
 #[repr(C)]
 #[derive(IsCType)]
 #[capi(swift_protocol)]

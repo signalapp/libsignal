@@ -579,20 +579,6 @@ impl NiceResultConverter for uuid::Uuid {
     }
 }
 
-impl ResultTypeInfo for Option<uuid::Uuid> {
-    type ResultType = OptionalUuid;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        if let Some(uuid) = self {
-            Ok(OptionalUuid {
-                present: true,
-                bytes: *uuid.as_bytes(),
-            })
-        } else {
-            Ok(OptionalUuid::default())
-        }
-    }
-}
-
 /// Implements the nice converters for `ServiceId` and its narrower forms, which all cross the
 /// bridge as Service-Id-FixedWidthBinary. `$swift` is the Swift type the app sees; its converter is
 /// hand-written in NiceBridgingUtils.swift as `<$swift>Converter`.
@@ -2432,6 +2418,7 @@ macro_rules! simple_optional {
 }
 simple_optional!(f32);
 simple_optional!(Vec<u8>);
+return_optional!(uuid::Uuid);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
 return_optional!(crate::net::chat::remote_derives::BackupEntitlement);
