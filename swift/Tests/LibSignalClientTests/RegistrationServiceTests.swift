@@ -49,7 +49,7 @@ class RegistrationServiceConversionTests {
         #expect(response.number == "+18005550123")
         #expect(try Aci.parseFrom(serviceIdString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa") == response.aci)
         #expect(try Pni.parseFrom(serviceIdString: "PNI:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb") == response.pni)
-        #expect(response.usernameHash == Data("username-hash".utf8))
+        #expect(response.usernameHash == Data("username-hash-that-is-32-bytes!!".utf8))
         #expect(response.usernameLinkHandle == UUID(uuidString: "55555555-5555-5555-5555-555555555555"))
         #expect(response.storageCapable == true)
         #expect(

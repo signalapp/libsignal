@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.Test;
 import org.signal.libsignal.protocol.util.Hex;
+import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public class UsernamesTest {
   @Test
@@ -58,11 +59,10 @@ public class UsernamesTest {
   @Test
   public void testValidUsernameHashing() throws BaseUsernameException {
     String username = "he110.42";
-    byte[] hash = new Username(username).getHash();
-    assertEquals(32, hash.length);
+    UsernameHash hash = new Username(username).getHash();
     assertEquals(
         "f63f0521eb3adfe1d936f4b626b89558483507fbdb838fc554af059111cf322e",
-        Hex.toStringCondensed(hash));
+        Hex.toStringCondensed(hash.serialize()));
   }
 
   @Test
@@ -76,16 +76,16 @@ public class UsernamesTest {
   }
 
   @Test
-  public void testInvalidHash() throws BaseUsernameException {
+  public void testInvalidHash() throws BaseUsernameException, InvalidInputException {
     Username username = new Username("hello_signal.42");
     byte[] proof = username.generateProof();
 
     SecureRandom r = new SecureRandom();
-    byte[] badHash = new byte[32];
+    byte[] badHash = new byte[UsernameHash.SIZE];
     r.nextBytes(badHash);
 
     try {
-      Username.verifyProof(proof, badHash);
+      Username.verifyProof(proof, new UsernameHash(badHash));
     } catch (BaseUsernameException ex) {
       assertTrue(ex.getMessage().contains("Username could not be verified"));
     }

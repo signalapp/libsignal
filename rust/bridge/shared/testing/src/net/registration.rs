@@ -117,7 +117,7 @@ fn TESTING_RegisterAccountResponse_CreateTestValue() -> RegisterAccountResponse 
         aci: uuid!("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa").into(),
         number: Some("+18005550123".to_owned()),
         pni: Some(uuid!("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb").into()),
-        username_hash: Some((*b"username-hash").into()),
+        username_hash: Some((*b"username-hash-that-is-32-bytes!!").into()),
         username_link_handle: Some(uuid!("55555555-5555-5555-5555-555555555555")),
         storage_capable: true,
         entitlements: RegisterResponseEntitlements {

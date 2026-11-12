@@ -13,10 +13,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.signal.libsignal.internal.Native;
+import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public final class Username {
   private final String username;
-  private final byte[] hash;
+  private final UsernameHash hash;
 
   public static class UsernameLink {
     private final byte[] entropy;
@@ -54,24 +55,35 @@ public final class Username {
 
   public Username(String username) throws BaseUsernameException {
     this.username = Objects.requireNonNull(username, "username");
-    this.hash = filterExceptions(BaseUsernameException.class, () -> Native.Username_Hash(username));
+    this.hash =
+        wrapNativeHash(
+            filterExceptions(BaseUsernameException.class, () -> Native.Username_Hash(username)));
   }
 
-  private Username(String username, byte[] hash) {
+  private Username(String username, UsernameHash hash) {
     this.username = username;
     this.hash = hash;
   }
 
   // This could be `internal` in Kotlin.
-  public static Username _withPrecomputedHash(String username, byte[] hash) {
+  public static Username _withPrecomputedHash(String username, UsernameHash hash) {
     return new Username(username, hash);
+  }
+
+  private static UsernameHash wrapNativeHash(byte[] hash) {
+    try {
+      return new UsernameHash(hash);
+    } catch (InvalidInputException e) {
+      // The Rust side always produces 32-byte hashes.
+      throw new AssertionError(e);
+    }
   }
 
   public String getUsername() {
     return this.username;
   }
 
-  public byte[] getHash() {
+  public UsernameHash getHash() {
     return this.hash;
   }
 
@@ -99,7 +111,7 @@ public final class Username {
                     nickname, discriminator, minNicknameLength, maxNicknameLength));
     // If we generated the hash correctly, we can format the nickname and discriminator manually.
     String username = nickname + "." + discriminator;
-    return new Username(username, hash);
+    return new Username(username, wrapNativeHash(hash));
   }
 
   public static Username fromLink(final UsernameLink usernameLink) throws BaseUsernameException {
@@ -138,8 +150,10 @@ public final class Username {
     return new UsernameLink(entropy, enctyptedUsername);
   }
 
-  public static void verifyProof(byte[] proof, byte[] hash) throws BaseUsernameException {
-    filterExceptions(BaseUsernameException.class, () -> Native.Username_Verify(proof, hash));
+  public static void verifyProof(byte[] proof, UsernameHash hash) throws BaseUsernameException {
+    filterExceptions(
+        BaseUsernameException.class,
+        () -> Native.Username_Verify(proof, hash.getInternalContentsForJNI()));
   }
 
   @Override

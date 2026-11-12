@@ -13,9 +13,9 @@ import org.signal.libsignal.internal.ReserveUsernameHashOut
 import org.signal.libsignal.internal.SetUsernameLinkOut
 import org.signal.libsignal.net.assertNonSuccess
 import org.signal.libsignal.usernames.Username
+import org.signal.libsignal.usernames.UsernameHash
 import java.util.UUID
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
@@ -29,14 +29,14 @@ class AuthUsernamesServiceTest {
         ::AuthUsernamesService,
         invoke = { chat, req ->
           chat.reserveUsernameHash(
-            usernameHashes = req.usernames,
+            usernameHashes = req.usernames.map(::UsernameHash),
           )
         },
         check = { expected, actual ->
           when (expected) {
             is ReserveUsernameHashOut.Success ->
-              assertContentEquals(
-                expected._0,
+              assertEquals(
+                UsernameHash(expected._0),
                 assertIs<RequestResult.Success<UsernameHash>>(actual).result,
               )
             ReserveUsernameHashOut.UsernameNotAvailable ->

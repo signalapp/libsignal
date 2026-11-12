@@ -10,12 +10,8 @@ import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.usernames.Username
+import org.signal.libsignal.usernames.UsernameHash
 import java.util.UUID
-
-/**
- * A 32-byte hash of a username
- */
-public typealias UsernameHash = ByteArray
 
 /**
  * Errors that [AuthUsernamesService.confirmUsername] can produce, in addition to the generic
@@ -45,10 +41,10 @@ public class AuthUsernamesService(
         .AuthenticatedChatConnection_reserve_username_hash(
           asyncCtx = connection.tokioAsyncContext,
           chat = connection,
-          usernameHashes = usernameHashes,
+          usernameHashes = usernameHashes.map { hash -> hash.internalContentsForJNI },
         )
     }.mapWithCancellation(
-      onSuccess = { RequestResult.Success(it) },
+      onSuccess = { RequestResult.Success(UsernameHash(it)) },
       onError = { err -> err.toRequestResult<UsernameNotAvailableException>() },
     )
 
