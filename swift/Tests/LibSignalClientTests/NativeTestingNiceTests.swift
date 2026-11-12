@@ -186,7 +186,7 @@ struct NativeTestingNiceTests {
     func testBridgeVecData32() throws {
         try ArrayArgConverter<
             FixedByteArrayConverter<FixedByteArrayHelper32>,
-            SignalBorrowedSliceOfc_uchar32
+            SignalBorrowedSliceOfPtrToc_uchar32
         >.testConversion(
             items: (0..<8).map { count in
                 (0..<count).map { _ in Data((0..<32).map { _ in UInt8.random(in: 0...255) }) }

@@ -1995,11 +1995,11 @@ SignalFfiError* signal_testing_conversion_bool_to_string(
 );
 SignalFfiError* signal_testing_conversion_bridge_vec_data32_identity(
   SignalOwnedBufferOfMaxAlignedc_uchar32* out,
-  SignalBorrowedSliceOfc_uchar32 x
+  SignalBorrowedSliceOfPtrToc_uchar32 x
 );
 SignalFfiError* signal_testing_conversion_bridge_vec_data32_to_string(
   SignalCStringPtr* out,
-  SignalBorrowedSliceOfc_uchar32 x
+  SignalBorrowedSliceOfPtrToc_uchar32 x
 );
 SignalFfiError* signal_testing_conversion_bridge_vec_string_identity(
   SignalOwnedBufferOfMaxAlignedCStringPtr* out,

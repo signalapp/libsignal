@@ -3235,11 +3235,11 @@ static_assert_64bit(alignof(SignalBorrowedBytestringArray) == 8);
 typedef struct {
   const SignalType_ConstPointer_FixedArray32_uint8_t* base;
   size_t length;
-} SignalBorrowedSliceOfc_uchar32;
-static_assert_64bit(offsetof(SignalBorrowedSliceOfc_uchar32, base) == 0);
-static_assert_64bit(offsetof(SignalBorrowedSliceOfc_uchar32, length) == 8);
-static_assert_64bit(sizeof(SignalBorrowedSliceOfc_uchar32) == 16);
-static_assert_64bit(alignof(SignalBorrowedSliceOfc_uchar32) == 8);
+} SignalBorrowedSliceOfPtrToc_uchar32;
+static_assert_64bit(offsetof(SignalBorrowedSliceOfPtrToc_uchar32, base) == 0);
+static_assert_64bit(offsetof(SignalBorrowedSliceOfPtrToc_uchar32, length) == 8);
+static_assert_64bit(sizeof(SignalBorrowedSliceOfPtrToc_uchar32) == 16);
+static_assert_64bit(alignof(SignalBorrowedSliceOfPtrToc_uchar32) == 8);
 typedef struct {
   const SignalCStringPtr* base;
   size_t length;
@@ -4346,7 +4346,7 @@ SignalFfiError* signal_authenticated_chat_connection_reserve_username_hash(
   SignalCPromisec_uchar32* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat,
-  SignalBorrowedSliceOfc_uchar32 username_hashes
+  SignalBorrowedSliceOfPtrToc_uchar32 username_hashes
 );
 SignalFfiError* signal_authenticated_chat_connection_send(
   SignalCPromiseFfiChatResponse* promise,

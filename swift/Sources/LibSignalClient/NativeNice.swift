@@ -17,7 +17,7 @@
 import Foundation
 import SignalFfi
 
-extension SignalBorrowedSliceOfc_uchar32: SignalBorrowedSliceOf {
+extension SignalBorrowedSliceOfPtrToc_uchar32: SignalBorrowedSliceOf {
 
     typealias Element = SignalType_ConstPointer_FixedArray32_uint8_t?
 
@@ -5910,7 +5910,7 @@ internal enum NativeNice {
                 BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
                     .convertArgBorrowed(chat) { chatFfi in
                         ArrayArgConverter<
-                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32
+                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32
                         >.convertArgBorrowed(username_hashes) { username_hashesFfi in
                             SignalFfi.signal_authenticated_chat_connection_reserve_username_hash(
                                 promiseFfi,

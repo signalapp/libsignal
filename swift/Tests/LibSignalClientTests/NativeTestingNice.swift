@@ -5387,7 +5387,7 @@ internal enum NativeTestingNice {
     internal static func TESTING_conversion_BridgeVecData32_identity(
         x: [Data],
     ) throws -> [Data] {
-        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32>
+        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32>
             .convertArgBorrowed(x) { xFfi in
                 var rawOutput = ArrayReturnConverter<
                     FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOwnedBufferOfMaxAlignedc_uchar32
@@ -5407,7 +5407,7 @@ internal enum NativeTestingNice {
     internal static func TESTING_conversion_BridgeVecData32_to_string(
         x: [Data],
     ) throws -> String {
-        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32>
+        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32>
             .convertArgBorrowed(x) { xFfi in
                 var rawOutput = StringConverter.emptyFfiReturn()
                 try checkError(
