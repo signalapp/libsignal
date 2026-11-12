@@ -772,7 +772,7 @@ impl From<KeyTransConfig> for PublicConfig {
             .map(|bytes| VerifyingKey::from_bytes(bytes).expect("valid auditor key material"));
         let vrf_key = VrfPublicKey::try_from(*vrf_key_material).expect("valid VRF key material");
         Self {
-            mode: DeploymentMode::ThirdPartyAuditing(VerifyingKeys::from(auditor_keys)),
+            mode: DeploymentMode::ThirdPartyAuditing(VerifyingKeys::new(auditor_keys)),
             signature_key,
             vrf_key,
         }
