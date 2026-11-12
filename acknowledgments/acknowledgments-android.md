@@ -1301,7 +1301,7 @@ You should also get your employer (if you work as a programmer) or school, if an
 
 ```
 
-## boring-sys 5.3.0
+## boring-sys 5.4.0
 
 ```
 
@@ -3043,7 +3043,7 @@ limitations under the License.
 
 ```
 
-## boring 5.3.0
+## boring 5.4.0
 
 ```
 Copyright 2011-2017 Google Inc.
@@ -3567,7 +3567,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## boring-sys 5.3.0
+## boring-sys 5.4.0
 
 ```
 Copyright (c) 2014 Alex Crichton
@@ -4383,7 +4383,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## tokio-boring 5.3.0
+## tokio-boring 5.4.0
 
 ```
 Copyright (c) 2016 Tokio contributors
