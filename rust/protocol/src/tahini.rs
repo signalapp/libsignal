@@ -29,6 +29,8 @@
 //! - [`on_receive_session_state`] — per-state bookkeeping on any successful
 //!   decrypt: once the peer responds, clears the unacknowledged pre-key (so we
 //!   stop wrapping outgoing messages) and promotes `LocalNew` → `LocalAcked`.
+//! - [`may_match_retransmitted_initiation`] — whether an incoming PreKey
+//!   message may be matched to an existing session as a retransmission.
 //! - [`on_archive`] — per-state bookkeeping when a session is retired into the
 //!   archive: clears the unacknowledged pre-key so its secret material does not
 //!   linger past the point we know it will not be used again.
@@ -143,6 +145,16 @@ pub(crate) fn on_receive_session_state(state: &mut SessionState) {
         if state.origin() == SessionOrigin::LocalNew {
             state.set_origin(SessionOrigin::LocalAcked);
         }
+    }
+}
+
+/// Whether an incoming PreKey message whose base key matches `state` may be
+/// treated as a retransmitted initiation for it.
+pub(crate) fn may_match_retransmitted_initiation(state: &SessionState) -> bool {
+    match state.origin() {
+        SessionOrigin::LocalNew | SessionOrigin::LocalAcked => false,
+        SessionOrigin::Remote => true,
+        SessionOrigin::Legacy => state.is_known_by_peer(),
     }
 }
 
@@ -433,6 +445,28 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(state.is_known_by_peer(), expected_known);
+    }
+
+    // Only a remotely initiated session may be matched by an incoming PreKey
+    // message. A migrated Legacy session is treated as locally initiated while
+    // it still carries a pending pre-key.
+    #[test_case(SessionOrigin::LocalNew, true, false)]
+    #[test_case(SessionOrigin::LocalAcked, false, false)]
+    #[test_case(SessionOrigin::Remote, false, true)]
+    #[test_case(SessionOrigin::Legacy, true, false)]
+    #[test_case(SessionOrigin::Legacy, false, true)]
+    fn retransmitted_initiation_matches_only_remote_sessions(
+        origin: SessionOrigin,
+        has_pending: bool,
+        expected: bool,
+    ) {
+        use crate::proto::storage::session_structure::PendingPreKey;
+        let state = SessionState::from_session_structure(SessionStructure {
+            origin: origin.into(),
+            pending_pre_key: has_pending.then(PendingPreKey::default),
+            ..Default::default()
+        });
+        assert_eq!(may_match_retransmitted_initiation(&state), expected);
     }
 
     #[test]

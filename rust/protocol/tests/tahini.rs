@@ -624,6 +624,109 @@ fn test_session_acknowledged_after_reply() {
     );
 }
 
+/// Re-wrap one of Bob's ordinary messages as a PreKey message carrying the base
+/// key of Alice's own (locally initiated) session and Bob's identity key. All
+/// three inputs are public, and the PreKey framing is not authenticated, so a
+/// network adversary can do this.
+fn rewrap_as_prekey_on_own_base_key(
+    alice_first: &PreKeySignalMessage,
+    bob_identity: IdentityKey,
+    bob_reply: &CiphertextMessage,
+) -> CiphertextMessage {
+    let CiphertextMessage::SignalMessage(inner) = bob_reply else {
+        panic!("expected an ordinary message from Bob");
+    };
+    CiphertextMessage::PreKeySignalMessage(
+        PreKeySignalMessage::new(
+            alice_first.message_version(),
+            alice_first.registration_id(),
+            None,
+            alice_first.signed_pre_key_id(),
+            None,
+            *alice_first.base_key(),
+            bob_identity,
+            inner.clone(),
+        )
+        .expect("build re-wrapped PreKey message"),
+    )
+}
+
+/// A PreKey message that names a session Alice initiated is rejected, both
+/// before and after acknowledgement.
+#[test]
+fn test_prekey_rewrap_on_locally_initiated_session_rejected() {
+    let mut w = TahiniWorld::new();
+    let bob_identity = *w
+        .bob_builder
+        .store
+        .get_identity_key_pair()
+        .now_or_never()
+        .expect("sync")
+        .expect("bob identity")
+        .identity_key();
+
+    w.send_a_to_b("hello bob");
+    let CiphertextMessage::PreKeySignalMessage(alice_first) =
+        w.q_ab.front().expect("queued").clone()
+    else {
+        panic!("Alice's first message should be a PreKey message");
+    };
+    w.deliver_to_b();
+
+    // Bob replies; the adversary delivers a re-wrapped copy first.
+    w.send_b_to_a("hello alice");
+    let reply = w.q_ba.pop_front().expect("queued");
+    w.q_ba.push_back(rewrap_as_prekey_on_own_base_key(
+        &alice_first,
+        bob_identity,
+        &reply,
+    ));
+    assert_matches!(
+        w.try_deliver_to_a(),
+        Some(Err(SignalProtocolError::InvalidMessage(
+            CiphertextMessageType::PreKey,
+            _
+        )))
+    );
+
+    // The rejection changed nothing: the session is still unacknowledged...
+    w.send_a_to_b("still unacknowledged");
+    assert_eq!(
+        w.q_ab.back().expect("queued").message_type(),
+        CiphertextMessageType::PreKey
+    );
+    w.deliver_to_b();
+
+    // ...and the genuine reply still decrypts and acknowledges it.
+    w.q_ba.push_back(reply);
+    assert_eq!(w.deliver_to_a().expect("delivered"), b"hello alice");
+    w.send_a_to_b("acknowledged");
+    assert_eq!(
+        w.q_ab.back().expect("queued").message_type(),
+        CiphertextMessageType::Whisper
+    );
+    w.deliver_to_b();
+
+    // An acknowledged locally initiated session is still not a valid target.
+    w.send_b_to_a("later");
+    let later = w.q_ba.pop_front().expect("queued");
+    w.q_ba.push_back(rewrap_as_prekey_on_own_base_key(
+        &alice_first,
+        bob_identity,
+        &later,
+    ));
+    assert_matches!(
+        w.try_deliver_to_a(),
+        Some(Err(SignalProtocolError::InvalidMessage(
+            CiphertextMessageType::PreKey,
+            _
+        )))
+    );
+    w.q_ba.push_back(later);
+    assert_eq!(w.deliver_to_a().expect("delivered"), b"later");
+    assert!(w.active_base_keys_match());
+}
+
 /// After archiving MAX_ARCHIVED_SESSIONS + 1 sessions, old archived sessions
 /// are dropped (cap enforced). Messages encrypted to evicted sessions should fail.
 #[test]

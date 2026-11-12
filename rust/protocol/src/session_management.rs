@@ -285,7 +285,10 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
     //    The PQXDH handshake completed when that session was created, so there
     //    is no new handshake and no pre-key consumption. As on the Whisper
     //    path, trust-check the identity but only save it for an active session.
-    //    An archived session must not roll back a subsequently learned identity.
+    //    An archived session must not roll back a subsequently learned
+    //    identity. Only a session the peer initiated may be matched: an honest
+    //    peer never sends a PreKey message carrying the base key of a session
+    //    we initiated.
     //
     // 2. Fresh — no session for this base key. Build a *candidate* session
     //    (pure: no record mutation, no prekey consumption), AEAD-verify the
@@ -300,6 +303,21 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
         let mut state = session_record
             .get_session(loc)?
             .expect("session present at validated location");
+
+        // A PreKey message naming a session we initiated will never
+        // happen honestly. Reject it.
+        if !tahini::may_match_retransmitted_initiation(&state) {
+            log::warn!(
+                "Rejecting PreKey message from {} referencing a locally initiated session. \
+                     Base key: {}",
+                remote_address,
+                hex::encode(ciphertext.base_key().serialize()),
+            );
+            return Err(SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::PreKey,
+                "PreKey message references a locally initiated session".to_owned(),
+            ));
+        }
 
         // The message's identity key must match the one recorded for this session. (Note that
         // this is a constant-time comparison as long as the keys have the same type: see
@@ -376,6 +394,7 @@ pub async fn message_decrypt_prekey<R: Rng + CryptoRng>(
             }
         }
 
+        tahini::on_receive_session_state(&mut state);
         session_record.update_session_state(loc, state)?;
         match loc {
             SessionLocation::Current => tahini::on_receive_active(&mut session_record),
