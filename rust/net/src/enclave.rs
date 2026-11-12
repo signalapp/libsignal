@@ -48,7 +48,9 @@ pub trait EnclaveKind {
     fn url_path(enclave: &[u8]) -> PathAndQuery;
 }
 
-pub trait SvrBFlavor: EnclaveKind {}
+pub trait SvrFlavor: EnclaveKind {}
+
+pub trait SvrBFlavor: SvrFlavor {}
 
 pub enum Cdsi {}
 
@@ -82,9 +84,18 @@ impl EnclaveKind for SvrNitro {
     }
 }
 
+impl SvrFlavor for SvrSgx {}
 impl SvrBFlavor for SvrSgx {}
 
+impl SvrFlavor for SvrNitro {}
 impl SvrBFlavor for SvrNitro {}
+
+pub trait NewHandshake: EnclaveKind + Sized {
+    fn new_handshake(
+        params: &EndpointParams<Self>,
+        attestation_message: &[u8],
+    ) -> enclave::Result<enclave::Handshake>;
+}
 
 /// Log-safe human-readable label for a connection.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -181,7 +192,7 @@ pub trait PpssSetup {
 }
 
 impl PpssSetup for SvrBEnv<'_> {
-    type ConnectionResults = Result<SvrConnection<SvrSgx>, Error>;
+    type ConnectionResults = Result<SvrConnection, Error>;
     type ServerIds = [u64; 1];
 
     fn server_ids() -> Self::ServerIds {
@@ -225,12 +236,82 @@ pub struct EnclaveEndpoint<'a, E: EnclaveKind> {
     pub params: EndpointParams<'a, E>,
 }
 
-pub trait NewHandshake: EnclaveKind + Sized {
-    fn new_handshake(
-        params: &EndpointParams<Self>,
-        attestation_message: &[u8],
-    ) -> enclave::Result<enclave::Handshake>;
+/// `dyn`-compatible abstraction over [`EnclaveEndpoint`] and its associated [`EnclaveKind`].
+pub trait AnyEnclaveEndpoint: Send + Sync {
+    fn domain_config(&self) -> &DomainConfig;
+
+    fn ws_config(&self) -> &ws::Config;
+
+    fn new_handshake(&self, attestation_message: &[u8]) -> enclave::Result<enclave::Handshake>;
+
+    fn enclave_websocket_provider_with_options(
+        &self,
+        enable_domain_fronting: EnableDomainFronting,
+        enforce_minimum_tls: EnforceMinimumTls,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
+    ) -> WebSocketProvider<
+        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
+    >;
+
+    fn enclave_websocket_provider(
+        &self,
+        enable_domain_fronting: EnableDomainFronting,
+    ) -> WebSocketProvider<
+        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
+    > {
+        self.enclave_websocket_provider_with_options(
+            enable_domain_fronting,
+            EnforceMinimumTls::Yes,
+            OverrideNagleAlgorithm::UseSystemDefault,
+        )
+    }
 }
+
+impl<E: NewHandshake> AnyEnclaveEndpoint for EnclaveEndpoint<'_, E> {
+    fn domain_config(&self) -> &DomainConfig {
+        &self.domain_config
+    }
+
+    fn ws_config(&self) -> &ws::Config {
+        &self.ws_config
+    }
+
+    fn new_handshake(&self, attestation_message: &[u8]) -> enclave::Result<enclave::Handshake> {
+        E::new_handshake(&self.params, attestation_message)
+    }
+
+    fn enclave_websocket_provider_with_options(
+        &self,
+        enable_domain_fronting: EnableDomainFronting,
+        enforce_minimum_tls: EnforceMinimumTls,
+        override_nagle_algorithm: OverrideNagleAlgorithm,
+    ) -> WebSocketProvider<
+        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
+    > {
+        let Self {
+            domain_config,
+            ws_config: _,
+            params,
+        } = self;
+        let http_provider = domain_config.connect.route_provider_with_options(
+            enable_domain_fronting,
+            enforce_minimum_tls,
+            override_nagle_algorithm,
+        );
+
+        let ws_fragment = WebSocketRouteFragment {
+            ws_config: Default::default(),
+            endpoint: E::url_path(params.mr_enclave.as_ref()),
+            headers: Default::default(),
+        };
+
+        WebSocketProvider::new(ws_fragment, http_provider)
+    }
+}
+
+/// Marker trait for any [`AnyEnclaveEndpoint`] that has an [`SvrFlavor`] kind.
+pub trait AnySvrEnclaveEndpoint: AnyEnclaveEndpoint {}
+impl<E: SvrFlavor> AnySvrEnclaveEndpoint for EnclaveEndpoint<'_, E> where Self: AnyEnclaveEndpoint {}
 
 #[derive(Debug, thiserror::Error, displaydoc::Display)]
 pub enum Error {
@@ -243,7 +324,7 @@ pub enum Error {
     /// Protocol error after establishing a connection: {0}
     Protocol(AttestedProtocolError),
     /// Enclave attestation failed: {0}
-    AttestationError(attest::enclave::Error),
+    AttestationError(enclave::Error),
     /// No connection attempts succeeded before timeout
     AllConnectionAttemptsFailed,
 }
@@ -276,61 +357,6 @@ impl From<WebSocketServiceConnectError> for Error {
             }
             WebSocketServiceConnectError::Connect(e, _) => Self::WebSocketConnect(e),
         }
-    }
-}
-
-impl<E: EnclaveKind> EnclaveEndpoint<'_, E> {
-    pub fn enclave_websocket_provider(
-        &self,
-        enable_domain_fronting: EnableDomainFronting,
-    ) -> WebSocketProvider<
-        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
-    > {
-        let Self {
-            domain_config,
-            ws_config: _,
-            params,
-        } = self;
-        let http_provider = domain_config.connect.route_provider(
-            enable_domain_fronting,
-            OverrideNagleAlgorithm::UseSystemDefault,
-        );
-
-        let ws_fragment = WebSocketRouteFragment {
-            ws_config: Default::default(),
-            endpoint: E::url_path(params.mr_enclave.as_ref()),
-            headers: Default::default(),
-        };
-
-        WebSocketProvider::new(ws_fragment, http_provider)
-    }
-
-    pub fn enclave_websocket_provider_with_options(
-        &self,
-        enable_domain_fronting: EnableDomainFronting,
-        enforce_minimum_tls: EnforceMinimumTls,
-        override_nagle_algorithm: OverrideNagleAlgorithm,
-    ) -> WebSocketProvider<
-        HttpsProvider<DomainFrontRouteProvider, TlsRouteProvider<DirectTcpRouteProvider>>,
-    > {
-        let Self {
-            domain_config,
-            ws_config: _,
-            params,
-        } = self;
-        let http_provider = domain_config.connect.route_provider_with_options(
-            enable_domain_fronting,
-            enforce_minimum_tls,
-            override_nagle_algorithm,
-        );
-
-        let ws_fragment = WebSocketRouteFragment {
-            ws_config: Default::default(),
-            endpoint: E::url_path(params.mr_enclave.as_ref()),
-            headers: Default::default(),
-        };
-
-        WebSocketProvider::new(ws_fragment, http_provider)
     }
 }
 

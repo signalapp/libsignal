@@ -8,6 +8,7 @@ use http::HeaderName;
 use libsignal_net::auth::Auth;
 use libsignal_net::cdsi::CdsiConnection;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
+use libsignal_net::enclave::AnyEnclaveEndpoint as _;
 use libsignal_net::env::STAGING;
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::utils::no_network_change_events;

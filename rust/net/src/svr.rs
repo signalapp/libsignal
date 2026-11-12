@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use std::marker::PhantomData;
-
 use libsignal_net_infra::route::{RouteProvider, UnresolvedWebsocketServiceRoute};
 use libsignal_net_infra::ws::attested::AttestedConnection;
 
@@ -14,17 +12,15 @@ use crate::connect_state::{
 };
 pub use crate::enclave::Error;
 use crate::enclave::{
-    ConnectionLabel, EnclaveKind, EndpointParams, IntoAttestedConnection, LabeledConnection,
-    NewHandshake,
+    ConnectionLabel, EndpointParams, IntoAttestedConnection, LabeledConnection, NewHandshake,
 };
 
-pub struct SvrConnection<Kind: EnclaveKind> {
+pub struct SvrConnection {
     inner: AttestedConnection,
     remote_address: RouteInfo,
-    witness: PhantomData<Kind>,
 }
 
-impl<Kind: EnclaveKind> IntoAttestedConnection for SvrConnection<Kind> {
+impl IntoAttestedConnection for SvrConnection {
     fn into_labeled_connection(self) -> LabeledConnection {
         let label = ConnectionLabel::from_log_safe(self.remote_address.to_string());
         let connection = self.inner;
@@ -32,16 +28,32 @@ impl<Kind: EnclaveKind> IntoAttestedConnection for SvrConnection<Kind> {
     }
 }
 
-impl<E> SvrConnection<E>
-where
-    E: EnclaveKind + NewHandshake + Sized,
-{
-    pub async fn connect(
+impl SvrConnection {
+    pub async fn connect<E: NewHandshake>(
         connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
         service: ServiceName,
         route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         ws_config: crate::infra::ws::Config,
         params: &EndpointParams<'_, E>,
+        auth: &Auth,
+    ) -> Result<Self, Error> {
+        Self::connect_any(
+            connection_resources,
+            service,
+            route_provider,
+            ws_config,
+            move |attestation_message| E::new_handshake(params, attestation_message),
+            auth,
+        )
+        .await
+    }
+
+    pub async fn connect_any(
+        connection_resources: ConnectionResources<'_, impl WebSocketTransportConnectorFactory>,
+        service: ServiceName,
+        route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
+        ws_config: crate::infra::ws::Config,
+        new_handshake: impl FnOnce(&[u8]) -> attest::enclave::Result<attest::enclave::Handshake>,
         auth: &Auth,
     ) -> Result<Self, Error> {
         connection_resources
@@ -50,14 +62,13 @@ where
                 route_provider,
                 auth,
                 ws_config,
-                format!("svr:{}", std::any::type_name::<E>()).into(),
-                params,
+                "svr".into(),
+                new_handshake,
             )
             .await
             .map(|(connection, info)| Self {
                 inner: connection,
                 remote_address: info,
-                witness: PhantomData,
             })
     }
 }

@@ -11,19 +11,16 @@ use libsignal_net_infra::utils::NetworkChangeEvent;
 
 use crate::auth::Auth;
 use crate::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use crate::enclave::{self, EnclaveEndpoint, NewHandshake, SvrBFlavor};
+use crate::enclave::{self, AnySvrEnclaveEndpoint};
 use crate::svr::SvrConnection;
 
-pub async fn direct_connect<Enclave>(
-    endpoint: &EnclaveEndpoint<'static, Enclave>,
+pub async fn direct_connect(
+    endpoint: &dyn AnySvrEnclaveEndpoint,
     auth: &Auth,
     network_change_event: &NetworkChangeEvent,
-) -> Result<SvrConnection<Enclave>, enclave::Error>
-where
-    Enclave: SvrBFlavor + NewHandshake + Sized,
-{
+) -> Result<SvrConnection, enclave::Error> {
     let confirmation_header_name = endpoint
-        .domain_config
+        .domain_config()
         .connect
         .confirmation_header_name
         .map(HeaderName::from_static);
@@ -36,14 +33,14 @@ where
         confirmation_header_name,
     };
 
-    SvrConnection::connect(
+    SvrConnection::connect_any(
         connection_resources,
-        endpoint.domain_config.connect.service,
+        endpoint.domain_config().connect.service,
         DirectOrProxyProvider::direct(
             endpoint.enclave_websocket_provider(EnableDomainFronting::No),
         ),
-        endpoint.ws_config,
-        &endpoint.params,
+        *endpoint.ws_config(),
+        move |attestation_message| endpoint.new_handshake(attestation_message),
         auth,
     )
     .await

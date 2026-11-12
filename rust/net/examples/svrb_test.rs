@@ -16,7 +16,7 @@ use clap::Parser as _;
 use hex::ToHex as _;
 use libsignal_account_keys::{AccountEntropyPool, BackupKey};
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EnclaveEndpoint, PpssSetup, SvrSgx};
+use libsignal_net::enclave::{AnySvrEnclaveEndpoint, PpssSetup};
 use libsignal_net::env::SvrBEnv;
 use libsignal_net::svrb;
 use libsignal_net::svrb::direct::direct_connect;
@@ -52,7 +52,7 @@ struct Args {
 #[derive(Clone, Copy)]
 struct SvrBClient<'a> {
     auth: &'a Auth,
-    endpoint: &'a EnclaveEndpoint<'static, SvrSgx>,
+    endpoint: &'a dyn AnySvrEnclaveEndpoint,
 }
 
 #[async_trait]

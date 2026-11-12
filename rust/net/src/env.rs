@@ -31,7 +31,9 @@ use rand::{Rng, rng};
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use crate::connect_state::ServiceName;
-use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
+use crate::enclave::{
+    AnySvrEnclaveEndpoint, Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx,
+};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
@@ -782,35 +784,57 @@ impl From<KeyTransConfig> for PublicConfig {
 const SVRB_ENV_MAX_CURRENT: usize = 3;
 const SVRB_ENV_MAX_PREVIOUS: usize = 3;
 
+/// [`AnySvrEnclaveEndpoint`], but in a way that makes [`SvrBEnv`]
+/// [unwind-safe](std::panic::UnwindSafe).
+pub type EnvEnclave<'a> =
+    dyn AnySvrEnclaveEndpoint + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'a;
+
+/// Like [`Cow`](std::borrow::Cow), but without requiring [`ToOwned`].
+pub enum EnvEnclaveEntry<'a> {
+    Borrowed(&'a EnvEnclave<'a>),
+    Owned(Box<EnvEnclave<'a>>),
+}
+
+impl<'a> AsRef<EnvEnclave<'a>> for EnvEnclaveEntry<'a> {
+    fn as_ref(&self) -> &EnvEnclave<'a> {
+        match self {
+            Self::Borrowed(e) => *e,
+            Self::Owned(e) => &**e,
+        }
+    }
+}
+
 pub struct SvrBEnv<'a> {
     // There may be differing numbers of current/previous endpoints in staging vs prod,
     // so rather than store a fixed-sized array of current/previous, we store
     // a max-sized list of Options, which are often None but can be set.
     // Thus, if staging has 2 and prod has 1, they can set [Some(foo), Some(bar), None] and
     // [Some(baz), None, None] respectively.
-    current: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_CURRENT],
-    previous: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_PREVIOUS],
+    current: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_CURRENT],
+    previous: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_PREVIOUS],
 }
 
 impl<'a> SvrBEnv<'a> {
     pub const fn new(
-        current: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_CURRENT],
-        previous: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_PREVIOUS],
+        current: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_CURRENT],
+        previous: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_PREVIOUS],
     ) -> Self {
         Self { current, previous }
     }
 
-    pub fn current(&self) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
-        self.current.iter().filter_map(|a| a.as_ref())
+    pub fn current(&self) -> impl std::iter::Iterator<Item = &EnvEnclave<'_>> {
+        self.current
+            .iter()
+            .filter_map(|a| a.as_ref().map(|a| a.as_ref()))
     }
 
-    pub fn previous(&self) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
-        self.previous.iter().filter_map(|a| a.as_ref())
+    pub fn previous(&self) -> impl std::iter::Iterator<Item = &EnvEnclave<'_>> {
+        self.previous
+            .iter()
+            .filter_map(|a| a.as_ref().map(|a| a.as_ref()))
     }
 
-    pub fn current_and_previous(
-        &self,
-    ) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
+    pub fn current_and_previous(&self) -> impl std::iter::Iterator<Item = &EnvEnclave<'_>> {
         self.current().chain(self.previous())
     }
 }
@@ -862,12 +886,12 @@ impl<'a> Env<'a> {
         ]);
         let svr_endpoints = svr_b
             .current_and_previous()
-            .chain(svr2.current_and_previous());
-        result.extend(
-            svr_endpoints.map(|enclave_endpoint| {
-                enclave_endpoint.domain_config.static_fallback(rng.as_mut())
-            }),
-        );
+            .chain(svr2.current_and_previous().map(|a| a as &EnvEnclave<'_>));
+        result.extend(svr_endpoints.map(|enclave_endpoint| {
+            enclave_endpoint
+                .domain_config()
+                .static_fallback(rng.as_mut())
+        }));
         result
     }
 }
@@ -894,20 +918,20 @@ pub const STAGING: Env<'static> = Env {
     },
     svr_b: SvrBEnv {
         current: [
-            Some(EnclaveEndpoint {
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q3_STAGING,
-            }),
+            })),
             None,
             None,
         ],
         previous: [
-            Some(EnclaveEndpoint {
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q2_STAGING,
-            }),
+            })),
             None,
             None,
         ],
@@ -938,16 +962,16 @@ pub const PROD: Env<'static> = Env {
     },
     svr_b: SvrBEnv {
         current: [
-            Some(EnclaveEndpoint {
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q3_PROD,
-            }),
-            Some(EnclaveEndpoint {
+            })),
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q2_PROD,
-            }),
+            })),
             None,
         ],
         previous: [None, None, None],

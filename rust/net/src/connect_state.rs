@@ -44,7 +44,6 @@ use static_assertions::assert_eq_size_val;
 use tokio::time::Instant;
 
 use crate::auth::Auth;
-use crate::enclave::{EndpointParams, NewHandshake};
 use crate::ws::WebSocketServiceConnectError;
 
 /// Suggested values for [`ConnectionOutcomeParams`].
@@ -426,18 +425,17 @@ impl<TC> ConnectionResources<'_, TC> {
         .await
     }
 
-    pub(crate) async fn connect_attested_ws<E>(
+    pub(crate) async fn connect_attested_ws(
         self,
         service: ServiceName,
         routes: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
         auth: &Auth,
         ws_config: libsignal_net_infra::ws::Config,
         log_tag: Arc<str>,
-        params: &EndpointParams<'_, E>,
+        new_handshake: impl FnOnce(&[u8]) -> attest::enclave::Result<attest::enclave::Handshake>,
     ) -> Result<(AttestedConnection, RouteInfo), crate::enclave::Error>
     where
         TC: WebSocketTransportConnectorFactory,
-        E: NewHandshake,
     {
         let ws_routes = routes.map_routes(|mut route| {
             route.fragment.headers.extend([auth.as_header()]);
@@ -467,11 +465,7 @@ impl<TC> ConnectionResources<'_, TC> {
                 }) => error.into(),
             })?;
 
-        let connection =
-            AttestedConnection::connect(ws, ws_config, log_tag, move |attestation_message| {
-                E::new_handshake(params, attestation_message)
-            })
-            .await?;
+        let connection = AttestedConnection::connect(ws, ws_config, log_tag, new_handshake).await?;
         Ok((connection, route_info))
     }
 

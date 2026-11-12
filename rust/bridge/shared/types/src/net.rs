@@ -13,7 +13,7 @@ use libsignal_net::connect_state::{
     ConnectState, ConnectionResources, DefaultConnectorFactory, PreconnectingFactory,
     SUGGESTED_CONNECT_CONFIG, SUGGESTED_TLS_PRECONNECT_LIFETIME,
 };
-use libsignal_net::enclave::{EnclaveEndpoint, EnclaveKind};
+use libsignal_net::enclave::AnyEnclaveEndpoint;
 use libsignal_net::env::{Env, StaticIpOrder, UserAgent};
 use libsignal_net::infra::dns::DnsResolver;
 use libsignal_net::infra::route::{
@@ -299,7 +299,7 @@ impl ConnectionManager {
 
     pub fn enclave_connection_resources(
         &self,
-        enclave: &EnclaveEndpoint<impl EnclaveKind>,
+        enclave: &dyn AnyEnclaveEndpoint,
     ) -> Result<
         (
             EnclaveConnectionResources<'_>,
@@ -324,7 +324,7 @@ impl ConnectionManager {
                 route.fragment.headers.extend([self.user_agent.as_header()]);
                 route
             });
-        let confirmation_header_name = enclave.domain_config.connect.confirmation_header_name;
+        let confirmation_header_name = enclave.domain_config().connect.confirmation_header_name;
         Ok((
             EnclaveConnectionResources {
                 connect_state: &self.connect,
