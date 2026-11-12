@@ -819,6 +819,45 @@ static_assert_64bit(alignof(SignalType_ConstPointer_SignalLookupRequest) == 8);
 typedef const SignalAuthenticatedChatConnection* SignalType_ConstPointer_SignalAuthenticatedChatConnection;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalAuthenticatedChatConnection) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalAuthenticatedChatConnection) == 8);
+typedef SignalType_FixedArray17_uint8_t MaybeUninitOfc_uchar17;
+static_assert_64bit(sizeof(MaybeUninitOfc_uchar17) == 17);
+static_assert_64bit(alignof(MaybeUninitOfc_uchar17) == 1);
+typedef struct {
+  bool present;
+  MaybeUninitOfc_uchar17 value;
+} SignalOptionalOfc_uchar17;
+static_assert_64bit(offsetof(SignalOptionalOfc_uchar17, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfc_uchar17, value) == 1);
+static_assert_64bit(sizeof(SignalOptionalOfc_uchar17) == 18);
+static_assert_64bit(alignof(SignalOptionalOfc_uchar17) == 1);
+typedef SignalOwnedBuffer MaybeUninitOfOwnedBuffer;
+static_assert_64bit(sizeof(MaybeUninitOfOwnedBuffer) == 16);
+static_assert_64bit(alignof(MaybeUninitOfOwnedBuffer) == 8);
+typedef struct {
+  bool present;
+  MaybeUninitOfOwnedBuffer value;
+} SignalOptionalOfOwnedBuffer;
+static_assert_64bit(offsetof(SignalOptionalOfOwnedBuffer, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfOwnedBuffer, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfOwnedBuffer) == 24);
+static_assert_64bit(alignof(SignalOptionalOfOwnedBuffer) == 8);
+typedef struct {
+  SignalType_FixedArray17_uint8_t aci;
+  SignalOptionalOfc_uchar17 pni;
+  const int8_t* e164;
+  SignalOptionalOfOwnedBuffer username_hash;
+  SignalOptionalOfUuid username_link_handle;
+} SignalBridgeAccountIdentityFfiResult;
+static_assert_64bit(offsetof(SignalBridgeAccountIdentityFfiResult, aci) == 0);
+static_assert_64bit(offsetof(SignalBridgeAccountIdentityFfiResult, pni) == 17);
+static_assert_64bit(offsetof(SignalBridgeAccountIdentityFfiResult, e164) == 40);
+static_assert_64bit(offsetof(SignalBridgeAccountIdentityFfiResult, username_hash) == 48);
+static_assert_64bit(offsetof(SignalBridgeAccountIdentityFfiResult, username_link_handle) == 72);
+static_assert_64bit(sizeof(SignalBridgeAccountIdentityFfiResult) == 96);
+static_assert_64bit(alignof(SignalBridgeAccountIdentityFfiResult) == 8);
+typedef const SignalBridgeAccountIdentityFfiResult* SignalType_ConstPointer_SignalBridgeAccountIdentityFfiResult;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalBridgeAccountIdentityFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalBridgeAccountIdentityFfiResult) == 8);
 static_assert_64bit(sizeof(int64_t) == 8);
 static_assert_64bit(alignof(int64_t) == 8);
 typedef struct {
@@ -2943,6 +2982,22 @@ static_assert_64bit(alignof(SignalCPromiseUuid) == 8);
 typedef SignalCPromiseUuid* SignalType_MutPointer_SignalCPromiseUuid;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseUuid) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseUuid) == 8);
+typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalBridgeAccountIdentityFfiResult, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseBridgeAccountIdentityFfiResult;
+static_assert_64bit(offsetof(SignalCPromiseBridgeAccountIdentityFfiResult, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseBridgeAccountIdentityFfiResult, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseBridgeAccountIdentityFfiResult, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseBridgeAccountIdentityFfiResult) == 24);
+static_assert_64bit(alignof(SignalCPromiseBridgeAccountIdentityFfiResult) == 8);
+typedef SignalCPromiseBridgeAccountIdentityFfiResult* SignalType_MutPointer_SignalCPromiseBridgeAccountIdentityFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseBridgeAccountIdentityFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseBridgeAccountIdentityFfiResult) == 8);
 typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeMediaBackupInfoFfiResult_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalBridgeMediaBackupInfoFfiResult, SignalType_ConstPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeMediaBackupInfoFfiResult_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeMediaBackupInfoFfiResult_ConstPointer_void) == 8);
@@ -4190,6 +4245,11 @@ SignalFfiError* signal_authenticated_chat_connection_finish_web_authn_registrati
 );
 SignalFfiError* signal_authenticated_chat_connection_generate_totp_key(
   SignalCPromiseBridgePendingTotpKeyFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat
+);
+SignalFfiError* signal_authenticated_chat_connection_get_account_identity(
+  SignalCPromiseBridgeAccountIdentityFfiResult* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat
 );

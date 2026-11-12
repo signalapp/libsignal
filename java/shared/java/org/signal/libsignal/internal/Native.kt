@@ -377,6 +377,12 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_account_identity(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_capabilities(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

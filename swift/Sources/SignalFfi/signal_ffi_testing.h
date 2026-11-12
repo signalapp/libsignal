@@ -548,17 +548,6 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerRegisterAccoun
 typedef SignalOptionalOff32* SignalType_MutPointer_SignalOptionalOff32;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOff32) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOff32) == 8);
-typedef SignalOwnedBuffer MaybeUninitOfOwnedBuffer;
-static_assert_64bit(sizeof(MaybeUninitOfOwnedBuffer) == 16);
-static_assert_64bit(alignof(MaybeUninitOfOwnedBuffer) == 8);
-typedef struct {
-  bool present;
-  MaybeUninitOfOwnedBuffer value;
-} SignalOptionalOfOwnedBuffer;
-static_assert_64bit(offsetof(SignalOptionalOfOwnedBuffer, present) == 0);
-static_assert_64bit(offsetof(SignalOptionalOfOwnedBuffer, value) == 8);
-static_assert_64bit(sizeof(SignalOptionalOfOwnedBuffer) == 24);
-static_assert_64bit(alignof(SignalOptionalOfOwnedBuffer) == 8);
 typedef SignalOptionalOfOwnedBuffer* SignalType_MutPointer_SignalOptionalOfOwnedBuffer;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfOwnedBuffer) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfOwnedBuffer) == 8);
@@ -1020,6 +1009,21 @@ typedef struct {
 } SignalGenerateTotpKeyOutFfiResult;
 static_assert_64bit(sizeof(SignalGenerateTotpKeyOutFfiResult) == 40);
 static_assert_64bit(alignof(SignalGenerateTotpKeyOutFfiResult) == 8);
+typedef enum {
+  SignalGetAccountIdentityOutFfiResultSuccess,
+  SignalGetAccountIdentityOutFfiResultMissingIdentifiers,
+} SignalGetAccountIdentityOutFfiResult_Tag;
+typedef struct {
+  SignalBridgeAccountIdentityFfiResult _0;
+} SignalGetAccountIdentityOutFfiResultSignalSuccess_Body;
+typedef struct {
+  SignalGetAccountIdentityOutFfiResult_Tag tag;
+  union {
+    SignalGetAccountIdentityOutFfiResultSignalSuccess_Body success;
+  };
+} SignalGetAccountIdentityOutFfiResult;
+static_assert_64bit(sizeof(SignalGetAccountIdentityOutFfiResult) == 104);
+static_assert_64bit(alignof(SignalGetAccountIdentityOutFfiResult) == 8);
 typedef enum {
   SignalGetCapabilitiesOutFfiResultSuccess,
   SignalGetCapabilitiesOutFfiResultMalformed,
@@ -2363,6 +2367,9 @@ SignalFfiError* signal_testing_future_success(
   uint8_t input
 );
 SignalFfiError* signal_testing_generate_totp_key_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_account_identity_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_backup_cdn_credentials_tests(

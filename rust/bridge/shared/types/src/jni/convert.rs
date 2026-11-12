@@ -2572,6 +2572,7 @@ impl<'a> ResultTypeInfo<'a> for Pni {
         ServiceId::from(self).convert_into(env)
     }
 }
+nice_service_id_result_converter!(Pni, "org.signal.libsignal.protocol.ServiceId.Pni");
 
 impl_result_type_info_for_option!(Aci);
 impl_result_type_info_for_option!(Pni);

@@ -323,33 +323,6 @@ extension SignalCPromiseOptionalOfPairOfMutPointerHttpRequestu64: SignalCPromise
 
 }
 
-extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
-
-    public typealias Contents = SignalOwnedBuffer
-
-    public init(
-        generic_present: CBool,
-        generic_value: MaybeUninitOfOwnedBuffer,
-    ) {
-        self.init(
-            present: generic_present,
-            value: generic_value,
-
-        )
-    }
-
-    public var generic_present: CBool {
-        get { self.present }
-        set { present = newValue }
-    }
-
-    public var generic_value: MaybeUninitOfOwnedBuffer {
-        get { self.value }
-        set { value = newValue }
-    }
-
-}
-
 extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
 
     public typealias Contents = SignalPairOfMutPointerHttpRequestu64
@@ -1163,6 +1136,11 @@ internal enum GenerateTotpKeyOut {
     case success(BridgePendingTotpKey)
     case tooManyTotpKeys
     case tooManyMfaKeys
+}
+
+internal enum GetAccountIdentityOut {
+    case success(BridgeAccountIdentity)
+    case missingIdentifiers
 }
 
 internal enum GetCapabilitiesOut {
@@ -2150,6 +2128,30 @@ internal enum DerivedReturnConverterGenerateTotpKeyOut: NiceReturnConverter {
             return GenerateTotpKeyOut.tooManyMfaKeys
         default:
             throw SignalError.internalError("Unexpected enum tag for GenerateTotpKeyOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetAccountIdentityOut: NiceReturnConverter {
+    typealias NiceReturn = GetAccountIdentityOut
+    typealias FfiReturn = SignalGetAccountIdentityOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetAccountIdentityOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetAccountIdentityOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterBridgeAccountIdentity.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetAccountIdentityOut.success(try _0.get())
+        case SignalGetAccountIdentityOutFfiResultMissingIdentifiers:
+            return GetAccountIdentityOut.missingIdentifiers
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetAccountIdentityOut: \(ffiTag)")
         }
     }
 }
@@ -4543,6 +4545,19 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGenerateTotpKeyOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
+    internal static func TESTING_GetAccountIdentityTests() throws -> [GrpcTestCase<Void, GetAccountIdentityOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_account_identity_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>.convertReturn(
             consuming: rawOutput
         )
 

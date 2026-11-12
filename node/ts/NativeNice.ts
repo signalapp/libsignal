@@ -33,6 +33,7 @@ import type {
   ReturnFfiBackupEntitlement,
   ReturnFfiBadgeEntitlement,
   ReturnFfiBadgeVisibility,
+  ReturnFfiBridgeAccountIdentity,
   ReturnFfiBridgeChallengeAnswer,
   ReturnFfiBridgeConfirmedMfaKey,
   ReturnFfiBridgeConfirmedMfaKeyMetadata,
@@ -71,6 +72,7 @@ import type {
   ReturnFfiFinishWebAuthnRegistrationArgs,
   ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
+  ReturnFfiGetAccountIdentityOut,
   ReturnFfiGetCapabilitiesOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
@@ -135,7 +137,7 @@ import type {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
-import { Aci, ServiceId, ServiceIdKind } from './Address.js';
+import { Aci, Pni, ServiceId, ServiceIdKind } from './Address.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -181,6 +183,14 @@ export type BadgeEntitlement = {
 };
 
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
+
+export type BridgeAccountIdentity = {
+  aci: Aci;
+  pni: Pni | null;
+  e164: string | null;
+  usernameHash: Bytes | null;
+  usernameLinkHandle: uuid.Uuid | null;
+};
 
 export type BridgeChallengeAnswer =
   | {
@@ -442,6 +452,12 @@ export type GenerateTotpKeyOut =
     }
   | 'tooManyTotpKeys'
   | 'tooManyMfaKeys';
+
+export type GetAccountIdentityOut =
+  | {
+      success: BridgeAccountIdentity;
+    }
+  | 'missingIdentifiers';
 
 export type GetCapabilitiesOut =
   | {
@@ -869,6 +885,22 @@ export function returnConverterBadgeVisibility(
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for BadgeVisibility');
   }
+}
+
+export function returnConverterBridgeAccountIdentity(
+  ffiInput: Native.ReturnFfiBridgeAccountIdentity
+): BridgeAccountIdentity {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    pni: liftNull((__bytes: Bytes) =>
+      Pni.parseFromServiceIdFixedWidthBinary(__bytes)
+    )(ffiInput.pni),
+    e164: liftNull(identity)(ffiInput.e164),
+    usernameHash: liftNull(identity)(ffiInput.username_hash),
+    usernameLinkHandle: liftNull(uuid.stringify)(ffiInput.username_link_handle),
+  };
 }
 
 export function returnConverterBridgeChallengeAnswer(
@@ -1465,6 +1497,23 @@ export function returnConverterGenerateTotpKeyOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for GenerateTotpKeyOut');
+  }
+}
+
+export function returnConverterGetAccountIdentityOut(
+  ffiInput: Native.ReturnFfiGetAccountIdentityOut
+): GetAccountIdentityOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterBridgeAccountIdentity(ffiInput._0),
+      };
+    case 1:
+      return 'missingIdentifiers';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetAccountIdentityOut');
   }
 }
 
@@ -2098,7 +2147,8 @@ export function returnConverterReportMessageArgs(
   ffiInput: Native.ReturnFfiReportMessageArgs
 ): ReportMessageArgs {
   return {
-    source: Aci.parseFromServiceIdFixedWidthBinary(ffiInput.source),
+    source: ((__bytes: Bytes) =>
+      Aci.parseFromServiceIdFixedWidthBinary(__bytes))(ffiInput.source),
     messageGuid: uuid.stringify(ffiInput.message_guid),
     reportSpamToken: identity(ffiInput.report_spam_token),
   };
@@ -2987,6 +3037,25 @@ export async function AuthenticatedChatConnection_generate_totp_key({
     await asyncContext.makeCancellable(
       abortSignal,
       Native.AuthenticatedChatConnection_generate_totp_key(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_get_account_identity({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+}): Promise<BridgeAccountIdentity> {
+  return returnConverterBridgeAccountIdentity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_account_identity(
         asyncContext,
         identity(chat)
       )
@@ -3903,6 +3972,15 @@ export function TESTING_GenerateTotpKeyTests(): Array<
     identity,
     returnConverterGenerateTotpKeyOut
   )(Native.TESTING_GenerateTotpKeyTests());
+}
+
+export function TESTING_GetAccountIdentityTests(): Array<
+  GrpcTestCase<void, GetAccountIdentityOut>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterGetAccountIdentityOut
+  )(Native.TESTING_GetAccountIdentityTests());
 }
 
 export function TESTING_GetBackupCdnCredentialsTests(): Array<
@@ -5077,7 +5155,8 @@ export function TESTING_conversion_ServiceId_identity({
 }: {
   x: ServiceId;
 }): ServiceId {
-  return ServiceId.parseFromServiceIdFixedWidthBinary(
+  return ((__bytes: Bytes) =>
+    ServiceId.parseFromServiceIdFixedWidthBinary(__bytes))(
     Native.TESTING_conversion_ServiceId_identity(serviceIdArgConverter(x))
   );
 }
@@ -5090,7 +5169,8 @@ export async function TESTING_conversion_ServiceId_identity_async({
   abortSignal?: AbortSignal;
   x: ServiceId;
 }): Promise<ServiceId> {
-  return ServiceId.parseFromServiceIdFixedWidthBinary(
+  return ((__bytes: Bytes) =>
+    ServiceId.parseFromServiceIdFixedWidthBinary(__bytes))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.TESTING_conversion_ServiceId_identity_async(

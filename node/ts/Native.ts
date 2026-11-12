@@ -202,6 +202,14 @@ export type ReturnFfiBadgeVisibility =
       __type: 2;
     };
 
+export type ReturnFfiBridgeAccountIdentity = {
+  aci: Bytes;
+  pni: Bytes | null;
+  e164: string | null;
+  username_hash: Bytes | null;
+  username_link_handle: Bytes | null;
+};
+
 export type ReturnFfiBridgeChallengeAnswer =
   | {
       __type: 0;
@@ -543,6 +551,15 @@ export type ReturnFfiGenerateTotpKeyOut =
     }
   | {
       __type: 2;
+    };
+
+export type ReturnFfiGetAccountIdentityOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeAccountIdentity;
+    }
+  | {
+      __type: 1;
     };
 
 export type ReturnFfiGetCapabilitiesOut =
@@ -1361,6 +1378,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgePendingTotpKey>;
+  AuthenticatedChatConnection_get_account_identity: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiBridgeAccountIdentity>;
   AuthenticatedChatConnection_get_capabilities: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3326,6 +3347,9 @@ type NativeFunctions = {
   TESTING_GenerateTotpKeyTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGenerateTotpKeyOut>
   >;
+  TESTING_GetAccountIdentityTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetAccountIdentityOut>
+  >;
   TESTING_GetBackupCdnCredentialsTests: () => Array<
     GrpcTestCaseFfi<number, ReturnFfiGetCdnCredentialsOut>
   >;
@@ -4061,6 +4085,7 @@ const {
   AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
+  AuthenticatedChatConnection_get_account_identity,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -4646,6 +4671,7 @@ const {
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
+  TESTING_GetAccountIdentityTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetCapabilitiesTests,
@@ -4906,6 +4932,7 @@ export {
   AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
+  AuthenticatedChatConnection_get_account_identity,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -5491,6 +5518,7 @@ export {
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
+  TESTING_GetAccountIdentityTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetCapabilitiesTests,

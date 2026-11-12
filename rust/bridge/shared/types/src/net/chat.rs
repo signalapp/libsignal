@@ -22,6 +22,7 @@ use libsignal_account_keys::{
     InvalidMfaMetadata, MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN, MfaMetadata,
 };
 use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom, bridge_callbacks};
+use libsignal_core::{Aci, Pni};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -40,7 +41,8 @@ use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagl
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
 use libsignal_net_chat::grpc::accounts::{
-    ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters, WebAuthnCreateParameters,
+    AccountIdentity, ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters,
+    WebAuthnCreateParameters,
 };
 use libsignal_net_chat::grpc::backups::{
     CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
@@ -891,6 +893,35 @@ pub enum UserBasedSendAuthorizationKind {
     AccessKey,
     Group,
     UnrestrictedUnauthenticatedAccess,
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeAccountIdentity {
+    pub aci: Aci,
+    pub pni: Option<Pni>,
+    pub e164: Option<String>,
+    pub username_hash: Option<Vec<u8>>,
+    pub username_link_handle: Option<uuid::Uuid>,
+}
+
+impl From<AccountIdentity> for BridgeAccountIdentity {
+    fn from(value: AccountIdentity) -> Self {
+        let AccountIdentity {
+            aci,
+            pni,
+            e164,
+            username_hash,
+            username_link_handle,
+        } = value;
+        Self {
+            aci,
+            pni,
+            e164: e164.map(|e164| e164.to_string()),
+            username_hash: username_hash.map(Vec::from),
+            username_link_handle,
+        }
+    }
 }
 
 #[derive(BridgedAsValue)]

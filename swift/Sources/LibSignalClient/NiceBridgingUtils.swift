@@ -250,6 +250,19 @@ internal struct AciConverter: NiceArgConverter, NiceReturnConverter {
     typealias FfiReturn = ServiceIdStorage
 }
 
+internal struct PniConverter: NiceReturnConverter {
+    static func emptyFfiReturn() -> ServiceIdStorage {
+        return ServiceIdConverter.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: ServiceIdStorage) throws -> Pni {
+        return try Pni.parseFrom(fixedWidthBinary: value)
+    }
+
+    typealias NiceReturn = Pni
+    typealias FfiReturn = ServiceIdStorage
+}
+
 internal struct BridgeHandleRefConverter<Ptr: SignalMutPointer, T: NativeHandleOwner<Ptr>>: NiceArgConverter {
     typealias NiceArg = T
     typealias FfiArg = Ptr.ConstPointer

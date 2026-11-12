@@ -396,6 +396,9 @@ public object NativeTesting {
   public external fun TESTING_GenerateTotpKeyTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetAccountIdentityTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetBackupCdnCredentialsTests(): Array<Object>
 
   @JvmStatic

@@ -165,6 +165,14 @@ public sealed class GenerateTotpKeyOut {
   public data object TooManyMfaKeys : GenerateTotpKeyOut()
 }
 
+public sealed class GetAccountIdentityOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.internal.BridgeAccountIdentity,
+  ) : GetAccountIdentityOut()
+
+  public data object MissingIdentifiers : GetAccountIdentityOut()
+}
+
 public sealed class GetCapabilitiesOut {
   public data class Success(
     public val _0: List<org.signal.libsignal.internal.DeviceCapabilityInternal>,
@@ -1132,6 +1140,24 @@ public object GenerateTotpKeyOut_TooManyMfaKeys_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = GenerateTotpKeyOut.TooManyMfaKeys
+}
+
+public object GetAccountIdentityOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetAccountIdentityOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.BridgeAccountIdentity>(_0 as Object),
+    )
+}
+
+public object GetAccountIdentityOut_MissingIdentifiers_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetAccountIdentityOut.MissingIdentifiers
 }
 
 public object GetCapabilitiesOut_Success_ReturnConverter {
@@ -2689,6 +2715,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GenerateTotpKeyOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GenerateTotpKeyOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetAccountIdentityTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetAccountIdentityOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetAccountIdentityTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetAccountIdentityOut>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetAccountIdentityOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GetBackupCdnCredentialsTests(): List<org.signal.libsignal.net.GrpcTestCase<Int, org.signal.libsignal.internal.GetCdnCredentialsOut>> {

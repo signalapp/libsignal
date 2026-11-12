@@ -663,6 +663,14 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
     }
 }
 
+impl ResultTypeInfo for libsignal_protocol::Pni {
+    type ResultType = libsignal_protocol::ServiceIdFixedWidthBinaryBytes;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        libsignal_protocol::ServiceId::from(self).convert_into()
+    }
+}
+nice_service_id_result_converter!(Pni, "Pni");
+
 fn parse_e164(s: &str) -> SignalFfiResult<libsignal_core::E164> {
     let parsed = s
         .parse()
@@ -2409,6 +2417,7 @@ macro_rules! simple_optional {
 }
 simple_optional!(f32);
 simple_optional!(Vec<u8>);
+return_optional!(libsignal_protocol::Pni);
 return_optional!(uuid::Uuid);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
