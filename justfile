@@ -49,7 +49,7 @@ format-ffi:
     (cd swift && swift format --in-place --parallel --recursive .)
 
 format-node:
-    (cd node && npm run format)
+    (cd node && pnpm run format)
 
 # Format Rust code with the nightly toolchain pinned in .nightly-rust-version.
 format-rust *args:
@@ -80,7 +80,7 @@ check-format-all:
     just format-rust -- --check
     taplo fmt --check
     @echo 'warning: `swift format` does not have a check mode'
-    (cd node && npm run format-check)
+    (cd node && pnpm run format-check)
     (cd java && ./gradlew spotlessCheck)
 
 check-python:
@@ -90,7 +90,7 @@ check-python:
 # Runs some quick local checks; useful to make sure CI will not fail immediately after push.
 check-pre-commit: check-format-all check-python check-acknowledgments
     bin/verify-cargo-toml.py
-    (cd node && npm run lint)
+    (cd node && pnpm run lint)
     (cd swift && ./verify_error_codes.sh)
     (cd swift && swiftlint lint --strict)
     (cd java && ./gradlew --dependency-verification strict help >/dev/null)

@@ -11,7 +11,6 @@ import collections
 import fileinput
 import os
 import re
-import subprocess
 import sys
 
 
@@ -69,9 +68,6 @@ def main() -> int:
             update_version(path, pattern, new_version)
         for path in FFI_VERSION_SYMBOL_FILES:
             update_version(path, FFI_VERSION_SYMBOL_PATTERN, new_version.replace('.', '_'))
-        # It's hard to update the package-lock.json file in a straightforward way with regexes, so use the appropriate
-        # tool.
-        subprocess.run(['npm', 'install', '--package-lock-only'], cwd='node')
 
         return 0
 

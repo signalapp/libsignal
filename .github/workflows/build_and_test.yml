@@ -591,28 +591,30 @@ jobs:
       with:
         node-version-file: '.nvmrc'
 
-    - run: npm ci
+    - run: npm install -g pnpm
+
+    - run: pnpm ci
       working-directory: node
 
     - name: Verify that the Node bindings are up to date
       run: cargo run -p libsignal-node-native_ts -- --verify
       if: startsWith(matrix.os, 'ubuntu-')
 
-    - run: npm run build
+    - run: pnpm run build
       working-directory: node
 
-    - run: npm run tsc
+    - run: pnpm run tsc
       working-directory: node
 
-    - run: npm run lint
+    - run: pnpm run lint
       if: startsWith(matrix.os, 'ubuntu-')
       working-directory: node
 
-    - run: npm run format-check
+    - run: pnpm run format-check
       if: startsWith(matrix.os, 'ubuntu-')
       working-directory: node
 
-    - run: npm run test
+    - run: pnpm run test
       working-directory: node
 
     - name: Save cargo cache

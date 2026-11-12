@@ -88,6 +88,8 @@ jobs:
         node-version-file: '.nvmrc'
 
     - name: Build for arm64
+      # Use plain old npm to run this script to avoid having to install pnpm.
+      # (But we still want to run through npm to set env vars appropriately instead of calling build_node_bridge.py directly.)
       run: npm run build -- --arch arm64 --copy-to-prebuilds
       working-directory: node
 
@@ -102,6 +104,8 @@ jobs:
       shell: bash
 
     - name: Build for x64
+      # Use plain old npm to run this script to avoid having to install pnpm.
+      # (But we still want to run through npm to set env vars appropriately instead of calling build_node_bridge.py directly.)
       run: npm run build -- --arch x64 --copy-to-prebuilds
       working-directory: node
 
@@ -191,10 +195,9 @@ jobs:
       with:
         node-version-file: '.nvmrc'
 
-    - name: Update npm
-      run: npm install -g npm@latest
+    - run: npm install -g pnpm
 
-    - run: npm ci
+    - run: pnpm ci
       working-directory: node
 
     - name: Verify that the Node bindings are up to date
@@ -239,27 +242,26 @@ jobs:
         path: debuginfo
         merge-multiple: true
 
-    - name: Update npm
-      run: npm install -g npm@latest
+    - run: npm install -g pnpm
 
-    - run: npm ci
+    - run: pnpm ci
       working-directory: node
 
-    - run: npm run tsc
+    - run: pnpm run tsc
       working-directory: node
 
-    - run: npm run lint
+    - run: pnpm run lint
       working-directory: node
 
-    - run: npm run format -c
+    - run: pnpm run format -c
       working-directory: node
 
-    - run: npm run test
+    - run: pnpm run test
       working-directory: node
       env:
         PREBUILDS_ONLY: 1
 
-    - run: npm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}} --provenance
+    - run: pnpm publish --tag '${{ github.event.inputs.npm_tag }}' --access public ${{ inputs.dry_run && '--dry-run' || ''}} --provenance --no-git-checks
       working-directory: node
 
     # This step is expected to fail if not run on a tag.

@@ -38,3 +38,4 @@ java/server/src/main/resources/*.dll
 Brewfile.lock.json
 
 __pycache__
+.pnpm-store
