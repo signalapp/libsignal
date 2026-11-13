@@ -12,3 +12,4 @@ v0.108.0
   - AuthAccountsService.getAccountIdentity()
 
 - SVR2/B: Remove staging environments prior to 2026Q3.
+- SPQR: update to v1.7.0

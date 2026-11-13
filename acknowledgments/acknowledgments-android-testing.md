@@ -2,7 +2,7 @@
 
 libsignal makes use of the following open source projects.
 
-## spqr 1.6.0, partial-default-derive 0.1.0, partial-default 0.1.0
+## spqr 1.7.0, partial-default-derive 0.1.0, partial-default 0.1.0
 
 ```
                     GNU AFFERO GENERAL PUBLIC LICENSE
@@ -1823,7 +1823,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
-## hax-lib-macros 0.3.7, hax-lib 0.3.7
+## hax-lib-macros 0.3.7, hax-lib-macros 0.5.0, hax-lib 0.3.7, hax-lib 0.5.0
 
 ```
 
