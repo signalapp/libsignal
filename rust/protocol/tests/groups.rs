@@ -1353,3 +1353,150 @@ fn group_test_signature_validation_error_returned() -> Result<(), SignalProtocol
     .now_or_never()
     .expect("sync")
 }
+
+#[test]
+fn group_skipped_message_key_is_consumed() -> Result<(), SignalProtocolError> {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let sender_address =
+            ProtocolAddress::new("+14159999111".to_owned(), DeviceId::new(1).unwrap());
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let mut alice_store = test_in_memory_protocol_store()?;
+        let mut bob_store = test_in_memory_protocol_store()?;
+
+        let sent_distribution_message = create_sender_key_distribution_message(
+            &sender_address,
+            distribution_id,
+            &mut alice_store,
+            &mut csprng,
+        )
+        .await?;
+        process_sender_key_distribution_message(
+            &sender_address,
+            &SenderKeyDistributionMessage::try_from(sent_distribution_message.serialized())?,
+            &mut bob_store,
+        )
+        .await?;
+
+        let mut ciphertexts = Vec::with_capacity(3);
+        for i in 0..3 {
+            ciphertexts.push(
+                group_encrypt(
+                    &mut alice_store,
+                    &sender_address,
+                    distribution_id,
+                    format!("message {i}").as_bytes(),
+                    &mut csprng,
+                )
+                .await?,
+            );
+        }
+
+        // Deliver the third message first so the first two keys are stored as skipped.
+        let third =
+            group_decrypt(ciphertexts[2].serialized(), &mut bob_store, &sender_address).await?;
+        assert_eq!(String::from_utf8(third).expect("valid utf8"), "message 2");
+
+        let second =
+            group_decrypt(ciphertexts[1].serialized(), &mut bob_store, &sender_address).await?;
+        assert_eq!(String::from_utf8(second).expect("valid utf8"), "message 1");
+
+        // A skipped message key is removed when it is used. Replaying it must fail.
+        let replay =
+            group_decrypt(ciphertexts[1].serialized(), &mut bob_store, &sender_address).await;
+        assert_matches!(replay, Err(SignalProtocolError::DuplicatedMessage(_, _)));
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn group_distribution_iteration_advances_with_sends() -> Result<(), SignalProtocolError> {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let sender_address =
+            ProtocolAddress::new("+14159999111".to_owned(), DeviceId::new(1).unwrap());
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let mut alice_store = test_in_memory_protocol_store()?;
+
+        let first = create_sender_key_distribution_message(
+            &sender_address,
+            distribution_id,
+            &mut alice_store,
+            &mut csprng,
+        )
+        .await?;
+        // A fresh chain starts at iteration 0.
+        assert_eq!(first.iteration()?, 0);
+
+        group_encrypt(
+            &mut alice_store,
+            &sender_address,
+            distribution_id,
+            b"one",
+            &mut csprng,
+        )
+        .await?;
+
+        let second = create_sender_key_distribution_message(
+            &sender_address,
+            distribution_id,
+            &mut alice_store,
+            &mut csprng,
+        )
+        .await?;
+        // A later distribution message reports the chain's current iteration.
+        assert_eq!(second.iteration()?, 1);
+        assert_eq!(first.chain_id()?, second.chain_id()?);
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn group_unknown_chain_id_is_rejected() -> Result<(), SignalProtocolError> {
+    async {
+        let mut csprng = OsRng.unwrap_err();
+        let sender_address =
+            ProtocolAddress::new("+14159999111".to_owned(), DeviceId::new(1).unwrap());
+        let distribution_id = Uuid::from_u128(0xd1d1d1d1_7000_11eb_b32a_33b8a8a487a6);
+        let mut bob_store = test_in_memory_protocol_store()?;
+
+        let signing_key = KeyPair::generate(&mut csprng);
+        let chain_key: [u8; 32] = csprng.random();
+        // Current sender-key message version.
+        let skdm = SenderKeyDistributionMessage::new(
+            3,
+            distribution_id,
+            7,
+            0,
+            chain_key.to_vec(),
+            signing_key.public_key,
+        )?;
+        process_sender_key_distribution_message(&sender_address, &skdm, &mut bob_store).await?;
+
+        // Signed by the key Bob holds, but for a chain id Bob was not given.
+        let foreign = SenderKeyMessage::new(
+            3,
+            distribution_id,
+            999,
+            0,
+            vec![0u8; 32].into_boxed_slice(),
+            &mut csprng,
+            &signing_key.private_key,
+        )?;
+        let result = group_decrypt(foreign.serialized(), &mut bob_store, &sender_address).await;
+        assert_matches!(
+            result,
+            Err(SignalProtocolError::NoSenderKeyState { distribution_id: id }) if id == distribution_id
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
