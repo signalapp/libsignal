@@ -278,3 +278,5 @@ Administration Regulations, Section 740.13) for both object code and source code
 Copyright 2020-2026 Signal Messenger, LLC
 
 Licensed under the GNU AGPLv3: https://www.gnu.org/licenses/agpl-3.0.html
+
+Additional Permissions For Submission to Apple App Store: Provided that you are otherwise in compliance with the AGPL-3.0 for each covered work you convey (including without limitation making the Corresponding Source available in compliance with Section 6 of the GPL3), Signal Messenger, LLC also grants you the additional permission to convey through the Apple App Store non-source executable versions of the Program as incorporated into each applicable covered work as Executable Versions only under the Mozilla Public License version 2.0 (https://www.mozilla.org/en-US/MPL/2.0/)
