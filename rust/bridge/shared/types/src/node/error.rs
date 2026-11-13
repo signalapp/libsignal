@@ -9,9 +9,9 @@ use std::fmt;
 use libsignal_net::infra::errors::{RetryLater, TransportConnectError};
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFormFailure};
-use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use neon::thread::LocalKey;
@@ -1076,7 +1076,7 @@ impl SimpleNodeError for libsignal_net_chat::api::DisconnectedError {
     }
 }
 
-impl SimpleNodeError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+impl SimpleNodeError for GetPreKeysFailure {
     fn js_error_name(&self) -> Option<&'static str> {
         Some(match self {
             GetPreKeysFailure::Unauthorized => "RequestUnauthorized",

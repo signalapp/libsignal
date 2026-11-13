@@ -510,12 +510,14 @@ mod remote_derives {
         BridgeMfaMetadata, BridgePendingTotpKey, BridgeWebAuthnCreateParameters,
     };
     use libsignal_core::Aci;
+    use libsignal_net_chat::api::UserBasedAuthorization;
     use libsignal_net_chat::api::purchase::{ChargeFailure, PaymentProvider};
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::donations::BadgeVisibility;
+    use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
-    use libsignal_protocol::Timestamp;
+    use libsignal_protocol::{ServiceId, Timestamp};
     use uuid::Uuid;
 
     use super::*;
@@ -704,6 +706,87 @@ mod remote_derives {
     #[structural_from(libsignal_net_chat::grpc::devices::test_cases::GetDevicesOut)]
     pub struct GetDevicesOut {
         pub devices: BridgeVec<LinkedDevice>,
+    }
+
+    #[derive(BridgedAsValue)]
+    pub enum TestingUserBasedAuthorization {
+        AccessKey { key: Vec<u8> },
+        GroupSendToken { token: Vec<u8> },
+        Unrestricted,
+    }
+
+    impl From<UserBasedAuthorization> for TestingUserBasedAuthorization {
+        fn from(value: UserBasedAuthorization) -> Self {
+            match value {
+                UserBasedAuthorization::AccessKey(key) => Self::AccessKey { key: key.to_vec() },
+                UserBasedAuthorization::Group(token) => Self::GroupSendToken {
+                    token: ::zkgroup::serialize(&token),
+                },
+                UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => Self::Unrestricted,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    pub struct GetPreKeysArgs {
+        pub auth: TestingUserBasedAuthorization,
+        pub target: ServiceId,
+        pub device_id: i32,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::GetPreKeysArgs> for GetPreKeysArgs {
+        fn from(value: libsignal_net_chat::grpc::keys::test_cases::GetPreKeysArgs) -> Self {
+            let libsignal_net_chat::grpc::keys::test_cases::GetPreKeysArgs {
+                auth,
+                target,
+                device,
+            } = value;
+            Self {
+                auth: auth.into(),
+                target,
+                // The app-language test harnesses interpret a negative device ID as "all
+                // devices"; `-1` is the sole sentinel produced by this bridge.
+                device_id: match device {
+                    DeviceSpecifier::AllDevices => -1,
+                    DeviceSpecifier::Specific(id) => i32::from(u8::from(id)),
+                },
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    pub enum GetPreKeysOut {
+        Success {
+            identity_key: Vec<u8>,
+            bundle_count: i32,
+        },
+        NotFound,
+        Unauthorized,
+        Unexpected,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::GetPreKeysOut> for GetPreKeysOut {
+        fn from(value: libsignal_net_chat::grpc::keys::test_cases::GetPreKeysOut) -> Self {
+            use libsignal_net_chat::grpc::keys::test_cases::GetPreKeysOut as Source;
+            match value {
+                Source::Success {
+                    identity_key,
+                    bundles,
+                } => Self::Success {
+                    identity_key: identity_key.serialize().into_vec(),
+                    // This checks less than the Rust-level tests, which compare the contents of
+                    // every bundle. We don't expose the contents of the bundles in the same way;
+                    // we only bridge opaque handles to clients, so all they need to do is round-trip.
+                    bundle_count: bundles
+                        .len()
+                        .try_into()
+                        .expect("test bundle count fits in i32"),
+                },
+                Source::NotFound => Self::NotFound,
+                Source::Unauthorized => Self::Unauthorized,
+                Source::Unexpected => Self::Unexpected,
+            }
+        }
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
@@ -1316,6 +1399,11 @@ fn TESTING_DeleteUsernameLinkTests() -> GrpcTestCases<(), ()> {
 #[bridge_fn(nice = true)]
 fn TESTING_GetDevicesTests() -> GrpcTestCases<(), remote_derives::GetDevicesOut> {
     libsignal_net_chat::grpc::devices::test_cases::get_devices_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetPreKeysTests()
+-> GrpcTestCases<remote_derives::GetPreKeysArgs, remote_derives::GetPreKeysOut> {
+    libsignal_net_chat::grpc::keys::test_cases::get_pre_keys_test_cases().into()
 }
 // setPushToken is only bridged where each token kind is used: APNs for Swift
 // and FCM for Java. (Desktop never sets a push token.)

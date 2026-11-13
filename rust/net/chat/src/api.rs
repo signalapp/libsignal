@@ -14,7 +14,6 @@ use libsignal_net::infra::errors::RetryLater;
 use ref_cast::RefCast as _;
 
 pub mod backups;
-pub mod keys;
 pub mod keytrans;
 pub mod messages;
 pub mod profiles;
@@ -248,7 +247,6 @@ pub struct S3UploadForm {
 /// UnauthenticatedChatApi generically should accept an arbitrary `T` here.
 pub trait UnauthenticatedChatApi<T>:
     backups::UnauthenticatedChatApi<T>
-    + keys::UnauthenticatedChatApi<T>
     + keytrans::UnauthenticatedChatApi
     + messages::UnauthenticatedChatApi<T>
     + profiles::UnauthenticatedChatApi
@@ -257,7 +255,6 @@ pub trait UnauthenticatedChatApi<T>:
 }
 impl<T, U> UnauthenticatedChatApi<T> for U where
     U: backups::UnauthenticatedChatApi<T>
-        + keys::UnauthenticatedChatApi<T>
         + keytrans::UnauthenticatedChatApi
         + messages::UnauthenticatedChatApi<T>
         + profiles::UnauthenticatedChatApi

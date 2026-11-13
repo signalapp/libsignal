@@ -1468,7 +1468,7 @@ impl JniError for libsignal_net_chat::api::messages::UnsealedSendFailure {
     }
 }
 
-impl MessageOnlyExceptionJniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::keys::GetPreKeysFailure {
     fn exception_class(&self) -> ClassName<'static> {
         match self {
             Self::Unauthorized => {

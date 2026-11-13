@@ -15,7 +15,7 @@ use std::slice;
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
-use libsignal_net_chat::api::keys::DeviceSpecifier;
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use neon::types::JsBigInt;
 use paste::paste;

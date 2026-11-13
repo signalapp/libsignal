@@ -223,6 +223,25 @@ public sealed class GetMessageBackupInfoOut {
   public data object MissingResponse : GetMessageBackupInfoOut()
 }
 
+public data class GetPreKeysArgs(
+  public val auth: org.signal.libsignal.internal.TestingUserBasedAuthorization,
+  public val target: org.signal.libsignal.protocol.ServiceId,
+  public val deviceId: Int,
+)
+
+public sealed class GetPreKeysOut {
+  public data class Success(
+    public val identityKey: ByteArray,
+    public val bundleCount: Int,
+  ) : GetPreKeysOut()
+
+  public data object NotFound : GetPreKeysOut()
+
+  public data object Unauthorized : GetPreKeysOut()
+
+  public data object Unexpected : GetPreKeysOut()
+}
+
 public data class GetProfileKeyCredentialArgs(
   public val profileKeyRequestContext: org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialRequestContext,
   public val serverParams: org.signal.libsignal.internal.ServerPublicParamsSerialized,
@@ -577,6 +596,18 @@ public data class TestingAnySignedPreKey(
   public val key: ByteArray,
   public val sig: ByteArray,
 )
+
+public sealed class TestingUserBasedAuthorization {
+  public data class AccessKey(
+    public val key: ByteArray,
+  ) : TestingUserBasedAuthorization()
+
+  public data class GroupSendToken(
+    public val token: ByteArray,
+  ) : TestingUserBasedAuthorization()
+
+  public data object Unrestricted : TestingUserBasedAuthorization()
+}
 
 public object AnswerChallengeArgs_ReturnConverter {
   @CalledFromNative
@@ -1285,6 +1316,63 @@ public object GetMessageBackupInfoOut_MissingResponse_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = GetMessageBackupInfoOut.MissingResponse
+}
+
+public object GetPreKeysArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    auth: Any?,
+    target: Any?,
+    device_id: Any?,
+  ): Any? =
+    GetPreKeysArgs(
+      auth =
+        downcastFromObject<org.signal.libsignal.internal.TestingUserBasedAuthorization>(auth as Object),
+      target =
+        org.signal.libsignal.protocol.ServiceId
+          .parseFromFixedWidthBinary(target as ByteArray),
+      deviceId =
+        identity(device_id as Int),
+    )
+}
+
+public object GetPreKeysOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    identity_key: Any?,
+    bundle_count: Any?,
+  ): Any? =
+    GetPreKeysOut.Success(
+      identityKey =
+        identity(identity_key as ByteArray),
+      bundleCount =
+        identity(bundle_count as Int),
+    )
+}
+
+public object GetPreKeysOut_NotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetPreKeysOut.NotFound
+}
+
+public object GetPreKeysOut_Unauthorized_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetPreKeysOut.Unauthorized
+}
+
+public object GetPreKeysOut_Unexpected_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetPreKeysOut.Unexpected
 }
 
 public object GetProfileKeyCredentialArgs_ReturnConverter {
@@ -2242,6 +2330,35 @@ public object TestingAnySignedPreKey_ReturnConverter {
     )
 }
 
+public object TestingUserBasedAuthorization_AccessKey_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(key: Any?): Any? =
+    TestingUserBasedAuthorization.AccessKey(
+      key =
+        identity(key as ByteArray),
+    )
+}
+
+public object TestingUserBasedAuthorization_GroupSendToken_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(token: Any?): Any? =
+    TestingUserBasedAuthorization.GroupSendToken(
+      token =
+        identity(token as ByteArray),
+    )
+}
+
+public object TestingUserBasedAuthorization_Unrestricted_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = TestingUserBasedAuthorization.Unrestricted
+}
+
 public sealed class MyNiceTypeEnumNot_FfiArgType
 
 @CalledFromNative
@@ -2815,6 +2932,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.net.PreKeyCounts>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.net.PreKeyCounts>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetPreKeysTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetPreKeysArgs, org.signal.libsignal.internal.GetPreKeysOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetPreKeysTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.GetPreKeysArgs, org.signal.libsignal.internal.GetPreKeysOut>({
+        downcastFromObject<org.signal.libsignal.internal.GetPreKeysArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetPreKeysOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GetProfileKeyCredentialTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetProfileKeyCredentialArgs, org.signal.libsignal.internal.GetProfileKeyCredentialOut>> {

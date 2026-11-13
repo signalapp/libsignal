@@ -12,9 +12,9 @@ use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::{ChallengeOption, UploadForm};
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use uuid::Uuid;

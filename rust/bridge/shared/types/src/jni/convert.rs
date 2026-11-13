@@ -18,7 +18,7 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_net_chat::api::UploadForm;
-use libsignal_net_chat::api::keys::DeviceSpecifier;
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use ref_cast::RefCast as _;

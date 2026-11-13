@@ -1213,6 +1213,20 @@ internal enum GetMessageBackupInfoOut {
     case missingResponse
 }
 
+internal struct GetPreKeysArgs {
+    var auth: TestingUserBasedAuthorization
+    var target: ServiceId
+    var deviceId: Int32
+
+}
+
+internal enum GetPreKeysOut {
+    case success(identityKey: Data, bundleCount: Int32)
+    case notFound
+    case unauthorized
+    case unexpected
+}
+
 internal struct GetProfileKeyCredentialArgs {
     var profileKeyRequestContext: ProfileKeyCredentialRequestContext
     var serverParams: ServerPublicParamsSerialized
@@ -1526,6 +1540,12 @@ internal struct TestingAnySignedPreKey {
     var key: Data
     var sig: Data
 
+}
+
+internal enum TestingUserBasedAuthorization {
+    case accessKey(key: Data)
+    case groupSendToken(token: Data)
+    case unrestricted
 }
 
 extension ProfileKeyCredentialRequestError: Equatable {}
@@ -2336,6 +2356,57 @@ internal enum DerivedReturnConverterGetMessageBackupInfoOut: NiceReturnConverter
             return GetMessageBackupInfoOut.missingResponse
         default:
             throw SignalError.internalError("Unexpected enum tag for GetMessageBackupInfoOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetPreKeysArgs: NiceReturnConverter {
+    typealias NiceReturn = GetPreKeysArgs
+    typealias FfiReturn = SignalGetPreKeysArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetPreKeysArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let auth = Result {
+            try DerivedReturnConverterTestingUserBasedAuthorization.convertReturn(consuming: ffiValue.auth)
+        }
+        let target = Result { try ServiceIdConverter.convertReturn(consuming: ffiValue.target) }
+        let device_id = Result { try IdentityResultConverter<Int32>.convertReturn(consuming: ffiValue.device_id) }
+
+        return GetPreKeysArgs(auth: try auth.get(), target: try target.get(), deviceId: try device_id.get())
+    }
+}
+
+internal enum DerivedReturnConverterGetPreKeysOut: NiceReturnConverter {
+    typealias NiceReturn = GetPreKeysOut
+    typealias FfiReturn = SignalGetPreKeysOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetPreKeysOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetPreKeysOutFfiResultSuccess:
+            let identity_key = Result {
+                try DataConverter.convertReturn(
+                    consuming: ffiValue.success.identity_key
+                )
+            }
+            let bundle_count = Result {
+                try IdentityResultConverter<Int32>.convertReturn(
+                    consuming: ffiValue.success.bundle_count
+                )
+            }
+            return GetPreKeysOut.success(identityKey: try identity_key.get(), bundleCount: try bundle_count.get())
+        case SignalGetPreKeysOutFfiResultNotFound:
+            return GetPreKeysOut.notFound
+        case SignalGetPreKeysOutFfiResultUnauthorized:
+            return GetPreKeysOut.unauthorized
+        case SignalGetPreKeysOutFfiResultUnexpected:
+            return GetPreKeysOut.unexpected
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetPreKeysOut: \(ffiTag)")
         }
     }
 }
@@ -3475,6 +3546,37 @@ internal enum DerivedReturnConverterTestingAnySignedPreKey: NiceReturnConverter 
         let sig = Result { try DataConverter.convertReturn(consuming: ffiValue.sig) }
 
         return TestingAnySignedPreKey(id: try id.get(), key: try key.get(), sig: try sig.get())
+    }
+}
+
+internal enum DerivedReturnConverterTestingUserBasedAuthorization: NiceReturnConverter {
+    typealias NiceReturn = TestingUserBasedAuthorization
+    typealias FfiReturn = SignalTestingUserBasedAuthorizationFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalTestingUserBasedAuthorizationFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalTestingUserBasedAuthorizationFfiResultAccessKey:
+            let key = Result {
+                try DataConverter.convertReturn(
+                    consuming: ffiValue.access_key.key
+                )
+            }
+            return TestingUserBasedAuthorization.accessKey(key: try key.get())
+        case SignalTestingUserBasedAuthorizationFfiResultGroupSendToken:
+            let token = Result {
+                try DataConverter.convertReturn(
+                    consuming: ffiValue.group_send_token.token
+                )
+            }
+            return TestingUserBasedAuthorization.groupSendToken(token: try token.get())
+        case SignalTestingUserBasedAuthorizationFfiResultUnrestricted:
+            return TestingUserBasedAuthorization.unrestricted
+        default:
+            throw SignalError.internalError("Unexpected enum tag for TestingUserBasedAuthorization: \(ffiTag)")
+        }
     }
 }
 
@@ -4714,6 +4816,19 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterBridgePreKeyCounts>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_GetPreKeysTests() throws -> [GrpcTestCase<GetPreKeysArgs, GetPreKeysOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetPreKeysArgs, DerivedReturnConverterGetPreKeysOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_pre_keys_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterGetPreKeysArgs, DerivedReturnConverterGetPreKeysOut>
+            .convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_GetProfileKeyCredentialTests() throws -> [GrpcTestCase<

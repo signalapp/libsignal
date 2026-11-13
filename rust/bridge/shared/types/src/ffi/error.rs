@@ -17,12 +17,12 @@ use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFormFailure};
-use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
 use libsignal_net_chat::api::purchase::ChargeFailure;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
@@ -879,7 +879,7 @@ impl IntoFfiError for BackupAuthCredentialRejected {
     }
 }
 
-impl IntoFfiError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+impl IntoFfiError for GetPreKeysFailure {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let code = match self {
             GetPreKeysFailure::Unauthorized => SignalErrorCode::RequestUnauthorized,

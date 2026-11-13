@@ -79,6 +79,8 @@ import type {
   ReturnFfiGetEntitlementsOut,
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
+  ReturnFfiGetPreKeysArgs,
+  ReturnFfiGetPreKeysOut,
   ReturnFfiGetProfileKeyCredentialArgs,
   ReturnFfiGetProfileKeyCredentialOut,
   ReturnFfiGetStickerUploadFormsOut,
@@ -134,6 +136,7 @@ import type {
   ReturnFfiStartWebAuthnRegistrationOut,
   ReturnFfiTestStreamChunk,
   ReturnFfiTestingAnySignedPreKey,
+  ReturnFfiTestingUserBasedAuthorization,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
@@ -496,6 +499,23 @@ export type GetMessageBackupInfoOut =
   | 'credentialRejected'
   | 'missingResponse';
 
+export type GetPreKeysArgs = {
+  auth: TestingUserBasedAuthorization;
+  target: ServiceId;
+  deviceId: number;
+};
+
+export type GetPreKeysOut =
+  | {
+      success: {
+        identityKey: Bytes;
+        bundleCount: number;
+      };
+    }
+  | 'notFound'
+  | 'unauthorized'
+  | 'unexpected';
+
 export type GetProfileKeyCredentialArgs = {
   profileKeyRequestContext: zkgroup.ProfileKeyCredentialRequestContext;
   serverParams: ServerPublicParamsSerialized;
@@ -814,6 +834,15 @@ export type TestingAnySignedPreKey = {
   key: Bytes;
   sig: Bytes;
 };
+
+export type TestingUserBasedAuthorization =
+  | {
+      accessKey: Bytes;
+    }
+  | {
+      groupSendToken: Bytes;
+    }
+  | 'unrestricted';
 
 export function returnConverterAccountEntitlements(
   ffiInput: Native.ReturnFfiAccountEntitlements
@@ -1620,6 +1649,41 @@ export function returnConverterGetMessageBackupInfoOut(
   }
 }
 
+export function returnConverterGetPreKeysArgs(
+  ffiInput: Native.ReturnFfiGetPreKeysArgs
+): GetPreKeysArgs {
+  return {
+    auth: returnConverterTestingUserBasedAuthorization(ffiInput.auth),
+    target: ((__bytes: Bytes) =>
+      ServiceId.parseFromServiceIdFixedWidthBinary(__bytes))(ffiInput.target),
+    deviceId: identity(ffiInput.device_id),
+  };
+}
+
+export function returnConverterGetPreKeysOut(
+  ffiInput: Native.ReturnFfiGetPreKeysOut
+): GetPreKeysOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: {
+          identityKey: identity(ffiInput.identity_key),
+          bundleCount: identity(ffiInput.bundle_count),
+        },
+      };
+    case 1:
+      return 'notFound';
+    case 2:
+      return 'unauthorized';
+    case 3:
+      return 'unexpected';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetPreKeysOut');
+  }
+}
+
 export function returnConverterGetProfileKeyCredentialArgs(
   ffiInput: Native.ReturnFfiGetProfileKeyCredentialArgs
 ): GetProfileKeyCredentialArgs {
@@ -2412,6 +2476,29 @@ export function returnConverterTestingAnySignedPreKey(
     key: identity(ffiInput.key),
     sig: identity(ffiInput.sig),
   };
+}
+
+export function returnConverterTestingUserBasedAuthorization(
+  ffiInput: Native.ReturnFfiTestingUserBasedAuthorization
+): TestingUserBasedAuthorization {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        accessKey: identity(ffiInput.key),
+      };
+    case 1:
+      return {
+        groupSendToken: identity(ffiInput.token),
+      };
+    case 2:
+      return 'unrestricted';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for TestingUserBasedAuthorization'
+      );
+  }
 }
 
 export function argConverterBadgeVisibility(
@@ -4062,6 +4149,15 @@ export function TESTING_GetPreKeyCountTests(): Array<
     identity,
     returnConverterBridgePreKeyCounts
   )(Native.TESTING_GetPreKeyCountTests());
+}
+
+export function TESTING_GetPreKeysTests(): Array<
+  GrpcTestCase<GetPreKeysArgs, GetPreKeysOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetPreKeysArgs,
+    returnConverterGetPreKeysOut
+  )(Native.TESTING_GetPreKeysTests());
 }
 
 export function TESTING_GetProfileKeyCredentialTests(): Array<

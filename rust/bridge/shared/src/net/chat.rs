@@ -33,7 +33,6 @@ use libsignal_net_chat::api;
 use libsignal_net_chat::api::backups::{
     BackupAuth, BackupAuthCredentialRejected, CdnCredentials, GetUploadFormFailure,
 };
-use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
@@ -57,7 +56,9 @@ use libsignal_net_chat::grpc::devices::{
     DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
 };
 use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceiptFailure};
-use libsignal_net_chat::grpc::keys::{PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey};
+use libsignal_net_chat::grpc::keys::{
+    DeviceSpecifier, GetPreKeysFailure, PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey,
+};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -407,18 +408,15 @@ async fn UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
     target: ServiceId,
     device: DeviceSpecifier,
 ) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
-    chat.as_typed(|chat| {
-        Box::pin(async move {
-            let (identity_key, pre_key_bundles) = chat
-                .get_pre_keys(UserBasedAuthorization::AccessKey(auth), target, device)
-                .await?;
-            Ok(PreKeysResponse {
-                identity_key,
-                pre_key_bundles,
-            })
-        })
+    let (identity_key, pre_key_bundles) = chat
+        .require_grpc()
+        .await
+        .get_pre_keys(UserBasedAuthorization::AccessKey(auth), target, device)
+        .await?;
+    Ok(PreKeysResponse {
+        identity_key,
+        pre_key_bundles,
     })
-    .await
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -428,18 +426,15 @@ async fn UnauthenticatedChatConnection_get_pre_keys_group_auth(
     target: ServiceId,
     device: DeviceSpecifier,
 ) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
-    chat.as_typed(|chat| {
-        Box::pin(async move {
-            let (identity_key, pre_key_bundles) = chat
-                .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
-                .await?;
-            Ok(PreKeysResponse {
-                identity_key,
-                pre_key_bundles,
-            })
-        })
+    let (identity_key, pre_key_bundles) = chat
+        .require_grpc()
+        .await
+        .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
+        .await?;
+    Ok(PreKeysResponse {
+        identity_key,
+        pre_key_bundles,
     })
-    .await
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -448,22 +443,19 @@ async fn UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
     target: ServiceId,
     device: DeviceSpecifier,
 ) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
-    chat.as_typed(|chat| {
-        Box::pin(async move {
-            let (identity_key, pre_key_bundles) = chat
-                .get_pre_keys(
-                    UserBasedAuthorization::UnrestrictedUnauthenticatedAccess,
-                    target,
-                    device,
-                )
-                .await?;
-            Ok(PreKeysResponse {
-                identity_key,
-                pre_key_bundles,
-            })
-        })
+    let (identity_key, pre_key_bundles) = chat
+        .require_grpc()
+        .await
+        .get_pre_keys(
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess,
+            target,
+            device,
+        )
+        .await?;
+    Ok(PreKeysResponse {
+        identity_key,
+        pre_key_bundles,
     })
-    .await
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]

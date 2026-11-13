@@ -620,6 +620,28 @@ export type ReturnFfiGetMessageBackupInfoOut =
       __type: 2;
     };
 
+export type ReturnFfiGetPreKeysArgs = {
+  auth: ReturnFfiTestingUserBasedAuthorization;
+  target: Bytes;
+  device_id: number;
+};
+
+export type ReturnFfiGetPreKeysOut =
+  | {
+      __type: 0;
+      identity_key: Bytes;
+      bundle_count: number;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
 export type ReturnFfiGetProfileKeyCredentialArgs = {
   profile_key_request_context: Bytes;
   server_params: ReturnFfiServerPublicParamsSerialized;
@@ -1058,6 +1080,19 @@ export type ReturnFfiTestingAnySignedPreKey = {
   key: Bytes;
   sig: Bytes;
 };
+
+export type ReturnFfiTestingUserBasedAuthorization =
+  | {
+      __type: 0;
+      key: Bytes;
+    }
+  | {
+      __type: 1;
+      token: Bytes;
+    }
+  | {
+      __type: 2;
+    };
 
 export type ArgFfiBadgeVisibility =
   | {
@@ -3377,6 +3412,9 @@ type NativeFunctions = {
   TESTING_GetPreKeyCountTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiBridgePreKeyCounts>
   >;
+  TESTING_GetPreKeysTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiGetPreKeysArgs, ReturnFfiGetPreKeysOut>
+  >;
   TESTING_GetProfileKeyCredentialTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiGetProfileKeyCredentialArgs,
@@ -4686,6 +4724,7 @@ const {
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
+  TESTING_GetPreKeysTests,
   TESTING_GetProfileKeyCredentialTests,
   TESTING_GetStickerUploadFormTests,
   TESTING_GetSubscriptionReceiptCredentialTests,
@@ -5535,6 +5574,7 @@ export {
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
+  TESTING_GetPreKeysTests,
   TESTING_GetProfileKeyCredentialTests,
   TESTING_GetStickerUploadFormTests,
   TESTING_GetSubscriptionReceiptCredentialTests,
