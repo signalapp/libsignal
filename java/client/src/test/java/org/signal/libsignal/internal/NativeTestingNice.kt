@@ -3523,6 +3523,32 @@ public object NativeTestingNice {
     return identity(ffiOut)
   }
 
+  public fun TESTING_conversion_OptionalData32_to_string(x: ByteArray?): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionalData32_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionalData32_to_string_async(
+    asyncCtx: TokioAsyncContext,
+    x: ByteArray?,
+  ): CompletableFuture<String> {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        NativeTesting.TESTING_conversion_OptionalData32_to_string_async(
+          asyncCtxHandle.nativeHandle(),
+          ffi_x,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun TESTING_conversion_OptionalFloat_identity(x: Float?): Float? {
     val ffi_x = identity(x)
     val ffiOut =

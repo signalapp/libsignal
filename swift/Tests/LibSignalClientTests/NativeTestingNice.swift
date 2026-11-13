@@ -138,6 +138,43 @@ extension SignalCPromiseRawPointer: SignalCPromise {
 
 }
 
+extension SignalCPromiseCStringPtr: SignalCPromise {
+
+    public typealias Result = SignalCStringPtr?
+
+    public init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    public var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    public var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    public var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseTestStreamChunkFfiResult: SignalCPromise {
 
     public typealias Result = SignalTestStreamChunkFfiResult
@@ -5717,6 +5754,40 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func TESTING_conversion_OptionalData32_to_string(
+        x: Data?,
+    ) throws -> String {
+        try OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_data32_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalData32_to_string_async(
+        asyncContext: TokioAsyncContext,
+        x: Data?,
+    ) async throws -> String {
+        let rawOutput: StringConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(x) { xFfi in
+                    SignalFfi.signal_testing_conversion_optional_data32_to_string_async(
+                        promiseFfi,
+                        asyncContextFfi.const(),
+                        xFfi,
+                    )
+                }
+            }
+        return try StringConverter.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_conversion_OptionalFloat_identity(

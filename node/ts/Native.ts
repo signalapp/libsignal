@@ -3680,6 +3680,11 @@ type NativeFunctions = {
     x: Bytes | null
   ) => CancellablePromise<Bytes | null>;
   TESTING_conversion_OptionalBytes_to_string: (x: Bytes | null) => string;
+  TESTING_conversion_OptionalData32_to_string: (x: Bytes | null) => string;
+  TESTING_conversion_OptionalData32_to_string_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Bytes | null
+  ) => CancellablePromise<string>;
   TESTING_conversion_OptionalFloat_identity: (
     x: number | null
   ) => number | null;
@@ -4804,6 +4809,8 @@ const {
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalData32_to_string,
+  TESTING_conversion_OptionalData32_to_string_async,
   TESTING_conversion_OptionalFloat_identity,
   TESTING_conversion_OptionalFloat_identity_async,
   TESTING_conversion_OptionalFloat_to_string,
@@ -5651,6 +5658,8 @@ export {
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalData32_to_string,
+  TESTING_conversion_OptionalData32_to_string_async,
   TESTING_conversion_OptionalFloat_identity,
   TESTING_conversion_OptionalFloat_identity_async,
   TESTING_conversion_OptionalFloat_to_string,

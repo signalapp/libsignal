@@ -21,6 +21,7 @@ import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -504,6 +505,22 @@ class NativeTestingNiceTest {
       nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalBytes_identity,
       equality = java.util.Arrays::equals,
     )
+
+  @Test
+  fun testOptionalData32() {
+    val tokio = TokioAsyncContext()
+    for (item in sequenceOf(null, Random.nextBytes(32))) {
+      val expected = item?.let(Base64::encode) ?: "%"
+      assertEquals(expected, NativeTestingNice.TESTING_conversion_OptionalData32_to_string(item))
+      assertEquals(
+        expected,
+        NativeTestingNice.TESTING_conversion_OptionalData32_to_string_async(tokio, item).get(),
+      )
+    }
+    assertFailsWith<IllegalArgumentException> {
+      NativeTestingNice.TESTING_conversion_OptionalData32_to_string(ByteArray(31))
+    }
+  }
 
   @Test
   fun testReturnedError() {

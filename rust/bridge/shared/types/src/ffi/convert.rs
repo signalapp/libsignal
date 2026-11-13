@@ -906,6 +906,28 @@ impl<const LEN: usize> SimpleArgTypeInfo for Option<&'_ [u8; LEN]> {
     }
 }
 
+impl<const LEN: usize> SimpleArgTypeInfo for Option<[u8; LEN]> {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { arg.as_ref() }.copied())
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceArgConverter for Option<[u8; LEN]> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        ctx.fixed_byte_array_lengths.insert(LEN);
+        SwiftArgConverter {
+            nice_type: "Data?".to_string(),
+            converter_type: format!(
+                "OptionalFixedByteArrayConverter<{}>",
+                names::fixed_byte_array_helper(LEN)
+            ),
+        }
+    }
+}
+
 impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     type ResultType = [u8; LEN];
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
