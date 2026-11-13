@@ -379,3 +379,50 @@ impl RatchetState {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rand::SeedableRng as _;
+    use rand::rngs::StdRng;
+
+    use super::*;
+    use crate::KeyPair;
+    use crate::proto::storage::SessionStructure;
+    use crate::ratchet::{ChainKey, RootKey};
+
+    #[test]
+    fn receiver_chains_store_no_ratchet_private_key() {
+        // A DH ratchet step records the peer's public ratchet key on the new
+        // receiver chain. The rotated-out sending private key is not stored.
+        let mut csprng = StdRng::seed_from_u64(0x1070);
+        let our_ratchet = KeyPair::generate(&mut csprng);
+        let mut state = RatchetState {
+            root_key: RootKey::new([0x11; 32]),
+            sender_chain: Some(SenderChain {
+                ratchet_key: our_ratchet,
+                chain_key: ChainKey::new([0x22; 32], 0),
+            }),
+            receiver_chains: Vec::new(),
+            previous_counter: 0,
+            max_forward_jumps: consts::MAX_FORWARD_JUMPS,
+        };
+
+        for _ in 0..2 {
+            let their_ratchet = KeyPair::generate(&mut csprng);
+            state
+                .dh_ratchet_step(&their_ratchet.public_key, &mut csprng)
+                .expect("dh ratchet step");
+        }
+
+        let mut session = SessionStructure::default();
+        state.apply_to_pb(&mut session);
+
+        assert_eq!(session.receiver_chains.len(), 2);
+        for chain in &session.receiver_chains {
+            assert!(
+                chain.sender_ratchet_key_private.is_empty(),
+                "receiver chain stored a ratchet private key"
+            );
+        }
+    }
+}
