@@ -4,6 +4,13 @@
  */
 
 /*
+NOTE: The session bound below was raised from N=2 to N=4 (one active session
+plus MAX_ARCHIVED_SESSIONS = 3 archived sessions in rust/protocol/src/consts.rs)
+to match the implementation. The results recorded below were produced with
+N=2 and have not been regenerated for N=4; re-run the commands below before
+relying on them. SANITY_NoOutOfOrderFrom2SessionsAgo is now
+SANITY_NoOutOfOrderFrom4SessionsAgo.
+
 This file produced the following results.
 We separately provide command-line invocation details and results,
 first for the sanity-checking lemmas and then for the actual target properties.
@@ -546,22 +553,32 @@ restriction SequentialSessions_Receiving:
    HonestReceiveStep(sid1, uidA, idA, uidB, idB, rk3) @ k & j<k
    ==> F"
 
-// Only out-of-order receives from N<=2 latest sessions.
+// Only out-of-order receives from the N<=4 latest sessions: the active session
+// plus MAX_ARCHIVED_SESSIONS = 3 archived ones. A session is dropped once four
+// newer sessions have been created after it.
 restriction OutOfOrderA:
-  "All sid1 sid2 sid3 uidA idA uidB idB rk1 rk2 rk3 rk4 rk5 #i #j #k #l.
+  "All sid1 sid2 sid3 sid4 sid5 uidA idA uidB idB rk1 rk2 rk3 rk4 rk5 rk6 rk7
+       #i #j #k #m #n #l.
    CreateDynamicState(sid1, uidA, idA, uidB, idB, rk1) @ i &
    CreateDynamicState(sid2, uidA, idA, uidB, idB, rk2) @ j & i<j &
    CreateDynamicState(sid3, uidA, idA, uidB, idB, rk3) @ k & j<k &
-   UpdateDynamicStateA_Receiver_OOO(sid1, uidA, idA, uidB, idB, rk4, rk5) @ l & k<l
+   CreateDynamicState(sid4, uidA, idA, uidB, idB, rk4) @ m & k<m &
+   CreateDynamicState(sid5, uidA, idA, uidB, idB, rk5) @ n & m<n &
+   UpdateDynamicStateA_Receiver_OOO(sid1, uidA, idA, uidB, idB, rk6, rk7) @ l & n<l
    ==> F"
 
-// Only out-of-order receives from N<=2 latest sessions.
+// Only out-of-order receives from the N<=4 latest sessions: the active session
+// plus MAX_ARCHIVED_SESSIONS = 3 archived ones. A session is dropped once four
+// newer sessions have been created after it.
 restriction OutOfOrderB:
-  "All sid1 sid2 sid3 uidA idA uidB idB rk1 rk2 rk3 rk4 rk5 #i #j #k #l.
+  "All sid1 sid2 sid3 sid4 sid5 uidA idA uidB idB rk1 rk2 rk3 rk4 rk5 rk6 rk7
+       #i #j #k #m #n #l.
    CreateDynamicState(sid1, uidA, idA, uidB, idB, rk1) @ i &
    CreateDynamicState(sid2, uidA, idA, uidB, idB, rk2) @ j & i<j &
    CreateDynamicState(sid3, uidA, idA, uidB, idB, rk3) @ k & j<k &
-   UpdateDynamicStateB_Receiver_OOO(sid1, uidA, idA, uidB, idB, rk4, rk5) @ l & k<l
+   CreateDynamicState(sid4, uidA, idA, uidB, idB, rk4) @ m & k<m &
+   CreateDynamicState(sid5, uidA, idA, uidB, idB, rk5) @ n & m<n &
+   UpdateDynamicStateB_Receiver_OOO(sid1, uidA, idA, uidB, idB, rk6, rk7) @ l & n<l
    ==> F"
 
 // =============================================================================
@@ -706,14 +723,17 @@ lemma SANITY_DynamicStateLossBPossible[heuristic=C]: exists-trace
      DynamicStateLossB(sid, uidA, idA, uidB, idB, next_rk) @ m"
 
 
-// Only out-of-order receives from N<=2 latest sessions.
-lemma SANITY_NoOutOfOrderFrom2SessionsAgo: exists-trace
-  "All sid1 sid2 sid3 uidA idA uidB idB rk1 rk2 rk3 rk4 rk5 #i #j #k #l.
+// Only out-of-order receives from the N<=4 latest sessions.
+lemma SANITY_NoOutOfOrderFrom4SessionsAgo: exists-trace
+  "All sid1 sid2 sid3 sid4 sid5 uidA idA uidB idB rk1 rk2 rk3 rk4 rk5 rk6 rk7
+       #i #j #k #m #n #l.
    CreateDynamicState(sid1, uidA, idA, uidB, idB, rk1) @ i &
    CreateDynamicState(sid2, uidA, idA, uidB, idB, rk2) @ j & i<j &
    CreateDynamicState(sid3, uidA, idA, uidB, idB, rk3) @ k & j<k &
-   UpdateDynamicStateA_Receiver_OOO(sid1, uidA, idA, uidB, idB, rk4, rk5)@l
-   ==> l<k
+   CreateDynamicState(sid4, uidA, idA, uidB, idB, rk4) @ m & k<m &
+   CreateDynamicState(sid5, uidA, idA, uidB, idB, rk5) @ n & m<n &
+   UpdateDynamicStateA_Receiver_OOO(sid1, uidA, idA, uidB, idB, rk6, rk7)@l
+   ==> l<n
   "
 
 // =============================================================================
