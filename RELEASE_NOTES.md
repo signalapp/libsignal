@@ -10,3 +10,5 @@ v0.108.0
 
 - Typed APIs
   - AuthAccountsService.getAccountIdentity()
+
+- SVR2/B: Remove staging environments prior to 2026Q3.

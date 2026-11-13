@@ -57,11 +57,8 @@ macro_rules! def_enclaves {
 }
 
 def_enclaves! {
-    ENCLAVE_ID_SVR2_2026Q2_STAGING => ("3c699f4975aaa3d172c0aad042f94f031b2b03e10b9c19a45116a01693d83302", common),
     ENCLAVE_ID_SVR2_2026Q2_PROD => ("ced8217b26228e4b210c985786999d095c4958a94faf37b14acaf25c4cbb02a4", common),
-    ENCLAVE_ID_SVRB_2026Q2_STAGING => ("3c699f4975aaa3d172c0aad042f94f031b2b03e10b9c19a45116a01693d83302", common),
     ENCLAVE_ID_SVRB_2026Q2_PROD => ("2048e20fcd07d0992c4907e8e04c5a85f1f993d195004c7342675343ca2e524b", common),
-    ENCLAVE_ID_SVR2_2026Q3_STAGING_V1 => ("c9e8a0c4ead9434c1c66004fed3e186dd184299c216bc33359e46745c0fc7e16", common),
     ENCLAVE_ID_SVR2_2026Q3_STAGING => ("0ff2d7d4efbe7cfc24ac069a16fba898928dbe6c40d500c8b6da55733c727d6e", common),
     ENCLAVE_ID_SVR2_2026Q3_PROD => ("fdbbacdc0c043d0d53fe1440f62728de0386f45ab0a275bd8f99e03a02af355e", common),
     ENCLAVE_ID_SVRB_2026Q3_STAGING => ("0ff2d7d4efbe7cfc24ac069a16fba898928dbe6c40d500c8b6da55733c727d6e", common),
@@ -80,16 +77,6 @@ pub(crate) const DEFAULT_SW_ADVISORIES: &[&str] = &[];
 /// Empty until a Nitro SVRB backend is deployed.
 pub(crate) const NITRO_EXPECTED_PCRS: SmallMap<&'static [u8], nitro::PcrMap, 0> = SmallMap::new([]);
 
-pub const RAFT_CONFIG_SVR2_2026Q2_STAGING: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 3,
-    max_voting_replicas: 9,
-    super_majority: 0,
-    group_id: 5138641357881452604,
-    db_version: 2,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
 pub const RAFT_CONFIG_SVR2_2026Q2_PROD: &RaftConfig = &RaftConfig {
     min_voting_replicas: 4,
     max_voting_replicas: 13,
@@ -100,32 +87,12 @@ pub const RAFT_CONFIG_SVR2_2026Q2_PROD: &RaftConfig = &RaftConfig {
     simulated: false,
 };
 
-pub const RAFT_CONFIG_SVRB_2026Q2_STAGING: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 3,
-    max_voting_replicas: 9,
-    super_majority: 0,
-    group_id: 11614651745041226414,
-    db_version: 4,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
 pub const RAFT_CONFIG_SVRB_2026Q2_PROD: &RaftConfig = &RaftConfig {
     min_voting_replicas: 4,
     max_voting_replicas: 13,
     super_majority: 2,
     group_id: 15457520608692442134,
     db_version: 4,
-    attestation_timeout: 604800,
-    simulated: false,
-};
-
-pub const RAFT_CONFIG_SVR2_2026Q3_STAGING_V1: &RaftConfig = &RaftConfig {
-    min_voting_replicas: 3,
-    max_voting_replicas: 9,
-    super_majority: 0,
-    group_id: 10062002712960068502,
-    db_version: 2,
     attestation_timeout: 604800,
     simulated: false,
 };
@@ -172,17 +139,9 @@ pub const RAFT_CONFIG_SVRB_2026Q3_PROD: &RaftConfig = &RaftConfig {
 
 // This is left here primarily to support SVR2 bridging code that does
 // not expose the notion of environment to the clients.
-pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 5> =
+pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static RaftConfig, 3> =
     SmallMap::new([
-        (
-            ENCLAVE_ID_SVR2_2026Q2_STAGING,
-            RAFT_CONFIG_SVR2_2026Q2_STAGING,
-        ),
         (ENCLAVE_ID_SVR2_2026Q2_PROD, RAFT_CONFIG_SVR2_2026Q2_PROD),
-        (
-            ENCLAVE_ID_SVR2_2026Q3_STAGING_V1,
-            RAFT_CONFIG_SVR2_2026Q3_STAGING_V1,
-        ),
         (
             ENCLAVE_ID_SVR2_2026Q3_STAGING,
             RAFT_CONFIG_SVR2_2026Q3_STAGING,
@@ -193,13 +152,8 @@ pub(crate) static EXPECTED_RAFT_CONFIG_SVR2: SmallMap<&'static [u8], &'static Ra
 /// If true, we will skip enforcement of TCB minimums reported
 /// by SVR.  If false, enforcement will be applied.
 pub(crate) fn skip_tcb_minimums_enforcement_svr(mrenclave: &[u8]) -> bool {
-    const TO_SKIP: &[&[u8]] = &[
-        ENCLAVE_ID_SVR2_2026Q2_STAGING,
-        ENCLAVE_ID_SVR2_2026Q2_PROD,
-        ENCLAVE_ID_SVRB_2026Q2_STAGING,
-        ENCLAVE_ID_SVRB_2026Q2_PROD,
-    ];
+    const TO_SKIP: &[&[u8]] = &[ENCLAVE_ID_SVR2_2026Q2_PROD, ENCLAVE_ID_SVRB_2026Q2_PROD];
     // We should never add any new SVR enclaves to this map.
-    const _SKIP_TCB_MINIMUMS_ENFORCEMENT_SVR_DOES_NOT_GROW: () = assert!(TO_SKIP.len() <= 4);
+    const _SKIP_TCB_MINIMUMS_ENFORCEMENT_SVR_DOES_NOT_GROW: () = assert!(TO_SKIP.len() <= 2);
     TO_SKIP.contains(&mrenclave)
 }
