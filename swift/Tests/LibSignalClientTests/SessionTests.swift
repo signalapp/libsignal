@@ -135,6 +135,144 @@ class SessionTests: TestCaseBase {
         }
     }
 
+    func testRecordReceivedIdentity() throws {
+        let alice_address = try ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try ProtocolAddress(name: "+14151111112", deviceId: 1)
+
+        let alice_store = RecordingIdentityStore()
+        let bob_store = RecordingIdentityStore()
+
+        try exchangeMessagesAndArchiveBobSession(
+            alice_store: alice_store,
+            bob_store: bob_store,
+            alice_address: alice_address,
+            bob_address: bob_address
+        )
+        // Decrypts on active sessions call saveIdentity, not recordReceivedIdentity.
+        XCTAssert(alice_store.receivedIdentities.isEmpty)
+        XCTAssert(bob_store.receivedIdentities.isEmpty)
+
+        let ctext = try signalEncrypt(
+            message: [3],
+            for: bob_address,
+            localAddress: alice_address,
+            sessionStore: alice_store,
+            identityStore: alice_store,
+            context: NullContext()
+        )
+        XCTAssertEqual(ctext.messageType, .whisper)
+        let ptext = try signalDecrypt(
+            message: SignalMessage(bytes: ctext.serialize()),
+            from: alice_address,
+            to: bob_address,
+            sessionStore: bob_store,
+            identityStore: bob_store,
+            context: NullContext()
+        )
+        XCTAssertEqual(ptext, Data([3]))
+
+        let alice_identity = try alice_store.identityKeyPair(context: NullContext()).identityKey
+        XCTAssertEqual(
+            bob_store.receivedIdentities,
+            [.init(address: alice_address, identity: alice_identity)]
+        )
+    }
+
+    func testRecordReceivedIdentityErrorPropagates() throws {
+        let alice_address = try ProtocolAddress(name: "+14151111111", deviceId: 1)
+        let bob_address = try ProtocolAddress(name: "+14151111112", deviceId: 1)
+
+        let alice_store = InMemorySignalProtocolStore()
+        let bob_store = BadRecordReceivedIdentityStore()
+
+        try exchangeMessagesAndArchiveBobSession(
+            alice_store: alice_store,
+            bob_store: bob_store,
+            alice_address: alice_address,
+            bob_address: bob_address
+        )
+
+        let ctext = try signalEncrypt(
+            message: [3],
+            for: bob_address,
+            localAddress: alice_address,
+            sessionStore: alice_store,
+            identityStore: alice_store,
+            context: NullContext()
+        )
+        XCTAssertThrowsError(
+            try signalDecrypt(
+                message: SignalMessage(bytes: ctext.serialize()),
+                from: alice_address,
+                to: bob_address,
+                sessionStore: bob_store,
+                identityStore: bob_store,
+                context: NullContext()
+            )
+        ) { error in
+            guard case BadRecordReceivedIdentityStore.Error.badness = error else {
+                XCTFail("wrong error thrown: \(error)")
+                return
+            }
+        }
+    }
+
+    /// Sets up a session in both directions, then has Bob archive his session with Alice, so that
+    /// Alice's next message is decrypted on an archived session.
+    private func exchangeMessagesAndArchiveBobSession(
+        alice_store: InMemorySignalProtocolStore,
+        bob_store: InMemorySignalProtocolStore,
+        alice_address: ProtocolAddress,
+        bob_address: ProtocolAddress
+    ) throws {
+        initializeSessionsV4(
+            alice_store: alice_store,
+            bob_store: bob_store,
+            bob_address: bob_address,
+            alice_address: alice_address
+        )
+
+        let ctext_a = try signalEncrypt(
+            message: [1],
+            for: bob_address,
+            localAddress: alice_address,
+            sessionStore: alice_store,
+            identityStore: alice_store,
+            context: NullContext()
+        )
+        _ = try signalDecryptPreKey(
+            message: PreKeySignalMessage(bytes: ctext_a.serialize()),
+            from: alice_address,
+            localAddress: bob_address,
+            sessionStore: bob_store,
+            identityStore: bob_store,
+            preKeyStore: bob_store,
+            signedPreKeyStore: bob_store,
+            kyberPreKeyStore: bob_store,
+            context: NullContext()
+        )
+        let ctext_b = try signalEncrypt(
+            message: [2],
+            for: alice_address,
+            localAddress: bob_address,
+            sessionStore: bob_store,
+            identityStore: bob_store,
+            context: NullContext()
+        )
+        _ = try signalDecrypt(
+            message: SignalMessage(bytes: ctext_b.serialize()),
+            from: bob_address,
+            to: alice_address,
+            sessionStore: alice_store,
+            identityStore: alice_store,
+            context: NullContext()
+        )
+
+        let bob_session = try XCTUnwrap(bob_store.loadSession(for: alice_address, context: NullContext()))
+        bob_session.archiveCurrentState()
+        try bob_store.storeSession(bob_session, for: alice_address, context: NullContext())
+    }
+
     func testExpiresUnacknowledgedSessions() {
         let bob_address = try! ProtocolAddress(name: "+14151111112", deviceId: 1)
         let alice_address = try! ProtocolAddress(name: "+14151111111", deviceId: 1)

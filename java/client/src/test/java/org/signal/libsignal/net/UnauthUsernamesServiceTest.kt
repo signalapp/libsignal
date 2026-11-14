@@ -16,6 +16,7 @@ import org.signal.libsignal.net.assertNonSuccess
 import org.signal.libsignal.protocol.ServiceId.Aci
 import org.signal.libsignal.protocol.util.Hex
 import org.signal.libsignal.usernames.Username
+import org.signal.libsignal.usernames.UsernameHash
 import org.signal.libsignal.usernames.UsernameLinkInvalidEntropyDataLength
 import org.signal.libsignal.usernames.UsernameLinkInvalidLinkData
 import java.nio.charset.StandardCharsets
@@ -48,7 +49,7 @@ class UnauthUsernamesServiceTest {
       )
 
     val accountsService = UnauthUsernamesService(chat)
-    val testHash = byteArrayOf(1, 2, 3, 4)
+    val testHash = UsernameHash(ByteArray(UsernameHash.SIZE) { i -> i.toByte() })
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
@@ -56,7 +57,8 @@ class UnauthUsernamesServiceTest {
 
     assertEquals("GET", request.method)
     val expectedPath =
-      "/v1/accounts/username_hash/" + Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash)
+      "/v1/accounts/username_hash/" +
+        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash.serialize())
     assertEquals(expectedPath, request.pathAndQuery)
 
     // Send successful response with UUID
@@ -94,7 +96,7 @@ class UnauthUsernamesServiceTest {
       )
 
     val accountsService = UnauthUsernamesService(chat)
-    val testHash = byteArrayOf(1, 2, 3, 4)
+    val testHash = UsernameHash(ByteArray(UsernameHash.SIZE) { i -> i.toByte() })
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
@@ -102,7 +104,8 @@ class UnauthUsernamesServiceTest {
 
     assertEquals("GET", request.method)
     val expectedPath =
-      "/v1/accounts/username_hash/" + Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash)
+      "/v1/accounts/username_hash/" +
+        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL).encode(testHash.serialize())
     assertEquals(expectedPath, request.pathAndQuery)
 
     // Send fake 404 response (user not found)
@@ -132,7 +135,7 @@ class UnauthUsernamesServiceTest {
       )
 
     val accountsService = UnauthUsernamesService(chat)
-    val testHash = byteArrayOf(1, 2, 3, 4)
+    val testHash = UsernameHash(ByteArray(UsernameHash.SIZE) { i -> i.toByte() })
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote
@@ -167,7 +170,7 @@ class UnauthUsernamesServiceTest {
       )
 
     val accountsService = UnauthUsernamesService(chat)
-    val testHash = byteArrayOf(1, 2, 3, 4)
+    val testHash = UsernameHash(ByteArray(UsernameHash.SIZE) { i -> i.toByte() })
     val responseFuture = accountsService.lookUpUsernameHash(testHash)
 
     // Get the incoming request from the fake remote

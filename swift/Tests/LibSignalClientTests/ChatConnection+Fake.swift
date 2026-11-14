@@ -258,8 +258,8 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
                 continue
             }
 
-            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.first)!)
-            let requestId = request.second
+            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.value.first)!)
+            let requestId = request.value.second
 
             return (httpRequest, requestId)
         }
@@ -291,8 +291,8 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
                 continue
             }
 
-            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.first)!)
-            let requestId = request.second
+            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.value.first)!)
+            let requestId = request.value.second
 
             return (httpRequest, requestId)
         }

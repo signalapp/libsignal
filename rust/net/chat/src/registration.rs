@@ -575,8 +575,7 @@ mod testutil {
             let (fake_chat, fake_remote) = ChatConnection::new_fake(
                 tokio::runtime::Handle::current(),
                 DropOnDisconnect::new(on_disconnect).into_listener(),
-                [],
-                [],
+                libsignal_net::chat::fake::FakeChatOptions::default(),
             );
             async {
                 let _ignore_failure = self.remote.send(fake_remote);

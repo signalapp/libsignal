@@ -13,6 +13,7 @@ import org.signal.libsignal.internal.ConfirmTotpKeyOut
 import org.signal.libsignal.internal.FinishMfaVerificationOut
 import org.signal.libsignal.internal.FinishWebAuthnRegistrationOut
 import org.signal.libsignal.internal.GenerateTotpKeyOut
+import org.signal.libsignal.internal.GetAccountIdentityOut
 import org.signal.libsignal.internal.GetCapabilitiesOut
 import org.signal.libsignal.internal.GetEntitlementsOut
 import org.signal.libsignal.internal.ListMfaKeysOut
@@ -25,6 +26,7 @@ import org.signal.libsignal.internal.StartWebAuthnRegistrationOut
 import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.internal.await
 import org.signal.libsignal.net.assertNonSuccess
+import org.signal.libsignal.usernames.UsernameHash
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +34,40 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class AuthAccountsServiceTest {
+  @Test
+  fun testGetAccountIdentity() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetAccountIdentityTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, _ ->
+          chat.getAccountIdentity()
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetAccountIdentityOut.Success -> {
+              // Build the expected value by hand rather than reusing
+              // AccountIdentity.fromInternal, so the conversion is independently checked.
+              val raw = expected._0
+              assertEquals(
+                AccountIdentity(
+                  aci = raw.aci,
+                  pni = raw.pni,
+                  e164 = raw.e164,
+                  usernameHash = raw.usernameHash?.let { UsernameHash(it) },
+                  usernameLinkHandle = raw.usernameLinkHandle,
+                ),
+                assertIs<RequestResult.Success<AccountIdentity>>(actual).result,
+              )
+            }
+            GetAccountIdentityOut.MissingIdentifiers ->
+              assertIs<RequestResult.ApplicationError>(actual)
+          }
+        },
+      )
+    }
+
   @Test
   fun testDeleteAccount() =
     runTest {

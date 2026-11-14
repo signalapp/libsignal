@@ -33,6 +33,12 @@ internal interface IdentityKeyStore {
     rawKey: ObjectHandle,
     rawDirection: Int,
   ): Boolean
+
+  @Throws(Exception::class)
+  public fun recordReceivedIdentityKey(
+    rawAddress: ObjectHandle,
+    rawKey: ObjectHandle,
+  )
 }
 
 @CalledFromNative

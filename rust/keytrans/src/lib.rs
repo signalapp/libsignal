@@ -34,26 +34,23 @@ pub use vrf::PublicKey as VrfPublicKey;
 
 use crate::proto::AuditorTreeHead;
 
+/// The keys of the third parties in a third-party deployment mode. There is
+/// always at least one.
 #[derive(PartialEq, Clone)]
 pub struct VerifyingKeys(Vec<VerifyingKey>);
 
 impl VerifyingKeys {
-    const fn empty() -> Self {
-        Self(vec![])
+    // Panics if `keys` is empty. The keys come from the hardcoded environment.
+    pub fn new(keys: impl IntoIterator<Item = VerifyingKey>) -> Self {
+        let keys = Vec::from_iter(keys);
+        assert!(!keys.is_empty(), "at least one key is required");
+        Self(keys)
     }
 
     pub(crate) fn iter(&self) -> impl ExactSizeIterator<Item = &VerifyingKey> {
         self.0.iter()
     }
 }
-
-impl<Keys: IntoIterator<Item = VerifyingKey>> From<Keys> for VerifyingKeys {
-    fn from(keys: Keys) -> Self {
-        Self(keys.into_iter().collect())
-    }
-}
-
-static EMPTY_KEYS: &VerifyingKeys = &VerifyingKeys::empty();
 
 /// DeploymentMode specifies the way that a transparency log is deployed.
 #[derive(PartialEq, Clone)]
@@ -72,18 +69,11 @@ impl DeploymentMode {
         }
     }
 
-    fn has_associated_keys(&self) -> bool {
+    fn get_associated_keys(&self) -> Option<&VerifyingKeys> {
         match self {
-            DeploymentMode::ContactMonitoring => false,
-            DeploymentMode::ThirdPartyManagement(_) | DeploymentMode::ThirdPartyAuditing(_) => true,
-        }
-    }
-
-    fn get_associated_keys(&self) -> &VerifyingKeys {
-        match self {
-            DeploymentMode::ContactMonitoring => EMPTY_KEYS,
+            DeploymentMode::ContactMonitoring => None,
             DeploymentMode::ThirdPartyManagement(keys)
-            | DeploymentMode::ThirdPartyAuditing(keys) => keys,
+            | DeploymentMode::ThirdPartyAuditing(keys) => Some(keys),
         }
     }
 }
@@ -535,12 +525,15 @@ trait VerifiableTreeHead {
         // passing an auditor key if the mode requires it.
         debug_assert_eq!(
             maybe_auditor_key.is_some(),
-            config.mode.has_associated_keys()
+            config.mode.get_associated_keys().is_some()
         );
 
         if let Some(key) = maybe_auditor_key {
             debug_assert!(
-                config.mode.get_associated_keys().iter().contains(key),
+                config
+                    .mode
+                    .get_associated_keys()
+                    .is_some_and(|keys| keys.iter().contains(key)),
                 "unknown auditor key"
             );
             serialize_key(&mut buf, key.as_bytes(), "third party signature")
@@ -589,41 +582,49 @@ impl VerifiableTreeHead for AuditorTreeHead {
 
 impl TreeHead {
     /// Takes a tree head with multiple signatures and turns it into a vector of
-    /// more conventional single-signature tree head.
+    /// more conventional single-signature tree heads.
     ///
-    /// The matching is based on the auditor public keys available from the
-    /// config. Note that it is _not_ signed by an auditor, it is signed by the
-    /// server but auditor's public key is part of the data being signed (see
-    /// `libsignal_keytrans::verify::marshal_tree_head_tbs`).
+    /// The matching is based on the given auditor public keys. Note that it is
+    /// _not_ signed by an auditor, it is signed by the server but auditor's
+    /// public key is part of the data being signed (see
+    /// [`VerifiableTreeHead::to_signable_header`]).
     ///
-    /// Not all key transparency deployment modes have associated auditor keys,
-    /// and it is possible that the source tree head will not contain all the
-    /// matching signatures. In both cases the function will return `None`,
+    /// It is possible that the source tree head will not contain all the
+    /// matching signatures. In that case the function will return `None`,
     /// deciding whether to treat it an error or not is left to the caller.
-    fn to_single_signature_tree_heads<'a, 'b: 'a>(
-        &'a self,
-        config: &'b PublicConfig,
+    fn to_single_signature_tree_heads<'a>(
+        &self,
+        keys: &'a VerifyingKeys,
     ) -> Option<Vec<(&'a VerifyingKey, SingleSignatureTreeHead)>> {
-        let TreeHead {
-            tree_size,
-            timestamp,
-            signatures,
-        } = self;
-
         // We expect to have signatures for all the auditor keys that we are configured with.
         find_matching(
-            config.mode.get_associated_keys().iter(),
-            signatures.iter(),
+            keys.iter(),
+            self.signatures.iter(),
             |key, sig| key.as_bytes().as_slice() == sig.auditor_public_key.as_slice(),
-            |key, sig| {
-                let head = SingleSignatureTreeHead(TreeHead {
-                    tree_size: *tree_size,
-                    timestamp: *timestamp,
-                    signatures: vec![(*sig).clone()],
-                });
-                (key, head)
-            },
+            |key, sig| (key, self.with_signature(sig)),
         )
+    }
+
+    /// Returns the tree head with its one signature, for `ContactMonitoring`
+    /// mode, where there are no auditor keys and the server signs the tree
+    /// head once.
+    ///
+    /// Returns `None` if there is not exactly one signature.
+    fn to_single_signature_tree_head(&self) -> Option<SingleSignatureTreeHead> {
+        // The signed data has no auditor key, so `auditor_public_key` is not
+        // checked.
+        let [sig] = self.signatures.as_slice() else {
+            return None;
+        };
+        Some(self.with_signature(sig))
+    }
+
+    fn with_signature(&self, sig: &Signature) -> SingleSignatureTreeHead {
+        SingleSignatureTreeHead(TreeHead {
+            tree_size: self.tree_size,
+            timestamp: self.timestamp,
+            signatures: vec![sig.clone()],
+        })
     }
 }
 
@@ -682,6 +683,15 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+
+    #[test_case(0 => panics "at least one key"; "empty")]
+    #[test_case(1; "one")]
+    #[test_case(3; "three")]
+    fn verifying_keys_new(count: u8) {
+        let keys =
+            (1..=count).map(|i| ed25519_dalek::SigningKey::from_bytes(&[i; 32]).verifying_key());
+        VerifyingKeys::new(keys);
+    }
 
     #[test_case(&[1, 2, 3], &[10, 20, 30] => Some(vec![11, 22, 33]); "perfect match")]
     #[test_case(&[1, 2, 3], &[10, 20, 30, 40] => Some(vec![11, 22, 33]); "extra ys")]

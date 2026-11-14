@@ -22,6 +22,7 @@ use libsignal_account_keys::{
     InvalidMfaMetadata, MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN, MfaMetadata,
 };
 use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom, bridge_callbacks};
+use libsignal_core::{Aci, Pni};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -40,7 +41,8 @@ use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagl
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
 use libsignal_net_chat::grpc::accounts::{
-    ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters, WebAuthnCreateParameters,
+    AccountIdentity, ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters,
+    WebAuthnCreateParameters,
 };
 use libsignal_net_chat::grpc::backups::{
     CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
@@ -115,6 +117,7 @@ enum MaybeChatConnection {
         runtime: tokio::runtime::Handle,
         pending: AsyncMutex<chat::PendingChatConnection>,
         grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
+        offer_compression_for_key_transparency: bool,
     },
     TemporarilyEvicted,
 }
@@ -139,6 +142,8 @@ impl UnauthenticatedChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides,
+                offer_compression_for_key_transparency: connection_manager
+                    .offer_compression_for_key_transparency(),
             }
             .into(),
         })
@@ -246,6 +251,8 @@ impl AuthenticatedChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides,
+                offer_compression_for_key_transparency: connection_manager
+                    .offer_compression_for_key_transparency(),
             }
             .into(),
         })
@@ -333,6 +340,7 @@ impl ProvisioningChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides: Default::default(),
+                offer_compression_for_key_transparency: false,
             }
             .into(),
         })
@@ -405,6 +413,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 runtime: _,
                 pending,
                 grpc_overrides: _,
+                offer_compression_for_key_transparency: _,
             } => pending.lock().await.disconnect().await,
             MaybeChatConnection::TemporarilyEvicted => {
                 unreachable!("unobservable state");
@@ -422,6 +431,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 runtime: _,
                 pending,
                 grpc_overrides: _,
+                offer_compression_for_key_transparency: _,
             } => pending.blocking_lock().connection_info(),
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         }
@@ -453,12 +463,13 @@ pub(crate) async fn connect_registration_chat(
         tokio_runtime.clone(),
         pending,
         Default::default(),
+        false,
         Box::new(listener),
     )))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::EventListener) {
-    let (tokio_runtime, pending, grpc_overrides) =
+    let (tokio_runtime, pending, grpc_overrides, offer_compression_for_key_transparency) =
         match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
             MaybeChatConnection::Running(chat_connection) => {
                 *connection = MaybeChatConnection::Running(chat_connection);
@@ -468,7 +479,13 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::Event
                 runtime,
                 pending,
                 grpc_overrides,
-            } => (runtime, pending, grpc_overrides),
+                offer_compression_for_key_transparency,
+            } => (
+                runtime,
+                pending,
+                grpc_overrides,
+                offer_compression_for_key_transparency,
+            ),
             MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
         };
 
@@ -476,6 +493,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::Event
         tokio_runtime,
         pending.into_inner(),
         grpc_overrides,
+        offer_compression_for_key_transparency,
         listener,
     ))
 }
@@ -489,8 +507,15 @@ impl FakeChatConnection {
         grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
-        let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener, grpc_overrides, alerts);
+        let (inner, remote) = ChatConnection::new_fake(
+            tokio_runtime,
+            listener,
+            chat::fake::FakeChatOptions {
+                grpc_overrides: grpc_overrides.into_iter().collect(),
+                offer_compression_for_key_transparency: false,
+                alerts: alerts.into_iter().collect(),
+            },
+        );
         (Self(inner), remote)
     }
 
@@ -868,6 +893,35 @@ pub enum UserBasedSendAuthorizationKind {
     AccessKey,
     Group,
     UnrestrictedUnauthenticatedAccess,
+}
+
+#[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeAccountIdentity {
+    pub aci: Aci,
+    pub pni: Option<Pni>,
+    pub e164: Option<String>,
+    pub username_hash: Option<Vec<u8>>,
+    pub username_link_handle: Option<uuid::Uuid>,
+}
+
+impl From<AccountIdentity> for BridgeAccountIdentity {
+    fn from(value: AccountIdentity) -> Self {
+        let AccountIdentity {
+            aci,
+            pni,
+            e164,
+            username_hash,
+            username_link_handle,
+        } = value;
+        Self {
+            aci,
+            pni,
+            e164: e164.map(|e164| e164.to_string()),
+            username_hash: username_hash.map(Vec::from),
+            username_link_handle,
+        }
+    }
 }
 
 #[derive(BridgedAsValue)]

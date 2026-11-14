@@ -138,6 +138,43 @@ extension SignalCPromiseRawPointer: SignalCPromise {
 
 }
 
+extension SignalCPromiseCStringPtr: SignalCPromise {
+
+    public typealias Result = SignalCStringPtr?
+
+    public init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    public var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    public var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    public var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseTestStreamChunkFfiResult: SignalCPromise {
 
     public typealias Result = SignalTestStreamChunkFfiResult
@@ -286,13 +323,13 @@ extension SignalCPromiseMutPointerFakeChatRemoteEnd: SignalCPromise {
 
 }
 
-extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: SignalCPromise {
+extension SignalCPromiseOptionalOfPairOfMutPointerHttpRequestu64: SignalCPromise {
 
-    public typealias Result = SignalOptionalPairOfMutPointerHttpRequestu64
+    public typealias Result = SignalOptionalOfPairOfMutPointerHttpRequestu64
 
     public init(
         generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64_ConstPointer_void?,
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfMutPointerHttpRequestu64_ConstPointer_void?,
         generic_context: SignalType_ConstPointer_void?,
         generic_cancellation_id: UInt64,
     ) {
@@ -305,7 +342,7 @@ extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: SignalCPromise {
     }
 
     public var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfMutPointerHttpRequestu64_ConstPointer_void?
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfMutPointerHttpRequestu64_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -323,13 +360,13 @@ extension SignalCPromiseOptionalPairOfMutPointerHttpRequestu64: SignalCPromise {
 
 }
 
-extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
+extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
 
-    public typealias Contents = SignalOwnedBuffer
+    public typealias Contents = SignalPairOfMutPointerHttpRequestu64
 
     public init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfOwnedBuffer,
+        generic_value: MaybeUninitOfPairOfMutPointerHttpRequestu64,
     ) {
         self.init(
             present: generic_present,
@@ -343,7 +380,7 @@ extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
         set { present = newValue }
     }
 
-    public var generic_value: MaybeUninitOfOwnedBuffer {
+    public var generic_value: MaybeUninitOfPairOfMutPointerHttpRequestu64 {
         get { self.value }
         set { value = newValue }
     }
@@ -806,6 +843,35 @@ extension SignalPairOfi32OwnedBuffer: SignalPairOf {
 
 }
 
+extension SignalPairOfMutPointerHttpRequestu64: SignalPairOf {
+
+    public typealias First = SignalMutPointerHttpRequest
+
+    public typealias Second = UInt64
+
+    public init(
+        generic_first: SignalMutPointerHttpRequest,
+        generic_second: UInt64,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalMutPointerHttpRequest {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: UInt64 {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
 extension SignalPairOfu32u32: SignalPairOf {
 
     public typealias First = UInt32
@@ -1107,6 +1173,11 @@ internal enum GenerateTotpKeyOut {
     case success(BridgePendingTotpKey)
     case tooManyTotpKeys
     case tooManyMfaKeys
+}
+
+internal enum GetAccountIdentityOut {
+    case success(BridgeAccountIdentity)
+    case missingIdentifiers
 }
 
 internal enum GetCapabilitiesOut {
@@ -2094,6 +2165,30 @@ internal enum DerivedReturnConverterGenerateTotpKeyOut: NiceReturnConverter {
             return GenerateTotpKeyOut.tooManyMfaKeys
         default:
             throw SignalError.internalError("Unexpected enum tag for GenerateTotpKeyOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetAccountIdentityOut: NiceReturnConverter {
+    typealias NiceReturn = GetAccountIdentityOut
+    typealias FfiReturn = SignalGetAccountIdentityOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetAccountIdentityOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetAccountIdentityOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterBridgeAccountIdentity.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetAccountIdentityOut.success(try _0.get())
+        case SignalGetAccountIdentityOutFfiResultMissingIdentifiers:
+            return GetAccountIdentityOut.missingIdentifiers
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetAccountIdentityOut: \(ffiTag)")
         }
     }
 }
@@ -4491,6 +4586,19 @@ internal enum NativeTestingNice {
         )
 
     }
+    internal static func TESTING_GetAccountIdentityTests() throws -> [GrpcTestCase<Void, GetAccountIdentityOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_account_identity_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>.convertReturn(
+            consuming: rawOutput
+        )
+
+    }
     internal static func TESTING_GetBackupCdnCredentialsTests() throws -> [GrpcTestCase<Int32, GetCdnCredentialsOut>] {
         var rawOutput = GrpcTestCaseVecConverter<
             IdentityResultConverter<Int32>, DerivedReturnConverterGetCdnCredentialsOut
@@ -5316,7 +5424,7 @@ internal enum NativeTestingNice {
     internal static func TESTING_conversion_BridgeVecData32_identity(
         x: [Data],
     ) throws -> [Data] {
-        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32>
+        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32>
             .convertArgBorrowed(x) { xFfi in
                 var rawOutput = ArrayReturnConverter<
                     FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOwnedBufferOfMaxAlignedc_uchar32
@@ -5336,7 +5444,7 @@ internal enum NativeTestingNice {
     internal static func TESTING_conversion_BridgeVecData32_to_string(
         x: [Data],
     ) throws -> String {
-        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32>
+        try ArrayArgConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32>
             .convertArgBorrowed(x) { xFfi in
                 var rawOutput = StringConverter.emptyFfiReturn()
                 try checkError(
@@ -5646,6 +5754,40 @@ internal enum NativeTestingNice {
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
         }
+
+    }
+    internal static func TESTING_conversion_OptionalData32_to_string(
+        x: Data?,
+    ) throws -> String {
+        try OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_optional_data32_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionalData32_to_string_async(
+        asyncContext: TokioAsyncContext,
+        x: Data?,
+    ) async throws -> String {
+        let rawOutput: StringConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(x) { xFfi in
+                    SignalFfi.signal_testing_conversion_optional_data32_to_string_async(
+                        promiseFfi,
+                        asyncContextFfi.const(),
+                        xFfi,
+                    )
+                }
+            }
+        return try StringConverter.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_conversion_OptionalFloat_identity(

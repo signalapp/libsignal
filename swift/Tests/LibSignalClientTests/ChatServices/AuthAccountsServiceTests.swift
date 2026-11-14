@@ -14,6 +14,32 @@ import XCTest
 class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService> {
     override class var selector: SelectorCheck { .accounts }
 
+    func testGetAccountIdentity() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetAccountIdentityTests(),
+            invoke: { api, _ in
+                try await api.getAccountIdentity()
+            },
+            check: { expected, actual in
+                switch expected {
+                case .success(let raw):
+                    // Build the expected value by hand rather than reusing
+                    // AccountIdentity.fromInternal, so the conversion is independently checked.
+                    let expectedIdentity = AccountIdentity(
+                        aci: raw.aci,
+                        pni: raw.pni,
+                        e164: raw.e164,
+                        usernameHash: raw.usernameHash,
+                        usernameLinkHandle: raw.usernameLinkHandle
+                    )
+                    XCTAssertEqual(try actual.get(), expectedIdentity)
+                case .missingIdentifiers:
+                    XCTAssertThrowsError(try actual.get())
+                }
+            }
+        )
+    }
+
     func testDeleteAccount() async throws {
         try await testGrpcCases(
             try NativeTestingNice.TESTING_DeleteAccountTests(),

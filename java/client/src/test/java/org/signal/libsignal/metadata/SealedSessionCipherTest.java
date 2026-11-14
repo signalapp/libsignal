@@ -7,6 +7,7 @@ package org.signal.libsignal.metadata;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -44,6 +45,7 @@ import org.signal.libsignal.protocol.message.CiphertextMessage;
 import org.signal.libsignal.protocol.message.DecryptionErrorMessage;
 import org.signal.libsignal.protocol.message.PlaintextContent;
 import org.signal.libsignal.protocol.message.SenderKeyDistributionMessage;
+import org.signal.libsignal.protocol.message.SenderKeyMessage;
 import org.signal.libsignal.protocol.state.KyberPreKeyRecord;
 import org.signal.libsignal.protocol.state.PreKeyBundle;
 import org.signal.libsignal.protocol.state.PreKeyRecord;
@@ -868,6 +870,61 @@ public class SealedSessionCipherTest {
       assertEquals(
           Hex.toStringCondensed(e.getGroupId().get()), Hex.toStringCondensed(new byte[] {42, 1}));
     }
+  }
+
+  @Test
+  public void testSenderKeyMessageWithBadSignature() throws Exception {
+    TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+    TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+    SignalProtocolAddress bobAddress =
+        new SignalProtocolAddress("e80f7bbe-5b94-471e-bd8c-2173654ea3d1", 1);
+    SignalProtocolAddress aliceAddress =
+        new SignalProtocolAddress("9d0652a3-dcc3-4d11-975f-74d61598733f", 1);
+
+    initializeSessions(aliceStore, bobStore, bobAddress, aliceAddress);
+
+    ECKeyPair trustRoot = ECKeyPair.generate();
+    CertificateValidator validator = new CertificateValidator(trustRoot.getPublicKey());
+    SenderCertificate senderCertificate =
+        createCertificateFor(
+            trustRoot,
+            UUID.fromString(aliceAddress.getName()),
+            "+14151111111",
+            1,
+            aliceStore.getIdentityKeyPair().getPublicKey().getPublicKey(),
+            31337);
+    SealedSessionCipher aliceCipher =
+        new SealedSessionCipher(
+            aliceStore, UUID.fromString(aliceAddress.getName()), "+14151111111", 1);
+    SealedSessionCipher bobCipher =
+        new SealedSessionCipher(bobStore, UUID.fromString(bobAddress.getName()), "+14152222222", 1);
+
+    UUID distributionId = UUID.fromString("d1d1d1d1-7000-11eb-b32a-33b8a8a487a6");
+    GroupCipher aliceGroupCipher = new GroupCipher(aliceStore, aliceAddress);
+    SenderKeyDistributionMessage distributionMessage =
+        new GroupSessionBuilder(aliceStore).create(aliceAddress, distributionId);
+
+    new GroupSessionBuilder(bobStore).process(aliceAddress, distributionMessage);
+
+    // The signature is the last part of a serialized SenderKeyMessage, and isn't checked until
+    // decryption, so the tampered bytes still parse.
+    byte[] tampered =
+        aliceGroupCipher.encrypt(distributionId, "smert ze smert".getBytes()).serialize();
+    tampered[tampered.length - 1] ^= 0x01;
+
+    UnidentifiedSenderMessageContent content =
+        new UnidentifiedSenderMessageContent(
+            new SenderKeyMessage(tampered),
+            senderCertificate,
+            UnidentifiedSenderMessageContent.CONTENT_HINT_DEFAULT,
+            Optional.empty());
+    byte[] sealed = aliceCipher.encrypt(bobAddress, content);
+
+    ProtocolInvalidKeyException e =
+        assertThrows(
+            ProtocolInvalidKeyException.class, () -> bobCipher.decrypt(validator, sealed, 31335));
+    assertEquals(aliceAddress.getName(), e.getSender());
+    assertEquals(1, e.getSenderDevice());
   }
 
   @Test

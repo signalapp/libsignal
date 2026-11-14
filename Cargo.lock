@@ -338,6 +338,7 @@ dependencies = [
  "boring",
  "chacha20poly1305 0.11.0",
  "chrono",
+ "ciborium",
  "const-str",
  "displaydoc",
  "hex",
@@ -354,6 +355,7 @@ dependencies = [
  "snow",
  "static_assertions",
  "strum",
+ "subtle",
  "thiserror 2.0.18",
  "uuid",
  "x25519-dalek",
@@ -515,8 +517,8 @@ dependencies = [
 
 [[package]]
 name = "boring"
-version = "5.3.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v5.3.0#b518db81426b8b53e84b1cb1cda43fdfd021022c"
+version = "5.4.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v5.4.0#cf8e8093c66fc8b446a2d5bd64a485dc02053473"
 dependencies = [
  "bitflags 2.13.0",
  "boring-sys",
@@ -527,8 +529,8 @@ dependencies = [
 
 [[package]]
 name = "boring-sys"
-version = "5.3.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v5.3.0#b518db81426b8b53e84b1cb1cda43fdfd021022c"
+version = "5.4.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v5.4.0#cf8e8093c66fc8b446a2d5bd64a485dc02053473"
 dependencies = [
  "bindgen",
  "cmake",
@@ -901,7 +903,7 @@ version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee3344d349528f449816cfa85e558c439bdca5a6d8a738cfb21e69f0b2b1952f"
 dependencies = [
- "hax-lib",
+ "hax-lib 0.3.7",
  "pastey",
  "rand 0.10.2",
 ]
@@ -1870,7 +1872,18 @@ version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01a33cb227f97ee5c419064c31d7c55a7d895f28d8019ccdadc311cc036500c4"
 dependencies = [
- "hax-lib-macros",
+ "hax-lib-macros 0.3.7",
+ "num-bigint",
+ "num-traits",
+]
+
+[[package]]
+name = "hax-lib"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04ce2d088d3d46cb20f1136005ebb161316f766b037aa79f9f6f14a0327105d2"
+dependencies = [
+ "hax-lib-macros 0.5.0",
  "num-bigint",
  "num-traits",
 ]
@@ -1881,8 +1894,20 @@ version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28da835a5f153e9f3d0cc1f42ee605a1cfa9093c93348193793d60a1b0908b51"
 dependencies = [
- "hax-lib-macros-types",
+ "hax-lib-macros-types 0.3.7",
  "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
+name = "hax-lib-macros"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8b31ce88f4a629cf244df7e086b84c915dcb53251268a5ab2cfe9371c3f352d"
+dependencies = [
+ "hax-lib-macros-types 0.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.118",
@@ -1893,6 +1918,19 @@ name = "hax-lib-macros-types"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eed327e9a28d6ee018a4a9ba842d4ee27e378c8a591d2beb6f42f32b24a02fcb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "hax-lib-macros-types"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "611ab31405888422952fdcd3ff4c028efa8162d01d387083d75897a27c1ac686"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1948,9 +1986,9 @@ dependencies = [
 
 [[package]]
 name = "hickory-proto"
-version = "0.26.1"
+version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bab31817bfb44672a252e97fe81cd0c18d1b2cf892108922f6818820df8c643"
+checksum = "12b92608f679a6fa515dd1d15c1ff89443026e391200a2c840c7afcba482893d"
 dependencies = [
  "data-encoding",
  "idna",
@@ -2478,7 +2516,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98a0c574d4eb81d0814bc2b91e4a433d7e0b35851b1d62eb5dd95c064f1f76d0"
 dependencies = [
  "core-models",
- "hax-lib",
+ "hax-lib 0.3.7",
 ]
 
 [[package]]
@@ -2497,7 +2535,7 @@ version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d8160f7d64fd2716b4fd05cc886a042f8dcda18d9206c0d506e2c67bdf97daa"
 dependencies = [
- "hax-lib",
+ "hax-lib 0.3.7",
  "libcrux-intrinsics",
  "libcrux-platform",
  "libcrux-secrets",
@@ -2521,7 +2559,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79054fc9037cb70d6a546cf094cea7d7df06af5e49d230ba24103d27ccc886f1"
 dependencies = [
  "crabgrind",
- "hax-lib",
+ "hax-lib 0.3.7",
 ]
 
 [[package]]
@@ -2541,7 +2579,7 @@ version = "0.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c09f5c39afae0528e1f70a3c1e3c6ee649ec1f19dda26fc9b6ea91108fb879ef"
 dependencies = [
- "hax-lib",
+ "hax-lib 0.3.7",
  "libcrux-intrinsics",
  "libcrux-platform",
  "libcrux-traits",
@@ -2825,7 +2863,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.106.2"
+version = "0.108.0"
 dependencies = [
  "cpufeatures 0.2.17",
  "libsignal-ffi-impl",
@@ -2834,7 +2872,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi-impl"
-version = "0.106.2"
+version = "0.108.0"
 dependencies = [
  "cpufeatures 0.2.17",
  "hex",
@@ -2871,7 +2909,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.106.2"
+version = "0.108.0"
 dependencies = [
  "libsignal-debug",
  "libsignal-jni-impl",
@@ -2879,7 +2917,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.106.2"
+version = "0.108.0"
 dependencies = [
  "assert_matches",
  "cfg-if",
@@ -2912,7 +2950,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.106.2"
+version = "0.108.0"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -3237,7 +3275,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.106.2"
+version = "0.108.0"
 dependencies = [
  "futures",
  "libsignal-bridge",
@@ -4699,9 +4737,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.1.4"
+version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
+checksum = "e5e76742e5294153d4dde1207dbec5bdd81eef6fabdc0d2118babadabfd858aa"
 dependencies = [
  "bitflags 2.13.0",
  "errno",
@@ -5262,11 +5300,11 @@ checksum = "19f58d7b0190c7f12df7e8be6b79767a0836059159811b869d5ab55721fe14d0"
 
 [[package]]
 name = "spqr"
-version = "1.6.0"
-source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.6.0#06959b4708f9b7b1e94d0f8cc835f3958c077e94"
+version = "1.7.0"
+source = "git+https://github.com/signalapp/SparsePostQuantumRatchet.git?tag=v1.7.0#3a69df8f01179fce970693f072b710a8ab8dc6c2"
 dependencies = [
  "cpufeatures 0.3.0",
- "hax-lib",
+ "hax-lib 0.5.0",
  "hkdf",
  "libcrux-hmac",
  "libcrux-ml-kem",
@@ -5396,7 +5434,7 @@ dependencies = [
  "fastrand",
  "getrandom 0.4.3",
  "once_cell",
- "rustix 1.1.4",
+ "rustix 1.1.6",
  "windows-sys 0.61.2",
 ]
 
@@ -5625,8 +5663,8 @@ dependencies = [
 
 [[package]]
 name = "tokio-boring"
-version = "5.3.0"
-source = "git+https://github.com/signalapp/boring?tag=signal-v5.3.0#b518db81426b8b53e84b1cb1cda43fdfd021022c"
+version = "5.4.0"
+source = "git+https://github.com/signalapp/boring?tag=signal-v5.4.0#cf8e8093c66fc8b446a2d5bd64a485dc02053473"
 dependencies = [
  "boring",
  "boring-sys",
@@ -5732,6 +5770,7 @@ dependencies = [
  "async-trait",
  "base64",
  "bytes",
+ "flate2",
  "http",
  "http-body",
  "http-body-util",

@@ -18,10 +18,12 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import kotlin.Pair;
+import kotlin.collections.ArraysKt;
 import org.junit.Test;
 import org.junit.experimental.runners.Enclosed;
 import org.junit.runner.RunWith;
@@ -65,11 +67,11 @@ public class SessionBuilderTest {
 
     Pair<SignalProtocolStore, SignalProtocolStore> initializeSessions() {
       try {
-        SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+        TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
         SessionBuilder aliceSessionBuilder =
             new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
 
-        SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+        TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
 
         PreKeyBundle bobPreKey = bundleFactory.createBundle(bobStore);
 
@@ -101,6 +103,9 @@ public class SessionBuilderTest {
         byte[] alicePlaintext =
             aliceSessionCipher.decrypt(new SignalMessage(bobOutgoingMessage.serialize()));
         assertTrue(new String(alicePlaintext).equals(originalMessage));
+        // Decrypts on active sessions call saveIdentity, not recordReceivedIdentity.
+        assertTrue(aliceStore.receivedIdentities.isEmpty());
+        assertTrue(bobStore.receivedIdentities.isEmpty());
 
         return new Pair<>(aliceStore, bobStore);
 
@@ -230,6 +235,39 @@ public class SessionBuilderTest {
       alicePlaintext =
           aliceSessionCipher.decrypt(new SignalMessage(bobOutgoingMessage.serialize()));
       assertTrue(originalMessage.equals(new String(alicePlaintext)));
+    }
+
+    @Test
+    public void testRepeatBundleMessageWithMismatchedVersion() throws Exception {
+      SignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+      SignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+
+      new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS)
+          .process(bundleFactory.createBundle(bobStore));
+
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+      CiphertextMessage outgoingMessageOne = aliceSessionCipher.encrypt("one".getBytes());
+      CiphertextMessage outgoingMessageTwo = aliceSessionCipher.encrypt("two".getBytes());
+      assertEquals(CiphertextMessage.PREKEY_TYPE, outgoingMessageTwo.getType());
+
+      SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
+      bobSessionCipher.decrypt(new PreKeySignalMessage(outgoingMessageOne.serialize()));
+
+      byte[] original = outgoingMessageTwo.serialize();
+      byte[] inner = new PreKeySignalMessage(original).getWhisperMessage().serialize();
+      int innerOffset =
+          Collections.indexOfSubList(ArraysKt.asList(original), ArraysKt.asList(inner));
+      assertTrue(innerOffset > 0);
+      assertEquals((expectedVersion << 4) | expectedVersion, original[innerOffset]);
+
+      byte[] tampered = original.clone();
+      tampered[innerOffset] = (byte) (((expectedVersion - 1) << 4) | expectedVersion);
+      PreKeySignalMessage tamperedMessage = new PreKeySignalMessage(tampered);
+
+      assertThrows(InvalidVersionException.class, () -> bobSessionCipher.decrypt(tamperedMessage));
+
+      byte[] plaintext = bobSessionCipher.decrypt(new PreKeySignalMessage(original));
+      assertEquals("two", new String(plaintext));
     }
 
     @Test
@@ -601,6 +639,66 @@ public class SessionBuilderTest {
       } catch (TestBadSignedPreKeysStore.CustomException e) {
         // success!
       }
+    }
+
+    @Test
+    public void testRecordReceivedIdentityOnArchivedSession() throws Exception {
+      TestInMemorySignalProtocolStore bobStore = new TestInMemorySignalProtocolStore();
+      SignalProtocolStore aliceStore = initializeAndArchiveBobSession(bobStore);
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+      SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
+
+      CiphertextMessage outgoingMessage = aliceSessionCipher.encrypt("archived".getBytes());
+      assertEquals(CiphertextMessage.WHISPER_TYPE, outgoingMessage.getType());
+      byte[] plaintext = bobSessionCipher.decrypt(new SignalMessage(outgoingMessage.serialize()));
+      assertEquals("archived", new String(plaintext));
+
+      assertEquals(
+          Arrays.asList(new Pair<>(ALICE_ADDRESS, aliceStore.getIdentityKeyPair().getPublicKey())),
+          bobStore.receivedIdentities);
+    }
+
+    @Test
+    public void testRecordReceivedIdentityExceptionPropagates() throws Exception {
+      TestInMemorySignalProtocolStore bobStore = new TestBadRecordReceivedIdentityStore();
+      SignalProtocolStore aliceStore = initializeAndArchiveBobSession(bobStore);
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+      SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
+
+      CiphertextMessage outgoingMessage = aliceSessionCipher.encrypt("archived".getBytes());
+      SignalMessage incomingMessage = new SignalMessage(outgoingMessage.serialize());
+
+      assertThrows(
+          TestBadRecordReceivedIdentityStore.CustomException.class,
+          () -> bobSessionCipher.decrypt(incomingMessage));
+    }
+
+    // Sets up a session in both directions, then has Bob archive his session with Alice, so that
+    // Alice's next message is decrypted on an archived session. Returns Alice's store.
+    private static SignalProtocolStore initializeAndArchiveBobSession(
+        TestInMemorySignalProtocolStore bobStore) throws Exception {
+      TestInMemorySignalProtocolStore aliceStore = new TestInMemorySignalProtocolStore();
+      SessionBuilder aliceSessionBuilder =
+          new SessionBuilder(aliceStore, BOB_ADDRESS, ALICE_ADDRESS);
+      aliceSessionBuilder.process(new PQXDHBundleFactory().createBundle(bobStore));
+
+      SessionCipher aliceSessionCipher = new SessionCipher(aliceStore, ALICE_ADDRESS, BOB_ADDRESS);
+      SessionCipher bobSessionCipher = new SessionCipher(bobStore, BOB_ADDRESS, ALICE_ADDRESS);
+
+      CiphertextMessage aliceMessage = aliceSessionCipher.encrypt("hello".getBytes());
+      bobSessionCipher.decrypt(new PreKeySignalMessage(aliceMessage.serialize()));
+      CiphertextMessage bobMessage = bobSessionCipher.encrypt("hi".getBytes());
+      aliceSessionCipher.decrypt(new SignalMessage(bobMessage.serialize()));
+
+      // Decrypts on active sessions call saveIdentity, not recordReceivedIdentity.
+      assertTrue(aliceStore.receivedIdentities.isEmpty());
+      assertTrue(bobStore.receivedIdentities.isEmpty());
+
+      SessionRecord bobSession = bobStore.loadSession(ALICE_ADDRESS);
+      bobSession.archiveCurrentState();
+      bobStore.storeSession(ALICE_ADDRESS, bobSession);
+
+      return aliceStore;
     }
   }
 

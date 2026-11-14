@@ -570,7 +570,12 @@ macro_rules! nice_service_id_result_converter {
                 TsReturnConverter {
                     nice_type: $ts.into(),
                     ffi_type: <$typ as ResultTypeInfo>::register_ts_ffi_type(ctx),
-                    converter_function: format!("{}.parseFromServiceIdFixedWidthBinary", $ts),
+                    // Wrapped in a closure rather than passed as a bare method reference,
+                    // because the method relies on `this` and may be handed to e.g. `liftNull`.
+                    converter_function: format!(
+                        "((__bytes: Bytes) => {}.parseFromServiceIdFixedWidthBinary(__bytes))",
+                        $ts
+                    ),
                 }
             }
         }
@@ -1836,6 +1841,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Pni {
     }
     register_ts_ffi_type!("Bytes");
 }
+nice_service_id_result_converter!(Pni, "Pni");
 
 /// Converts `None` to `null`, passing through all other values.
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {

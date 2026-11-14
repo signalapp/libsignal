@@ -7,9 +7,18 @@ v0.106.1
   rather than the next time a session is archived.
 
 v0.106.2
+v0.108.0
 
-- Implement cryptography used in device provisioning
+- Java: Username hashes are now represented by a dedicated `UsernameHash` type instead of raw `byte[]`. `Username.getHash()`, `Username.verifyProof()`, `AuthUsernamesService.reserveUsernameHash()`, `UnauthUsernamesService.lookUpUsernameHash()`, `KeyTransparencyClient.check()`, and `RegisterAccountResponse.getUsernameHash()` all use it; construct one from raw bytes with `new UsernameHash(bytes)`, and get the bytes back with `serialize()`.
+- Provisioning: public keys are now represented by a `ProvisioningPublicKey` type rather than raw bytes.
+  - To use `encryptProvisionMessage`, callers must now first construct a `ProvisioningPublicKey`.
+  - Malformed public keys yield an error in `encryptProvisionMessage`, and not in the `ProvisioningPublicKey` constructor.
+  - `encryptProvisionMessage` now returns an invalid-key error on malformed public keys. Specifically, it now returns `InvalidKeyException` in Java, `SignalError.invalidKey` in Swift, and a generic error in TypeScript.
+- Protocol: `IdentityKeyStore` has a new `recordReceivedIdentity` method, called instead of `saveIdentity` when a message is decrypted on an archived session, with the identity key the message was decrypted under. It defaults to doing nothing.
+- Protocol: Reject PreKey messages carrying a base key we generated.
+
 - Typed APIs
-  - AuthAccountsService.answerChallenge
-  - Added `getProfile()` (auth) and `setProfile()`. (Not yet bridged to clients)
-- SGX attestation: Veryify correct Intel intermediate certs used for signing.
+  - AuthAccountsService.getAccountIdentity()
+
+- SVR2/B: Remove staging environments prior to 2026Q3.
+- SPQR: update to v1.7.0

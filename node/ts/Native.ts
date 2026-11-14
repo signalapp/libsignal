@@ -202,6 +202,14 @@ export type ReturnFfiBadgeVisibility =
       __type: 2;
     };
 
+export type ReturnFfiBridgeAccountIdentity = {
+  aci: Bytes;
+  pni: Bytes | null;
+  e164: string | null;
+  username_hash: Bytes | null;
+  username_link_handle: Bytes | null;
+};
+
 export type ReturnFfiBridgeChallengeAnswer =
   | {
       __type: 0;
@@ -543,6 +551,15 @@ export type ReturnFfiGenerateTotpKeyOut =
     }
   | {
       __type: 2;
+    };
+
+export type ReturnFfiGetAccountIdentityOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiBridgeAccountIdentity;
+    }
+  | {
+      __type: 1;
     };
 
 export type ReturnFfiGetCapabilitiesOut =
@@ -1221,6 +1238,7 @@ export type ArgFfiPaymentProviderInternal =
 
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
+  'offerCompressionForKeyTransparency',
   'grpc.AccountsAnonymousLookupUsernameHash',
   'grpc.AccountsAnonymousLookupUsernameLink.2',
   'grpc.AccountsAnonymousCheckAccountExistence.2',
@@ -1360,6 +1378,10 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgePendingTotpKey>;
+  AuthenticatedChatConnection_get_account_identity: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiBridgeAccountIdentity>;
   AuthenticatedChatConnection_get_capabilities: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -2393,8 +2415,14 @@ type NativeFunctions = {
     chat: Wrapper<ProvisioningChatConnection>,
     listener: ProvisioningListener
   ) => void;
+  ProvisioningPublicKey_Deserialize: (
+    pubkey_bytes: Bytes
+  ) => ProvisioningPublicKey;
+  ProvisioningPublicKey_Serialize: (
+    key: Wrapper<ProvisioningPublicKey>
+  ) => Bytes;
   Provisioning_EncryptProvisionMessage: (
-    secondary_public_key: Bytes,
+    secondary_public_key: Wrapper<ProvisioningPublicKey>,
     provision_message: Bytes
   ) => Bytes;
   PublicKey_Deserialize: (data: Bytes) => PublicKey;
@@ -2445,7 +2473,7 @@ type NativeFunctions = {
   RecvProvisionCiphertextState_Generate: () => RecvProvisionCiphertextState;
   RecvProvisionCiphertextState_GetPublicKey: (
     state: Wrapper<RecvProvisionCiphertextState>
-  ) => Bytes;
+  ) => ProvisioningPublicKey;
   RegisterAccountRequest_Create: () => RegisterAccountRequest;
   RegisterAccountRequest_SetAccountPassword: (
     register_account: Wrapper<RegisterAccountRequest>,
@@ -3319,6 +3347,9 @@ type NativeFunctions = {
   TESTING_GenerateTotpKeyTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGenerateTotpKeyOut>
   >;
+  TESTING_GetAccountIdentityTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiGetAccountIdentityOut>
+  >;
   TESTING_GetBackupCdnCredentialsTests: () => Array<
     GrpcTestCaseFfi<number, ReturnFfiGetCdnCredentialsOut>
   >;
@@ -3649,6 +3680,11 @@ type NativeFunctions = {
     x: Bytes | null
   ) => CancellablePromise<Bytes | null>;
   TESTING_conversion_OptionalBytes_to_string: (x: Bytes | null) => string;
+  TESTING_conversion_OptionalData32_to_string: (x: Bytes | null) => string;
+  TESTING_conversion_OptionalData32_to_string_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: Bytes | null
+  ) => CancellablePromise<string>;
   TESTING_conversion_OptionalFloat_identity: (
     x: number | null
   ) => number | null;
@@ -4054,6 +4090,7 @@ const {
   AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
+  AuthenticatedChatConnection_get_account_identity,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -4370,6 +4407,8 @@ const {
   ProvisioningChatConnection_disconnect,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_init_listener,
+  ProvisioningPublicKey_Deserialize,
+  ProvisioningPublicKey_Serialize,
   Provisioning_EncryptProvisionMessage,
   PublicKey_Deserialize,
   PublicKey_Equals,
@@ -4637,6 +4676,7 @@ const {
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
+  TESTING_GetAccountIdentityTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetCapabilitiesTests,
@@ -4769,6 +4809,8 @@ const {
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalData32_to_string,
+  TESTING_conversion_OptionalData32_to_string_async,
   TESTING_conversion_OptionalFloat_identity,
   TESTING_conversion_OptionalFloat_identity_async,
   TESTING_conversion_OptionalFloat_to_string,
@@ -4897,6 +4939,7 @@ export {
   AuthenticatedChatConnection_finish_mfa_verification,
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
+  AuthenticatedChatConnection_get_account_identity,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -5213,6 +5256,8 @@ export {
   ProvisioningChatConnection_disconnect,
   ProvisioningChatConnection_info,
   ProvisioningChatConnection_init_listener,
+  ProvisioningPublicKey_Deserialize,
+  ProvisioningPublicKey_Serialize,
   Provisioning_EncryptProvisionMessage,
   PublicKey_Deserialize,
   PublicKey_Equals,
@@ -5480,6 +5525,7 @@ export {
   TESTING_FutureProducesPointerType,
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
+  TESTING_GetAccountIdentityTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetCapabilitiesTests,
@@ -5612,6 +5658,8 @@ export {
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalData32_to_string,
+  TESTING_conversion_OptionalData32_to_string_async,
   TESTING_conversion_OptionalFloat_identity,
   TESTING_conversion_OptionalFloat_identity_async,
   TESTING_conversion_OptionalFloat_to_string,
@@ -5735,6 +5783,10 @@ export /*trait*/ type IdentityKeyStore = {
     publicKey: PublicKey,
     direction: number
   ) => Promise<boolean>;
+  recordReceivedIdentityKey: (
+    address: ProtocolAddress,
+    publicKey: PublicKey
+  ) => Promise<void>;
 };
 
 export /*trait*/ type InputStream = {
@@ -5940,6 +5992,9 @@ export interface ProtocolAddress {
   readonly __type: unique symbol;
 }
 export interface ProvisioningChatConnection {
+  readonly __type: unique symbol;
+}
+export interface ProvisioningPublicKey {
   readonly __type: unique symbol;
 }
 export interface PublicKey {

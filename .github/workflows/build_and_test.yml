@@ -643,6 +643,8 @@ jobs:
       with:
         submodules: recursive
 
+    - run: sudo apt-get install -U lld
+
     - run: rustup toolchain install "$(cat rust-toolchain)" --profile minimal
 
     - name: Restore cargo cache
@@ -669,10 +671,10 @@ jobs:
       run: swift/build_ffi.sh -d -v --verify-ffi
 
     - name: Build Swift and run tests
-      run: swift test -v
+      run: swift test -v -Xswiftc -use-ld=lld
 
     - name: Build and run Swift benchmarks (in debug mode)
-      run: swift run -v Benchmarks --allow-debug-build
+      run: swift run -v -Xswiftc -use-ld=lld Benchmarks --allow-debug-build
       working-directory: swift/Benchmarks
 
     - name: Save cargo cache

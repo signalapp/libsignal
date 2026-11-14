@@ -377,6 +377,12 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_account_identity(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_capabilities(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -2293,9 +2299,18 @@ internal object Native {
   ): Unit
 
   @JvmStatic
+  public external fun ProvisioningPublicKey_Deserialize(pubkeyBytes: ByteArray): ObjectHandle
+
+  @JvmStatic
+  public external fun ProvisioningPublicKey_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun ProvisioningPublicKey_Serialize(key: SimpleOwner): ByteArray
+
+  @JvmStatic
   @Throws(Exception::class)
   public external fun Provisioning_EncryptProvisionMessage(
-    secondaryPublicKey: ByteArray,
+    secondaryPublicKey: SimpleOwner,
     provisionMessage: ByteArray,
   ): ByteArray
 
@@ -2351,7 +2366,7 @@ internal object Native {
   public external fun RecvProvisionCiphertextState_Generate(): ObjectHandle
 
   @JvmStatic
-  public external fun RecvProvisionCiphertextState_GetPublicKey(state: SimpleOwner): ByteArray
+  public external fun RecvProvisionCiphertextState_GetPublicKey(state: SimpleOwner): ObjectHandle
 
   @JvmStatic
   public external fun RegisterAccountRequest_Create(): ObjectHandle

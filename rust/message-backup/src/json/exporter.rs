@@ -11,8 +11,11 @@ use itertools::Itertools as _;
 use protobuf::Message as _;
 
 use crate::backup::{self, Purpose};
+use crate::json::sanitize::Sanitizer;
 use crate::parse::VarintDelimitedReader;
 use crate::proto::backup as proto;
+use crate::unknown::VisitUnknownFieldsExt as _;
+use crate::visit::Visit as _;
 use crate::{Error, FoundUnknownField};
 
 /// Streaming exporter that converts backups into newline-delimited JSON objects.
@@ -39,7 +42,14 @@ impl JsonExporter {
             None
         };
 
-        let line = parse_backup_info_json(backup_info)?;
+        let mut sanitized_backup_info =
+            proto::BackupInfo::parse_from_bytes(backup_info).map_err(Error::InvalidProtobuf)?;
+        sanitized_backup_info.accept(&mut Sanitizer);
+        let sanitized_bytes = sanitized_backup_info
+            .write_to_bytes()
+            .map_err(Error::InvalidProtobuf)?;
+
+        let line = parse_backup_info_json(&sanitized_bytes)?;
         Ok((Self { validator }, line))
     }
 
@@ -55,55 +65,58 @@ impl JsonExporter {
             let mut results = Vec::new();
 
             while let Some(frame) = reader.read_next().await.map_err(Error::Parse)? {
-                let proto_frame =
+                let frame =
                     proto::Frame::parse_from_bytes(&frame).map_err(Error::InvalidProtobuf)?;
 
-                let frame_index = results.len();
-                let (sanitized_bytes, line, render_error) = match sanitize_frame(proto_frame) {
-                    Some(frame) => {
-                        let sanitized_bytes =
-                            frame.write_to_bytes().map_err(Error::InvalidProtobuf)?;
-
-                        // Rendering to JSON can fail on frames that are still valid enough to
-                        // be safely sanitized and checked with the validator (e.g. a frame with
-                        // an unknown enum value), so treat render errors as per-frame rather than
-                        // aborting the whole export.
-                        let (line, render_error) =
-                            match backup::frame_to_json_string(&sanitized_bytes) {
-                                Ok(line) => (Some(line), None),
-                                Err(error) => (
-                                    None,
-                                    Some(frame_render_error(
-                                        frame_index,
-                                        convert_to_json_error_to_lib_error(error),
-                                    )),
-                                ),
-                            };
-
-                        (Some(sanitized_bytes), line, render_error)
-                    }
-                    None => (None, None, None),
-                };
-
-                let validation_error = match (validator.as_mut(), sanitized_bytes) {
-                    (Some(validator), Some(sanitized_bytes)) => {
-                        match validator.parse_and_add_frame(&sanitized_bytes, |_| {}) {
-                            Ok(unknown_fields) if unknown_fields.is_empty() => None,
-                            Ok(unknown_fields) => {
-                                // Since our export is already "best-effort", we allow unknown fields to
-                                // appear in the exported data, but synthesize an error message for
-                                // them.
-                                Some(Error::Parse(io::Error::other(
-                                    unknown_fields
-                                        .into_iter()
-                                        .map(FoundUnknownField::in_frame(results.len()))
-                                        .join("; "),
-                                )))
-                            }
-                            Err(error) => Some(error),
+                // Validate original content, before sanitization strips fields the
+                // validator requires (such as profile keys).
+                let validation_error = validator.as_mut().and_then(|validator| {
+                    let unknown_fields = frame.collect_unknown_fields();
+                    match validator.add_frame(frame.clone()) {
+                        Ok(()) if unknown_fields.is_empty() => None,
+                        Ok(()) => {
+                            // Since our export is already "best-effort", we allow unknown fields to
+                            // appear in the exported data, but synthesize an error message for
+                            // them.
+                            Some(Error::Parse(io::Error::other(
+                                unknown_fields
+                                    .into_iter()
+                                    .map(FoundUnknownField::in_frame(results.len()))
+                                    .join("; "),
+                            )))
                         }
+                        Err(error) => Some(error.into()),
                     }
-                    (_, _) => None,
+                });
+
+                let frame_index = results.len();
+
+                let mut frame = frame;
+                frame.accept(&mut Sanitizer);
+                if frame.item.is_none() {
+                    // Drop any frames whose item has been filtered out.
+                    results.push(FrameExportResult {
+                        line: None,
+                        validation_error,
+                    });
+                    continue;
+                }
+
+                let sanitized_bytes = frame.write_to_bytes().map_err(Error::InvalidProtobuf)?;
+
+                // Rendering to JSON can fail on frames that are still valid enough to
+                // be safely sanitized and checked with the validator (e.g. a frame with
+                // an unknown enum value), so treat render errors as per-frame rather than
+                // aborting the whole export.
+                let (line, render_error) = match backup::frame_to_json_string(&sanitized_bytes) {
+                    Ok(line) => (Some(line), None),
+                    Err(error) => (
+                        None,
+                        Some(frame_render_error(
+                            frame_index,
+                            convert_to_json_error_to_lib_error(error),
+                        )),
+                    ),
                 };
 
                 results.push(FrameExportResult {
@@ -162,41 +175,6 @@ fn parse_backup_info_json(bytes: &[u8]) -> Result<String, Error> {
     backup::backup_info_to_json_string(bytes).map_err(convert_to_json_error_to_lib_error)
 }
 
-fn sanitize_frame(mut frame: proto::Frame) -> Option<proto::Frame> {
-    match frame.item.take() {
-        Some(proto::frame::Item::ChatItem(chat_item)) => {
-            sanitize_chat_item(chat_item).map(|sanitized_chat_item| {
-                frame.item = Some(proto::frame::Item::ChatItem(sanitized_chat_item));
-                frame
-            })
-        }
-        Some(item) => {
-            frame.item = Some(item);
-            Some(frame)
-        }
-        None => Some(frame),
-    }
-}
-
-fn sanitize_chat_item(mut chat_item: proto::ChatItem) -> Option<proto::ChatItem> {
-    if chat_item.expiresInMs.is_some() {
-        return None;
-    }
-
-    if let Some(proto::chat_item::Item::ViewOnceMessage(view_once)) = chat_item.item.as_mut() {
-        view_once.attachment.clear();
-    }
-
-    let sanitized_revisions: Vec<_> = chat_item
-        .revisions
-        .into_iter()
-        .filter_map(sanitize_chat_item)
-        .collect();
-    chat_item.revisions = sanitized_revisions;
-
-    Some(chat_item)
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -244,7 +222,8 @@ mod tests {
         let (mut exporter, _) =
             JsonExporter::new(&sample_backup_info_bytes(), false).expect("should succeed");
 
-        let frame = proto::Frame::new();
+        let mut frame = proto::Frame::new();
+        frame.set_recipient(proto::Recipient::test_data());
         let frames = encode_frame(frame);
 
         let chunk = exporter
@@ -315,8 +294,8 @@ mod tests {
             "filtered frame should not render JSON output"
         );
         assert!(
-            result.validation_error.is_none(),
-            "there should be no validation error from the filtered frame, because the sanitizer ran on it before validation"
+            result.validation_error.is_some(),
+            "errors are still reported on filtered frames, even if they are discarded by the caller",
         );
     }
 
@@ -438,8 +417,6 @@ mod tests {
                 r#"{"recipient":{"#,
                 r#""id":"10","#,
                 r#""callLink":{"#,
-                r#""rootKey":"UlJSUlJSUlJSUlJSUlJSUg==","#,
-                r#""adminKey":"QQ==","#,
                 r#""restrictions":"NONE","#,
                 r#""expirationMs":"1702944000000""#,
                 r#"}}}"# // Note no representation at all of the top-level unknown field (not ideal, but reasonable).
@@ -467,7 +444,8 @@ mod tests {
         let mut invalid_frame = proto::Frame::new();
         invalid_frame.set_recipient(recipient);
 
-        let valid_frame = proto::Frame::new();
+        let mut valid_frame = proto::Frame::new();
+        valid_frame.set_recipient(proto::Recipient::test_data());
 
         let mut frames = encode_frame(invalid_frame);
         frames.extend(encode_frame(valid_frame));
@@ -491,7 +469,10 @@ mod tests {
 
         let second_result = &results[1];
         assert!(second_result.validation_error.is_none());
-        assert_eq!(second_result.line.as_deref(), Some("{}"));
+        assert_eq!(
+            second_result.line.as_deref(),
+            Some(r#"{"recipient":{"id":"1111111111","self":{}}}"#)
+        );
     }
 
     #[test]

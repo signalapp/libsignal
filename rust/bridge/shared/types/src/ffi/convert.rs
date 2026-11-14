@@ -579,20 +579,6 @@ impl NiceResultConverter for uuid::Uuid {
     }
 }
 
-impl ResultTypeInfo for Option<uuid::Uuid> {
-    type ResultType = OptionalUuid;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        if let Some(uuid) = self {
-            Ok(OptionalUuid {
-                present: true,
-                bytes: *uuid.as_bytes(),
-            })
-        } else {
-            Ok(OptionalUuid::default())
-        }
-    }
-}
-
 /// Implements the nice converters for `ServiceId` and its narrower forms, which all cross the
 /// bridge as Service-Id-FixedWidthBinary. `$swift` is the Swift type the app sees; its converter is
 /// hand-written in NiceBridgingUtils.swift as `<$swift>Converter`.
@@ -676,6 +662,14 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
             .map_err(|_| IllegalArgumentError::new("not a PNI").into())
     }
 }
+
+impl ResultTypeInfo for libsignal_protocol::Pni {
+    type ResultType = libsignal_protocol::ServiceIdFixedWidthBinaryBytes;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        libsignal_protocol::ServiceId::from(self).convert_into()
+    }
+}
+nice_service_id_result_converter!(Pni, "Pni");
 
 fn parse_e164(s: &str) -> SignalFfiResult<libsignal_core::E164> {
     let parsed = s
@@ -909,6 +903,28 @@ impl<const LEN: usize> SimpleArgTypeInfo for Option<&'_ [u8; LEN]> {
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
         Ok(unsafe { arg.as_ref() })
+    }
+}
+
+impl<const LEN: usize> SimpleArgTypeInfo for Option<[u8; LEN]> {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { arg.as_ref() }.copied())
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceArgConverter for Option<[u8; LEN]> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        ctx.fixed_byte_array_lengths.insert(LEN);
+        SwiftArgConverter {
+            nice_type: "Data?".to_string(),
+            converter_type: format!(
+                "OptionalFixedByteArrayConverter<{}>",
+                names::fixed_byte_array_helper(LEN)
+            ),
+        }
     }
 }
 
@@ -1997,23 +2013,14 @@ impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTyp
     }
 }
 
-impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)>
-where
-    A::ResultType: Default,
-    B::ResultType: Default,
-{
-    type ResultType = OptionalPairOf<A::ResultType, B::ResultType>;
+impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)> {
+    type ResultType = OptionalOf<PairOf<A::ResultType, B::ResultType>>;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let Some(value) = self else {
-            return Ok(OptionalPairOf::default());
-        };
-        Ok(OptionalPairOf {
-            present: true,
-            first: value.0.convert_into()?,
-            // TODO: if self.1.convert_into() fails, we may leak memory
-            second: value.1.convert_into()?,
-        })
+        match self {
+            Some(value) => Ok(OptionalOf::some(value.convert_into()?)),
+            None => Ok(OptionalOf::NONE),
+        }
     }
 }
 
@@ -2432,6 +2439,8 @@ macro_rules! simple_optional {
 }
 simple_optional!(f32);
 simple_optional!(Vec<u8>);
+return_optional!(libsignal_protocol::Pni);
+return_optional!(uuid::Uuid);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
 return_optional!(crate::net::chat::remote_derives::BackupEntitlement);

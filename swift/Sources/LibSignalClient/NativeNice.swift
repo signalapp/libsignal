@@ -17,7 +17,7 @@
 import Foundation
 import SignalFfi
 
-extension SignalBorrowedSliceOfc_uchar32: SignalBorrowedSliceOf {
+extension SignalBorrowedSliceOfPtrToc_uchar32: SignalBorrowedSliceOf {
 
     typealias Element = SignalType_ConstPointer_FixedArray32_uint8_t?
 
@@ -1023,13 +1023,13 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: SignalCPromise {
 
 }
 
-extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
+extension SignalCPromiseOptionalOfPairOfCStringPtrc_uchar32: SignalCPromise {
 
-    typealias Result = SignalOptionalPairOfCStringPtrc_uchar32
+    typealias Result = SignalOptionalOfPairOfCStringPtrc_uchar32
 
     init(
         generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?,
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void?,
         generic_context: SignalType_ConstPointer_void?,
         generic_cancellation_id: UInt64,
     ) {
@@ -1042,7 +1042,7 @@ extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
     }
 
     var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1060,13 +1060,13 @@ extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
 
 }
 
-extension SignalCPromiseOptionalUuid: SignalCPromise {
+extension SignalCPromiseOptionalOfUuid: SignalCPromise {
 
-    typealias Result = SignalOptionalUuid
+    typealias Result = SignalOptionalOfUuid
 
     init(
         generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalUuid_ConstPointer_void?,
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?,
         generic_context: SignalType_ConstPointer_void?,
         generic_cancellation_id: UInt64,
     ) {
@@ -1079,7 +1079,7 @@ extension SignalCPromiseOptionalUuid: SignalCPromise {
     }
 
     var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalUuid_ConstPointer_void?
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1487,6 +1487,43 @@ extension SignalCPromiseUuid: SignalCPromise {
 
     var generic_complete:
         SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalUuid_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseBridgeAccountIdentityFfiResult: SignalCPromise {
+
+    typealias Result = SignalBridgeAccountIdentityFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1948,6 +1985,33 @@ extension SignalCPromiseStartMfaVerificationResponseFfiResult: SignalCPromise {
 
 }
 
+extension SignalOptionalOfc_uchar17: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray17_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfc_uchar17,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfc_uchar17 {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalOptionalOff32: SignalOptionalOf {
 
     typealias Contents = Float
@@ -1996,6 +2060,87 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
     }
 
     var generic_value: MaybeUninitOfBorrowedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
+
+    typealias Contents = SignalOwnedBuffer
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfOwnedBuffer,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfOwnedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfPairOfCStringPtrc_uchar32: SignalOptionalOf {
+
+    typealias Contents = SignalPairOfCStringPtrc_uchar32
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfPairOfCStringPtrc_uchar32,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfPairOfCStringPtrc_uchar32 {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfUuid: SignalOptionalOf {
+
+    typealias Contents = SignalUuid
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfUuid,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfUuid {
         get { self.value }
         set { value = newValue }
     }
@@ -2554,6 +2699,35 @@ extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
 
 }
 
+extension SignalPairOfCStringPtrc_uchar32: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalType_FixedArray32_uint8_t
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalType_FixedArray32_uint8_t,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalType_FixedArray32_uint8_t {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
 extension SignalPairOfCStringPtrbool: SignalPairOf {
 
     typealias First = SignalCStringPtr?
@@ -2840,20 +3014,6 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
 }
 
-internal enum FixedByteArrayHelper33: FixedByteArrayHelper {
-    typealias Ffi = (
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8
-    )
-    static func count() -> Int {
-        33
-    }
-    static func emptyFfi() -> Ffi {
-        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    }
-}
-
 internal enum FixedByteArrayHelper64: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -3053,6 +3213,15 @@ internal enum BadgeVisibility {
 }
 
 */
+
+internal struct BridgeAccountIdentity {
+    var aci: Aci
+    var pni: Pni?
+    var e164: String?
+    var usernameHash: Data?
+    var usernameLinkHandle: UUID?
+
+}
 
 /*
 // ChallengeAnswer
@@ -3425,6 +3594,40 @@ internal enum DerivedReturnConverterBadgeEntitlement: NiceReturnConverter {
             badgeId: try badge_id.get(),
             expiration: try expiration.get(),
             visible: try visible.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterBridgeAccountIdentity: NiceReturnConverter {
+    typealias NiceReturn = BridgeAccountIdentity
+    typealias FfiReturn = SignalBridgeAccountIdentityFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeAccountIdentityFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let aci = Result { try AciConverter.convertReturn(consuming: ffiValue.aci) }
+        let pni = Result {
+            try OptionalReturnConverter<PniConverter, SignalOptionalOfc_uchar17>.convertReturn(consuming: ffiValue.pni)
+        }
+        let e164 = Result { try OptionalStringConverter.convertReturn(consuming: ffiValue.e164) }
+        let username_hash = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.username_hash
+            )
+        }
+        let username_link_handle = Result {
+            try OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.convertReturn(
+                consuming: ffiValue.username_link_handle
+            )
+        }
+
+        return BridgeAccountIdentity(
+            aci: try aci.get(),
+            pni: try pni.get(),
+            e164: try e164.get(),
+            usernameHash: try username_hash.get(),
+            usernameLinkHandle: try username_link_handle.get()
         )
     }
 }
@@ -5376,6 +5579,26 @@ internal enum NativeNice {
         return try DerivedReturnConverterBridgePendingTotpKey.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_get_account_identity(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> BridgeAccountIdentity {
+        let rawOutput: DerivedReturnConverterBridgeAccountIdentity.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_get_account_identity(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterBridgeAccountIdentity.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_get_capabilities(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -5687,7 +5910,7 @@ internal enum NativeNice {
                 BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
                     .convertArgBorrowed(chat) { chatFfi in
                         ArrayArgConverter<
-                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32
+                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32
                         >.convertArgBorrowed(username_hashes) { username_hashesFfi in
                             SignalFfi.signal_authenticated_chat_connection_reserve_username_hash(
                                 promiseFfi,
@@ -6234,12 +6457,30 @@ internal enum NativeNice {
         }
 
     }
+    internal static func ProvisioningPublicKey_Serialize(
+        key: ProvisioningPublicKey,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>.convertArgBorrowed(
+            key
+        ) { keyFfi in
+            var rawOutput = DataConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_provisioning_public_key_serialize(
+                    &rawOutput,
+                    keyFfi,
+                )
+            )
+            return try DataConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func Provisioning_EncryptProvisionMessage(
-        secondaryPublicKey secondary_public_key: Data,
+        secondaryPublicKey secondary_public_key: ProvisioningPublicKey,
         provisionMessage provision_message: Data,
     ) throws -> Data {
-        try FixedByteArrayConverter<FixedByteArrayHelper33>.convertArgBorrowed(secondary_public_key) {
-            secondary_public_keyFfi in
+        try BridgeHandleRefConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>.convertArgBorrowed(
+            secondary_public_key
+        ) { secondary_public_keyFfi in
             try DataConverter.convertArgBorrowed(provision_message) { provision_messageFfi in
                 var rawOutput = DataConverter.emptyFfiReturn()
                 try checkError(
@@ -6289,17 +6530,19 @@ internal enum NativeNice {
     }
     internal static func RecvProvisionCiphertextState_GetPublicKey(
         state: RecvProvisionCiphertextState,
-    ) throws -> Data {
+    ) throws -> ProvisioningPublicKey {
         try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
             .convertArgBorrowed(state) { stateFfi in
-                var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper33>.emptyFfiReturn()
+                var rawOutput = BridgeHandleConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>
+                    .emptyFfiReturn()
                 try checkError(
                     SignalFfi.signal_recv_provision_ciphertext_state_get_public_key(
                         &rawOutput,
                         stateFfi,
                     )
                 )
-                return try FixedByteArrayConverter<FixedByteArrayHelper33>.convertReturn(consuming: rawOutput)
+                return try BridgeHandleConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>
+                    .convertReturn(consuming: rawOutput)
             }
 
     }

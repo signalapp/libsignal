@@ -14,6 +14,10 @@
 //! | Identity storage scope | Account | Account | Account |
 //! | Sessions archived on identity replacement | Sibling devices | All devices | Sibling devices |
 //! | Sending on a newly changed identity | Requires approval | Requires approval | Requires approval |
+//!
+//! All three clients also track the identity each conversation is currently on
+//! and report a safety number change when it moves: a receive on an archived
+//! session under a retired identity, or any save of the stored identity after one.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -63,6 +67,7 @@ impl SessionStore for ClientSessionStore {
 struct StoredIdentity {
     key: IdentityKey,
     approved: bool,
+    last_received: IdentityKey,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -79,6 +84,7 @@ pub struct ClientIdentityStore {
     identities: HashMap<String, StoredIdentity>,
     sessions: ClientSessionStore,
     save_calls: usize,
+    safety_number_changes: usize,
 }
 
 impl ClientIdentityStore {
@@ -97,6 +103,7 @@ impl ClientIdentityStore {
             sessions,
             identities: HashMap::new(),
             save_calls: 0,
+            safety_number_changes: 0,
         }
     }
 
@@ -111,6 +118,12 @@ impl ClientIdentityStore {
 
     pub fn save_calls(&self) -> usize {
         self.save_calls
+    }
+
+    /// The number of safety number change events shown to the user, whether
+    /// from a replaced identity or a receive under a different identity.
+    pub fn safety_number_changes(&self) -> usize {
+        self.safety_number_changes
     }
 }
 
@@ -169,8 +182,16 @@ impl IdentityKeyStore for ClientIdentityStore {
         key: &IdentityKey,
     ) -> Result<IdentityChange, SignalProtocolError> {
         self.save_calls += 1;
-        let changed = match self.identities.get(address.name()) {
-            Some(identity) if identity.key == *key => return Ok(IdentityChange::NewOrUnchanged),
+        let changed = match self.identities.get_mut(address.name()) {
+            Some(identity) if identity.key == *key => {
+                // An active-session receive or a send on the stored identity
+                // after receives under a retired one.
+                if identity.last_received != *key {
+                    identity.last_received = *key;
+                    self.safety_number_changes += 1;
+                }
+                return Ok(IdentityChange::NewOrUnchanged);
+            }
             Some(_) => true,
             None => false,
         };
@@ -179,11 +200,13 @@ impl IdentityKeyStore for ClientIdentityStore {
             StoredIdentity {
                 key: *key,
                 approved: !changed,
+                last_received: *key,
             },
         );
         if !changed {
             return Ok(IdentityChange::NewOrUnchanged);
         }
+        self.safety_number_changes += 1;
 
         // iOS archives all sessions for the account. Android and Desktop leave
         // this device's session for libsignal to replace, and archive siblings.
@@ -199,5 +222,20 @@ impl IdentityKeyStore for ClientIdentityStore {
             }
         }
         Ok(IdentityChange::ReplacedExisting)
+    }
+
+    async fn record_received_identity(
+        &mut self,
+        address: &ProtocolAddress,
+        key: &IdentityKey,
+    ) -> Result<(), SignalProtocolError> {
+        let Some(identity) = self.identities.get_mut(address.name()) else {
+            return Ok(());
+        };
+        if identity.last_received != *key {
+            identity.last_received = *key;
+            self.safety_number_changes += 1;
+        }
+        Ok(())
     }
 }

@@ -19,12 +19,15 @@ function assertThrowsCode(fn: () => unknown, code: ErrorCode): void {
 describe('Provisioning', () => {
   it('round-trips a provision message', () => {
     const secondary = Provisioning.RecvProvisionCiphertextState.generate();
-    const publicKey = secondary.publicKey;
-    assert.lengthOf(publicKey, 33);
-    assert.equal(publicKey[0], 0x05);
+    const pubkeyBytes = secondary.publicKey.serialize();
+    assert.lengthOf(pubkeyBytes, 33);
+    assert.equal(pubkeyBytes[0], 0x05);
 
     const message = new TextEncoder().encode('provision message');
-    const envelope = Provisioning.encryptProvisionMessage(publicKey, message);
+    const envelope = Provisioning.encryptProvisionMessage(
+      Provisioning.ProvisioningPublicKey.deserialize(pubkeyBytes),
+      message
+    );
     assert.deepEqual(secondary.decryptEnvelope(envelope), message);
   });
 
@@ -54,22 +57,23 @@ describe('Provisioning', () => {
   });
 
   it('rejects bad public keys', () => {
-    const publicKey =
-      Provisioning.RecvProvisionCiphertextState.generate().publicKey;
-    assert.throws(
-      () =>
-        Provisioning.encryptProvisionMessage(
-          publicKey.subarray(0, 32),
-          new Uint8Array()
-        ),
-      TypeError
-    );
-
-    const badVersion = Uint8Array.from(publicKey);
+    const pubkeyBytes =
+      Provisioning.RecvProvisionCiphertextState.generate().publicKey.serialize();
+    const badVersion = Uint8Array.from(pubkeyBytes);
     badVersion[0] = 0x06;
-    assertThrowsCode(
-      () => Provisioning.encryptProvisionMessage(badVersion, new Uint8Array()),
-      ErrorCode.InvalidProvisioningMessage
-    );
+    for (const badKey of [
+      pubkeyBytes.subarray(0, 32),
+      Uint8Array.of(...pubkeyBytes, 0),
+      badVersion,
+    ]) {
+      assertThrowsCode(
+        () =>
+          Provisioning.encryptProvisionMessage(
+            Provisioning.ProvisioningPublicKey.deserialize(badKey),
+            new Uint8Array()
+          ),
+        ErrorCode.Generic
+      );
+    }
   });
 });

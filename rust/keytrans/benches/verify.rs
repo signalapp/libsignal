@@ -9,7 +9,7 @@ use const_str::hex;
 use criterion::{Criterion, criterion_group, criterion_main};
 use libsignal_keytrans::{
     ChatSearchResponse, DeploymentMode, FullSearchResponse, KeyTransparency, PublicConfig,
-    SearchContext, SlimSearchRequest, VerifyingKey, VrfPublicKey,
+    SearchContext, SlimSearchRequest, VerifyingKey, VerifyingKeys, VrfPublicKey,
 };
 use prost::Message as _;
 
@@ -57,7 +57,7 @@ fn bench_verify_search(c: &mut Criterion) {
 
     let kt = KeyTransparency {
         config: PublicConfig {
-            mode: DeploymentMode::ThirdPartyAuditing(vec![auditor_key].into()),
+            mode: DeploymentMode::ThirdPartyAuditing(VerifyingKeys::new([auditor_key])),
             signature_key: sig_key,
             vrf_key,
         },

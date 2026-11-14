@@ -20,6 +20,7 @@ import type {
   WebAuthnRegistrationUnsuccessful,
 } from '../../Errors.js';
 import { SvrKey } from '../../AccountKeys.js';
+import type { Aci, Pni } from '../../Address.js';
 import type { Rng } from '../../RngForTesting.js';
 import type { DeviceCapability } from './AuthDevicesService.js';
 
@@ -27,6 +28,39 @@ declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface AuthenticatedChatConnection extends AuthAccountsService {}
 }
+
+export type AccountIdentity = {
+  /**
+   * The ACI for the authenticated account.
+   */
+  aci: Aci;
+  /**
+   * The PNI for the authenticated account, or `null` if the account has no
+   * phone number.
+   */
+  pni: Pni | null;
+  /**
+   * The phone number associated with the authenticated account, in E.164
+   * format, or `null` if the account has no phone number.
+   */
+  e164: string | null;
+  /**
+   * The hash of the account's current username, or `null` if no username is
+   * set.
+   */
+  usernameHash: Bytes | null;
+  /**
+   * The username link handle associated with the account's current username as
+   * a UUID string, or `null` if no username link is set.
+   */
+  usernameLinkHandle: string | null;
+};
+
+// The bridge already produces exactly the public shape, so no conversion is needed. This fails to
+// compile if the generated NativeNice.BridgeAccountIdentity stops matching.
+type _AccountIdentityMatchesBridge = AssertTrue<
+  IsEqual<AccountIdentity, NativeNice.BridgeAccountIdentity>
+>;
 
 /**
  * The maximum length, in UTF-8 bytes, of an MFA key's name.
@@ -215,6 +249,21 @@ export type BadgeEntitlement = {
 export type ChallengeAnswer = { push: string } | { captcha: string };
 
 export interface AuthAccountsService {
+  /**
+   * Returns basic identifiers for the authenticated account.
+   *
+   * The returned {@link AccountIdentity} always includes an ACI. It also
+   * includes a PNI and an E.164 phone number unless the account has no phone
+   * number, and a username hash and username link handle when present on the
+   * account.
+   *
+   * @throws {StandardNetworkError}
+   */
+  getAccountIdentity: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<AccountIdentity>;
+
   /**
    * Deletes the authenticated account, purging all associated data in the process.
    *
@@ -550,6 +599,17 @@ export interface AuthAccountsService {
     options?: RequestOptions
   ) => Promise<boolean>;
 }
+
+AuthenticatedChatConnection.prototype.getAccountIdentity = async function (
+  _request,
+  options?
+): Promise<AccountIdentity> {
+  return await NativeNice.AuthenticatedChatConnection_get_account_identity({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+  });
+};
 
 AuthenticatedChatConnection.prototype.deleteAccount = async function (
   options?: RequestOptions

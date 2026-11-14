@@ -11,6 +11,8 @@ import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.internal.Native;
 import org.signal.libsignal.internal.NativeHandleGuard;
 import org.signal.libsignal.protocol.ServiceId;
+import org.signal.libsignal.usernames.UsernameHash;
+import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public class RegisterAccountResponse extends NativeHandleGuard.SimpleOwner {
   public static record BadgeEntitlement(String id, boolean visible, Duration expiration) {
@@ -73,8 +75,18 @@ public class RegisterAccountResponse extends NativeHandleGuard.SimpleOwner {
     return guardedMap(Native::RegisterAccountResponse_GetStorageCapable);
   }
 
-  public byte[] getUsernameHash() {
-    return guardedMap(Native::RegisterAccountResponse_GetUsernameHash);
+  /** The hash of the account's current username, or {@code null} if the account has no username. */
+  public UsernameHash getUsernameHash() {
+    byte[] hash = guardedMap(Native::RegisterAccountResponse_GetUsernameHash);
+    if (hash == null) {
+      return null;
+    }
+    try {
+      return new UsernameHash(hash);
+    } catch (InvalidInputException e) {
+      // The server only ever stores 32-byte username hashes.
+      throw new AssertionError(e);
+    }
   }
 
   public UUID getUsernameLinkHandle() {

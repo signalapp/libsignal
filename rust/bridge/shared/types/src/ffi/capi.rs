@@ -202,10 +202,12 @@ unsafe impl<T: IsCType> IsCType for *const T {
                 .strip_prefix("SignalType_")
                 .unwrap_or(&t.type_name)
         );
-        let mut mangling_component = t.mangling_component.clone();
+        let mangling_component: String;
         if t.rust_type == RustType::of::<std::ffi::c_char>() {
             mangling_component = "CStringPtr".to_string();
             type_name = format!("Signal{mangling_component}");
+        } else {
+            mangling_component = format!("PtrTo{}", t.mangling_component);
         }
         CType {
             rust_type: RustType::of::<Self>(),
@@ -213,7 +215,6 @@ unsafe impl<T: IsCType> IsCType for *const T {
             type_name: type_name.clone(),
             ptr_type_name: Some(format!("const {}*", t.type_name)),
             swift_name: Some(format!("{type_name}?")),
-            // This isn't a good choice, but it stems from the configuration of cbindgen.
             mangling_component,
             utility_typedefs: format!("typedef const {}* {type_name};", t.type_name).into(),
             layout: Self::LAYOUT.map(|layout| layout.layout),
@@ -238,8 +239,7 @@ unsafe impl<T: IsCType> IsCType for *mut T {
             type_name: type_name.clone(),
             ptr_type_name: Some(format!("{}*", t.type_name)),
             swift_name: Some(format!("{type_name}?")),
-            // This isn't a good choice, but it stems from the configuration of cbindgen.
-            mangling_component: t.mangling_component.clone(),
+            mangling_component: format!("MutPtrTo{}", t.mangling_component),
             utility_typedefs: format!("typedef {}* {type_name};", t.type_name).into(),
             layout: Self::LAYOUT.map(|layout| layout.layout),
         }

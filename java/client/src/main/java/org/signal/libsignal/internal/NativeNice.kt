@@ -81,6 +81,14 @@ public sealed class BadgeVisibility {
 
 */
 
+public data class BridgeAccountIdentity(
+  public val aci: org.signal.libsignal.protocol.ServiceId.Aci,
+  public val pni: org.signal.libsignal.protocol.ServiceId.Pni?,
+  public val e164: String?,
+  public val usernameHash: ByteArray?,
+  public val usernameLinkHandle: java.util.UUID?,
+)
+
 public sealed class BridgeChallengeAnswer {
   public data class Push(
     public val _0: String,
@@ -488,6 +496,39 @@ public object BadgeEntitlement_ReturnConverter {
         (java.time.Instant::ofEpochMilli)(expiration as Long),
       visible =
         identity(visible as Boolean),
+    )
+}
+
+public object BridgeAccountIdentity_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    aci: Any?,
+    pni: Any?,
+    e164: Any?,
+    username_hash: Any?,
+    username_link_handle: Any?,
+  ): Any? =
+    BridgeAccountIdentity(
+      aci =
+        org.signal.libsignal.protocol.ServiceId.Aci
+          .parseFromFixedWidthBinary(aci as ByteArray),
+      pni =
+        (
+          { x: ByteArray? ->
+            x?.let {
+              org.signal.libsignal.protocol.ServiceId.Pni
+                .parseFromFixedWidthBinary(it)
+            }
+          }
+        )(pni as ByteArray?),
+      e164 =
+        ({ x: String? -> x?.let { identity(it) } })(e164 as String?),
+      usernameHash =
+        ({ x: ByteArray? -> x?.let { identity(it) } })(username_hash as ByteArray?),
+      usernameLinkHandle =
+        ({ x: java.util.UUID? -> x?.let { identity(it) } })(username_link_handle as java.util.UUID?),
     )
 }
 
@@ -1800,6 +1841,23 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgePendingTotpKey>(it) }
   }
 
+  public fun AuthenticatedChatConnection_get_account_identity(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.internal.BridgeAccountIdentity> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_account_identity(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeAccountIdentity>(it) }
+  }
+
   public fun AuthenticatedChatConnection_get_capabilities(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,
@@ -2420,8 +2478,18 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.DeleteBackupMediaNextChunk>(it) }
   }
 
+  public fun ProvisioningPublicKey_Serialize(key: org.signal.libsignal.provisioning.ProvisioningPublicKey): ByteArray {
+    val ffi_key = identity(key)
+    val ffiOut =
+      Native.ProvisioningPublicKey_Serialize(
+        ffi_key,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun Provisioning_EncryptProvisionMessage(
-    secondaryPublicKey: ByteArray,
+    secondaryPublicKey: org.signal.libsignal.provisioning.ProvisioningPublicKey,
     provisionMessage: ByteArray,
   ): ByteArray {
     val ffi_secondary_public_key = identity(secondaryPublicKey)
@@ -2460,14 +2528,15 @@ public object NativeNice {
 
   public fun RecvProvisionCiphertextState_GetPublicKey(
     state: org.signal.libsignal.provisioning.RecvProvisionCiphertextState,
-  ): ByteArray {
+  ): org.signal.libsignal.provisioning.ProvisioningPublicKey {
     val ffi_state = identity(state)
     val ffiOut =
       Native.RecvProvisionCiphertextState_GetPublicKey(
         ffi_state,
       )
 
-    return identity(ffiOut)
+    return org.signal.libsignal.provisioning
+      .ProvisioningPublicKey(ffiOut)
   }
 
   public fun SvrKey_DeriveLoggingKey(svrKey: ByteArray): ByteArray {

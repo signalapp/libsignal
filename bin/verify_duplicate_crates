@@ -29,6 +29,8 @@ digest v0.11.3
 getrandom v0.2.17
 getrandom v0.3.4
 getrandom v0.4.3
+hax-lib v0.3.7
+hax-lib v0.5.0
 rand v0.9.4
 rand v0.10.2
 rand_core v0.6.4

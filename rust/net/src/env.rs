@@ -31,7 +31,9 @@ use rand::{Rng, rng};
 use crate::certs::{PROXY_G_ROOT_CERTIFICATES, SIGNAL_ROOT_CERTIFICATES};
 use crate::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use crate::connect_state::ServiceName;
-use crate::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
+use crate::enclave::{
+    AnySvrEnclaveEndpoint, Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx,
+};
 
 const DEFAULT_HTTPS_PORT: NonZeroU16 = nonzero!(443_u16);
 pub const TIMESTAMP_HEADER_NAME: &str = "x-signal-timestamp";
@@ -251,6 +253,46 @@ const DOMAIN_CONFIG_SVRB_PROD: DomainConfig = DomainConfig {
     ],
 };
 
+#[expect(unused)]
+const DOMAIN_CONFIG_BTS_PRODUCTION: DomainConfig = DomainConfig {
+    connect: ConnectionConfig {
+        service: ServiceName("bts"),
+        hostname: "bts.signal.org",
+        port: DEFAULT_HTTPS_PORT,
+        cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
+        confirmation_header_name: None,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/bts",
+            configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
+        }),
+    },
+    // TODO: replace with actual IPs prior to use
+    ip_v4: &[ip_addr!(v4, "75.2.91.98")],
+    ip_v6: &[],
+};
+
+#[expect(unused)]
+const DOMAIN_CONFIG_BTS_STAGING: DomainConfig = DomainConfig {
+    connect: ConnectionConfig {
+        service: ServiceName("bts"),
+        hostname: "bts.staging.signal.org",
+        port: DEFAULT_HTTPS_PORT,
+        cert: SIGNAL_ROOT_CERTIFICATES,
+        min_tls_version: Some(SslVersion::TLS1_3),
+        http_version: Some(HttpVersion::Http1_1),
+        confirmation_header_name: None,
+        proxy: Some(ConnectionProxyConfig {
+            path_prefix: "/bts-staging",
+            configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
+        }),
+    },
+    // TODO: replace with actual IPs prior to use
+    ip_v4: &[ip_addr!(v4, "75.2.86.85"), ip_addr!(v4, "99.83.239.137")],
+    ip_v6: &[],
+};
+
 pub const PROXY_CONFIG_F_PROD: ProxyConfig = ProxyConfig {
     route_type: RouteType::ProxyF,
     http_host: "reflector-signal.global.ssl.fastly.net",
@@ -313,12 +355,6 @@ pub(crate) const ENDPOINT_PARAMS_CDSI_STAGING: EndpointParams<'static, Cdsi> = E
     raft_config: (),
 };
 
-pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_STAGING: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q2_STAGING),
-        raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q2_STAGING,
-    };
-
 pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q2_PROD: EndpointParams<'static, SvrSgx> =
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q2_PROD),
@@ -329,12 +365,6 @@ pub(crate) const ENDPOINT_PARAMS_SVRB_2026Q2_PROD: EndpointParams<'static, SvrSg
     EndpointParams {
         mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVRB_2026Q2_PROD),
         raft_config: attest::constants::RAFT_CONFIG_SVRB_2026Q2_PROD,
-    };
-
-pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q3_STAGING_V1: EndpointParams<'static, SvrSgx> =
-    EndpointParams {
-        mr_enclave: MrEnclave::new(attest::constants::ENCLAVE_ID_SVR2_2026Q3_STAGING_V1),
-        raft_config: attest::constants::RAFT_CONFIG_SVR2_2026Q3_STAGING_V1,
     };
 
 pub(crate) const ENDPOINT_PARAMS_SVR2_2026Q3_STAGING: EndpointParams<'static, SvrSgx> =
@@ -732,7 +762,7 @@ impl From<KeyTransConfig> for PublicConfig {
             .map(|bytes| VerifyingKey::from_bytes(bytes).expect("valid auditor key material"));
         let vrf_key = VrfPublicKey::try_from(*vrf_key_material).expect("valid VRF key material");
         Self {
-            mode: DeploymentMode::ThirdPartyAuditing(VerifyingKeys::from(auditor_keys)),
+            mode: DeploymentMode::ThirdPartyAuditing(VerifyingKeys::new(auditor_keys)),
             signature_key,
             vrf_key,
         }
@@ -742,35 +772,57 @@ impl From<KeyTransConfig> for PublicConfig {
 const SVRB_ENV_MAX_CURRENT: usize = 3;
 const SVRB_ENV_MAX_PREVIOUS: usize = 3;
 
+/// [`AnySvrEnclaveEndpoint`], but in a way that makes [`SvrBEnv`]
+/// [unwind-safe](std::panic::UnwindSafe).
+pub type EnvEnclave<'a> =
+    dyn AnySvrEnclaveEndpoint + std::panic::UnwindSafe + std::panic::RefUnwindSafe + 'a;
+
+/// Like [`Cow`](std::borrow::Cow), but without requiring [`ToOwned`].
+pub enum EnvEnclaveEntry<'a> {
+    Borrowed(&'a EnvEnclave<'a>),
+    Owned(Box<EnvEnclave<'a>>),
+}
+
+impl<'a> AsRef<EnvEnclave<'a>> for EnvEnclaveEntry<'a> {
+    fn as_ref(&self) -> &EnvEnclave<'a> {
+        match self {
+            Self::Borrowed(e) => *e,
+            Self::Owned(e) => &**e,
+        }
+    }
+}
+
 pub struct SvrBEnv<'a> {
     // There may be differing numbers of current/previous endpoints in staging vs prod,
     // so rather than store a fixed-sized array of current/previous, we store
     // a max-sized list of Options, which are often None but can be set.
     // Thus, if staging has 2 and prod has 1, they can set [Some(foo), Some(bar), None] and
     // [Some(baz), None, None] respectively.
-    current: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_CURRENT],
-    previous: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_PREVIOUS],
+    current: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_CURRENT],
+    previous: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_PREVIOUS],
 }
 
 impl<'a> SvrBEnv<'a> {
     pub const fn new(
-        current: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_CURRENT],
-        previous: [Option<EnclaveEndpoint<'a, SvrSgx>>; SVRB_ENV_MAX_PREVIOUS],
+        current: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_CURRENT],
+        previous: [Option<EnvEnclaveEntry<'a>>; SVRB_ENV_MAX_PREVIOUS],
     ) -> Self {
         Self { current, previous }
     }
 
-    pub fn current(&self) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
-        self.current.iter().filter_map(|a| a.as_ref())
+    pub fn current(&self) -> impl std::iter::Iterator<Item = &EnvEnclave<'_>> {
+        self.current
+            .iter()
+            .filter_map(|a| a.as_ref().map(|a| a.as_ref()))
     }
 
-    pub fn previous(&self) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
-        self.previous.iter().filter_map(|a| a.as_ref())
+    pub fn previous(&self) -> impl std::iter::Iterator<Item = &EnvEnclave<'_>> {
+        self.previous
+            .iter()
+            .filter_map(|a| a.as_ref().map(|a| a.as_ref()))
     }
 
-    pub fn current_and_previous(
-        &self,
-    ) -> impl std::iter::Iterator<Item = &EnclaveEndpoint<'a, SvrSgx>> {
+    pub fn current_and_previous(&self) -> impl std::iter::Iterator<Item = &EnvEnclave<'_>> {
         self.current().chain(self.previous())
     }
 }
@@ -822,12 +874,12 @@ impl<'a> Env<'a> {
         ]);
         let svr_endpoints = svr_b
             .current_and_previous()
-            .chain(svr2.current_and_previous());
-        result.extend(
-            svr_endpoints.map(|enclave_endpoint| {
-                enclave_endpoint.domain_config.static_fallback(rng.as_mut())
-            }),
-        );
+            .chain(svr2.current_and_previous().map(|a| a as &EnvEnclave<'_>));
+        result.extend(svr_endpoints.map(|enclave_endpoint| {
+            enclave_endpoint
+                .domain_config()
+                .static_fallback(rng.as_mut())
+        }));
         result
     }
 }
@@ -846,31 +898,19 @@ pub const STAGING: Env<'static> = Env {
             ws_config: RECOMMENDED_WS_CONFIG,
             params: ENDPOINT_PARAMS_SVR2_2026Q3_STAGING,
         },
-        previous: Some(EnclaveEndpoint {
-            domain_config: DOMAIN_CONFIG_SVR2_STAGING,
-            ws_config: RECOMMENDED_WS_CONFIG,
-            params: ENDPOINT_PARAMS_SVR2_2026Q3_STAGING_V1,
-        }),
+        previous: None,
     },
     svr_b: SvrBEnv {
         current: [
-            Some(EnclaveEndpoint {
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_STAGING,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q3_STAGING,
-            }),
+            })),
             None,
             None,
         ],
-        previous: [
-            Some(EnclaveEndpoint {
-                domain_config: DOMAIN_CONFIG_SVRB_STAGING,
-                ws_config: RECOMMENDED_WS_CONFIG,
-                params: ENDPOINT_PARAMS_SVRB_2026Q2_STAGING,
-            }),
-            None,
-            None,
-        ],
+        previous: [None, None, None],
     },
     keytrans_config: KEYTRANS_CONFIG_STAGING,
     reflector_providers: || &*REFLECTOR_PROVIDERS_STAGING,
@@ -898,16 +938,16 @@ pub const PROD: Env<'static> = Env {
     },
     svr_b: SvrBEnv {
         current: [
-            Some(EnclaveEndpoint {
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q3_PROD,
-            }),
-            Some(EnclaveEndpoint {
+            })),
+            Some(EnvEnclaveEntry::Borrowed(&EnclaveEndpoint {
                 domain_config: DOMAIN_CONFIG_SVRB_PROD,
                 ws_config: RECOMMENDED_WS_CONFIG,
                 params: ENDPOINT_PARAMS_SVRB_2026Q2_PROD,
-            }),
+            })),
             None,
         ],
         previous: [None, None, None],

@@ -127,6 +127,22 @@ internal func withIdentityKeyStore<Result>(
         }
     }
 
+    func ffiShimRecordReceivedIdentity(
+        storeCtx: UnsafeMutableRawPointer?,
+        address: SignalMutPointerProtocolAddress,
+        public_key: SignalMutPointerPublicKey
+    ) -> Int32 {
+        let storeContext = storeCtx!.assumingMemoryBound(
+            to: ErrorHandlingContext<(IdentityKeyStore, StoreContext)>.self
+        )
+        return storeContext.pointee.catchCallbackErrors { store, context in
+            let address = ProtocolAddress(owned: NonNull(address)!)
+            let public_key = PublicKey(owned: NonNull(public_key)!)
+            let identity = IdentityKey(publicKey: public_key)
+            try store.recordReceivedIdentity(identity, for: address, context: context)
+        }
+    }
+
     return try rethrowCallbackErrors((store, context)) {
         var ffiStore = SignalIdentityKeyStore(
             ctx: $0,
@@ -135,6 +151,7 @@ internal func withIdentityKeyStore<Result>(
             get_identity_key: ffiShimGetIdentity,
             save_identity_key: ffiShimSaveIdentity,
             is_trusted_identity: ffiShimIsTrustedIdentity,
+            record_received_identity_key: ffiShimRecordReceivedIdentity,
             destroy: { _ in }
         )
         return try withUnsafePointer(to: &ffiStore) {

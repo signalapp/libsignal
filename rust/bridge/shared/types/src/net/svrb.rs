@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use libsignal_account_keys::BACKUP_KEY_LEN;
 use libsignal_bridge_macros::c_export;
 use libsignal_net::auth::Auth;
-use libsignal_net::enclave::{EnclaveEndpoint, PpssSetup, SvrSgx};
+use libsignal_net::enclave::{AnySvrEnclaveEndpoint, PpssSetup};
 use libsignal_net::env::SvrBEnv;
 use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::tcp_ssl::InvalidProxyConfig;
@@ -31,7 +31,7 @@ pub type BackupKeyBytes = [u8; BACKUP_KEY_LEN];
 pub struct SvrBConnectImpl<'a> {
     pub connection_manager: &'a ConnectionManager,
     // TODO: replace this with a method of selecting the enclave endpoint.
-    pub endpoint: &'a EnclaveEndpoint<'a, SvrSgx>,
+    pub endpoint: &'a dyn AnySvrEnclaveEndpoint,
     pub auth: &'a Auth,
 }
 
@@ -44,7 +44,7 @@ impl SvrBConnect for SvrBConnectImpl<'_> {
             connection_manager,
             auth,
             endpoint,
-        } = self;
+        } = *self;
 
         let (connection_resources, route_provider) = connection_manager
             .enclave_connection_resources(endpoint)
@@ -52,12 +52,12 @@ impl SvrBConnect for SvrBConnectImpl<'_> {
                 WebSocketServiceConnectError::from(TransportConnectError::InvalidConfiguration)
             })?;
 
-        SvrConnection::connect(
+        SvrConnection::connect_any(
             connection_resources.as_connection_resources(),
-            endpoint.domain_config.connect.service,
+            endpoint.domain_config().connect.service,
             route_provider,
-            endpoint.ws_config,
-            &endpoint.params,
+            *endpoint.ws_config(),
+            move |attestation_message| endpoint.new_handshake(attestation_message),
             auth,
         )
         .await

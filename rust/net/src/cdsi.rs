@@ -315,7 +315,7 @@ impl CdsiConnection {
                 auth,
                 ws_config,
                 "cdsi".into(),
-                params,
+                move |attestation_message| Kind::new_handshake(params, attestation_message),
             )
             .await?;
         Ok(Self(connection))
@@ -506,6 +506,7 @@ mod test {
     use super::*;
     use crate::auth::Auth;
     use crate::connect_state::{ConnectState, SUGGESTED_CONNECT_CONFIG};
+    use crate::enclave::AnyEnclaveEndpoint as _;
     use crate::env::StaticIpOrder;
 
     #[test]

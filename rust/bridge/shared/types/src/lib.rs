@@ -42,11 +42,19 @@ mod pin {
     bridge_as_handle!(PinHash);
 }
 
-mod provisioning {
+pub mod provisioning {
     use ::libsignal_provisioning::RecvProvisionCiphertextState;
 
     use crate::*;
 
+    /// A provisioning public key. Used for encrypting provisioning messages.
+    pub struct ProvisioningPublicKey(pub Box<[u8]>);
+
+    bridge_as_handle!(
+        ProvisioningPublicKey,
+        swift_type = "ProvisioningPublicKey",
+        jni_class = "org.signal.libsignal.provisioning.ProvisioningPublicKey"
+    );
     bridge_as_handle!(
         RecvProvisionCiphertextState,
         swift_type = "RecvProvisionCiphertextState",

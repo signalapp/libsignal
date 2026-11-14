@@ -989,6 +989,18 @@ async fn AuthenticatedChatConnection_set_username_link(
         .await
 }
 
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_account_identity(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+) -> Result<BridgeAccountIdentity, RequestError<Infallible>> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_account_identity()
+        .await?
+        .into())
+}
+
 // Only an account's primary device may delete the account.
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn AuthenticatedChatConnection_delete_account(

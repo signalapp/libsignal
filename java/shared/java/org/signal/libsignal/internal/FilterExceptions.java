@@ -381,4 +381,55 @@ public class FilterExceptions {
       throw reportUnexpectedException(e);
     }
   }
+
+  /**
+   * Tries to run {@code f}, wrapping all checked exceptions besides subclasses of {@code E1},
+   * {@code E2}, {@code E3}, {@code E4}, {@code E5}, and {@code E6} in {@link AssertionError}.
+   *
+   * <p>See the class-level documentation for more details.
+   */
+  @SuppressWarnings("unchecked")
+  public static <
+          R,
+          E1 extends Exception,
+          E2 extends Exception,
+          E3 extends Exception,
+          E4 extends Exception,
+          E5 extends Exception,
+          E6 extends Exception>
+      R filterExceptions(
+          Class<E1> e1,
+          Class<E2> e2,
+          Class<E3> e3,
+          Class<E4> e4,
+          Class<E5> e5,
+          Class<E6> e6,
+          ThrowingNativeOperation<R> f)
+          throws E1, E2, E3, E4, E5, E6 {
+    try {
+      return f.run();
+    } catch (RuntimeException | Error e) {
+      throw e;
+    } catch (Exception e) {
+      if (e1.isInstance(e)) {
+        throw (E1) e;
+      }
+      if (e2.isInstance(e)) {
+        throw (E2) e;
+      }
+      if (e3.isInstance(e)) {
+        throw (E3) e;
+      }
+      if (e4.isInstance(e)) {
+        throw (E4) e;
+      }
+      if (e5.isInstance(e)) {
+        throw (E5) e;
+      }
+      if (e6.isInstance(e)) {
+        throw (E6) e;
+      }
+      throw reportUnexpectedException(e);
+    }
+  }
 }
