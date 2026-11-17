@@ -350,6 +350,20 @@ public sealed class DeviceCapabilityInternal {
 }
 
 /*
+// org.signal.libsignal.net.FetchedProfile
+
+public data class FetchedProfile(
+  public val profile: org.signal.libsignal.net.Profile,
+  public val etag: ByteArray?,
+  public val v2DataHash: ByteArray?,
+  public val identityKey: org.signal.libsignal.protocol.IdentityKey,
+  public val unidentifiedAccessKeyFingerprint: ByteArray?,
+  public val unrestrictedUnidentifiedAccess: Boolean,
+)
+
+*/
+
+/*
 // org.signal.libsignal.net.GetStickerUploadFormsResponse
 
 public data class GetStickerUploadFormsResponse(
@@ -1087,6 +1101,46 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
   internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
 }
 
+public object FetchedProfile_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    profile: Any?,
+    etag: Any?,
+    v2_data_hash: Any?,
+    identity_key: Any?,
+    unidentified_access_key_fingerprint: Any?,
+    unrestricted_unidentified_access: Any?,
+  ): Any? =
+    org.signal.libsignal.net.FetchedProfile(
+      profile =
+        downcastFromObject<org.signal.libsignal.net.Profile>(profile as Object),
+      etag =
+        ({ x: ByteArray? -> x?.let { identity(it) } })(etag as ByteArray?),
+      v2DataHash =
+        ({ x: ByteArray? -> x?.let { identity(it) } })(v2_data_hash as ByteArray?),
+      identityKey =
+        (
+          { handle: ObjectHandle ->
+            org.signal.libsignal.protocol
+              .IdentityKey(
+                org.signal.libsignal.protocol.ecc
+                  .ECPublicKey(handle),
+              )
+          }
+        )(identity_key as ObjectHandle),
+      unidentifiedAccessKeyFingerprint =
+        (
+          { x: ByteArray? ->
+            x?.let { identity(it) }
+          }
+        )(unidentified_access_key_fingerprint as ByteArray?),
+      unrestrictedUnidentifiedAccess =
+        identity(unrestricted_unidentified_access as Boolean),
+    )
+}
+
 public object GetStickerUploadFormsResponse_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1202,6 +1256,44 @@ public object PaymentProviderInternal_Braintree_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Braintree
+}
+
+public object Profile_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    given_name: Any?,
+    family_name: Any?,
+    about: Any?,
+    about_emoji: Any?,
+    avatar: Any?,
+    phone_number_sharing: Any?,
+    payment_address: Any?,
+    badge_ids: Any?,
+  ): Any? =
+    org.signal.libsignal.net.Profile(
+      givenName =
+        identity(given_name as String),
+      familyName =
+        identity(family_name as String),
+      about =
+        identity(about as String),
+      aboutEmoji =
+        identity(about_emoji as String),
+      avatar =
+        (
+          { x: String? ->
+            x?.let { (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(it) }
+          }
+        )(avatar as String?),
+      phoneNumberSharing =
+        identity(phone_number_sharing as Boolean),
+      paymentAddress =
+        ({ x: ByteArray? -> x?.let { identity(it) } })(payment_address as ByteArray?),
+      badgeIds =
+        mapBridgeVecReturn<String, String>({ identity(it) })(badge_ids as Array<*>),
+    )
 }
 
 public object ProfileFieldWithMaxLength_GivenName_ReturnConverter {
@@ -2334,6 +2426,39 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.net.PreKeyCounts>(it) }
+  }
+
+  public fun AuthenticatedChatConnection_get_profile(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    aci: org.signal.libsignal.protocol.ServiceId.Aci,
+    profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+    etag: ByteArray?,
+  ): CompletableFuture<org.signal.libsignal.net.FetchedProfile?> {
+    val ffi_chat = identity(chat)
+    val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
+    val ffi_profile_key =
+      (org.signal.libsignal.zkgroup.profiles.ProfileKey::getInternalContentsForJNI)(profileKey)
+    val ffi_etag = identity(etag)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_profile(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_aci,
+          ffi_profile_key,
+          ffi_etag,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.FetchedProfile>(it) }
+          }
+        )(it)
+      }
   }
 
   public fun AuthenticatedChatConnection_get_sticker_upload_forms(

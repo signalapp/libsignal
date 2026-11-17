@@ -6,6 +6,21 @@
 import Foundation
 
 public protocol AuthProfilesService: Sendable {
+    /// Retrieves profile data.
+    ///
+    /// Callers with an unidentified access key for the account should use the unauth version,
+    /// instead.
+    ///
+    /// - Returns: nil if the provided etag is up-to-date
+    /// - Throws:
+    ///   - ``SignalError/profileNotFound(_:)`` if the profile (version) could not be found
+    ///   - ``SignalError/profileCantBeDecoded(_:)`` if the profile failed to decode (e.g. due to encryption or validation errors)
+    ///   - the standard Signal network errors
+    func getProfile(
+        aci: Aci,
+        profileKey: ProfileKey,
+        etag: ProfileEtag?,
+    ) async throws -> FetchedProfile?
     /// Set the profile for the current account.
     ///
     /// Note that if an older client (not yet using libsignal to set profiles) sets a v1 profile,
@@ -63,6 +78,17 @@ public protocol AuthProfilesService: Sendable {
 }
 
 extension AuthenticatedChatConnection: AuthProfilesService {
+
+    public func getProfile(aci: Aci, profileKey: ProfileKey, etag: Data?, ) async throws -> FetchedProfile? {
+        return try await NativeNice.AuthenticatedChatConnection_get_profile(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            aci: aci,
+            profileKey: profileKey,
+            etag: etag,
+        )
+    }
+
     public func setProfile(
         aci: Aci,
         profileKey: ProfileKey,

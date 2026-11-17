@@ -1134,6 +1134,43 @@ extension SignalCPromiseOptionalOfUuid: SignalCPromise {
 
 }
 
+extension SignalCPromiseOptionalOfFetchedProfileFfiResult: SignalCPromise {
+
+    typealias Result = SignalOptionalOfFetchedProfileFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfFetchedProfileFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfFetchedProfileFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOptionalOfTaggedBadgesFfiResult: SignalCPromise {
 
     typealias Result = SignalOptionalOfTaggedBadgesFfiResult
@@ -2187,6 +2224,33 @@ extension SignalOptionalOfCStringPtr: SignalOptionalOf {
 
 }
 
+extension SignalOptionalOfc_uchar10: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray10_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray10_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray10_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalOptionalOfc_uchar17: SignalOptionalOf {
 
     typealias Contents = SignalType_FixedArray17_uint8_t
@@ -2208,6 +2272,33 @@ extension SignalOptionalOfc_uchar17: SignalOptionalOf {
     }
 
     var generic_value: SignalType_FixedArray17_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar32: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray32_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray32_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray32_uint8_t {
         get { self.value }
         set { value = newValue }
     }
@@ -2451,6 +2542,33 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
     }
 
     var generic_value: SignalChargeFailureFfiResult {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfFetchedProfileFfiResult: SignalOptionalOf {
+
+    typealias Contents = SignalFetchedProfileFfiResult
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalFetchedProfileFfiResult,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalFetchedProfileFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -3405,6 +3523,16 @@ extension SignalPairOfPairOfCStringPtrOwnedBufferi64: SignalPairOf {
 
 }
 
+internal enum FixedByteArrayHelper10: FixedByteArrayHelper {
+    typealias Ffi = (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8)
+    static func count() -> Int {
+        10
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
@@ -3868,6 +3996,21 @@ internal enum DeviceCapabilityInternal {
     case profilesV2
     case usernameChangeSyncMessage
     case optionalPhoneNumber
+}
+
+*/
+
+/*
+// FetchedProfile
+
+internal struct FetchedProfile {
+    var profile: Profile
+    var etag: Data?
+    var v2DataHash: Data?
+    var identityKey: IdentityKey
+    var unidentifiedAccessKeyFingerprint: Data?
+    var unrestrictedUnidentifiedAccess: Bool
+
 }
 
 */
@@ -4621,6 +4764,47 @@ internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverte
     }
 }
 
+internal enum DerivedReturnConverterFetchedProfile: NiceReturnConverter {
+    typealias NiceReturn = FetchedProfile
+    typealias FfiReturn = SignalFetchedProfileFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalFetchedProfileFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let profile = Result { try DerivedReturnConverterProfile.convertReturn(consuming: ffiValue.profile) }
+        let etag = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper10>, SignalOptionalOfc_uchar10>
+                .convertReturn(consuming: ffiValue.etag)
+        }
+        let v2_data_hash = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOptionalOfc_uchar32>
+                .convertReturn(consuming: ffiValue.v2_data_hash)
+        }
+        let identity_key = Result {
+            try IdentityKeyResultConverter<BridgeHandleConverter<SignalMutPointerPublicKey, PublicKey>>.convertReturn(
+                consuming: ffiValue.identity_key
+            )
+        }
+        let unidentified_access_key_fingerprint = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOptionalOfc_uchar32>
+                .convertReturn(consuming: ffiValue.unidentified_access_key_fingerprint)
+        }
+        let unrestricted_unidentified_access = Result {
+            try IdentityResultConverter<Bool>.convertReturn(consuming: ffiValue.unrestricted_unidentified_access)
+        }
+
+        return FetchedProfile(
+            profile: try profile.get(),
+            etag: try etag.get(),
+            v2DataHash: try v2_data_hash.get(),
+            identityKey: try identity_key.get(),
+            unidentifiedAccessKeyFingerprint: try unidentified_access_key_fingerprint.get(),
+            unrestrictedUnidentifiedAccess: try unrestricted_unidentified_access.get()
+        )
+    }
+}
+
 internal enum DerivedReturnConverterGetStickerUploadFormsResponse: NiceReturnConverter {
     typealias NiceReturn = GetStickerUploadFormsResponse
     typealias FfiReturn = SignalGetStickerUploadFormsResponseFfiResult
@@ -4741,6 +4925,50 @@ internal enum DerivedReturnConverterPaymentProviderInternal: NiceReturnConverter
         default:
             throw SignalError.internalError("Unexpected enum tag for PaymentProviderInternal: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterProfile: NiceReturnConverter {
+    typealias NiceReturn = Profile
+    typealias FfiReturn = SignalProfileFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let given_name = Result { try StringConverter.convertReturn(consuming: ffiValue.given_name) }
+        let family_name = Result { try StringConverter.convertReturn(consuming: ffiValue.family_name) }
+        let about = Result { try StringConverter.convertReturn(consuming: ffiValue.about) }
+        let about_emoji = Result { try StringConverter.convertReturn(consuming: ffiValue.about_emoji) }
+        let avatar = Result {
+            try OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertReturn(
+                consuming: ffiValue.avatar
+            )
+        }
+        let phone_number_sharing = Result {
+            try IdentityResultConverter<Bool>.convertReturn(consuming: ffiValue.phone_number_sharing)
+        }
+        let payment_address = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.payment_address
+            )
+        }
+        let badge_ids = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.badge_ids
+            )
+        }
+
+        return Profile(
+            givenName: try given_name.get(),
+            familyName: try family_name.get(),
+            about: try about.get(),
+            aboutEmoji: try about_emoji.get(),
+            avatar: try avatar.get(),
+            phoneNumberSharing: try phone_number_sharing.get(),
+            paymentAddress: try payment_address.get(),
+            badgeIds: try badge_ids.get()
+        )
     }
 }
 
@@ -6587,6 +6815,43 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgePreKeyCounts.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_profile(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+        etag: Data?,
+    ) async throws -> FetchedProfile? {
+        let rawOutput:
+            OptionalReturnConverter<DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult>
+                .FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            AciConverter.convertArgBorrowed(aci) { aciFfi in
+                                ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                    OptionalFixedByteArrayConverter<FixedByteArrayHelper10>.convertArgBorrowed(etag) {
+                                        etagFfi in
+                                        SignalFfi.signal_authenticated_chat_connection_get_profile(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            aciFfi,
+                                            profile_keyFfi,
+                                            etagFfi,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                }
+        return try OptionalReturnConverter<
+            DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_sticker_upload_forms(

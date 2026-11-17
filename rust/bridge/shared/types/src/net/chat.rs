@@ -1258,10 +1258,26 @@ pub mod remote_derives {
     use libsignal_net_chat::api::S3UploadForm;
     use libsignal_net_chat::grpc::payments::{Currency, CurrencyConversions};
     use libsignal_net_chat::grpc::profiles::{
-        BadgeId, CdnUrl, PaymentAddress, Profile as ActualProfile,
+        BadgeId, CdnUrl, PaymentAddress, Profile as ActualProfile, ProfileDataHash, ProfileEtag,
     };
 
     use super::*;
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "FetchedProfile",
+        jni_nice_type = "org.signal.libsignal.net.FetchedProfile"
+    )]
+    #[structural_from(libsignal_net_chat::grpc::profiles::FetchedProfile)]
+    pub struct FetchedProfile {
+        pub profile: Profile,
+        pub etag: Option<ProfileEtag>,
+        pub v2_data_hash: Option<ProfileDataHash>,
+        pub identity_key: IdentityKey,
+        pub unidentified_access_key_fingerprint: Option<[u8; 32]>,
+        pub unrestricted_unidentified_access: bool,
+    }
 
     #[derive(BridgedAsValue)]
     #[bridge(

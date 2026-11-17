@@ -180,6 +180,15 @@ export type ReturnFfiAuthCheckResult =
       __type: 2;
     };
 
+export type ReturnFfiAuthGetProfileError =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      log_safe: string;
+    };
+
 export type ReturnFfiBackupEntitlement = {
   level: bigint;
   expiration: Timestamp;
@@ -540,6 +549,15 @@ export type ReturnFfiExtendAvatarTtlOut =
       __type: 2;
     };
 
+export type ReturnFfiFetchedProfile = {
+  profile: ReturnFfiProfile;
+  etag: Bytes | null;
+  v2_data_hash: Bytes | null;
+  identity_key: PublicKey;
+  unidentified_access_key_fingerprint: Bytes | null;
+  unrestricted_unidentified_access: boolean;
+};
+
 export type ReturnFfiFinishMfaVerificationOut =
   | {
       __type: 0;
@@ -696,6 +714,12 @@ export type ReturnFfiGetPreKeysOut =
       __type: 3;
     };
 
+export type ReturnFfiGetProfileArgs = {
+  aci: Bytes;
+  profile_key: Bytes;
+  etag: Bytes | null;
+};
+
 export type ReturnFfiGetProfileKeyCredentialArgs = {
   profile_key_request_context: Bytes;
   server_params: ReturnFfiServerPublicParamsSerialized;
@@ -713,6 +737,16 @@ export type ReturnFfiGetProfileKeyCredentialOut =
   | {
       __type: 2;
       _0: ReturnFfiProfileKeyCredentialRequestError;
+    };
+
+export type ReturnFfiGetProfileOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiFetchedProfile | null;
+    }
+  | {
+      __type: 1;
+      _0: ReturnFfiAuthGetProfileError;
     };
 
 export type ReturnFfiGetStickerUploadFormsOut =
@@ -1605,6 +1639,13 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgePreKeyCounts>;
+  AuthenticatedChatConnection_get_profile: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    aci: Bytes,
+    profile_key: Bytes,
+    etag: Bytes | null
+  ) => CancellablePromise<ReturnFfiFetchedProfile | null>;
   AuthenticatedChatConnection_get_sticker_upload_forms: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -3627,6 +3668,9 @@ type NativeFunctions = {
       ReturnFfiGetProfileKeyCredentialOut
     >
   >;
+  TESTING_GetProfileTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiGetProfileArgs, ReturnFfiGetProfileOut>
+  >;
   TESTING_GetStickerUploadFormTests: () => Array<
     GrpcTestCaseFfi<number, ReturnFfiGetStickerUploadFormsOut>
   >;
@@ -4384,6 +4428,7 @@ const {
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_entitlements,
   AuthenticatedChatConnection_get_pre_key_count,
+  AuthenticatedChatConnection_get_profile,
   AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
@@ -4985,6 +5030,7 @@ const {
   TESTING_GetPreKeyCountTests,
   TESTING_GetPreKeysTests,
   TESTING_GetProfileKeyCredentialTests,
+  TESTING_GetProfileTests,
   TESTING_GetStickerUploadFormTests,
   TESTING_GetSubscriptionReceiptCredentialTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
@@ -5260,6 +5306,7 @@ export {
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_entitlements,
   AuthenticatedChatConnection_get_pre_key_count,
+  AuthenticatedChatConnection_get_profile,
   AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
@@ -5861,6 +5908,7 @@ export {
   TESTING_GetPreKeyCountTests,
   TESTING_GetPreKeysTests,
   TESTING_GetProfileKeyCredentialTests,
+  TESTING_GetProfileTests,
   TESTING_GetStickerUploadFormTests,
   TESTING_GetSubscriptionReceiptCredentialTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,

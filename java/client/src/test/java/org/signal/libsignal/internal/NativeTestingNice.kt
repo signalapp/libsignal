@@ -32,6 +32,14 @@ public data class AnswerChallengeArgs(
   public val answer: org.signal.libsignal.internal.BridgeChallengeAnswer,
 )
 
+public sealed class AuthGetProfileError {
+  public data object ProfileNotFound : AuthGetProfileError()
+
+  public data class ProfileDecodeError(
+    public val logSafe: String,
+  ) : AuthGetProfileError()
+}
+
 public data class CheckSvrCredentialsArgs(
   public val number: String,
   public val passwords: List<String>,
@@ -278,6 +286,12 @@ public sealed class GetPreKeysOut {
   public data object Unexpected : GetPreKeysOut()
 }
 
+public data class GetProfileArgs(
+  public val aci: org.signal.libsignal.protocol.ServiceId.Aci,
+  public val profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+  public val etag: ByteArray?,
+)
+
 public data class GetProfileKeyCredentialArgs(
   public val profileKeyRequestContext: org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialRequestContext,
   public val serverParams: org.signal.libsignal.internal.ServerPublicParamsSerialized,
@@ -295,6 +309,16 @@ public sealed class GetProfileKeyCredentialOut {
   public data class ExplicitError(
     public val _0: org.signal.libsignal.internal.ProfileKeyCredentialRequestError,
   ) : GetProfileKeyCredentialOut()
+}
+
+public sealed class GetProfileOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.net.FetchedProfile?,
+  ) : GetProfileOut()
+
+  public data class Failure(
+    public val _0: org.signal.libsignal.internal.AuthGetProfileError,
+  ) : GetProfileOut()
 }
 
 public sealed class GetStickerUploadFormsOut {
@@ -691,6 +715,24 @@ public object AnswerChallengeArgs_ReturnConverter {
         identity(token as String),
       answer =
         downcastFromObject<org.signal.libsignal.internal.BridgeChallengeAnswer>(answer as Object),
+    )
+}
+
+public object AuthGetProfileError_ProfileNotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = AuthGetProfileError.ProfileNotFound
+}
+
+public object AuthGetProfileError_ProfileDecodeError_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(log_safe: Any?): Any? =
+    AuthGetProfileError.ProfileDecodeError(
+      logSafe =
+        identity(log_safe as String),
     )
 }
 
@@ -1566,6 +1608,31 @@ public object GetPreKeysOut_Unexpected_ReturnConverter {
   internal fun fromNative(): Any? = GetPreKeysOut.Unexpected
 }
 
+public object GetProfileArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    aci: Any?,
+    profile_key: Any?,
+    etag: Any?,
+  ): Any? =
+    GetProfileArgs(
+      aci =
+        org.signal.libsignal.protocol.ServiceId.Aci
+          .parseFromFixedWidthBinary(aci as ByteArray),
+      profileKey =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.profiles
+              .ProfileKey(x)
+          }
+        )(profile_key as ByteArray),
+      etag =
+        ({ x: ByteArray? -> x?.let { identity(it) } })(etag as ByteArray?),
+    )
+}
+
 public object GetProfileKeyCredentialArgs_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1617,6 +1684,32 @@ public object GetProfileKeyCredentialOut_ExplicitError_ReturnConverter {
     GetProfileKeyCredentialOut.ExplicitError(
       _0 =
         downcastFromObject<org.signal.libsignal.internal.ProfileKeyCredentialRequestError>(_0 as Object),
+    )
+}
+
+public object GetProfileOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetProfileOut.Success(
+      _0 =
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.FetchedProfile>(it) }
+          }
+        )(_0 as Object?),
+    )
+}
+
+public object GetProfileOut_Failure_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetProfileOut.Failure(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.AuthGetProfileError>(_0 as Object),
     )
 }
 
@@ -2024,44 +2117,6 @@ public object MyTestStruct_ReturnConverter {
         identity(my_numeric_field as Int),
       myStringField =
         identity(my_string_field as String),
-    )
-}
-
-public object Profile_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(
-    given_name: Any?,
-    family_name: Any?,
-    about: Any?,
-    about_emoji: Any?,
-    avatar: Any?,
-    phone_number_sharing: Any?,
-    payment_address: Any?,
-    badge_ids: Any?,
-  ): Any? =
-    org.signal.libsignal.net.Profile(
-      givenName =
-        identity(given_name as String),
-      familyName =
-        identity(family_name as String),
-      about =
-        identity(about as String),
-      aboutEmoji =
-        identity(about_emoji as String),
-      avatar =
-        (
-          { x: String? ->
-            x?.let { (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(it) }
-          }
-        )(avatar as String?),
-      phoneNumberSharing =
-        identity(phone_number_sharing as Boolean),
-      paymentAddress =
-        ({ x: ByteArray? -> x?.let { identity(it) } })(payment_address as ByteArray?),
-      badgeIds =
-        mapBridgeVecReturn<String, String>({ identity(it) })(badge_ids as Array<*>),
     )
 }
 
@@ -3398,6 +3453,16 @@ public object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.GetProfileKeyCredentialArgs, org.signal.libsignal.internal.GetProfileKeyCredentialOut>({
         downcastFromObject<org.signal.libsignal.internal.GetProfileKeyCredentialArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetProfileKeyCredentialOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetProfileTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetProfileArgs, org.signal.libsignal.internal.GetProfileOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetProfileTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.GetProfileArgs, org.signal.libsignal.internal.GetProfileOut>({
+        downcastFromObject<org.signal.libsignal.internal.GetProfileArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetProfileOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GetStickerUploadFormTests(): List<org.signal.libsignal.net.GrpcTestCase<Int, org.signal.libsignal.internal.GetStickerUploadFormsOut>> {

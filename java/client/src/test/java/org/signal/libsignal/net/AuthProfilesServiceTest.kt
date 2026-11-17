@@ -10,7 +10,9 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import org.signal.libsignal.internal.AuthGetProfileError
 import org.signal.libsignal.internal.CompletableFuture
+import org.signal.libsignal.internal.GetProfileOut
 import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.SetProfileArgs
@@ -163,6 +165,37 @@ class AuthProfilesServiceTest {
   fun testProfileFieldMaxLength() {
     for ((field, maxLength) in NativeTestingNice.TESTING_ProfileFieldMaxLengths()) {
       assertEquals(field.maxLength, maxLength)
+    }
+  }
+
+  @Test
+  fun testGetProfile() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetProfileTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthProfilesService,
+        invoke = { chat, req ->
+          chat.getProfile(
+            aci = req.aci,
+            profileKey = req.profileKey,
+            etag = req.etag,
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is GetProfileOut.Failure ->
+              when (expected._0) {
+                is AuthGetProfileError.ProfileDecodeError ->
+                  actual.assertNonSuccess<_, _, ProfileCantBeDecodedException>()
+                AuthGetProfileError.ProfileNotFound ->
+                  actual.assertNonSuccess<_, _, ProfileNotFoundException>()
+              }
+            is GetProfileOut.Success ->
+              assertEquals(expected._0, actual.assertSuccess())
+          }
+        },
+      )
     }
   }
 }

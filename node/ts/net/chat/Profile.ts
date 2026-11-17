@@ -5,10 +5,12 @@
 
 import type { CdnUrl } from './CdnUrl.js';
 import type { Bytes } from '@signalapp/types';
+import type * as EcKeys from '../../EcKeys.js';
 
 export type BadgeId = string;
 export type PaymentAddress = Bytes;
 export type ProfileDataHash = Bytes;
+export type ProfileEtag = Bytes;
 
 export type Profile = {
   /**
@@ -33,6 +35,33 @@ export type Profile = {
   phoneNumberSharing: boolean;
   paymentAddress: PaymentAddress | null;
   badgeIds: Array<BadgeId>;
+};
+
+/**
+ *  The result of fetching a profile.
+ *
+ *  This contains the profile, itself, along with other associated information
+ *  about the target account.
+ */
+export type FetchedProfile = {
+  profile: Profile;
+  /**
+   * What's the etag of this profile?
+   *
+   * It may be null if the profile isn't cacheable (i.e. if it's not a v2
+   * profile).
+   */
+  etag: ProfileEtag | null;
+  /**
+   * If the account has a v2 profile set, what's its data hash?
+   */
+  v2DataHash: ProfileDataHash | null;
+  identityKey: EcKeys.PublicKey;
+  /**
+   * This should only be null if unrestrictedUnidentifiedAccess is true
+   */
+  unidentifiedAccessKeyFingerprint: Bytes | null;
+  unrestrictedUnidentifiedAccess: boolean;
 };
 
 export type ProfileFieldWithMaxLength =

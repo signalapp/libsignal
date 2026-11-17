@@ -33,7 +33,7 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
-use libsignal_net_chat::grpc::profiles::SetProfileError;
+use libsignal_net_chat::grpc::profiles::{AuthGetProfileError, SetProfileError};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
@@ -2252,6 +2252,19 @@ impl JniError for SetProfileError {
                 message,
                 ClassName("org.signal.libsignal.net.SetProfileException$PaymentsForbiddenInRegion"),
             ),
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for AuthGetProfileError {
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            AuthGetProfileError::ProfileNotFound => {
+                ClassName("org.signal.libsignal.net.ProfileNotFoundException")
+            }
+            AuthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                ClassName("org.signal.libsignal.net.ProfileCantBeDecodedException")
+            }
         }
     }
 }

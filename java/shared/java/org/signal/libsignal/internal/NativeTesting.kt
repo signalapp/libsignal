@@ -450,6 +450,9 @@ public object NativeTesting {
   public external fun TESTING_GetProfileKeyCredentialTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetProfileTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetStickerUploadFormTests(): Array<Object>
 
   @JvmStatic

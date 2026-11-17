@@ -12,7 +12,9 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
 use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
-use libsignal_net_chat::grpc::profiles::{ProfileValidationError, SetProfileError};
+use libsignal_net_chat::grpc::profiles::{
+    AuthGetProfileError, ProfileValidationError, SetProfileError,
+};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use neon::thread::LocalKey;
@@ -1366,5 +1368,20 @@ impl SignalNodeError for SetProfileError {
                 no_extra_properties,
             ),
         }
+    }
+}
+
+impl SignalNodeError for AuthGetProfileError {
+    fn into_throwable<'cx>(self, cx: &mut Cx<'cx>, operation_name: &str) -> Handle<'cx, JsError> {
+        new_js_error(
+            cx,
+            Some(match self {
+                AuthGetProfileError::ProfileNotFound => "ProfileNotFound",
+                AuthGetProfileError::ProfileDecodeError { log_safe: _ } => "ProfileCantBeDecoded",
+            }),
+            &self.to_string(),
+            operation_name,
+            no_extra_properties,
+        )
     }
 }

@@ -970,3 +970,17 @@ where Inner.NiceReturn == Data {
         try ProfileKeyVersion(contents: try Inner.convertReturn(consuming: value))
     }
 }
+
+internal enum IdentityKeyResultConverter<Inner: NiceReturnConverter>: NiceReturnConverter
+where Inner.NiceReturn == PublicKey {
+    typealias NiceReturn = IdentityKey
+    typealias FfiReturn = Inner.FfiReturn
+
+    static func emptyFfiReturn() -> Inner.FfiReturn {
+        Inner.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: Inner.FfiReturn) throws -> IdentityKey {
+        IdentityKey(publicKey: try Inner.convertReturn(consuming: value))
+    }
+}

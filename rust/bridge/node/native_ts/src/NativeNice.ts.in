@@ -22,6 +22,7 @@ import type {
 } from './Native.js';
 
 import { Aci, Pni, ServiceId, ServiceIdKind } from './Address.js';
+import * as EcKeys from './EcKeys.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';

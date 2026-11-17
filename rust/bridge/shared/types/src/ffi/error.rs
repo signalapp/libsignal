@@ -23,7 +23,7 @@ use libsignal_net_chat::api::purchase::ChargeFailure;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
 use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
-use libsignal_net_chat::grpc::profiles::SetProfileError;
+use libsignal_net_chat::grpc::profiles::{AuthGetProfileError, SetProfileError};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
@@ -179,6 +179,8 @@ pub enum SignalErrorCode {
     SetProfileExpectedDataWriteConflict = 244,
     SetProfileExpectedVersionWriteConflict = 245,
     SetProfilePaymentsForbiddenInRegion = 246,
+
+    ProfileCantBeDecoded = 247,
 }
 
 pub trait UpcastAsAny {
@@ -1568,6 +1570,20 @@ impl IntoFfiError for libsignal_net_chat::grpc::profiles::AccountMissingZkCreden
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         SimpleError::new(
             SignalErrorCode::AccountMissingZkCredentialKey,
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for AuthGetProfileError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            match self {
+                AuthGetProfileError::ProfileNotFound => SignalErrorCode::ProfileNotFound,
+                AuthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                    SignalErrorCode::ProfileCantBeDecoded
+                }
+            },
             self.to_string(),
         )
     }

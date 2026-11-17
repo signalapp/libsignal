@@ -13,4 +13,5 @@ v0.108.1
   - Added `getAvatarUploadFormLegacy()` (bridged to clients)
   - Added `getAvatarCredential()` (bridged to clients)
   - Bridged `setProfile()` to clients
+  - Bridged `getProfile()` (auth) to clients
 

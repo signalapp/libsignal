@@ -103,6 +103,7 @@ public enum SignalError: Error {
     case setProfileExpectedDataWriteConflict(String)
     case setProfileExpectedVersionWriteConflict(currentProfileVersion: ProfileKeyVersion?, message: String)
     case setProfilePaymentsForbiddenInRegion(String)
+    case profileCantBeDecoded(String)
 
     case unknown(UInt32, String)
 
@@ -441,6 +442,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.setProfileExpectedVersionWriteConflict(currentProfileVersion: v, message: errStr)
     case SignalErrorCodeSetProfilePaymentsForbiddenInRegion:
         throw SignalError.setProfilePaymentsForbiddenInRegion(errStr)
+    case SignalErrorCodeProfileCantBeDecoded:
+        throw SignalError.profileCantBeDecoded(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

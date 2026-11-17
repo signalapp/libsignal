@@ -12,12 +12,19 @@ import type {
   SetProfilePaymentsForbiddenInRegion,
   SetProfileExpectedVersionWriteConflict,
   SetProfileInvalidProfile,
+  ProfileCantBeDecoded,
+  ProfileNotFound,
 } from '../../Errors.js';
 import { Aci } from '../../Address.js';
 import type { S3UploadForm } from '../Chat.js';
 import * as zkgroup from '../../zkgroup/index.js';
 import type { Rng } from '../../RngForTesting.js';
-import type { Profile, ProfileDataHash } from './Profile.js';
+import type {
+  Profile,
+  ProfileDataHash,
+  ProfileEtag,
+  FetchedProfile,
+} from './Profile.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -117,6 +124,26 @@ export interface AuthProfilesService {
     },
     options?: RequestOptions
   ) => Promise<ProfileDataHash>;
+  /**
+   * Retrieves profile data.
+   *
+   * Callers with an unidentified access key for the account should use the
+   * unauth version instead.
+   *
+   * @returns null if the provided etag is up-to-date.
+   * @throws {ProfileNotFound} if the profile (version) could not be found
+   * @throws {ProfileCantBeDecoded} if the profile failed to decode (e.g. due to
+   * encryption or validation errors)
+   * @throws {StandardNetworkError}
+   */
+  getProfile: (
+    request: {
+      aci: Aci;
+      profileKey: zkgroup.ProfileKey;
+      etag: ProfileEtag | null;
+    },
+    options?: RequestOptions
+  ) => Promise<FetchedProfile | null>;
 }
 
 AuthenticatedChatConnection.prototype.getAvatarUploadFormLegacy =
@@ -195,5 +222,27 @@ AuthenticatedChatConnection.prototype.setProfile = async function (
     profile,
     expectedCurrentDataHash,
     expectedCurrentProfileKeyVersion,
+  });
+};
+
+AuthenticatedChatConnection.prototype.getProfile = async function (
+  {
+    aci,
+    profileKey,
+    etag,
+  }: {
+    aci: Aci;
+    profileKey: zkgroup.ProfileKey;
+    etag: ProfileEtag | null;
+  },
+  options?: RequestOptions
+): Promise<FetchedProfile | null> {
+  return await NativeNice.AuthenticatedChatConnection_get_profile({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    aci,
+    profileKey,
+    etag,
   });
 };

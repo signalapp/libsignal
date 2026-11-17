@@ -440,6 +440,15 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_profile(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    aci: ByteArray,
+    profileKey: ByteArray,
+    etag: ByteArray?,
+  ): CompletableFuture<Object?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_sticker_upload_forms(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

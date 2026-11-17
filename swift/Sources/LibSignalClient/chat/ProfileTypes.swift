@@ -8,6 +8,7 @@ import Foundation
 public typealias ProfileDataHash = Data
 public typealias PaymentAddress = Data
 public typealias BadgeId = String
+public typealias ProfileEtag = Data
 
 /// A URL that points to a Signal CDN
 public struct CdnUrl: Sendable, Equatable {
@@ -26,6 +27,40 @@ public struct CdnUrl: Sendable, Equatable {
         }
         self.url = url
     }
+}
+
+/// The result of fetching a profile.
+///
+/// This contains the profile, itself, along with other associated information
+/// about the target account.
+public struct FetchedProfile: Sendable, Equatable {
+    public init(
+        profile: Profile,
+        etag: ProfileEtag? = nil,
+        v2DataHash: Data? = nil,
+        identityKey: IdentityKey,
+        unidentifiedAccessKeyFingerprint: Data? = nil,
+        unrestrictedUnidentifiedAccess: Bool
+    ) {
+        self.profile = profile
+        self.etag = etag
+        self.v2DataHash = v2DataHash
+        self.identityKey = identityKey
+        self.unidentifiedAccessKeyFingerprint = unidentifiedAccessKeyFingerprint
+        self.unrestrictedUnidentifiedAccess = unrestrictedUnidentifiedAccess
+    }
+
+    public var profile: Profile
+    /// What's the etag of this profile?
+    ///
+    /// It may be `nil`if the profile isn't cacheable (i.e. if it's not a v2 profile)
+    public var etag: ProfileEtag?
+    /// If the account has a v2 profile set, what's its data hash?
+    public var v2DataHash: ProfileDataHash?
+    public var identityKey: IdentityKey
+    /// This should only be `nil` if `unidentifiedAccessKeyFingerprint` is true
+    public var unidentifiedAccessKeyFingerprint: Data?
+    public var unrestrictedUnidentifiedAccess: Bool
 }
 
 public struct Profile: Sendable, Equatable {

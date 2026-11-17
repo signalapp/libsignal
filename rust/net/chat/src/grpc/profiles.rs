@@ -229,6 +229,7 @@ pub struct FetchedProfile {
     /// If the account has a v2 profile set, what's its data hash?
     pub v2_data_hash: Option<ProfileDataHash>,
     pub identity_key: IdentityKey,
+    /// This should only be `None` if `unrestricted_unidentified_access` is `true`
     pub unidentified_access_key_fingerprint: Option<[u8; 32]>,
     pub unrestricted_unidentified_access: bool,
 }

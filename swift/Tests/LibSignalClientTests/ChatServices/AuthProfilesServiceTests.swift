@@ -153,6 +153,40 @@ class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatCon
             XCTAssertEqual(field.maxLength, Int(maxLength))
         }
     }
+
+    func testGetProfile() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetProfileTests(),
+            invoke: { api, args in
+                try await api.getProfile(
+                    aci: args.aci,
+                    profileKey: args.profileKey,
+                    etag: args.etag,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .failure(let err):
+                    switch err {
+                    case .profileDecodeError(_):
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.profileCantBeDecoded(_) {
+                        }
+                    case .profileNotFound:
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.profileNotFound(_) {
+                        }
+                    }
+                case .success(let fetchedProfile):
+                    XCTAssertEqual(fetchedProfile, try actual.get())
+                }
+            }
+        )
+    }
 }
 
 #endif

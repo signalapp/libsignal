@@ -2198,6 +2198,27 @@ impl ResultTypeInfo for PreKeysResponse {
     }
 }
 
+impl ResultTypeInfo for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.into_public_key().convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "IdentityKey".into(),
+            converter_type: format!(
+                "IdentityKeyResultConverter<{}>",
+                <PublicKey as NiceResultConverter>::register_swift_result_converter(ctx)
+                    .converter_type
+            ),
+        }
+    }
+}
+
 impl ResultTypeInfo for UploadForm {
     type ResultType = FfiUploadForm;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -2579,6 +2600,7 @@ return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
 return_optional!(crate::net::chat::remote_derives::TaggedBadges);
 return_optional!(crate::net::chat::remote_derives::BackupEntitlement);
+return_optional!(crate::net::chat::remote_derives::FetchedProfile);
 
 #[cfg(test)]
 mod test {

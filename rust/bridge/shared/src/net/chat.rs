@@ -63,7 +63,7 @@ use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceipt
 use libsignal_net_chat::grpc::keys::{
     DeviceSpecifier, GetPreKeysFailure, PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey,
 };
-use libsignal_net_chat::grpc::profiles::{CdnUrl, ProfileDataHash};
+use libsignal_net_chat::grpc::profiles::{CdnUrl, ProfileDataHash, ProfileEtag};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -1743,4 +1743,22 @@ async fn AuthenticatedChatConnection_set_profile(
             expected_current_profile_key_version.as_ref(),
         )
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_profile(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    aci: Aci,
+    profile_key: ProfileKey,
+    etag: Option<ProfileEtag>,
+) -> Result<
+    Option<remote_derives::FetchedProfile>,
+    RequestError<libsignal_net_chat::grpc::profiles::AuthGetProfileError>,
+> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_profile(aci, &profile_key, etag)
+        .await?
+        .map(Into::into))
 }

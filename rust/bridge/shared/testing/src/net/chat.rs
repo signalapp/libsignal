@@ -527,13 +527,48 @@ mod remote_derives {
     use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
     use libsignal_net_chat::grpc::profiles::{
-        CdnUrl, ProfileDataHash, test_cases as profile_test_cases,
+        CdnUrl, ProfileDataHash, ProfileEtag, test_cases as profile_test_cases,
     };
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
     use libsignal_protocol::{ServiceId, Timestamp};
     use uuid::Uuid;
 
     use super::*;
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs)]
+    pub struct GetProfileArgs {
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+        pub etag: Option<ProfileEtag>,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    #[allow(clippy::large_enum_variant)] // This is just for testing
+    pub enum GetProfileOut {
+        Success(Option<libsignal_bridge_types::net::chat::remote_derives::FetchedProfile>),
+        Failure(AuthGetProfileError),
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::GetProfileOut> for GetProfileOut {
+        fn from(value: libsignal_net_chat::grpc::profiles::test_cases::GetProfileOut) -> Self {
+            match value {
+                profile_test_cases::GetProfileOut::Success(fetched_profile) => {
+                    Self::Success(fetched_profile.map(Into::into))
+                }
+                profile_test_cases::GetProfileOut::Failure(auth_get_profile_error) => {
+                    Self::Failure(auth_get_profile_error.into())
+                }
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::AuthGetProfileError)]
+    pub enum AuthGetProfileError {
+        ProfileNotFound,
+        ProfileDecodeError { log_safe: String },
+    }
 
     #[derive(BridgedAsValue)]
     pub struct GetAvatarCredentialArgs {
@@ -1886,4 +1921,9 @@ fn TESTING_ProfileFieldMaxLengths() -> BridgeVec<(ProfileFieldWithMaxLength, i32
             })
             .collect(),
     )
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetProfileTests()
+-> GrpcTestCases<remote_derives::GetProfileArgs, remote_derives::GetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_profile_test_cases().into()
 }

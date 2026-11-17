@@ -125,6 +125,7 @@ export enum ErrorCode {
   WebAuthnRegistrationUnsuccessful,
 
   ProfileNotFound,
+  ProfileCantBeDecoded,
 
   ReceiptAlreadyRedeemed,
 
@@ -665,6 +666,9 @@ export type ProfileNotFound = LibSignalErrorCommon & {
   code: ErrorCode.ProfileNotFound;
 };
 
+export type ProfileCantBeDecoded = LibSignalErrorCommon & {
+  code: ErrorCode.ProfileCantBeDecoded;
+};
 /**
  * A receipt was already redeemed for a badge.
  *
@@ -796,6 +800,7 @@ export type LibSignalError =
   | MfaKeyNotFound
   | WebAuthnRegistrationUnsuccessful
   | ProfileNotFound
+  | ProfileCantBeDecoded
   | ReceiptAlreadyRedeemed
   | InvalidProvisioningMessageError
   | InvalidAvatarUploadCredentialPresentation

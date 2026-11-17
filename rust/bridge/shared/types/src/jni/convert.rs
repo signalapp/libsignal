@@ -1265,6 +1265,28 @@ impl<T: NiceArgConverter> NiceArgConverter for BridgeVec<T> {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo<'a>>::ResultType;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        self.into_public_key().convert_into(env)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let public_key = <PublicKey as NiceResultConverter>::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: "org.signal.libsignal.protocol.IdentityKey".into(),
+            ffi_type: public_key.ffi_type.clone(),
+            converter_function: format!(
+                "({{ handle: {} -> org.signal.libsignal.protocol.IdentityKey({}(handle)) }})",
+                public_key.ffi_type, public_key.converter_function
+            ),
+        }
+    }
+}
+
 impl<
     'storage,
     'param: 'storage,
@@ -3899,6 +3921,7 @@ impl_result_type_info_for_option!(CdnUrl);
 impl_result_type_info_for_option!(AvatarUploadCredential);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
 impl_result_type_info_for_option!(ProfileKeyVersion);
+impl_result_type_info_for_option!(crate::net::chat::remote_derives::FetchedProfile);
 
 macro_rules! simple_arg_type_option {
     ($ty:ty) => {

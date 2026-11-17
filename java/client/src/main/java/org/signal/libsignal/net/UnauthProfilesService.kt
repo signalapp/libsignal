@@ -28,7 +28,8 @@ public sealed interface GetProfileKeyCredentialFailure : BadRequestError
  */
 public class ProfileNotFoundException :
   IOException,
-  GetProfileKeyCredentialFailure {
+  GetProfileKeyCredentialFailure,
+  AuthGetProfileError {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }

@@ -31,6 +31,7 @@ import type {
   ReturnFfiAccountEntitlements,
   ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
+  ReturnFfiAuthGetProfileError,
   ReturnFfiBackupEntitlement,
   ReturnFfiBadge,
   ReturnFfiBadgeEntitlement,
@@ -72,6 +73,7 @@ import type {
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiDeviceCapabilityInternal,
   ReturnFfiExtendAvatarTtlOut,
+  ReturnFfiFetchedProfile,
   ReturnFfiFinishMfaVerificationOut,
   ReturnFfiFinishWebAuthnRegistrationArgs,
   ReturnFfiFinishWebAuthnRegistrationOut,
@@ -89,8 +91,10 @@ import type {
   ReturnFfiGetMessageBackupInfoOut,
   ReturnFfiGetPreKeysArgs,
   ReturnFfiGetPreKeysOut,
+  ReturnFfiGetProfileArgs,
   ReturnFfiGetProfileKeyCredentialArgs,
   ReturnFfiGetProfileKeyCredentialOut,
+  ReturnFfiGetProfileOut,
   ReturnFfiGetStickerUploadFormsOut,
   ReturnFfiGetStickerUploadFormsResponse,
   ReturnFfiGetSubscriptionReceiptCredentialArgs,
@@ -156,6 +160,7 @@ import type {
 } from './Native.js';
 
 import { Aci, Pni, ServiceId, ServiceIdKind } from './Address.js';
+import * as EcKeys from './EcKeys.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -189,6 +194,12 @@ export type AnswerChallengeArgs = {
 };
 
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
+
+export type AuthGetProfileError =
+  | 'profileNotFound'
+  | {
+      profileDecodeError: string;
+    };
 
 export type BackupEntitlement = {
   level: bigint;
@@ -470,6 +481,15 @@ export type ExtendAvatarTtlOut =
   | 'notFound'
   | 'invalidCredentials';
 
+export type FetchedProfile = {
+  profile: Profile;
+  etag: Bytes | null;
+  v2DataHash: Bytes | null;
+  identityKey: EcKeys.PublicKey;
+  unidentifiedAccessKeyFingerprint: Bytes | null;
+  unrestrictedUnidentifiedAccess: boolean;
+};
+
 export type FinishMfaVerificationOut = 'success' | 'failedToVerify';
 
 export type FinishWebAuthnRegistrationArgs = {
@@ -578,6 +598,12 @@ export type GetPreKeysOut =
   | 'unauthorized'
   | 'unexpected';
 
+export type GetProfileArgs = {
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  etag: Bytes | null;
+};
+
 export type GetProfileKeyCredentialArgs = {
   profileKeyRequestContext: zkgroup.ProfileKeyCredentialRequestContext;
   serverParams: ServerPublicParamsSerialized;
@@ -592,6 +618,14 @@ export type GetProfileKeyCredentialOut =
     }
   | {
       explicitError: ProfileKeyCredentialRequestError;
+    };
+
+export type GetProfileOut =
+  | {
+      success: FetchedProfile | null;
+    }
+  | {
+      failure: AuthGetProfileError;
     };
 
 export type GetStickerUploadFormsOut =
@@ -1000,6 +1034,22 @@ export function returnConverterAuthCheckResult(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for AuthCheckResult');
+  }
+}
+
+export function returnConverterAuthGetProfileError(
+  ffiInput: Native.ReturnFfiAuthGetProfileError
+): AuthGetProfileError {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'profileNotFound';
+    case 1:
+      return {
+        profileDecodeError: identity(ffiInput.log_safe),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for AuthGetProfileError');
   }
 }
 
@@ -1625,6 +1675,23 @@ export function returnConverterExtendAvatarTtlOut(
   }
 }
 
+export function returnConverterFetchedProfile(
+  ffiInput: Native.ReturnFfiFetchedProfile
+): FetchedProfile {
+  return {
+    profile: returnConverterProfile(ffiInput.profile),
+    etag: liftNull(identity)(ffiInput.etag),
+    v2DataHash: liftNull(identity)(ffiInput.v2_data_hash),
+    identityKey: EcKeys.PublicKey._fromNativeHandle(ffiInput.identity_key),
+    unidentifiedAccessKeyFingerprint: liftNull(identity)(
+      ffiInput.unidentified_access_key_fingerprint
+    ),
+    unrestrictedUnidentifiedAccess: identity(
+      ffiInput.unrestricted_unidentified_access
+    ),
+  };
+}
+
 export function returnConverterFinishMfaVerificationOut(
   ffiInput: Native.ReturnFfiFinishMfaVerificationOut
 ): FinishMfaVerificationOut {
@@ -1906,6 +1973,18 @@ export function returnConverterGetPreKeysOut(
   }
 }
 
+export function returnConverterGetProfileArgs(
+  ffiInput: Native.ReturnFfiGetProfileArgs
+): GetProfileArgs {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
+    etag: liftNull(identity)(ffiInput.etag),
+  };
+}
+
 export function returnConverterGetProfileKeyCredentialArgs(
   ffiInput: Native.ReturnFfiGetProfileKeyCredentialArgs
 ): GetProfileKeyCredentialArgs {
@@ -1945,6 +2024,24 @@ export function returnConverterGetProfileKeyCredentialOut(
       throw new Error(
         'Unknown FFI return enum type for GetProfileKeyCredentialOut'
       );
+  }
+}
+
+export function returnConverterGetProfileOut(
+  ffiInput: Native.ReturnFfiGetProfileOut
+): GetProfileOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: liftNull(returnConverterFetchedProfile)(ffiInput._0),
+      };
+    case 1:
+      return {
+        failure: returnConverterAuthGetProfileError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetProfileOut');
   }
 }
 
@@ -3714,6 +3811,34 @@ export async function AuthenticatedChatConnection_get_pre_key_count({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_profile({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  profileKey: profile_key,
+  etag: etag,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  etag: Bytes | null;
+}): Promise<FetchedProfile | null> {
+  return liftNull(returnConverterFetchedProfile)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_profile(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key),
+        liftNull(identity)(etag)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_sticker_upload_forms({
   asyncContext,
   abortSignal,
@@ -4757,6 +4882,15 @@ export function TESTING_GetProfileKeyCredentialTests(): Array<
     returnConverterGetProfileKeyCredentialArgs,
     returnConverterGetProfileKeyCredentialOut
   )(Native.TESTING_GetProfileKeyCredentialTests());
+}
+
+export function TESTING_GetProfileTests(): Array<
+  GrpcTestCase<GetProfileArgs, GetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetProfileArgs,
+    returnConverterGetProfileOut
+  )(Native.TESTING_GetProfileTests());
 }
 
 export function TESTING_GetStickerUploadFormTests(): Array<

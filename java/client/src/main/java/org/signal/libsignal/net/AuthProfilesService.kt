@@ -111,6 +111,8 @@ public sealed interface SetProfileException : BadRequestError {
   }
 }
 
+public sealed interface AuthGetProfileError : BadRequestError
+
 public class AuthProfilesService(
   private val connection: AuthenticatedChatConnection,
 ) {
@@ -237,4 +239,38 @@ public class AuthProfilesService(
       onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult<SetProfileException>() },
     )
+
+  /**
+   * Retrieves profile data.
+   *
+   * Callers with an unidentified access key for the account should use the
+   * unauth version instead.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. This method can also result in a [ProfileNotFoundException]
+   * if the profile (version) cannot be found. A [ProfileCantBeDecodedException] will result if the
+   * profile failed to decode (e.g. due to encryption or validation errors)
+   *
+   * @return null if the provided etag is up-to-date.
+   */
+  public fun getProfile(
+    aci: ServiceId.Aci,
+    profileKey: ProfileKey,
+    etag: ProfileEtag?,
+  ): CompletableFuture<RequestResult<FetchedProfile?, AuthGetProfileError>> =
+    try {
+      NativeNice
+        .AuthenticatedChatConnection_get_profile(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          aci = aci,
+          profileKey = profileKey,
+          etag = etag,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult<AuthGetProfileError>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }

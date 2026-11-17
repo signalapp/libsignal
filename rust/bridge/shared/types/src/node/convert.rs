@@ -816,6 +816,29 @@ impl NiceArgConverter for DeviceId {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo<'a>>::ResultType;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        self.into_public_key().convert_into(cx)
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <PublicKey as ResultTypeInfo<'a>>::register_ts_ffi_type(ctx)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "EcKeys.PublicKey".into(),
+            ffi_type: "PublicKey".into(),
+            converter_function: "EcKeys.PublicKey._fromNativeHandle".into(),
+        }
+    }
+}
+
 impl<T> SimpleArgTypeInfo for StrictPreKeyId<T>
 where
     T: From<u32> + 'static,
