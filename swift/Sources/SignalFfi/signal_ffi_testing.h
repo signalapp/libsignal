@@ -535,6 +535,20 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerUnauthenticate
 typedef SignalMutPointerRegisterAccountResponse* SignalType_MutPointer_SignalMutPointerRegisterAccountResponse;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerRegisterAccountResponse) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerRegisterAccountResponse) == 8);
+typedef const int8_t* MaybeUninitOfCStringPtr;
+static_assert_64bit(sizeof(MaybeUninitOfCStringPtr) == 8);
+static_assert_64bit(alignof(MaybeUninitOfCStringPtr) == 8);
+typedef struct {
+  bool present;
+  MaybeUninitOfCStringPtr value;
+} SignalOptionalOfCStringPtr;
+static_assert_64bit(offsetof(SignalOptionalOfCStringPtr, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfCStringPtr, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfCStringPtr) == 16);
+static_assert_64bit(alignof(SignalOptionalOfCStringPtr) == 8);
+typedef SignalOptionalOfCStringPtr* SignalType_MutPointer_SignalOptionalOfCStringPtr;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfCStringPtr) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfCStringPtr) == 8);
 typedef SignalType_FixedArray32_uint8_t MaybeUninitOfc_uchar32;
 static_assert_64bit(sizeof(MaybeUninitOfc_uchar32) == 32);
 static_assert_64bit(alignof(MaybeUninitOfc_uchar32) == 1);
@@ -2072,6 +2086,14 @@ SignalFfiError* signal_testing_conversion_bridge_vec_string_to_string(
   SignalCStringPtr* out,
   SignalBorrowedSliceOfCStringPtr x
 );
+SignalFfiError* signal_testing_conversion_cdn_url_identity(
+  SignalCStringPtr* out,
+  const int8_t* x
+);
+SignalFfiError* signal_testing_conversion_cdn_url_to_string(
+  SignalCStringPtr* out,
+  const int8_t* x
+);
 SignalFfiError* signal_testing_conversion_data32_identity(
   SignalType_FixedArray32_uint8_t* out,
   const SignalType_FixedArray32_uint8_t* x
@@ -2135,6 +2157,14 @@ SignalFfiError* signal_testing_conversion_map_string_string_identity(
 SignalFfiError* signal_testing_conversion_map_string_string_to_string(
   SignalCStringPtr* out,
   SignalBorrowedSliceOfPairOfCStringPtrCStringPtr x
+);
+SignalFfiError* signal_testing_conversion_option_cdn_url_identity(
+  SignalOptionalOfCStringPtr* out,
+  SignalOptionalOfCStringPtr x
+);
+SignalFfiError* signal_testing_conversion_option_cdn_url_to_string(
+  SignalCStringPtr* out,
+  SignalOptionalOfCStringPtr x
 );
 SignalFfiError* signal_testing_conversion_optional_bytes_identity(
   SignalOptionalOfOwnedBuffer* out,

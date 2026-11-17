@@ -987,6 +987,9 @@ internal object Native {
   public external fun CallLinkSecretParams_GetPublicParams(paramsBytes: ByteArray): ByteArray
 
   @JvmStatic
+  public external fun CdnUrl_validate(url: String): Boolean
+
+  @JvmStatic
   @Throws(Exception::class)
   public external fun Cds2ClientState_New(
     mrenclave: ByteArray,

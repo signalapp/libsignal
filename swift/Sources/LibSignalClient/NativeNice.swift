@@ -2065,7 +2065,7 @@ extension SignalOptionalOfc_uchar17: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfc_uchar17,
+        generic_value: SignalType_FixedArray17_uint8_t,
     ) {
         self.init(
             present: generic_present,
@@ -2079,7 +2079,7 @@ extension SignalOptionalOfc_uchar17: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfc_uchar17 {
+    var generic_value: SignalType_FixedArray17_uint8_t {
         get { self.value }
         set { value = newValue }
     }
@@ -2092,7 +2092,7 @@ extension SignalOptionalOff32: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOff32,
+        generic_value: Float,
     ) {
         self.init(
             present: generic_present,
@@ -2106,7 +2106,7 @@ extension SignalOptionalOff32: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOff32 {
+    var generic_value: Float {
         get { self.value }
         set { value = newValue }
     }
@@ -2119,7 +2119,7 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfBorrowedBuffer,
+        generic_value: SignalBorrowedBuffer,
     ) {
         self.init(
             present: generic_present,
@@ -2133,7 +2133,7 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfBorrowedBuffer {
+    var generic_value: SignalBorrowedBuffer {
         get { self.value }
         set { value = newValue }
     }
@@ -2146,7 +2146,7 @@ extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfOwnedBuffer,
+        generic_value: SignalOwnedBuffer,
     ) {
         self.init(
             present: generic_present,
@@ -2160,7 +2160,7 @@ extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfOwnedBuffer {
+    var generic_value: SignalOwnedBuffer {
         get { self.value }
         set { value = newValue }
     }
@@ -2173,7 +2173,7 @@ extension SignalOptionalOfPairOfCStringPtrc_uchar32: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfPairOfCStringPtrc_uchar32,
+        generic_value: SignalPairOfCStringPtrc_uchar32,
     ) {
         self.init(
             present: generic_present,
@@ -2187,7 +2187,7 @@ extension SignalOptionalOfPairOfCStringPtrc_uchar32: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfPairOfCStringPtrc_uchar32 {
+    var generic_value: SignalPairOfCStringPtrc_uchar32 {
         get { self.value }
         set { value = newValue }
     }
@@ -2200,7 +2200,7 @@ extension SignalOptionalOfUuid: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfUuid,
+        generic_value: SignalUuid,
     ) {
         self.init(
             present: generic_present,
@@ -2214,7 +2214,7 @@ extension SignalOptionalOfUuid: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfUuid {
+    var generic_value: SignalUuid {
         get { self.value }
         set { value = newValue }
     }
@@ -2227,7 +2227,7 @@ extension SignalOptionalOfBackupEntitlementFfiResult: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfBackupEntitlementFfiResult,
+        generic_value: SignalBackupEntitlementFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2241,7 +2241,7 @@ extension SignalOptionalOfBackupEntitlementFfiResult: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfBackupEntitlementFfiResult {
+    var generic_value: SignalBackupEntitlementFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -2254,7 +2254,7 @@ extension SignalOptionalOfBridgeWebAuthnAuthenticationParametersFfiResult: Signa
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfBridgeWebAuthnAuthenticationParametersFfiResult,
+        generic_value: SignalBridgeWebAuthnAuthenticationParametersFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2268,7 +2268,7 @@ extension SignalOptionalOfBridgeWebAuthnAuthenticationParametersFfiResult: Signa
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfBridgeWebAuthnAuthenticationParametersFfiResult {
+    var generic_value: SignalBridgeWebAuthnAuthenticationParametersFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -2281,7 +2281,7 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfChargeFailureFfiResult,
+        generic_value: SignalChargeFailureFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2295,7 +2295,7 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfChargeFailureFfiResult {
+    var generic_value: SignalChargeFailureFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -2308,7 +2308,7 @@ extension SignalOptionalOfTaggedBadgesFfiResult: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfTaggedBadgesFfiResult,
+        generic_value: SignalTaggedBadgesFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2322,7 +2322,7 @@ extension SignalOptionalOfTaggedBadgesFfiResult: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfTaggedBadgesFfiResult {
+    var generic_value: SignalTaggedBadgesFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -6820,6 +6820,21 @@ internal enum NativeNice {
                 )
             )
             return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func CdnUrl_validate(
+        url: String,
+    ) throws -> Bool {
+        try StringConverter.convertArgBorrowed(url) { urlFfi in
+            var rawOutput = IdentityResultConverter<Bool>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_cdn_url_validate(
+                    &rawOutput,
+                    urlFfi,
+                )
+            )
+            return try IdentityResultConverter<Bool>.convertReturn(consuming: rawOutput)
         }
 
     }

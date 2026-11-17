@@ -4913,6 +4913,10 @@ SignalFfiError* signal_call_link_secret_params_get_public_params(
   SignalOwnedBuffer* out,
   SignalBorrowedBuffer params_bytes
 );
+SignalFfiError* signal_cdn_url_validate(
+  bool* out,
+  const int8_t* url
+);
 SignalFfiError* signal_cds2_client_state_new(
   SignalMutPointerSgxClientState* out,
   SignalBorrowedBuffer mrenclave,

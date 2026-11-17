@@ -149,6 +149,7 @@ import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
 import type { TokioAsyncContext } from './net.js';
 import type { CdnCredentials } from './net/chat/CdnCredentials.js';
+import { CdnUrl } from './net/chat/CdnUrl.js';
 import {
   DeviceId,
   Timestamp,
@@ -3872,6 +3873,10 @@ export async function AuthenticatedChatConnection_start_web_authn_registration({
     )
   );
 }
+
+export function CdnUrl_validate({ url: url }: { url: string }): boolean {
+  return identity(Native.CdnUrl_validate(identity(url)));
+}
 export async function CopyBackupMediaStream_next({
   asyncContext,
   abortSignal,
@@ -4879,6 +4884,45 @@ export function TESTING_conversion_BridgeVecString_to_string({
   );
 }
 
+export function TESTING_conversion_CdnUrl_identity({
+  x: x,
+}: {
+  x: CdnUrl;
+}): CdnUrl {
+  return ((cdnUrl: string) => cdnUrl as CdnUrl)(
+    Native.TESTING_conversion_CdnUrl_identity(((cdnUrl: CdnUrl) => cdnUrl)(x))
+  );
+}
+export async function TESTING_conversion_CdnUrl_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: CdnUrl;
+}): Promise<CdnUrl> {
+  return ((cdnUrl: string) => cdnUrl as CdnUrl)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_CdnUrl_identity_async(
+        asyncContext,
+        ((cdnUrl: CdnUrl) => cdnUrl)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_CdnUrl_to_string({
+  x: x,
+}: {
+  x: CdnUrl;
+}): string {
+  return identity(
+    Native.TESTING_conversion_CdnUrl_to_string(((cdnUrl: CdnUrl) => cdnUrl)(x))
+  );
+}
+
 export function TESTING_conversion_Data32_identity({
   x: x,
 }: {
@@ -5137,6 +5181,49 @@ export function TESTING_conversion_MapStringString_to_string({
   return identity(
     Native.TESTING_conversion_MapStringString_to_string(
       stringMapArgConverter<string, string>(identity)(x)
+    )
+  );
+}
+
+export function TESTING_conversion_OptionCdnUrl_identity({
+  x: x,
+}: {
+  x: CdnUrl | null;
+}): CdnUrl | null {
+  return liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(
+    Native.TESTING_conversion_OptionCdnUrl_identity(
+      liftNull((cdnUrl: CdnUrl) => cdnUrl)(x)
+    )
+  );
+}
+export async function TESTING_conversion_OptionCdnUrl_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: CdnUrl | null;
+}): Promise<CdnUrl | null> {
+  return liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_OptionCdnUrl_identity_async(
+        asyncContext,
+        liftNull((cdnUrl: CdnUrl) => cdnUrl)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_OptionCdnUrl_to_string({
+  x: x,
+}: {
+  x: CdnUrl | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionCdnUrl_to_string(
+      liftNull((cdnUrl: CdnUrl) => cdnUrl)(x)
     )
   );
 }

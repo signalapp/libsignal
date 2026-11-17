@@ -1838,6 +1838,7 @@ type NativeFunctions = {
     user_id: Bytes
   ) => Serialized<UuidCiphertext>;
   CallLinkSecretParams_GetPublicParams: (params_bytes: Bytes) => Bytes;
+  CdnUrl_validate: (url: string) => boolean;
   Cds2ClientState_New: (
     mrenclave: Bytes,
     attestation_msg: Bytes,
@@ -3698,6 +3699,12 @@ type NativeFunctions = {
     x: Array<string>
   ) => CancellablePromise<Array<string>>;
   TESTING_conversion_BridgeVecString_to_string: (x: Array<string>) => string;
+  TESTING_conversion_CdnUrl_identity: (x: string) => string;
+  TESTING_conversion_CdnUrl_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: string
+  ) => CancellablePromise<string>;
+  TESTING_conversion_CdnUrl_to_string: (x: string) => string;
   TESTING_conversion_Data32_identity: (x: Bytes) => Bytes;
   TESTING_conversion_Data32_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -3748,6 +3755,12 @@ type NativeFunctions = {
   TESTING_conversion_MapStringString_to_string: (
     x: StringMapFfiContents<string>
   ) => string;
+  TESTING_conversion_OptionCdnUrl_identity: (x: string | null) => string | null;
+  TESTING_conversion_OptionCdnUrl_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: string | null
+  ) => CancellablePromise<string | null>;
+  TESTING_conversion_OptionCdnUrl_to_string: (x: string | null) => string;
   TESTING_conversion_OptionalBytes_identity: (x: Bytes | null) => Bytes | null;
   TESTING_conversion_OptionalBytes_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -4264,6 +4277,7 @@ const {
   CallLinkSecretParams_DeriveFromRootKey,
   CallLinkSecretParams_EncryptUserId,
   CallLinkSecretParams_GetPublicParams,
+  CdnUrl_validate,
   Cds2ClientState_New,
   CdsiLookup_complete,
   CdsiLookup_new,
@@ -4865,6 +4879,9 @@ const {
   TESTING_conversion_BridgeVecString_identity,
   TESTING_conversion_BridgeVecString_identity_async,
   TESTING_conversion_BridgeVecString_to_string,
+  TESTING_conversion_CdnUrl_identity,
+  TESTING_conversion_CdnUrl_identity_async,
+  TESTING_conversion_CdnUrl_to_string,
   TESTING_conversion_Data32_identity,
   TESTING_conversion_Data32_identity_async,
   TESTING_conversion_Data32_to_string,
@@ -4886,6 +4903,9 @@ const {
   TESTING_conversion_MapStringString_identity,
   TESTING_conversion_MapStringString_identity_async,
   TESTING_conversion_MapStringString_to_string,
+  TESTING_conversion_OptionCdnUrl_identity,
+  TESTING_conversion_OptionCdnUrl_identity_async,
+  TESTING_conversion_OptionCdnUrl_to_string,
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
@@ -5119,6 +5139,7 @@ export {
   CallLinkSecretParams_DeriveFromRootKey,
   CallLinkSecretParams_EncryptUserId,
   CallLinkSecretParams_GetPublicParams,
+  CdnUrl_validate,
   Cds2ClientState_New,
   CdsiLookup_complete,
   CdsiLookup_new,
@@ -5720,6 +5741,9 @@ export {
   TESTING_conversion_BridgeVecString_identity,
   TESTING_conversion_BridgeVecString_identity_async,
   TESTING_conversion_BridgeVecString_to_string,
+  TESTING_conversion_CdnUrl_identity,
+  TESTING_conversion_CdnUrl_identity_async,
+  TESTING_conversion_CdnUrl_to_string,
   TESTING_conversion_Data32_identity,
   TESTING_conversion_Data32_identity_async,
   TESTING_conversion_Data32_to_string,
@@ -5741,6 +5765,9 @@ export {
   TESTING_conversion_MapStringString_identity,
   TESTING_conversion_MapStringString_identity_async,
   TESTING_conversion_MapStringString_to_string,
+  TESTING_conversion_OptionCdnUrl_identity,
+  TESTING_conversion_OptionCdnUrl_identity_async,
+  TESTING_conversion_OptionCdnUrl_to_string,
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,

@@ -173,6 +173,34 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testCdnUrl() throws {
+        #expect(CdnUrl("abc") == nil)
+        try CdnUrlConverter
+            .testConversion(
+                items: [CdnUrl("https://cdn.signal.org/asdf")!],
+                toString: {
+                    $0.url
+                },
+                nativeToString: { try NativeTestingNice.TESTING_conversion_CdnUrl_to_string(x: $0) },
+                rawNativeToString: SignalFfi.signal_testing_conversion_cdn_url_to_string,
+                nativeIdentity: { try NativeTestingNice.TESTING_conversion_CdnUrl_identity(x: $0) }
+            )
+    }
+    @Test
+    func testCdnUrlOptional() throws {
+        #expect(CdnUrl("abc") == nil)
+        try OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>
+            .testConversion(
+                items: [CdnUrl("https://cdn.signal.org/asdf")!, nil],
+                toString: {
+                    $0?.url ?? ""
+                },
+                nativeToString: { try NativeTestingNice.TESTING_conversion_OptionCdnUrl_to_string(x: $0) },
+                rawNativeToString: SignalFfi.signal_testing_conversion_option_cdn_url_to_string,
+                nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionCdnUrl_identity(x: $0) }
+            )
+    }
+    @Test
     func testData32() throws {
         try FixedByteArrayConverter<FixedByteArrayHelper32>.testConversion(
             items: [Data((0..<32).map { _ in UInt8.random(in: 0...255) })],

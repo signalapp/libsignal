@@ -60,6 +60,7 @@ use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceipt
 use libsignal_net_chat::grpc::keys::{
     DeviceSpecifier, GetPreKeysFailure, PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey,
 };
+use libsignal_net_chat::grpc::profiles::CdnUrl;
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -1630,4 +1631,9 @@ async fn AuthenticatedChatConnection_set_zk_credential_key(
         .await
         .set_zk_credential_key(&mut rng.create())
         .await
+}
+
+#[bridge_fn(nice = true)]
+fn CdnUrl_validate(url: String) -> bool {
+    CdnUrl::try_from(url).is_ok()
 }

@@ -912,3 +912,30 @@ where
         return out
     }
 }
+
+internal enum CdnUrlConverter: NiceArgConverter, NiceReturnConverter {
+    typealias NiceArg = CdnUrl
+    typealias FfiArg = StringConverter.FfiArg
+    typealias KeepAlive = StringConverter.KeepAlive
+    typealias NiceReturn = CdnUrl
+    typealias FfiReturn = StringConverter.FfiReturn
+
+    static func convertArg(_ arg: CdnUrl) -> (StringConverter.FfiArg, StringConverter.KeepAlive?) {
+        StringConverter.convertArg(arg.url)
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: CdnUrl,
+        _ thunk: (StringConverter.FfiArg) throws -> Result
+    ) rethrows -> Result {
+        try StringConverter.convertArgBorrowed(arg.url) { try thunk($0) }
+    }
+
+    static func emptyFfiReturn() -> StringConverter.FfiReturn {
+        StringConverter.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: StringConverter.FfiReturn) throws -> CdnUrl {
+        CdnUrl(withPreValidatedUrl: try StringConverter.convertReturn(consuming: value))
+    }
+}

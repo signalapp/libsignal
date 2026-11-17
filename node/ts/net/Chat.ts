@@ -50,7 +50,6 @@ export type S3UploadForm = {
 };
 
 // "Methods" for S3UploadForm even though it's not a true class.
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace S3UploadForm {
   /** Retrieves the properties in a known-working order for S3's POST-based upload. */
   export function asHeaders(form: S3UploadForm): [string, string][] {

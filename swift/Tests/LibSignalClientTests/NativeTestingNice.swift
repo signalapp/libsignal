@@ -323,13 +323,13 @@ extension SignalCPromiseOptionalOfPairOfMutPointerHttpRequestu64: SignalCPromise
 
 }
 
-extension SignalOptionalOfc_uchar32: SignalOptionalOf {
+extension SignalOptionalOfCStringPtr: SignalOptionalOf {
 
-    public typealias Contents = SignalType_FixedArray32_uint8_t
+    public typealias Contents = SignalCStringPtr?
 
     public init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfc_uchar32,
+        generic_value: SignalCStringPtr?,
     ) {
         self.init(
             present: generic_present,
@@ -343,7 +343,34 @@ extension SignalOptionalOfc_uchar32: SignalOptionalOf {
         set { present = newValue }
     }
 
-    public var generic_value: MaybeUninitOfc_uchar32 {
+    public var generic_value: SignalCStringPtr? {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar32: SignalOptionalOf {
+
+    public typealias Contents = SignalType_FixedArray32_uint8_t
+
+    public init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray32_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    public var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    public var generic_value: SignalType_FixedArray32_uint8_t {
         get { self.value }
         set { value = newValue }
     }
@@ -356,7 +383,7 @@ extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
 
     public init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfPairOfMutPointerHttpRequestu64,
+        generic_value: SignalPairOfMutPointerHttpRequestu64,
     ) {
         self.init(
             present: generic_present,
@@ -370,7 +397,7 @@ extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
         set { present = newValue }
     }
 
-    public var generic_value: MaybeUninitOfPairOfMutPointerHttpRequestu64 {
+    public var generic_value: SignalPairOfMutPointerHttpRequestu64 {
         get { self.value }
         set { value = newValue }
     }
@@ -383,7 +410,7 @@ extension SignalOptionalOfPairOfOwnedBufferi64: SignalOptionalOf {
 
     public init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfPairOfOwnedBufferi64,
+        generic_value: SignalPairOfOwnedBufferi64,
     ) {
         self.init(
             present: generic_present,
@@ -397,7 +424,7 @@ extension SignalOptionalOfPairOfOwnedBufferi64: SignalOptionalOf {
         set { present = newValue }
     }
 
-    public var generic_value: MaybeUninitOfPairOfOwnedBufferi64 {
+    public var generic_value: SignalPairOfOwnedBufferi64 {
         get { self.value }
         set { value = newValue }
     }
@@ -5629,6 +5656,36 @@ internal enum NativeTestingNice {
         }
 
     }
+    internal static func TESTING_conversion_CdnUrl_identity(
+        x: CdnUrl,
+    ) throws -> CdnUrl {
+        try CdnUrlConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = CdnUrlConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_cdn_url_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try CdnUrlConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_CdnUrl_to_string(
+        x: CdnUrl,
+    ) throws -> String {
+        try CdnUrlConverter.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_cdn_url_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func TESTING_conversion_Data32_identity(
         x: Data,
     ) throws -> Data {
@@ -5855,6 +5912,38 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_map_string_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionCdnUrl_identity(
+        x: CdnUrl?,
+    ) throws -> CdnUrl? {
+        try OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_option_cdn_url_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertReturn(
+                consuming: rawOutput
+            )
+        }
+
+    }
+    internal static func TESTING_conversion_OptionCdnUrl_to_string(
+        x: CdnUrl?,
+    ) throws -> String {
+        try OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_option_cdn_url_to_string(
                     &rawOutput,
                     xFfi,
                 )

@@ -13,6 +13,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
 import org.junit.Test
+import org.signal.libsignal.net.CdnUrl
 import org.signal.libsignal.protocol.ServiceId
 import java.time.Instant
 import java.time.format.DateTimeFormatterBuilder
@@ -426,6 +427,27 @@ class NativeTestingNiceTest {
       val data = NativeTestingNice.TESTING_TokioAsyncContext_FutureSuccessBytes(tokio, count).get()
       assertEquals(count, data.size)
     }
+  }
+
+  @Test
+  fun testCdnUrl() {
+    assertFailsWith<IllegalArgumentException> { CdnUrl.fromString("abc") }
+    testConversion(
+      sequenceOf(CdnUrl.fromString("https://cdn.signal.org/asdf")),
+      toString = { it.url },
+      nativeToString = NativeTestingNice::TESTING_conversion_CdnUrl_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_CdnUrl_identity,
+    )
+  }
+
+  @Test
+  fun testOptionCdnUrl() {
+    testConversion(
+      sequenceOf(null, CdnUrl.fromString("https://cdn.signal.org/asdf")),
+      toString = { it?.url ?: "" },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionCdnUrl_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionCdnUrl_identity,
+    )
   }
 
   @Test

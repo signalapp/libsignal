@@ -2604,6 +2604,16 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeWebAuthnCreateParameters>(it) }
   }
 
+  public fun CdnUrl_validate(url: String): Boolean {
+    val ffi_url = identity(url)
+    val ffiOut =
+      Native.CdnUrl_validate(
+        ffi_url,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun CopyBackupMediaStream_next(
     asyncCtx: TokioAsyncContext,
     stream: org.signal.libsignal.net.internal.CopyBackupMediaStream,

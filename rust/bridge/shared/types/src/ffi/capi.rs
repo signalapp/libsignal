@@ -348,7 +348,9 @@ unsafe impl<T: IsCType> IsCType for MaybeUninit<T> {
             rust_type: RustType::of::<Self>(),
             dependencies: BTreeSet::from_iter([RustType::of::<T>()]),
             type_name: type_name.clone(),
-            swift_name: None,
+            // This is just a type alias to the inner type anyway and, if the inner type is a
+            // pointer, the swift name must be optional (due to Swift's type shenanigans)
+            swift_name: Some(inner.swift_name().clone()),
             ptr_type_name: None,
             mangling_component: type_name.clone(),
             utility_typedefs: format!("typedef {} {type_name};", inner.ptr_type_name()).into(),

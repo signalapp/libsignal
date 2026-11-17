@@ -3527,6 +3527,26 @@ public object NativeTestingNice {
     return identity(ffiOut)
   }
 
+  public fun TESTING_conversion_CdnUrl_identity(x: org.signal.libsignal.net.CdnUrl): org.signal.libsignal.net.CdnUrl {
+    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl -> x.url })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_CdnUrl_identity(
+        ffi_x,
+      )
+
+    return (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(ffiOut)
+  }
+
+  public fun TESTING_conversion_CdnUrl_to_string(x: org.signal.libsignal.net.CdnUrl): String {
+    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl -> x.url })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_CdnUrl_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
   public fun TESTING_conversion_Data32_identity(x: ByteArray): ByteArray {
     val ffi_x = identity(x)
     val ffiOut =
@@ -3675,6 +3695,36 @@ public object NativeTestingNice {
     val ffi_x = stringMapArgConverter<String, String>({ identity(it) })(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_MapStringString_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionCdnUrl_identity(
+    x: org.signal.libsignal.net.CdnUrl?,
+  ): org.signal.libsignal.net.CdnUrl? {
+    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl? -> x?.url })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionCdnUrl_identity(
+        ffi_x,
+      )
+
+    return (
+      { x: String? ->
+        x?.let {
+          (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(
+            it,
+          )
+        }
+      }
+    )(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionCdnUrl_to_string(x: org.signal.libsignal.net.CdnUrl?): String {
+    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl? -> x?.url })(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionCdnUrl_to_string(
         ffi_x,
       )
 

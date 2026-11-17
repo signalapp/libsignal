@@ -11,7 +11,7 @@ import { BridgedStringMap, wrapStream } from '../internal.js';
 import * as uuid from '../uuid.js';
 import { Aci, Pni } from '../Address.js';
 import { toBase64 } from './util.js';
-import { TokioAsyncContext } from '../net.js';
+import { CdnUrl, TokioAsyncContext } from '../net.js';
 import { DeviceId } from '../NiceConverters.js';
 import { ErrorCode, LibSignalErrorBase } from '../Errors.js';
 import { MySimpleTestEnum } from '../NativeNice.js';
@@ -631,6 +631,37 @@ describe('NativeTestingNice', () => {
           NativeNice.TESTING_conversion_DeviceId_identity({ x }),
         nativeIdentityAsync:
           NativeNice.TESTING_conversion_DeviceId_identity_async,
+      });
+    }
+  });
+  it('CdnUrl', async () => {
+    expect(() => CdnUrl.fromString('abc')).to.throw();
+    const item = CdnUrl.fromString('https://cdn.signal.org/asdf');
+    await testConversion({
+      item,
+      toString: item,
+      nativeToString: (x) =>
+        NativeNice.TESTING_conversion_CdnUrl_to_string({ x }),
+      nativeIdentity: (x) =>
+        NativeNice.TESTING_conversion_CdnUrl_identity({ x }),
+      nativeIdentityAsync: NativeNice.TESTING_conversion_CdnUrl_identity_async,
+    });
+  });
+  it('Option<CdnUrl>', async () => {
+    expect(() => CdnUrl.fromString('abc')).to.throw();
+    for (const item of [
+      CdnUrl.fromString('https://cdn.signal.org/asdf'),
+      null,
+    ]) {
+      await testConversion({
+        item,
+        toString: item ?? '',
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionCdnUrl_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionCdnUrl_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionCdnUrl_identity_async,
       });
     }
   });
