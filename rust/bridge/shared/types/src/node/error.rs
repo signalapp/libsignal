@@ -12,6 +12,7 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
 use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
+use libsignal_net_chat::grpc::profiles::{ProfileValidationError, SetProfileError};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use neon::thread::LocalKey;
@@ -1285,5 +1286,85 @@ impl SignalNodeError for libsignal_net_chat::grpc::profiles::AccountMissingZkCre
             operation_name,
             no_extra_properties,
         )
+    }
+}
+
+impl SignalNodeError for SetProfileError {
+    fn into_throwable<'cx>(self, cx: &mut Cx<'cx>, operation_name: &str) -> Handle<'cx, JsError> {
+        match self {
+            SetProfileError::InvalidProfile(profile_validation_error) => new_js_error(
+                cx,
+                Some("SetProfileInvalidProfile"),
+                &self.to_string(),
+                operation_name,
+                |cx| {
+                    use libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength::*;
+                    let props = cx.empty_object();
+                    let value: Handle<JsValue> = match profile_validation_error {
+                        ProfileValidationError::FieldTooLong {
+                            field,
+                            len,
+                            max_len,
+                        } => {
+                            let field = cx.string(match field {
+                                GivenName => "givenName",
+                                FamilyName => "familyName",
+                                About => "about",
+                                AboutEmoji => "aboutEmoji",
+                                Avatar => "avatar",
+                                PaymentAddress => "paymentAddress",
+                            });
+                            let len = cx.number(i32::try_from(len).expect("fits in i32"));
+                            let max_len = cx.number(i32::try_from(max_len).expect("fits in i32"));
+                            let err = cx.empty_object();
+                            err.prop(cx, "field").set(field)?;
+                            err.prop(cx, "len").set(len)?;
+                            err.prop(cx, "maxLen").set(max_len)?;
+                            let wrapper = cx.empty_object();
+                            wrapper.prop(cx, "fieldTooLong").set(err)?;
+                            wrapper.upcast()
+                        }
+                        ProfileValidationError::GivenNameEmpty => {
+                            JsString::new(cx, "givenNameEmpty").upcast()
+                        }
+                    };
+                    props.prop(cx, "_profileValidationError").set(value)?;
+                    Ok(props.upcast())
+                },
+            ),
+            SetProfileError::ExpectedDataWriteConflict => new_js_error(
+                cx,
+                Some("SetProfileExpectedDataWriteConflict"),
+                &self.to_string(),
+                operation_name,
+                no_extra_properties,
+            ),
+            SetProfileError::ExpectedVersionWriteConflict {
+                current_profile_version,
+            } => new_js_error(
+                cx,
+                Some("SetProfileExpectedVersionWriteConflict"),
+                &self.to_string(),
+                operation_name,
+                |cx| {
+                    let props = cx.empty_object();
+                    let value = if let Some(current_profile_version) = current_profile_version {
+                        JsUint8Array::from_slice(cx, &current_profile_version.hex_bytes())?
+                            .upcast::<JsValue>()
+                    } else {
+                        JsNull::new(cx).upcast()
+                    };
+                    props.prop(cx, "_currentProfileVersion").set(value)?;
+                    Ok(props.upcast())
+                },
+            ),
+            SetProfileError::PaymentsForbiddenInRegion => new_js_error(
+                cx,
+                Some("SetProfilePaymentsForbiddenInRegion"),
+                &self.to_string(),
+                operation_name,
+                no_extra_properties,
+            ),
+        }
     }
 }

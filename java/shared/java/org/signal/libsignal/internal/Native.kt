@@ -615,6 +615,18 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_profile(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    rng: Long,
+    aci: ByteArray,
+    profileKey: ByteArray,
+    profile: Object,
+    expectedCurrentDataHash: ByteArray?,
+    expectedCurrentProfileKeyVersion: ByteArray?,
+  ): CompletableFuture<ByteArray>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_push_token_fcm(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

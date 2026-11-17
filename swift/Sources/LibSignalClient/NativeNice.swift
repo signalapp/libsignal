@@ -2133,6 +2133,33 @@ extension SignalCPromiseStartMfaVerificationResponseFfiResult: SignalCPromise {
 
 }
 
+extension SignalOptionalOfPtrToc_uchar64: SignalOptionalOf {
+
+    typealias Contents = SignalType_ConstPointer_FixedArray64_uint8_t?
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_ConstPointer_FixedArray64_uint8_t?,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_ConstPointer_FixedArray64_uint8_t? {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalOptionalOfCStringPtr: SignalOptionalOf {
 
     typealias Contents = SignalCStringPtr?
@@ -2181,6 +2208,33 @@ extension SignalOptionalOfc_uchar17: SignalOptionalOf {
     }
 
     var generic_value: SignalType_FixedArray17_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar64: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray64_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray64_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray64_uint8_t {
         get { self.value }
         set { value = newValue }
     }
@@ -3882,6 +3936,42 @@ internal enum PaymentProviderInternal {
 */
 
 /*
+// Profile
+
+internal struct Profile {
+    var givenName: String
+    var familyName: String
+    var about: String
+    var aboutEmoji: String
+    var avatar: CdnUrl?
+    var phoneNumberSharing: Bool
+    var paymentAddress: Data?
+    var badgeIds: [String]
+
+}
+
+*/
+
+/*
+// ProfileFieldWithMaxLength
+
+internal enum ProfileFieldWithMaxLength {
+    case givenName
+    case familyName
+    case about
+    case aboutEmoji
+    case avatar
+    case paymentAddress
+}
+
+*/
+
+internal enum ProfileValidationErrorInternal {
+    case fieldTooLong(field: ProfileFieldWithMaxLength, len: Int32, maxLen: Int32)
+    case givenNameEmpty
+}
+
+/*
 // S3UploadForm
 
 internal struct S3UploadFormInternal {
@@ -4650,6 +4740,71 @@ internal enum DerivedReturnConverterPaymentProviderInternal: NiceReturnConverter
             return PaymentProvider.braintree
         default:
             throw SignalError.internalError("Unexpected enum tag for PaymentProviderInternal: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterProfileFieldWithMaxLength: NiceReturnConverter {
+    typealias NiceReturn = ProfileFieldWithMaxLength
+    typealias FfiReturn = SignalProfileFieldWithMaxLengthFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileFieldWithMaxLengthFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalProfileFieldWithMaxLengthFfiResultGivenName:
+            return ProfileFieldWithMaxLength.givenName
+        case SignalProfileFieldWithMaxLengthFfiResultFamilyName:
+            return ProfileFieldWithMaxLength.familyName
+        case SignalProfileFieldWithMaxLengthFfiResultAbout:
+            return ProfileFieldWithMaxLength.about
+        case SignalProfileFieldWithMaxLengthFfiResultAboutEmoji:
+            return ProfileFieldWithMaxLength.aboutEmoji
+        case SignalProfileFieldWithMaxLengthFfiResultAvatar:
+            return ProfileFieldWithMaxLength.avatar
+        case SignalProfileFieldWithMaxLengthFfiResultPaymentAddress:
+            return ProfileFieldWithMaxLength.paymentAddress
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ProfileFieldWithMaxLength: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterProfileValidationErrorInternal: NiceReturnConverter {
+    typealias NiceReturn = ProfileValidationErrorInternal
+    typealias FfiReturn = SignalProfileValidationErrorInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileValidationErrorInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalProfileValidationErrorInternalFfiResultFieldTooLong:
+            let field = Result {
+                try DerivedReturnConverterProfileFieldWithMaxLength.convertReturn(
+                    consuming: ffiValue.field_too_long.field
+                )
+            }
+            let len = Result {
+                try IdentityResultConverter<Int32>.convertReturn(
+                    consuming: ffiValue.field_too_long.len
+                )
+            }
+            let max_len = Result {
+                try IdentityResultConverter<Int32>.convertReturn(
+                    consuming: ffiValue.field_too_long.max_len
+                )
+            }
+            return ProfileValidationErrorInternal.fieldTooLong(
+                field: try field.get(),
+                len: try len.get(),
+                maxLen: try max_len.get()
+            )
+        case SignalProfileValidationErrorInternalFfiResultGivenNameEmpty:
+            return ProfileValidationErrorInternal.givenNameEmpty
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ProfileValidationErrorInternal: \(ffiTag)")
         }
     }
 }
@@ -5723,6 +5878,157 @@ internal enum DerivedArgConverterPaymentProviderInternal: NiceArgConverter {
     }
 }
 
+internal enum DerivedArgConverterProfile: NiceArgConverter {
+    typealias NiceArg = Profile
+    typealias FfiArg = SignalProfileFfiArg
+
+    typealias KeepAlive = (
+        StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?,
+        OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.KeepAlive?,
+        IdentityArgConverter<Bool>.KeepAlive?,
+        OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
+        ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+    )
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let given_name = niceArg.givenName
+        let family_name = niceArg.familyName
+        let about = niceArg.about
+        let about_emoji = niceArg.aboutEmoji
+        let avatar = niceArg.avatar
+        let phone_number_sharing = niceArg.phoneNumberSharing
+        let payment_address = niceArg.paymentAddress
+        let badge_ids = niceArg.badgeIds
+
+        let (given_name_ffi, given_name_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(given_name)
+        let (family_name_ffi, family_name_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(family_name)
+        let (about_ffi, about_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(about)
+        let (about_emoji_ffi, about_emoji_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(about_emoji)
+        let (avatar_ffi, avatar_keepalive):
+            (
+                OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.FfiArg,
+                OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.KeepAlive?,
+            ) = OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArg(avatar)
+        let (phone_number_sharing_ffi, phone_number_sharing_keepalive):
+            (
+                IdentityArgConverter<Bool>.FfiArg,
+                IdentityArgConverter<Bool>.KeepAlive?,
+            ) = IdentityArgConverter<Bool>.convertArg(phone_number_sharing)
+        let (payment_address_ffi, payment_address_keepalive):
+            (
+                OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.FfiArg,
+                OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
+            ) = OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.convertArg(payment_address)
+        let (badge_ids_ffi, badge_ids_keepalive):
+            (
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.FfiArg,
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+            ) = ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.convertArg(badge_ids)
+
+        let ffiStructArg = FfiArg(
+            given_name: given_name_ffi,
+            family_name: family_name_ffi,
+            about: about_ffi,
+            about_emoji: about_emoji_ffi,
+            avatar: avatar_ffi,
+            phone_number_sharing: phone_number_sharing_ffi,
+            payment_address: payment_address_ffi,
+            badge_ids: badge_ids_ffi,
+        )
+        let ffiStructKeepAlive:
+            (
+                StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?,
+                StringConverter.KeepAlive?,
+                OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.KeepAlive?,
+                IdentityArgConverter<Bool>.KeepAlive?,
+                OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+            )? =
+                (given_name_keepalive != nil || family_name_keepalive != nil || about_keepalive != nil
+                    || about_emoji_keepalive != nil || avatar_keepalive != nil || phone_number_sharing_keepalive != nil
+                    || payment_address_keepalive != nil || badge_ids_keepalive != nil || false)
+                ? (
+                    given_name_keepalive, family_name_keepalive, about_keepalive, about_emoji_keepalive,
+                    avatar_keepalive, phone_number_sharing_keepalive, payment_address_keepalive, badge_ids_keepalive,
+                )
+                : nil
+
+        return (ffiStructArg, ffiStructKeepAlive)
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        let given_name = niceArg.givenName
+        let family_name = niceArg.familyName
+        let about = niceArg.about
+        let about_emoji = niceArg.aboutEmoji
+        let avatar = niceArg.avatar
+        let phone_number_sharing = niceArg.phoneNumberSharing
+        let payment_address = niceArg.paymentAddress
+        let badge_ids = niceArg.badgeIds
+
+        return try StringConverter.convertArgBorrowed(given_name) {
+            ffi_given_name in
+            return try StringConverter.convertArgBorrowed(family_name) {
+                ffi_family_name in
+                return try StringConverter.convertArgBorrowed(about) {
+                    ffi_about in
+                    return try StringConverter.convertArgBorrowed(about_emoji) {
+                        ffi_about_emoji in
+                        return try OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArgBorrowed(
+                            avatar
+                        ) {
+                            ffi_avatar in
+                            return try IdentityArgConverter<Bool>.convertArgBorrowed(phone_number_sharing) {
+                                ffi_phone_number_sharing in
+                                return try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>
+                                    .convertArgBorrowed(payment_address) {
+                                        ffi_payment_address in
+                                        return try ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>
+                                            .convertArgBorrowed(badge_ids) {
+                                                ffi_badge_ids in
+
+                                                return try niceThunk(
+                                                    FfiArg(
+                                                        given_name: ffi_given_name,
+                                                        family_name: ffi_family_name,
+                                                        about: ffi_about,
+                                                        about_emoji: ffi_about_emoji,
+                                                        avatar: ffi_avatar,
+                                                        phone_number_sharing: ffi_phone_number_sharing,
+                                                        payment_address: ffi_payment_address,
+                                                        badge_ids: ffi_badge_ids,
+                                                    )
+                                                )
+
+                                            }
+                                    }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+}
+
 internal enum NativeNice {
     internal static func AuthenticatedChatConnection_answer_challenge(
         asyncContext: TokioAsyncContext,
@@ -6733,6 +7039,57 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_profile(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        rng: Int64,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+        profile: Profile,
+        expectedCurrentDataHash expected_current_data_hash: Data?,
+        expectedCurrentProfileKeyVersion expected_current_profile_key_version: ProfileKeyVersion?,
+    ) async throws -> Data {
+        let rawOutput: FixedByteArrayConverter<FixedByteArrayHelper32>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                            AciConverter.convertArgBorrowed(aci) { aciFfi in
+                                ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                    DerivedArgConverterProfile.convertArgBorrowed(profile) { profileFfi in
+                                        OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(
+                                            expected_current_data_hash
+                                        ) { expected_current_data_hashFfi in
+                                            OptionalArgConverter<
+                                                ProfileKeyVersionArgConverter<
+                                                    FixedByteArrayConverter<FixedByteArrayHelper64>
+                                                >, SignalOptionalOfPtrToc_uchar64
+                                            >.convertArgBorrowed(expected_current_profile_key_version) {
+                                                expected_current_profile_key_versionFfi in
+                                                SignalFfi.signal_authenticated_chat_connection_set_profile(
+                                                    promiseFfi,
+                                                    asyncContextFfi.const(),
+                                                    chatFfi,
+                                                    rngFfi,
+                                                    aciFfi,
+                                                    profile_keyFfi,
+                                                    profileFfi,
+                                                    expected_current_data_hashFfi,
+                                                    expected_current_profile_key_versionFfi,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_push_token_apns(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -7070,6 +7427,42 @@ internal enum NativeNice {
             return try OptionalReturnConverter<
                 DerivedReturnConverterChargeFailure, SignalOptionalOfChargeFailureFfiResult
             >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func Error_GetCurrentProfileVersion(
+        err: SignalFfiErrorRef?,
+    ) throws -> ProfileKeyVersion? {
+        try IdentityArgConverter<SignalFfiErrorRef?>.convertArgBorrowed(err) { errFfi in
+            var rawOutput = OptionalReturnConverter<
+                ProfileKeyVersionReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper64>>,
+                SignalOptionalOfc_uchar64
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_error_get_current_profile_version(
+                    &rawOutput,
+                    errFfi,
+                )
+            )
+            return try OptionalReturnConverter<
+                ProfileKeyVersionReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper64>>,
+                SignalOptionalOfc_uchar64
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func Error_GetProfileValidationError(
+        err: SignalFfiErrorRef?,
+    ) throws -> ProfileValidationErrorInternal {
+        try IdentityArgConverter<SignalFfiErrorRef?>.convertArgBorrowed(err) { errFfi in
+            var rawOutput = DerivedReturnConverterProfileValidationErrorInternal.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_error_get_profile_validation_error(
+                    &rawOutput,
+                    errFfi,
+                )
+            )
+            return try DerivedReturnConverterProfileValidationErrorInternal.convertReturn(consuming: rawOutput)
         }
 
     }

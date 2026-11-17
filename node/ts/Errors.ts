@@ -8,6 +8,7 @@ import type { Bytes } from '@signalapp/types';
 import { ProtocolAddress, ServiceId } from './Address.js';
 import * as Native from './Native.js';
 import { newNativeHandle } from './internal.js';
+import ProfileKeyVersion from './zkgroup/profiles/ProfileKeyVersion.js';
 import {
   convertNativeRegistrationSessionState,
   RegistrationSessionState,
@@ -15,6 +16,7 @@ import {
 import type { PaymentProvider } from './net/chat/PurchaseTypes.js';
 // Re-export this for compatibility.
 export type { PaymentProvider } from './net/chat/PurchaseTypes.js';
+import type { ProfileValidationError } from './net/chat/Profile.js';
 
 export enum ErrorCode {
   Generic,
@@ -129,6 +131,11 @@ export enum ErrorCode {
   InvalidProvisioningMessage,
   InvalidAvatarUploadCredentialPresentation,
   AccountMissingZkCredentialKey,
+
+  SetProfileInvalidProfile,
+  SetProfileExpectedDataWriteConflict,
+  SetProfileExpectedVersionWriteConflict,
+  SetProfilePaymentsForbiddenInRegion,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -186,6 +193,8 @@ export class LibSignalErrorBase extends Error {
   readonly _addr?: string | Native.ProtocolAddress;
   readonly _sessionState?: Native.RegistrationSession;
   readonly _chargeFailure?: ChargeFailure | null;
+  readonly _profileValidationError?: ProfileValidationError;
+  readonly _currentProfileVersion?: Bytes | null;
 
   constructor(
     message: string,
@@ -242,6 +251,23 @@ export class LibSignalErrorBase extends Error {
     return this._chargeFailure;
   }
 
+  public get currentProfileVersion(): ProfileKeyVersion | null {
+    if (this._currentProfileVersion === undefined)
+      throw new TypeError(
+        `cannot get currentProfileVersion from this error (${this})`
+      );
+    else if (this._currentProfileVersion === null) return null;
+    else return new ProfileKeyVersion(this._currentProfileVersion);
+  }
+
+  public get profileValidationError(): ProfileValidationError {
+    if (this._profileValidationError === undefined)
+      throw new TypeError(
+        `cannot get profileValidationError from this error (${this})`
+      );
+    return this._profileValidationError;
+  }
+
   public toString(): string {
     return `${this.name} - ${this.operation}: ${this.message}`;
   }
@@ -270,7 +296,7 @@ export class LibSignalErrorBase extends Error {
 
 export type LibSignalErrorCommon = Omit<
   LibSignalErrorBase,
-  'addr' | 'chargeFailure'
+  'addr' | 'chargeFailure' | 'profileValidationError' | 'currentProfileVersion'
 >;
 
 export type GenericError = LibSignalErrorCommon & {
@@ -664,6 +690,27 @@ export type InvalidAvatarUploadCredentialPresentation = LibSignalErrorCommon & {
 export type AccountMissingZkCredentialKey = LibSignalErrorCommon & {
   code: ErrorCode.AccountMissingZkCredentialKey;
 };
+
+export type SetProfileInvalidProfile = LibSignalErrorCommon & {
+  code: ErrorCode.SetProfileInvalidProfile;
+  readonly profileValidationError: ProfileValidationError;
+};
+export type SetProfileExpectedDataWriteConflict = LibSignalErrorCommon & {
+  code: ErrorCode.SetProfileExpectedDataWriteConflict;
+};
+export type SetProfileExpectedVersionWriteConflict = LibSignalErrorCommon & {
+  code: ErrorCode.SetProfileExpectedVersionWriteConflict;
+  /**
+   * In certain, highly unlikely, cases, a new profile version might not be
+   * distributed among all devices. These devices wouldn't be able to decrypt
+   * the profile, but the value can be used to set a new version.
+   */
+  readonly currentProfileVersion: ProfileKeyVersion | null;
+};
+export type SetProfilePaymentsForbiddenInRegion = LibSignalErrorCommon & {
+  code: ErrorCode.SetProfilePaymentsForbiddenInRegion;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -752,4 +799,8 @@ export type LibSignalError =
   | ReceiptAlreadyRedeemed
   | InvalidProvisioningMessageError
   | InvalidAvatarUploadCredentialPresentation
-  | AccountMissingZkCredentialKey;
+  | AccountMissingZkCredentialKey
+  | SetProfileInvalidProfile
+  | SetProfileExpectedDataWriteConflict
+  | SetProfileExpectedVersionWriteConflict
+  | SetProfilePaymentsForbiddenInRegion;

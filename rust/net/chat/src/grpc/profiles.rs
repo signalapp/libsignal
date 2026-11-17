@@ -122,13 +122,13 @@ impl AsRef<str> for CdnUrl {
 #[derive(Clone, Default)]
 #[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub struct Profile {
-    /// Non-empty; max-length should be 128 bytes
+    /// Non-empty; max-length is 128 bytes
     pub given_name: String,
-    /// Optional (can be empty); max-length should be 128 bytes
+    /// Optional (can be empty); max-length is 128 bytes
     pub family_name: String,
-    /// Optional (can be empty); max-length should be 512 bytes
+    /// Optional (can be empty); max-length is 512 bytes
     pub about: String,
-    /// Optional (can be empty); max-length should be 32 bytes
+    /// Optional (can be empty); max-length is 32 bytes
     pub about_emoji: String,
     /// If provided, it should be the full URL to the avatar.
     pub avatar: Option<CdnUrl>,
@@ -647,7 +647,7 @@ impl<T: GrpcServiceProvider> Auth<T> {
     /// `expected_current_data_hash` argument of this function.
     pub async fn set_profile(
         &self,
-        rng: &mut dyn CryptoRng,
+        rng: &mut (dyn CryptoRng + Send),
         aci: Aci,
         profile_key: &ProfileKey,
         profile: Profile,
@@ -1783,7 +1783,9 @@ mod test {
     #[test]
     fn test_set_profile() {
         run_tests(
-            set_profile_test_cases(),
+            set_profile_test_cases()
+                .into_iter()
+                .chain(set_profile_validation_test_cases()),
             |chat: Auth<_>,
              SetProfileArgs {
                  rng_seed,
@@ -1794,7 +1796,7 @@ mod test {
                  expected_current_profile_key_version,
              }| async move {
                 chat.set_profile(
-                    &mut seeded_rng(rng_seed),
+                    &mut seeded_rng(rng_seed as u64),
                     aci,
                     &profile_key,
                     profile,

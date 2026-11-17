@@ -23,8 +23,10 @@ use libsignal_net_chat::grpc::profiles::{CdnUrl, InvalidCdnUrl};
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use ref_cast::RefCast as _;
+use zkgroup::PROFILE_KEY_VERSION_ENCODED_LEN;
 use zkgroup::avatars::AvatarUploadCredential;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -834,6 +836,66 @@ zkgroup_serialize_type!(
     zkgroup::avatars::AvatarUploadCredential,
     "org.signal.libsignal.zkgroup.avatars.AvatarUploadCredential"
 );
+
+impl<'a> SimpleArgTypeInfo<'a> for ProfileKeyVersion {
+    type ArgType = JByteArray<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let len = foreign
+            .len(env)
+            .check_exceptions(env, "ProfileKeyVersion::SimpleArgTypeInfo, get length")?;
+        if len != PROFILE_KEY_VERSION_ENCODED_LEN {
+            return Err(BridgeLayerError::bad_argument(
+                "ProfileKeyVersion has wrong byte count".into(),
+            ));
+        }
+        let mut hex_buf = [0_u8; PROFILE_KEY_VERSION_ENCODED_LEN];
+        foreign
+            .get_region(env, 0, zerocopy::transmute_mut!(&mut hex_buf))
+            .check_exceptions(env, "ProfileKeyVersion::SimpleArgTypeInfo, get bytes")?;
+        ProfileKeyVersion::from_hex_bytes(&hex_buf).map_err(|_| {
+            BridgeLayerError::bad_argument("ProfileKeyVersion bytes aren't hex-encoded".into())
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion".into(),
+            ffi_type: "ByteArray".into(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function:
+                "(org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion::getContents)".into(),
+        }
+    }
+}
+impl<'a> ResultTypeInfo<'a> for ProfileKeyVersion {
+    type ResultType = JByteArray<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let hex_buf = self.hex_bytes();
+        JByteArray::new(env, PROFILE_KEY_VERSION_ENCODED_LEN)
+            .and_then(|buf| {
+                buf.set_region(env, 0, zerocopy::transmute_ref!(&hex_buf))?;
+                Ok(buf)
+            })
+            .check_exceptions(env, "ProfileKeyVersion::convert_into()")
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion".into(),
+            ffi_type: "ByteArray".into(),
+            converter_function: "({ profileKeyHex: ByteArray -> org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion(profileKeyHex) })".into(),
+        }
+    }
+}
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;
@@ -3836,6 +3898,41 @@ impl_result_type_info_for_option!(crate::net::chat::remote_derives::TaggedBadges
 impl_result_type_info_for_option!(CdnUrl);
 impl_result_type_info_for_option!(AvatarUploadCredential);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
+impl_result_type_info_for_option!(ProfileKeyVersion);
+
+macro_rules! simple_arg_type_option {
+    ($ty:ty) => {
+        impl<'a> SimpleArgTypeInfo<'a> for Option<$ty> {
+            type ArgType = Nullable<<$ty as SimpleArgTypeInfo<'a>>::ArgType>;
+            fn convert_from(
+                env: &mut jni::Env<'a>,
+                Nullable(foreign): &Self::ArgType,
+            ) -> Result<Self, BridgeLayerError> {
+                if foreign.is_null() {
+                    Ok(None)
+                } else {
+                    SimpleArgTypeInfo::convert_from(env, foreign).map(Some)
+                }
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for Option<$ty> {
+            fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter {
+                let inner = <$ty as NiceArgConverter>::register_kt_arg_converter(ctx);
+                KtArgConverter {
+                    nice_type: format!("{}?", inner.nice_type),
+                    ffi_type: format!("{}?", inner.ffi_type),
+                    ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+                    converter_function: format!(
+                        "({{ optionArg: {}? -> optionArg?.let<{}, {}> {{ {}(it) }} }})",
+                        inner.nice_type, inner.nice_type, inner.ffi_type, inner.converter_function
+                    ),
+                }
+            }
+        }
+    };
+}
+simple_arg_type_option!(ProfileKeyVersion);
 
 #[cfg(feature = "metadata")]
 impl<T, U> NiceResultConverter for Option<T>

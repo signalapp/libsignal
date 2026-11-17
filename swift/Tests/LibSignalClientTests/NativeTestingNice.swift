@@ -642,6 +642,40 @@ extension SignalOwnedBufferOfMaxAlignedPairOfi32OwnedBuffer: SignalOwnedBufferOf
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfProfileFieldWithMaxLengthFfiResulti32: SignalOwnedBufferOfMaxAligned {
+
+    public typealias Element = SignalPairOfProfileFieldWithMaxLengthFfiResulti32
+
+    public init(
+        generic_base: SignalType_MutPointer_SignalPairOfProfileFieldWithMaxLengthFfiResulti32?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    public var generic_base: SignalType_MutPointer_SignalPairOfProfileFieldWithMaxLengthFfiResulti32? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    public var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    public var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedBridgeCopyBackupMediaItemFfiResult: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalBridgeCopyBackupMediaItemFfiResult
@@ -849,6 +883,35 @@ extension SignalPairOfMutPointerHttpRequestu64: SignalPairOf {
     }
 
     public var generic_second: UInt64 {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfProfileFieldWithMaxLengthFfiResulti32: SignalPairOf {
+
+    public typealias First = SignalProfileFieldWithMaxLengthFfiResult
+
+    public typealias Second = Int32
+
+    public init(
+        generic_first: SignalProfileFieldWithMaxLengthFfiResult,
+        generic_second: Int32,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    public var generic_first: SignalProfileFieldWithMaxLengthFfiResult {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    public var generic_second: Int32 {
         get { self.second }
         set { second = newValue }
     }
@@ -1509,6 +1572,28 @@ internal struct SetOneTimeKemPreKeysArgs {
     var identity: UInt8
     var preKeys: [TestingAnySignedPreKey]
 
+}
+
+internal struct SetProfileArgs {
+    var rngSeed: Int64
+    var aci: Aci
+    var profileKey: ProfileKey
+    var profile: Profile
+    var expectedCurrentDataHash: Data?
+    var expectedCurrentProfileKeyVersion: ProfileKeyVersion?
+
+}
+
+internal enum SetProfileError {
+    case invalidProfile(ProfileValidationErrorInternal)
+    case expectedDataWriteConflict
+    case expectedVersionWriteConflict(currentProfileVersion: ProfileKeyVersion?)
+    case paymentsForbiddenInRegion
+}
+
+internal enum SetProfileOut {
+    case success(Data)
+    case failure(SetProfileError)
 }
 
 internal struct SetSignedEcPreKeyArgs {
@@ -3099,6 +3184,50 @@ internal enum DerivedReturnConverterMyTestStruct: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterProfile: NiceReturnConverter {
+    typealias NiceReturn = Profile
+    typealias FfiReturn = SignalProfileFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let given_name = Result { try StringConverter.convertReturn(consuming: ffiValue.given_name) }
+        let family_name = Result { try StringConverter.convertReturn(consuming: ffiValue.family_name) }
+        let about = Result { try StringConverter.convertReturn(consuming: ffiValue.about) }
+        let about_emoji = Result { try StringConverter.convertReturn(consuming: ffiValue.about_emoji) }
+        let avatar = Result {
+            try OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertReturn(
+                consuming: ffiValue.avatar
+            )
+        }
+        let phone_number_sharing = Result {
+            try IdentityResultConverter<Bool>.convertReturn(consuming: ffiValue.phone_number_sharing)
+        }
+        let payment_address = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.payment_address
+            )
+        }
+        let badge_ids = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.badge_ids
+            )
+        }
+
+        return Profile(
+            givenName: try given_name.get(),
+            familyName: try family_name.get(),
+            about: try about.get(),
+            aboutEmoji: try about_emoji.get(),
+            avatar: try avatar.get(),
+            phoneNumberSharing: try phone_number_sharing.get(),
+            paymentAddress: try payment_address.get(),
+            badgeIds: try badge_ids.get()
+        )
+    }
+}
+
 internal enum DerivedReturnConverterProfileKeyCredentialRequestError: NiceReturnConverter {
     typealias NiceReturn = ProfileKeyCredentialRequestError
     typealias FfiReturn = SignalProfileKeyCredentialRequestErrorFfiResult
@@ -3508,6 +3637,107 @@ internal enum DerivedReturnConverterSetOneTimeKemPreKeysArgs: NiceReturnConverte
         }
 
         return SetOneTimeKemPreKeysArgs(identity: try identity.get(), preKeys: try pre_keys.get())
+    }
+}
+
+internal enum DerivedReturnConverterSetProfileArgs: NiceReturnConverter {
+    typealias NiceReturn = SetProfileArgs
+    typealias FfiReturn = SignalSetProfileArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetProfileArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let rng_seed = Result { try IdentityResultConverter<Int64>.convertReturn(consuming: ffiValue.rng_seed) }
+        let aci = Result { try AciConverter.convertReturn(consuming: ffiValue.aci) }
+        let profile_key = Result { try ByteArrayConverter<ProfileKey>.convertReturn(consuming: ffiValue.profile_key) }
+        let profile = Result { try DerivedReturnConverterProfile.convertReturn(consuming: ffiValue.profile) }
+        let expected_current_data_hash = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOptionalOfc_uchar32>
+                .convertReturn(consuming: ffiValue.expected_current_data_hash)
+        }
+        let expected_current_profile_key_version = Result {
+            try OptionalReturnConverter<
+                ProfileKeyVersionReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper64>>,
+                SignalOptionalOfc_uchar64
+            >.convertReturn(consuming: ffiValue.expected_current_profile_key_version)
+        }
+
+        return SetProfileArgs(
+            rngSeed: try rng_seed.get(),
+            aci: try aci.get(),
+            profileKey: try profile_key.get(),
+            profile: try profile.get(),
+            expectedCurrentDataHash: try expected_current_data_hash.get(),
+            expectedCurrentProfileKeyVersion: try expected_current_profile_key_version.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterSetProfileError: NiceReturnConverter {
+    typealias NiceReturn = SetProfileError
+    typealias FfiReturn = SignalSetProfileErrorFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetProfileErrorFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalSetProfileErrorFfiResultInvalidProfile:
+            let _0 = Result {
+                try DerivedReturnConverterProfileValidationErrorInternal.convertReturn(
+                    consuming: ffiValue.invalid_profile._0
+                )
+            }
+            return SetProfileError.invalidProfile(try _0.get())
+        case SignalSetProfileErrorFfiResultExpectedDataWriteConflict:
+            return SetProfileError.expectedDataWriteConflict
+        case SignalSetProfileErrorFfiResultExpectedVersionWriteConflict:
+            let current_profile_version = Result {
+                try OptionalReturnConverter<
+                    ProfileKeyVersionReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper64>>,
+                    SignalOptionalOfc_uchar64
+                >.convertReturn(
+                    consuming: ffiValue.expected_version_write_conflict.current_profile_version
+                )
+            }
+            return SetProfileError.expectedVersionWriteConflict(
+                currentProfileVersion: try current_profile_version.get()
+            )
+        case SignalSetProfileErrorFfiResultPaymentsForbiddenInRegion:
+            return SetProfileError.paymentsForbiddenInRegion
+        default:
+            throw SignalError.internalError("Unexpected enum tag for SetProfileError: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterSetProfileOut: NiceReturnConverter {
+    typealias NiceReturn = SetProfileOut
+    typealias FfiReturn = SignalSetProfileOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalSetProfileOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalSetProfileOutFfiResultSuccess:
+            let _0 = Result {
+                try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return SetProfileOut.success(try _0.get())
+        case SignalSetProfileOutFfiResultFailure:
+            let _0 = Result {
+                try DerivedReturnConverterSetProfileError.convertReturn(
+                    consuming: ffiValue.failure._0
+                )
+            }
+            return SetProfileOut.failure(try _0.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for SetProfileOut: \(ffiTag)")
+        }
     }
 }
 
@@ -5410,6 +5640,26 @@ internal enum NativeTestingNice {
         }
 
     }
+    internal static func TESTING_ProfileFieldMaxLengths() throws -> [(ProfileFieldWithMaxLength, Int32)] {
+        var rawOutput = ArrayReturnConverter<
+            PairOfResultConverter<
+                DerivedReturnConverterProfileFieldWithMaxLength, IdentityResultConverter<Int32>,
+                SignalPairOfProfileFieldWithMaxLengthFfiResulti32
+            >, SignalOwnedBufferOfMaxAlignedPairOfProfileFieldWithMaxLengthFfiResulti32
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_profile_field_max_lengths(
+                &rawOutput,
+            )
+        )
+        return try ArrayReturnConverter<
+            PairOfResultConverter<
+                DerivedReturnConverterProfileFieldWithMaxLength, IdentityResultConverter<Int32>,
+                SignalPairOfProfileFieldWithMaxLengthFfiResulti32
+            >, SignalOwnedBufferOfMaxAlignedPairOfProfileFieldWithMaxLengthFfiResulti32
+        >.convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_RedeemBackupReceiptTests() throws -> [GrpcTestCase<Data, RedeemBackupReceiptOut>] {
         var rawOutput = GrpcTestCaseVecConverter<DataConverter, DerivedReturnConverterRedeemBackupReceiptOut>
             .emptyFfiReturn()
@@ -5612,6 +5862,32 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<DerivedReturnConverterSetOneTimeKemPreKeysArgs, VoidConverter>
+            .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_SetProfileTests() throws -> [GrpcTestCase<SetProfileArgs, SetProfileOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterSetProfileArgs, DerivedReturnConverterSetProfileOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_profile_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterSetProfileArgs, DerivedReturnConverterSetProfileOut>
+            .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_SetProfileValidationTests() throws -> [GrpcTestCase<SetProfileArgs, SetProfileOut>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterSetProfileArgs, DerivedReturnConverterSetProfileOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_profile_validation_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<DerivedReturnConverterSetProfileArgs, DerivedReturnConverterSetProfileOut>
             .convertReturn(consuming: rawOutput)
 
     }

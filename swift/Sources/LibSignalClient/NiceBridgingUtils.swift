@@ -939,3 +939,34 @@ internal enum CdnUrlConverter: NiceArgConverter, NiceReturnConverter {
         CdnUrl(withPreValidatedUrl: try StringConverter.convertReturn(consuming: value))
     }
 }
+
+internal enum ProfileKeyVersionArgConverter<Inner: NiceArgConverter>: NiceArgConverter where Inner.NiceArg == Data {
+    typealias NiceArg = ProfileKeyVersion
+    typealias FfiArg = Inner.FfiArg
+    typealias KeepAlive = Inner.KeepAlive
+
+    static func convertArg(_ arg: ProfileKeyVersion) -> (Inner.FfiArg, Inner.KeepAlive?) {
+        Inner.convertArg(arg.serialize())
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: ProfileKeyVersion,
+        _ thunk: (Inner.FfiArg) throws -> Result
+    ) rethrows -> Result {
+        try Inner.convertArgBorrowed(arg.serialize(), thunk)
+    }
+}
+
+internal enum ProfileKeyVersionReturnConverter<Inner: NiceReturnConverter>: NiceReturnConverter
+where Inner.NiceReturn == Data {
+    typealias NiceReturn = ProfileKeyVersion
+    typealias FfiReturn = Inner.FfiReturn
+
+    static func emptyFfiReturn() -> FfiReturn {
+        Inner.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        try ProfileKeyVersion(contents: try Inner.convertReturn(consuming: value))
+    }
+}

@@ -2889,6 +2889,7 @@ dependencies = [
  "signal-media",
  "uuid",
  "zerocopy",
+ "zkgroup",
 ]
 
 [[package]]

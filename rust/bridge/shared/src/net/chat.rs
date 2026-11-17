@@ -11,7 +11,7 @@ use ::zkgroup::ServerPublicParams;
 use ::zkgroup::avatars::{AvatarUploadCredential, AvatarUploadCredentialPresentation};
 use ::zkgroup::generic_server_params::GenericServerPublicParams;
 use ::zkgroup::groups::GroupSendFullToken;
-use ::zkgroup::profiles::ProfileKey;
+use ::zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
 use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
 use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use futures_util::TryStreamExt;
@@ -34,8 +34,6 @@ use libsignal_core::curve::{PrivateKey, PublicKey};
 use libsignal_core::{Aci, DeviceId, ServiceId, ServiceIdKind};
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 use libsignal_net_chat::api;
-#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
-use libsignal_net_chat::api::S3UploadForm;
 use libsignal_net_chat::api::backups::{
     BackupAuth, BackupAuthCredentialRejected, CdnCredentials, GetUploadFormFailure,
 };
@@ -50,7 +48,7 @@ use libsignal_net_chat::api::profiles::{
 };
 use libsignal_net_chat::api::purchase::PaymentProvider;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
-use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::api::{RequestError, S3UploadForm, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::accounts::{
     ChallengeAnswer, ConfirmTotpKeyError, FinishWebAuthnRegistrationError, GenerateTotpKeyError,
     MAX_MFA_KEY_ID, MfaKeyId, MfaKeyNotFound, MfaVerificationFailed,
@@ -65,7 +63,7 @@ use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceipt
 use libsignal_net_chat::grpc::keys::{
     DeviceSpecifier, GetPreKeysFailure, PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey,
 };
-use libsignal_net_chat::grpc::profiles::CdnUrl;
+use libsignal_net_chat::grpc::profiles::{CdnUrl, ProfileDataHash};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -1719,6 +1717,30 @@ async fn AuthenticatedChatConnection_get_avatar_credential(
                 current_time_seconds.try_into().expect("negative seconds"),
             ),
             &mut rng.create(),
+        )
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_profile(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator,
+    aci: Aci,
+    profile_key: ProfileKey,
+    profile: remote_derives::Profile,
+    expected_current_data_hash: Option<ProfileDataHash>,
+    expected_current_profile_key_version: Option<ProfileKeyVersion>,
+) -> Result<ProfileDataHash, RequestError<libsignal_net_chat::grpc::profiles::SetProfileError>> {
+    let mut rng = rng.create();
+    chat.require_grpc()
+        .await
+        .set_profile(
+            &mut rng,
+            aci,
+            &profile_key,
+            profile.into(),
+            expected_current_data_hash,
+            expected_current_profile_key_version.as_ref(),
         )
         .await
 }

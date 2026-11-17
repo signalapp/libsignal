@@ -6,6 +6,35 @@
 import Foundation
 
 public protocol AuthProfilesService: Sendable {
+    /// Set the profile for the current account.
+    ///
+    /// Note that if an older client (not yet using libsignal to set profiles) sets a v1 profile,
+    /// this will clear out the v2 profile, and expectedCurrentDataHash should be nil in
+    /// these cases.
+    ///
+    /// The easiest way to obtain the correct expectedCurrentDataHash is to invoke
+    /// getProfile() on the current account. The resulting FetchedProfile’s v2DataHash
+    /// will be the correct value (regardless of whether it’s null or not) to pass to the
+    /// expectedCurrentDataHash argument of this function.
+    ///
+    /// - Parameters:
+    ///   - aci: the ACI of the current account
+    ///   - profileKey: the profile key to use when setting the profile. This can be the same, or different from the current profile key
+    ///   - expectedCurrentDataHash: must exactly match the server’s view of the current profile v2 data hash. When changing to a new profile key, expectedCurrentDataHash must be null. If this is the first v2 profile for this profile key, then expectedCurrentDataHash must be null. Otherwise, expectedCurrentDataHash must be the result of the last successful setProfile() invocation from across all devices on the account.
+    ///   - expectedCurrentProfileKeyVersion: must be the current profile key version of the account (or null if there is no current version). In case of mismatch, the resulting error will contain the current profile key version, which may be passed into this parameter on a subsequent request.
+    /// - Throws:
+    ///   - ``SignalError/setProfileErrorInvalidProfile(profileValidationError:message:)`` if the provided profile isn't valid
+    ///   - ``SignalError/setProfileErrorExpectedDataWriteConflict(_:)`` if the current data hash did not match the request's expectation, indicating  another device on the account may have written an update the caller does not know about.
+    ///   - ``SignalError/setProfileErrorExpectedVersionWriteConflict(currentProfileVersion:message:)`` if the current version did not match the request's expectation, indicating another device on the account may have created a new version the caller does not know about.
+    ///   - ``SignalError/setProfileErrorPaymentsForbiddenInRegion(_:)`` if payments  are not permitted in the account's region, based on its phone number or the caller's IP address if the account does not have a phone number. The request should be retried without paymentAddress.
+    ///   - the standard Signal network errors
+    func setProfile(
+        aci: Aci,
+        profileKey: ProfileKey,
+        profile: Profile,
+        expectedCurrentDataHash: ProfileDataHash?,
+        expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+    ) async throws -> ProfileDataHash
     /// Returns an anonymous credential that may be presented with avatar operations in
     /// UnauthProfilesService
     ///
@@ -34,6 +63,22 @@ public protocol AuthProfilesService: Sendable {
 }
 
 extension AuthenticatedChatConnection: AuthProfilesService {
+    public func setProfile(
+        aci: Aci,
+        profileKey: ProfileKey,
+        profile: Profile,
+        expectedCurrentDataHash: ProfileDataHash?,
+        expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+    ) async throws -> ProfileDataHash {
+        return try await self.setProfileImpl(
+            aci: aci,
+            profileKey: profileKey,
+            profile: profile,
+            expectedCurrentDataHash: expectedCurrentDataHash,
+            expectedCurrentProfileKeyVersion: expectedCurrentProfileKeyVersion,
+        )
+    }
+
     public func getAvatarCredential(
         aci: Aci,
         keyPair: ZkCredentialKeyPair,
@@ -64,6 +109,25 @@ extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthPr
 }
 
 extension AuthenticatedChatConnection {
+    internal func setProfileImpl(
+        rng: Int64 = -1,
+        aci: Aci,
+        profileKey: ProfileKey,
+        profile: Profile,
+        expectedCurrentDataHash: Data?,
+        expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+    ) async throws -> Data {
+        return try await NativeNice.AuthenticatedChatConnection_set_profile(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            rng: rng,
+            aci: aci,
+            profileKey: profileKey,
+            profile: profile,
+            expectedCurrentDataHash: expectedCurrentDataHash,
+            expectedCurrentProfileKeyVersion: expectedCurrentProfileKeyVersion,
+        )
+    }
     internal func getAvatarCredentialImpl(
         aci: Aci,
         keyPair: ZkCredentialKeyPair,

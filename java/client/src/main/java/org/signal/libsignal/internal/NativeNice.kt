@@ -423,6 +423,56 @@ public sealed class PaymentProviderInternal {
 */
 
 /*
+// org.signal.libsignal.net.Profile
+
+public data class Profile(
+  public val givenName: String,
+  public val familyName: String,
+  public val about: String,
+  public val aboutEmoji: String,
+  public val avatar: org.signal.libsignal.net.CdnUrl?,
+  public val phoneNumberSharing: Boolean,
+  public val paymentAddress: ByteArray?,
+  public val badgeIds: List<String>,
+)
+
+*/
+
+/*
+// org.signal.libsignal.net.ProfileFieldWithMaxLength
+
+public sealed class ProfileFieldWithMaxLength {
+  public data object GivenName : ProfileFieldWithMaxLength()
+
+  public data object FamilyName : ProfileFieldWithMaxLength()
+
+  public data object About : ProfileFieldWithMaxLength()
+
+  public data object AboutEmoji : ProfileFieldWithMaxLength()
+
+  public data object Avatar : ProfileFieldWithMaxLength()
+
+  public data object PaymentAddress : ProfileFieldWithMaxLength()
+}
+
+*/
+
+/*
+// org.signal.libsignal.net.ProfileValidationError
+
+public sealed class ProfileValidationErrorInternal {
+  public data class FieldTooLong(
+    public val field: org.signal.libsignal.net.ProfileFieldWithMaxLength,
+    public val len: Int,
+    public val maxLen: Int,
+  ) : ProfileValidationErrorInternal()
+
+  public data object GivenNameEmpty : ProfileValidationErrorInternal()
+}
+
+*/
+
+/*
 // org.signal.libsignal.net.S3UploadForm
 
 public data class S3UploadFormInternal(
@@ -1154,6 +1204,74 @@ public object PaymentProviderInternal_Braintree_ReturnConverter {
   internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentProvider.Braintree
 }
 
+public object ProfileFieldWithMaxLength_GivenName_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileFieldWithMaxLength.GivenName
+}
+
+public object ProfileFieldWithMaxLength_FamilyName_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileFieldWithMaxLength.FamilyName
+}
+
+public object ProfileFieldWithMaxLength_About_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileFieldWithMaxLength.About
+}
+
+public object ProfileFieldWithMaxLength_AboutEmoji_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileFieldWithMaxLength.AboutEmoji
+}
+
+public object ProfileFieldWithMaxLength_Avatar_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileFieldWithMaxLength.Avatar
+}
+
+public object ProfileFieldWithMaxLength_PaymentAddress_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileFieldWithMaxLength.PaymentAddress
+}
+
+public object ProfileValidationErrorInternal_FieldTooLong_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    field: Any?,
+    len: Any?,
+    max_len: Any?,
+  ): Any? =
+    org.signal.libsignal.net.ProfileValidationError.FieldTooLong(
+      field =
+        downcastFromObject<org.signal.libsignal.net.ProfileFieldWithMaxLength>(field as Object),
+      len =
+        identity(len as Int),
+      maxLen =
+        identity(max_len as Int),
+    )
+}
+
+public object ProfileValidationErrorInternal_GivenNameEmpty_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileValidationError.GivenNameEmpty
+}
+
 public object S3UploadFormInternal_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1673,6 +1791,75 @@ public fun org.signal.libsignal.net.PaymentProvider.toFfiArgTypeObject(): Object
       is org.signal.libsignal.net.PaymentProvider.Braintree -> this.toFfiArgType()
     },
   )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class Profile_FfiArgType {
+  @CalledFromNative
+  internal val given_name: Any?
+
+  @CalledFromNative
+  internal val family_name: Any?
+
+  @CalledFromNative
+  internal val about: Any?
+
+  @CalledFromNative
+  internal val about_emoji: Any?
+
+  @CalledFromNative
+  internal val avatar: Any?
+
+  @CalledFromNative
+  internal val phone_number_sharing: Boolean
+
+  @CalledFromNative
+  internal val payment_address: Any?
+
+  @CalledFromNative
+  internal val badge_ids: Any?
+  internal constructor(
+    given_name: Any?,
+    family_name: Any?,
+    about: Any?,
+    about_emoji: Any?,
+    avatar: Any?,
+    phone_number_sharing: Boolean,
+    payment_address: Any?,
+    badge_ids: Any?,
+  ) {
+    this.given_name = given_name
+    this.family_name = family_name
+    this.about = about
+    this.about_emoji = about_emoji
+    this.avatar = avatar
+    this.phone_number_sharing = phone_number_sharing
+    this.payment_address = payment_address
+    this.badge_ids = badge_ids
+  }
+}
+
+public fun org.signal.libsignal.net.Profile.toFfiArgType(): Profile_FfiArgType =
+  Profile_FfiArgType(
+    given_name = identity(givenName),
+    family_name = identity(familyName),
+    about = identity(about),
+    about_emoji = identity(aboutEmoji),
+    avatar =
+      (
+        { x: org.signal.libsignal.net.CdnUrl? ->
+          x?.url
+        }
+      )(avatar),
+    phone_number_sharing = identity(phoneNumberSharing),
+    payment_address = identity(paymentAddress),
+    badge_ids =
+      mapBridgeVecArg<String, String>({
+        identity(it)
+      })(badgeIds),
+  )
+
+public fun org.signal.libsignal.net.Profile.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
 
 public object NativeNice {
   public fun AuthenticatedChatConnection_answer_challenge(
@@ -2495,6 +2682,50 @@ public object NativeNice {
           ffi_pre_key_ids,
           ffi_pre_key_data,
           ffi_pre_key_signatures,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
+  public fun AuthenticatedChatConnection_set_profile(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+    aci: org.signal.libsignal.protocol.ServiceId.Aci,
+    profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+    profile: org.signal.libsignal.net.Profile,
+    expectedCurrentDataHash: ByteArray?,
+    expectedCurrentProfileKeyVersion: org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion?,
+  ): CompletableFuture<ByteArray> {
+    val ffi_chat = identity(chat)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
+    val ffi_profile_key =
+      (org.signal.libsignal.zkgroup.profiles.ProfileKey::getInternalContentsForJNI)(profileKey)
+    val ffi_profile = (org.signal.libsignal.net.Profile::toFfiArgTypeObject)(profile)
+    val ffi_expected_current_data_hash = identity(expectedCurrentDataHash)
+    val ffi_expected_current_profile_key_version =
+      (
+        { optionArg: org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion? ->
+          optionArg?.let<org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion, ByteArray> {
+            (org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion::getContents)(it)
+          }
+        }
+      )(expectedCurrentProfileKeyVersion)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_profile(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_rng,
+          ffi_aci,
+          ffi_profile_key,
+          ffi_profile,
+          ffi_expected_current_data_hash,
+          ffi_expected_current_profile_key_version,
         )
       }
     return ffiOut

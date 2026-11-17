@@ -1257,8 +1257,100 @@ pub mod remote_derives {
     use libsignal_core::DeviceId;
     use libsignal_net_chat::api::S3UploadForm;
     use libsignal_net_chat::grpc::payments::{Currency, CurrencyConversions};
+    use libsignal_net_chat::grpc::profiles::{
+        BadgeId, CdnUrl, PaymentAddress, Profile as ActualProfile,
+    };
 
     use super::*;
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength,
+        ffi_nice_type = "ProfileFieldWithMaxLength",
+        jni_nice_type = "org.signal.libsignal.net.ProfileFieldWithMaxLength",
+    )]
+    #[allow(unused)]
+    enum ProfileFieldWithMaxLength {
+        GivenName,
+        FamilyName,
+        About,
+        AboutEmoji,
+        Avatar,
+        PaymentAddress,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(jni_nice_type = "org.signal.libsignal.net.ProfileValidationError")]
+    pub enum ProfileValidationErrorInternal {
+        FieldTooLong {
+            field: libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength,
+            len: i32,
+            max_len: i32,
+        },
+        GivenNameEmpty,
+    }
+    impl From<libsignal_net_chat::grpc::profiles::ProfileValidationError>
+        for ProfileValidationErrorInternal
+    {
+        fn from(value: libsignal_net_chat::grpc::profiles::ProfileValidationError) -> Self {
+            match value {
+                libsignal_net_chat::grpc::profiles::ProfileValidationError::FieldTooLong {
+                    field,
+                    len,
+                    max_len,
+                } => Self::FieldTooLong {
+                    field,
+                    len: len.try_into().expect("fits in i32"),
+                    max_len: max_len.try_into().expect("fits in i32"),
+                },
+                libsignal_net_chat::grpc::profiles::ProfileValidationError::GivenNameEmpty => {
+                    Self::GivenNameEmpty
+                }
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(ActualProfile)]
+    #[bridge(
+        ffi_nice_type = "Profile",
+        jni_nice_type = "org.signal.libsignal.net.Profile"
+    )]
+    pub struct Profile {
+        pub given_name: String,
+        pub family_name: String,
+        pub about: String,
+        pub about_emoji: String,
+        pub avatar: Option<CdnUrl>,
+        pub phone_number_sharing: bool,
+        pub payment_address: Option<PaymentAddress>,
+        pub badge_ids: BridgeVec<BadgeId>,
+    }
+    impl From<Profile> for ActualProfile {
+        fn from(
+            Profile {
+                given_name,
+                family_name,
+                about,
+                about_emoji,
+                avatar,
+                phone_number_sharing,
+                payment_address,
+                badge_ids,
+            }: Profile,
+        ) -> Self {
+            Self {
+                given_name,
+                family_name,
+                about,
+                about_emoji,
+                avatar,
+                phone_number_sharing,
+                payment_address,
+                badge_ids: badge_ids.0,
+            }
+        }
+    }
 
     #[derive(BridgedAsValue)]
     #[bridge(arg = false)]

@@ -3,6 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import Foundation
+
+public typealias ProfileDataHash = Data
+public typealias PaymentAddress = Data
+public typealias BadgeId = String
+
 /// A URL that points to a Signal CDN
 public struct CdnUrl: Sendable, Equatable {
     public let url: String
@@ -20,4 +26,67 @@ public struct CdnUrl: Sendable, Equatable {
         }
         self.url = url
     }
+}
+
+public struct Profile: Sendable, Equatable {
+    public init(
+        givenName: String,
+        familyName: String,
+        about: String,
+        aboutEmoji: String,
+        avatar: CdnUrl? = nil,
+        phoneNumberSharing: Bool,
+        paymentAddress: PaymentAddress? = nil,
+        badgeIds: [BadgeId]
+    ) {
+        self.givenName = givenName
+        self.familyName = familyName
+        self.about = about
+        self.aboutEmoji = aboutEmoji
+        self.avatar = avatar
+        self.phoneNumberSharing = phoneNumberSharing
+        self.paymentAddress = paymentAddress
+        self.badgeIds = badgeIds
+    }
+
+    /// Non-empty; max-length is 128 bytes
+    public var givenName: String
+    /// Optional (can be empty); max-length is 128 bytes
+    public var familyName: String
+    /// Optional (can be empty); max-length is 512 bytes
+    public var about: String
+    /// Optional (can be empty); max-length is 32 bytes
+    public var aboutEmoji: String
+    /// If provided, it should be the full URL to the avatar.
+    public var avatar: CdnUrl?
+    // The following fields are conceptually part of the user's profile, but live outside of the
+    // encrypted v2 PlaintextProfileData
+    public var phoneNumberSharing: Bool
+    public var paymentAddress: PaymentAddress?
+    public var badgeIds: [BadgeId]
+}
+
+public enum ProfileFieldWithMaxLength: Sendable, Equatable {
+    case givenName
+    case familyName
+    case about
+    case aboutEmoji
+    case avatar
+    case paymentAddress
+
+    public var maxLength: Int {
+        switch self {
+        case .about: return 512
+        case .aboutEmoji: return 32
+        case .avatar: return 128
+        case .familyName: return 128
+        case .givenName: return 128
+        case .paymentAddress: return 550
+        }
+    }
+}
+
+public enum ProfileValidationError: Sendable, Equatable {
+    case fieldTooLong(field: ProfileFieldWithMaxLength, len: Int, maxLen: Int)
+    case givenNameEmpty
 }

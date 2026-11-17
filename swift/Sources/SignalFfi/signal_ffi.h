@@ -2501,6 +2501,20 @@ static_assert_64bit(alignof(SignalMutPointerServerSecretParams) == 8);
 typedef SignalMutPointerServerSecretParams* SignalType_MutPointer_SignalMutPointerServerSecretParams;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerServerSecretParams) == 8);
+typedef SignalType_FixedArray64_uint8_t MaybeUninitOfc_uchar64;
+static_assert_64bit(sizeof(MaybeUninitOfc_uchar64) == 64);
+static_assert_64bit(alignof(MaybeUninitOfc_uchar64) == 1);
+typedef struct {
+  bool present;
+  MaybeUninitOfc_uchar64 value;
+} SignalOptionalOfc_uchar64;
+static_assert_64bit(offsetof(SignalOptionalOfc_uchar64, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfc_uchar64, value) == 1);
+static_assert_64bit(sizeof(SignalOptionalOfc_uchar64) == 65);
+static_assert_64bit(alignof(SignalOptionalOfc_uchar64) == 1);
+typedef SignalOptionalOfc_uchar64* SignalType_MutPointer_SignalOptionalOfc_uchar64;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfc_uchar64) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfc_uchar64) == 8);
 typedef SignalOptionalOfUuid* SignalType_MutPointer_SignalOptionalOfUuid;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfUuid) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfUuid) == 8);
@@ -3374,12 +3388,45 @@ static_assert_64bit(alignof(SignalCPromiseStartMfaVerificationResponseFfiResult)
 typedef SignalCPromiseStartMfaVerificationResponseFfiResult* SignalType_MutPointer_SignalCPromiseStartMfaVerificationResponseFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseStartMfaVerificationResponseFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseStartMfaVerificationResponseFfiResult) == 8);
+typedef enum {
+  SignalProfileFieldWithMaxLengthFfiResultGivenName,
+  SignalProfileFieldWithMaxLengthFfiResultFamilyName,
+  SignalProfileFieldWithMaxLengthFfiResultAbout,
+  SignalProfileFieldWithMaxLengthFfiResultAboutEmoji,
+  SignalProfileFieldWithMaxLengthFfiResultAvatar,
+  SignalProfileFieldWithMaxLengthFfiResultPaymentAddress,
+} SignalProfileFieldWithMaxLengthFfiResult;
+static_assert_64bit(sizeof(SignalProfileFieldWithMaxLengthFfiResult) == 4);
+static_assert_64bit(alignof(SignalProfileFieldWithMaxLengthFfiResult) == 4);
+typedef enum {
+  SignalProfileValidationErrorInternalFfiResultFieldTooLong,
+  SignalProfileValidationErrorInternalFfiResultGivenNameEmpty,
+} SignalProfileValidationErrorInternalFfiResult_Tag;
+typedef struct {
+  SignalProfileFieldWithMaxLengthFfiResult field;
+  int32_t len;
+  int32_t max_len;
+} SignalProfileValidationErrorInternalFfiResultSignalFieldTooLong_Body;
+typedef struct {
+  SignalProfileValidationErrorInternalFfiResult_Tag tag;
+  union {
+    SignalProfileValidationErrorInternalFfiResultSignalFieldTooLong_Body field_too_long;
+  };
+} SignalProfileValidationErrorInternalFfiResult;
+static_assert_64bit(sizeof(SignalProfileValidationErrorInternalFfiResult) == 16);
+static_assert_64bit(alignof(SignalProfileValidationErrorInternalFfiResult) == 4);
+typedef SignalProfileValidationErrorInternalFfiResult* SignalType_MutPointer_SignalProfileValidationErrorInternalFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalProfileValidationErrorInternalFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalProfileValidationErrorInternalFfiResult) == 8);
 typedef uint16_t* SignalType_MutPointer_uint16_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_uint16_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_uint16_t) == 8);
 typedef uint64_t* SignalType_MutPointer_uint64_t;
 static_assert_64bit(sizeof(SignalType_MutPointer_uint64_t) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_uint64_t) == 8);
+typedef const SignalType_FixedArray64_uint8_t* MaybeUninitOfPtrToc_uchar64;
+static_assert_64bit(sizeof(MaybeUninitOfPtrToc_uchar64) == 8);
+static_assert_64bit(alignof(MaybeUninitOfPtrToc_uchar64) == 8);
 static_assert_64bit(sizeof(float) == 4);
 static_assert_64bit(alignof(float) == 4);
 typedef float MaybeUninitOff32;
@@ -3913,6 +3960,14 @@ static_assert_64bit(sizeof(SignalOptionalBorrowedSliceOfc_uchar) == 24);
 static_assert_64bit(alignof(SignalOptionalBorrowedSliceOfc_uchar) == 8);
 typedef struct {
   bool present;
+  MaybeUninitOfPtrToc_uchar64 value;
+} SignalOptionalOfPtrToc_uchar64;
+static_assert_64bit(offsetof(SignalOptionalOfPtrToc_uchar64, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfPtrToc_uchar64, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfPtrToc_uchar64) == 16);
+static_assert_64bit(alignof(SignalOptionalOfPtrToc_uchar64) == 8);
+typedef struct {
+  bool present;
   MaybeUninitOff32 value;
 } SignalOptionalOff32;
 static_assert_64bit(offsetof(SignalOptionalOff32, present) == 0);
@@ -4044,6 +4099,10 @@ typedef enum {
   SignalErrorCodeReceiptAlreadyRedeemed = 240,
   SignalErrorCodeInvalidAvatarUploadCredentialPresentation = 241,
   SignalErrorCodeAccountMissingZkCredentialKey = 242,
+  SignalErrorCodeSetProfileInvalidProfile = 243,
+  SignalErrorCodeSetProfileExpectedDataWriteConflict = 244,
+  SignalErrorCodeSetProfileExpectedVersionWriteConflict = 245,
+  SignalErrorCodeSetProfilePaymentsForbiddenInRegion = 246,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);
 static_assert_64bit(alignof(SignalErrorCode) == 4);
@@ -4174,6 +4233,26 @@ typedef enum {
 } SignalPaymentProviderInternalFfiArg;
 static_assert_64bit(sizeof(SignalPaymentProviderInternalFfiArg) == 4);
 static_assert_64bit(alignof(SignalPaymentProviderInternalFfiArg) == 4);
+typedef struct {
+  const int8_t* given_name;
+  const int8_t* family_name;
+  const int8_t* about;
+  const int8_t* about_emoji;
+  SignalOptionalOfCStringPtr avatar;
+  bool phone_number_sharing;
+  SignalOptionalOfBorrowedBuffer payment_address;
+  SignalBorrowedSliceOfCStringPtr badge_ids;
+} SignalProfileFfiArg;
+static_assert_64bit(offsetof(SignalProfileFfiArg, given_name) == 0);
+static_assert_64bit(offsetof(SignalProfileFfiArg, family_name) == 8);
+static_assert_64bit(offsetof(SignalProfileFfiArg, about) == 16);
+static_assert_64bit(offsetof(SignalProfileFfiArg, about_emoji) == 24);
+static_assert_64bit(offsetof(SignalProfileFfiArg, avatar) == 32);
+static_assert_64bit(offsetof(SignalProfileFfiArg, phone_number_sharing) == 48);
+static_assert_64bit(offsetof(SignalProfileFfiArg, payment_address) == 56);
+static_assert_64bit(offsetof(SignalProfileFfiArg, badge_ids) == 80);
+static_assert_64bit(sizeof(SignalProfileFfiArg) == 96);
+static_assert_64bit(alignof(SignalProfileFfiArg) == 8);
 typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
@@ -4641,6 +4720,17 @@ SignalFfiError* signal_authenticated_chat_connection_set_one_time_kem_pre_keys(
   SignalBorrowedSliceOfu32 pre_key_ids,
   SignalBorrowedSliceOfConstPointerKyberPublicKey pre_key_data,
   SignalBorrowedSliceOfBuffers pre_key_signatures
+);
+SignalFfiError* signal_authenticated_chat_connection_set_profile(
+  SignalCPromisec_uchar32* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  int64_t rng,
+  const SignalType_FixedArray17_uint8_t* aci,
+  SignalBorrowedBuffer profile_key,
+  SignalProfileFfiArg profile,
+  const SignalType_FixedArray32_uint8_t* expected_current_data_hash,
+  SignalOptionalOfPtrToc_uchar64 expected_current_profile_key_version
 );
 SignalFfiError* signal_authenticated_chat_connection_set_push_token_apns(
   SignalCPromisebool* promise,
@@ -5327,6 +5417,10 @@ SignalFfiError* signal_error_get_charge_failure(
   SignalOptionalOfChargeFailureFfiResult* out,
   const SignalFfiError* err
 );
+SignalFfiError* signal_error_get_current_profile_version(
+  SignalOptionalOfc_uchar64* out,
+  const SignalFfiError* err
+);
 SignalFfiError* signal_error_get_invalid_protocol_address(
   SignalPairOfCStringPtru32* out,
   const SignalFfiError* err
@@ -5341,6 +5435,10 @@ SignalFfiError* signal_error_get_mismatched_device_errors(
 );
 SignalFfiError* signal_error_get_our_fingerprint_version(
   uint32_t* out,
+  const SignalFfiError* err
+);
+SignalFfiError* signal_error_get_profile_validation_error(
+  SignalProfileValidationErrorInternalFfiResult* out,
   const SignalFfiError* err
 );
 SignalFfiError* signal_error_get_rate_limit_challenge(

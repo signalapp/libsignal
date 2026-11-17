@@ -23,11 +23,13 @@ use libsignal_net_chat::api::purchase::ChargeFailure;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
 use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
+use libsignal_net_chat::grpc::profiles::SetProfileError;
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
+use zkgroup::profiles::ProfileKeyVersion;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
@@ -172,6 +174,11 @@ pub enum SignalErrorCode {
     ReceiptAlreadyRedeemed = 240,
     InvalidAvatarUploadCredentialPresentation = 241,
     AccountMissingZkCredentialKey = 242,
+
+    SetProfileInvalidProfile = 243,
+    SetProfileExpectedDataWriteConflict = 244,
+    SetProfileExpectedVersionWriteConflict = 245,
+    SetProfilePaymentsForbiddenInRegion = 246,
 }
 
 pub trait UpcastAsAny {
@@ -238,6 +245,15 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_charge_failure(&self) -> Result<Option<ChargeFailure>, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_profile_validation_error(
+        &self,
+    ) -> Result<crate::net::chat::remote_derives::ProfileValidationErrorInternal, WrongErrorKind>
+    {
+        Err(WrongErrorKind)
+    }
+    fn provide_current_profile_version(&self) -> Result<Option<ProfileKeyVersion>, WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -1554,5 +1570,48 @@ impl IntoFfiError for libsignal_net_chat::grpc::profiles::AccountMissingZkCreden
             SignalErrorCode::AccountMissingZkCredentialKey,
             self.to_string(),
         )
+    }
+}
+
+impl FfiError for SetProfileError {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            SetProfileError::InvalidProfile(_) => SignalErrorCode::SetProfileInvalidProfile,
+            SetProfileError::ExpectedDataWriteConflict => {
+                SignalErrorCode::SetProfileExpectedDataWriteConflict
+            }
+            SetProfileError::ExpectedVersionWriteConflict { .. } => {
+                SignalErrorCode::SetProfileExpectedVersionWriteConflict
+            }
+            SetProfileError::PaymentsForbiddenInRegion => {
+                SignalErrorCode::SetProfilePaymentsForbiddenInRegion
+            }
+        }
+    }
+
+    fn provide_current_profile_version(&self) -> Result<Option<ProfileKeyVersion>, WrongErrorKind> {
+        if let SetProfileError::ExpectedVersionWriteConflict {
+            current_profile_version,
+        } = self
+        {
+            Ok(*current_profile_version)
+        } else {
+            Err(WrongErrorKind)
+        }
+    }
+
+    fn provide_profile_validation_error(
+        &self,
+    ) -> Result<crate::net::chat::remote_derives::ProfileValidationErrorInternal, WrongErrorKind>
+    {
+        if let SetProfileError::InvalidProfile(e) = self {
+            Ok((*e).into())
+        } else {
+            Err(WrongErrorKind)
+        }
     }
 }

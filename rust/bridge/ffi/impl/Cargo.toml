@@ -36,6 +36,7 @@ libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
 libsignal-protocol = { workspace = true }
 signal-media = { workspace = true }
+zkgroup = { workspace = true }
 
 hex = { workspace = true }
 log = { workspace = true }

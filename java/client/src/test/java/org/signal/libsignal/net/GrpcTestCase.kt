@@ -103,6 +103,7 @@ public class GrpcTestCase<Req, Resp> {
     ) {
       NativeTesting.TESTING_EnableDeterministicRngForTesting()
       for (test in tests) {
+        System.err.println("Running test ${test.name}")
         coroutineScope {
           val tokioAsyncContext = TokioAsyncContext()
           val (chat, fakeRemote) = newConnection(tokioAsyncContext, NoOpListener())
@@ -157,4 +158,4 @@ internal fun <T, E : BadRequestError> RequestResult<T, E>.assertSuccess(): T =
   assertIs<RequestResult.Success<T>>(this, this.toString()).result
 
 internal inline fun <T, E : BadRequestError, reified SubError : E> RequestResult<T, E>.assertNonSuccess(): SubError =
-  assertIs<SubError>(assertIs<RequestResult.NonSuccess<E>>(this).error)
+  assertIs<SubError>(assertIs<RequestResult.NonSuccess<E>>(this, this.toString()).error, this.toString())

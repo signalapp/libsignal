@@ -580,6 +580,39 @@ public data class SetOneTimeKemPreKeysArgs(
   public val preKeys: List<org.signal.libsignal.internal.TestingAnySignedPreKey>,
 )
 
+public data class SetProfileArgs(
+  public val rngSeed: Long,
+  public val aci: org.signal.libsignal.protocol.ServiceId.Aci,
+  public val profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+  public val profile: org.signal.libsignal.net.Profile,
+  public val expectedCurrentDataHash: ByteArray?,
+  public val expectedCurrentProfileKeyVersion: org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion?,
+)
+
+public sealed class SetProfileError {
+  public data class InvalidProfile(
+    public val _0: org.signal.libsignal.net.ProfileValidationError,
+  ) : SetProfileError()
+
+  public data object ExpectedDataWriteConflict : SetProfileError()
+
+  public data class ExpectedVersionWriteConflict(
+    public val currentProfileVersion: org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion?,
+  ) : SetProfileError()
+
+  public data object PaymentsForbiddenInRegion : SetProfileError()
+}
+
+public sealed class SetProfileOut {
+  public data class Success(
+    public val _0: ByteArray,
+  ) : SetProfileOut()
+
+  public data class Failure(
+    public val _0: org.signal.libsignal.internal.SetProfileError,
+  ) : SetProfileOut()
+}
+
 public data class SetSignedEcPreKeyArgs(
   public val identity: Int,
   public val preKey: org.signal.libsignal.internal.TestingAnySignedPreKey,
@@ -1994,6 +2027,44 @@ public object MyTestStruct_ReturnConverter {
     )
 }
 
+public object Profile_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    given_name: Any?,
+    family_name: Any?,
+    about: Any?,
+    about_emoji: Any?,
+    avatar: Any?,
+    phone_number_sharing: Any?,
+    payment_address: Any?,
+    badge_ids: Any?,
+  ): Any? =
+    org.signal.libsignal.net.Profile(
+      givenName =
+        identity(given_name as String),
+      familyName =
+        identity(family_name as String),
+      about =
+        identity(about as String),
+      aboutEmoji =
+        identity(about_emoji as String),
+      avatar =
+        (
+          { x: String? ->
+            x?.let { (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(it) }
+          }
+        )(avatar as String?),
+      phoneNumberSharing =
+        identity(phone_number_sharing as Boolean),
+      paymentAddress =
+        ({ x: ByteArray? -> x?.let { identity(it) } })(payment_address as ByteArray?),
+      badgeIds =
+        mapBridgeVecReturn<String, String>({ identity(it) })(badge_ids as Array<*>),
+    )
+}
+
 public object ProfileKeyCredentialRequestError_AuthFailed_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -2343,6 +2414,124 @@ public object SetOneTimeKemPreKeysArgs_ReturnConverter {
         mapBridgeVecReturn<Object, org.signal.libsignal.internal.TestingAnySignedPreKey>({
           downcastFromObject<org.signal.libsignal.internal.TestingAnySignedPreKey>(it)
         })(pre_keys as Array<*>),
+    )
+}
+
+public object SetProfileArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    rng_seed: Any?,
+    aci: Any?,
+    profile_key: Any?,
+    profile: Any?,
+    expected_current_data_hash: Any?,
+    expected_current_profile_key_version: Any?,
+  ): Any? =
+    SetProfileArgs(
+      rngSeed =
+        identity(rng_seed as Long),
+      aci =
+        org.signal.libsignal.protocol.ServiceId.Aci
+          .parseFromFixedWidthBinary(aci as ByteArray),
+      profileKey =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.profiles
+              .ProfileKey(x)
+          }
+        )(profile_key as ByteArray),
+      profile =
+        downcastFromObject<org.signal.libsignal.net.Profile>(profile as Object),
+      expectedCurrentDataHash =
+        (
+          { x: ByteArray? ->
+            x?.let { identity(it) }
+          }
+        )(expected_current_data_hash as ByteArray?),
+      expectedCurrentProfileKeyVersion =
+        (
+          { x: ByteArray? ->
+            x?.let {
+              (
+                { profileKeyHex: ByteArray ->
+                  org.signal.libsignal.zkgroup.profiles
+                    .ProfileKeyVersion(profileKeyHex)
+                }
+              )(it)
+            }
+          }
+        )(expected_current_profile_key_version as ByteArray?),
+    )
+}
+
+public object SetProfileError_InvalidProfile_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    SetProfileError.InvalidProfile(
+      _0 =
+        downcastFromObject<org.signal.libsignal.net.ProfileValidationError>(_0 as Object),
+    )
+}
+
+public object SetProfileError_ExpectedDataWriteConflict_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = SetProfileError.ExpectedDataWriteConflict
+}
+
+public object SetProfileError_ExpectedVersionWriteConflict_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(current_profile_version: Any?): Any? =
+    SetProfileError.ExpectedVersionWriteConflict(
+      currentProfileVersion =
+        (
+          { x: ByteArray? ->
+            x?.let {
+              (
+                { profileKeyHex: ByteArray ->
+                  org.signal.libsignal.zkgroup.profiles
+                    .ProfileKeyVersion(profileKeyHex)
+                }
+              )(it)
+            }
+          }
+        )(current_profile_version as ByteArray?),
+    )
+}
+
+public object SetProfileError_PaymentsForbiddenInRegion_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = SetProfileError.PaymentsForbiddenInRegion
+}
+
+public object SetProfileOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    SetProfileOut.Success(
+      _0 =
+        identity(_0 as ByteArray),
+    )
+}
+
+public object SetProfileOut_Failure_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    SetProfileOut.Failure(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.SetProfileError>(_0 as Object),
     )
 }
 
@@ -3437,6 +3626,17 @@ public object NativeTestingNice {
     return identity(ffiOut)
   }
 
+  public fun TESTING_ProfileFieldMaxLengths(): List<Pair<org.signal.libsignal.net.ProfileFieldWithMaxLength, Int>> {
+    val ffiOut =
+      NativeTesting.TESTING_ProfileFieldMaxLengths()
+
+    return mapBridgeVecReturn<Pair<Object, Int>, Pair<org.signal.libsignal.net.ProfileFieldWithMaxLength, Int>>({
+      mapPair<Object, Int, org.signal.libsignal.net.ProfileFieldWithMaxLength, Int>({
+        downcastFromObject<org.signal.libsignal.net.ProfileFieldWithMaxLength>(it)
+      }, { identity(it) })(it)
+    })(ffiOut)
+  }
+
   public fun TESTING_RedeemBackupReceiptTests(): List<org.signal.libsignal.net.GrpcTestCase<ByteArray, org.signal.libsignal.internal.RedeemBackupReceiptOut>> {
     val ffiOut =
       NativeTesting.TESTING_RedeemBackupReceiptTests()
@@ -3581,6 +3781,26 @@ public object NativeTestingNice {
       .resultConverter<Object, Void?, org.signal.libsignal.internal.SetOneTimeKemPreKeysArgs, Void?>({
         downcastFromObject<org.signal.libsignal.internal.SetOneTimeKemPreKeysArgs>(it)
       }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_SetProfileTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetProfileArgs, org.signal.libsignal.internal.SetProfileOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetProfileTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.SetProfileArgs, org.signal.libsignal.internal.SetProfileOut>({
+        downcastFromObject<org.signal.libsignal.internal.SetProfileArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SetProfileOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_SetProfileValidationTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.SetProfileArgs, org.signal.libsignal.internal.SetProfileOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetProfileValidationTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.SetProfileArgs, org.signal.libsignal.internal.SetProfileOut>({
+        downcastFromObject<org.signal.libsignal.internal.SetProfileArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.SetProfileOut>(it) })(ffiOut)
   }
 
   public fun TESTING_SetPushTokenFcmTests(): List<org.signal.libsignal.net.GrpcTestCase<String, Void?>> {

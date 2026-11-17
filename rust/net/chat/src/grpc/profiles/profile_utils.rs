@@ -773,7 +773,7 @@ pub(super) mod test_cases {
 
     #[derive(Clone)]
     pub struct SetProfileArgs {
-        pub rng_seed: u64,
+        pub rng_seed: i64,
         pub aci: Aci,
         pub profile_key: ProfileKey,
         pub profile: Profile,
@@ -1200,57 +1200,10 @@ pub(super) mod test_cases {
         }
         cases
     }
-    pub fn set_profile_test_cases() -> SetProfileTestCases {
-        let method = "/org.signal.chat.profile.Profile/SetProfile";
+    /// These test cases never actually initiate a request
+    pub fn set_profile_validation_test_cases() -> SetProfileTestCases {
+        let method = "/noGrpcEverGetsCalled";
         let mut cases = SetProfileTestCases::new();
-        for (i, mut test) in roundtrip_test_cases().into_iter().enumerate() {
-            cases.push(GrpcTestCase {
-                name: format!("Successful set #{i}, no hashes"),
-                method: method.into(),
-                request: SetProfileArgs {
-                    rng_seed: test.seed,
-                    aci: test.aci,
-                    profile_key: test.profile_key,
-                    profile: test.correct_fetched_profile.profile.clone(),
-                    expected_current_data_hash: None,
-                    expected_current_profile_key_version: None,
-                },
-                request_grpc: test.set_profile_request.clone(),
-                response_grpc: SetProfileResponse {
-                    response: Some(SetProfileResponseEnum::Result(SetProfileResult {
-                        v1_avatar_upload_form: None,
-                    })),
-                },
-                response: SetProfileOut::Success(test.profile_hash),
-            });
-            let expected_current_data_hash = [0xa; 32];
-            let expected_current_profile_key_version = ProfileKeyVersion { bytes: [0xb; 32] };
-            test.set_profile_request.expected_current_data_hash =
-                expected_current_data_hash.to_vec();
-            test.set_profile_request.expected_current_version =
-                expected_current_profile_key_version.bytes.to_vec();
-            cases.push(GrpcTestCase {
-                name: format!("Successful set #{i}, with hashes"),
-                method: method.into(),
-                request: SetProfileArgs {
-                    rng_seed: test.seed,
-                    aci: test.aci,
-                    profile_key: test.profile_key,
-                    profile: test.correct_fetched_profile.profile.clone(),
-                    expected_current_data_hash: Some(expected_current_data_hash),
-                    expected_current_profile_key_version: Some(
-                        expected_current_profile_key_version,
-                    ),
-                },
-                request_grpc: test.set_profile_request,
-                response_grpc: SetProfileResponse {
-                    response: Some(SetProfileResponseEnum::Result(SetProfileResult {
-                        v1_avatar_upload_form: None,
-                    })),
-                },
-                response: SetProfileOut::Success(test.profile_hash),
-            });
-        }
         let aci = Aci::from_uuid_bytes([0x4; 16]);
         let profile_key = ProfileKey { bytes: [0x73; 32] };
         cases.push(GrpcTestCase {
@@ -1313,6 +1266,59 @@ pub(super) mod test_cases {
                 )),
             });
         }
+        cases
+    }
+    pub fn set_profile_test_cases() -> SetProfileTestCases {
+        let method = "/org.signal.chat.profile.Profile/SetProfile";
+        let mut cases = SetProfileTestCases::new();
+        for (i, mut test) in roundtrip_test_cases().into_iter().enumerate() {
+            cases.push(GrpcTestCase {
+                name: format!("Successful set #{i}, no hashes"),
+                method: method.into(),
+                request: SetProfileArgs {
+                    rng_seed: test.seed as i64,
+                    aci: test.aci,
+                    profile_key: test.profile_key,
+                    profile: test.correct_fetched_profile.profile.clone(),
+                    expected_current_data_hash: None,
+                    expected_current_profile_key_version: None,
+                },
+                request_grpc: test.set_profile_request.clone(),
+                response_grpc: SetProfileResponse {
+                    response: Some(SetProfileResponseEnum::Result(SetProfileResult {
+                        v1_avatar_upload_form: None,
+                    })),
+                },
+                response: SetProfileOut::Success(test.profile_hash),
+            });
+            let expected_current_data_hash = [0xa; 32];
+            let expected_current_profile_key_version = ProfileKeyVersion { bytes: [0xb; 32] };
+            test.set_profile_request.expected_current_data_hash =
+                expected_current_data_hash.to_vec();
+            test.set_profile_request.expected_current_version =
+                expected_current_profile_key_version.bytes.to_vec();
+            cases.push(GrpcTestCase {
+                name: format!("Successful set #{i}, with hashes"),
+                method: method.into(),
+                request: SetProfileArgs {
+                    rng_seed: test.seed as i64,
+                    aci: test.aci,
+                    profile_key: test.profile_key,
+                    profile: test.correct_fetched_profile.profile.clone(),
+                    expected_current_data_hash: Some(expected_current_data_hash),
+                    expected_current_profile_key_version: Some(
+                        expected_current_profile_key_version,
+                    ),
+                },
+                request_grpc: test.set_profile_request,
+                response_grpc: SetProfileResponse {
+                    response: Some(SetProfileResponseEnum::Result(SetProfileResult {
+                        v1_avatar_upload_form: None,
+                    })),
+                },
+                response: SetProfileOut::Success(test.profile_hash),
+            });
+        }
         {
             let mut test = roundtrip_test_cases().into_iter().next().expect("nonempty");
             let expected_current_data_hash = [0xa; 32];
@@ -1322,7 +1328,7 @@ pub(super) mod test_cases {
             test.set_profile_request.expected_current_version =
                 expected_current_profile_key_version.bytes.to_vec();
             let request = SetProfileArgs {
-                rng_seed: test.seed,
+                rng_seed: test.seed as i64,
                 aci: test.aci,
                 profile_key: test.profile_key,
                 profile: test.correct_fetched_profile.profile.clone(),

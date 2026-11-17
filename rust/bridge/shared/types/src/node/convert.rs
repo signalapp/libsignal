@@ -22,6 +22,7 @@ use neon::types::JsBigInt;
 use paste::paste;
 use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -952,6 +953,52 @@ zkgroup_serialize_type!(
     zkgroup::avatars::AvatarUploadCredential,
     "AvatarUploadCredential"
 );
+
+impl SimpleArgTypeInfo for ProfileKeyVersion {
+    type ArgType = JsUint8Array;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        ProfileKeyVersion::from_hex_bytes(foreign.as_slice(cx))
+            .or_else(|_| cx.throw_error("Invalid ProfileKeyVersion hex bytes"))
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+        "Bytes".into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "zkgroup.ProfileKeyVersion".into(),
+            ffi_type: "Bytes".into(),
+            converter_function: "((profileKeyVersion: zkgroup.ProfileKeyVersion) => profileKeyVersion.getContents())".to_string(),
+        }
+    }
+}
+impl<'a> ResultTypeInfo<'a> for ProfileKeyVersion {
+    type ResultType = JsUint8Array;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        JsUint8Array::from_slice(cx, &self.hex_bytes())
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+        "Bytes".into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "zkgroup.ProfileKeyVersion".into(),
+            ffi_type: "Bytes".into(),
+            converter_function: "((x: Bytes) => new zkgroup.ProfileKeyVersion(x))".into(),
+        }
+    }
+}
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

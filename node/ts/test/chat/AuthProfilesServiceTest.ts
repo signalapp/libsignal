@@ -7,8 +7,13 @@ import { config, expect, use } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 
 import * as NativeNice from '../../NativeNice.js';
+import * as Native from '../../Native.js';
 import * as util from '../util.js';
-import { AuthProfilesService } from '../../net.js';
+import {
+  AuthProfilesService,
+  PROFILE_FIELD_MAX_LENGTHS,
+  TokioAsyncContext,
+} from '../../net.js';
 import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import type { AvatarUploadCredential } from '../../zkgroup/index.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
@@ -68,5 +73,91 @@ describe('AuthProfilesService', () => {
         }
       }
     );
+  });
+
+  describe('setProfile', () => {
+    async function check(
+      chat: AuthProfilesService,
+      {
+        rngSeed,
+        aci,
+        profileKey,
+        profile,
+        expectedCurrentDataHash,
+        expectedCurrentProfileKeyVersion,
+      }: NativeNice.SetProfileArgs,
+      resp: NativeNice.SetProfileOut
+    ): Promise<void> {
+      const out = chat.setProfile({
+        rng: { __deterministicRngSeedForTesting: Number(rngSeed) },
+        aci,
+        profileKey,
+        profile,
+        expectedCurrentDataHash,
+        expectedCurrentProfileKeyVersion,
+      });
+      if ('success' in resp) {
+        expect(await out).to.deep.equal(resp.success);
+      } else if ('failure' in resp) {
+        if (resp.failure === 'expectedDataWriteConflict') {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.SetProfileExpectedDataWriteConflict,
+            });
+        } else if (resp.failure === 'paymentsForbiddenInRegion') {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.SetProfilePaymentsForbiddenInRegion,
+            });
+        } else if ('invalidProfile' in resp.failure) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.SetProfileInvalidProfile,
+              profileValidationError: resp.failure.invalidProfile,
+            });
+        } else if ('expectedVersionWriteConflict' in resp.failure) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.SetProfileExpectedVersionWriteConflict,
+              currentProfileVersion: resp.failure.expectedVersionWriteConflict,
+            });
+        } else {
+          resp.failure satisfies never;
+          throw new Error('unreachable!');
+        }
+      } else {
+        resp satisfies never;
+        throw new Error('Unreachable!');
+      }
+    }
+    describe('grpc tests', () => {
+      defineTestGrpcCases(
+        NativeNice.TESTING_SetProfileTests(),
+        connectAuth<AuthProfilesService>,
+        check
+      );
+    });
+    describe('non-grpc tests', () => {
+      for (const test of NativeNice.TESTING_SetProfileValidationTests()) {
+        it(test.name, async () => {
+          Native.TESTING_EnableDeterministicRngForTesting();
+          const tokio = new TokioAsyncContext(Native.TokioAsyncContext_new());
+          const [chat, _fakeRemote] = connectAuth<AuthProfilesService>(tokio);
+          await check(chat, test.request, test.response);
+        });
+      }
+    });
+    it('ProfileFieldWithMaxLength max lengths', () => {
+      for (const [
+        field,
+        maxLength,
+      ] of NativeNice.TESTING_ProfileFieldMaxLengths()) {
+        expect(PROFILE_FIELD_MAX_LENGTHS[field]).equals(maxLength);
+      }
+    });
   });
 });

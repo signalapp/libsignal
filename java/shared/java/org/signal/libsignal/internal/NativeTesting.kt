@@ -601,6 +601,9 @@ public object NativeTesting {
   public external fun TESTING_ProcessBytestringArray(input: Array<ByteBuffer>): Array<ByteArray>
 
   @JvmStatic
+  public external fun TESTING_ProfileFieldMaxLengths(): Array<*>
+
+  @JvmStatic
   public external fun TESTING_RedeemBackupReceiptTests(): Array<Object>
 
   @JvmStatic
@@ -705,6 +708,12 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_SetOneTimeKemPreKeysTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_SetProfileTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_SetProfileValidationTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_SetPushTokenFcmTests(): Array<Object>

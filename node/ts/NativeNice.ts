@@ -27,6 +27,7 @@ import type {
   ArgFfiMyTestPoint,
   ArgFfiMyTestStruct,
   ArgFfiPaymentProviderInternal,
+  ArgFfiProfile,
   ReturnFfiAccountEntitlements,
   ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
@@ -112,7 +113,10 @@ import type {
   ReturnFfiMyTestPoint,
   ReturnFfiMyTestStruct,
   ReturnFfiPaymentProviderInternal,
+  ReturnFfiProfile,
+  ReturnFfiProfileFieldWithMaxLength,
   ReturnFfiProfileKeyCredentialRequestError,
+  ReturnFfiProfileValidationErrorInternal,
   ReturnFfiReceiptCredentialError,
   ReturnFfiRedeemBackupReceiptOut,
   ReturnFfiRedeemDonationReceiptArgs,
@@ -134,6 +138,9 @@ import type {
   ReturnFfiSetMfaKeyMetadataOut,
   ReturnFfiSetOneTimeEcPreKeysArgs,
   ReturnFfiSetOneTimeKemPreKeysArgs,
+  ReturnFfiSetProfileArgs,
+  ReturnFfiSetProfileError,
+  ReturnFfiSetProfileOut,
   ReturnFfiSetSignedEcPreKeyArgs,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
@@ -735,7 +742,36 @@ export type PaymentProviderInternal =
   | 'stripe'
   | 'braintree';
 
+export type Profile = {
+  givenName: string;
+  familyName: string;
+  about: string;
+  aboutEmoji: string;
+  avatar: CdnUrl | null;
+  phoneNumberSharing: boolean;
+  paymentAddress: Bytes | null;
+  badgeIds: Array<string>;
+};
+
+export type ProfileFieldWithMaxLength =
+  | 'givenName'
+  | 'familyName'
+  | 'about'
+  | 'aboutEmoji'
+  | 'avatar'
+  | 'paymentAddress';
+
 export type ProfileKeyCredentialRequestError = 'authFailed' | 'profileNotFound';
+
+export type ProfileValidationErrorInternal =
+  | {
+      fieldTooLong: {
+        field: ProfileFieldWithMaxLength;
+        len: number;
+        maxLen: number;
+      };
+    }
+  | 'givenNameEmpty';
 
 export type ReceiptCredentialError =
   | 'paymentStillProcessing'
@@ -840,6 +876,33 @@ export type SetOneTimeKemPreKeysArgs = {
   identity: number;
   preKeys: Array<TestingAnySignedPreKey>;
 };
+
+export type SetProfileArgs = {
+  rngSeed: bigint;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  profile: Profile;
+  expectedCurrentDataHash: Bytes | null;
+  expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+};
+
+export type SetProfileError =
+  | {
+      invalidProfile: ProfileValidationErrorInternal;
+    }
+  | 'expectedDataWriteConflict'
+  | {
+      expectedVersionWriteConflict: zkgroup.ProfileKeyVersion | null;
+    }
+  | 'paymentsForbiddenInRegion';
+
+export type SetProfileOut =
+  | {
+      success: Bytes;
+    }
+  | {
+      failure: SetProfileError;
+    };
 
 export type SetSignedEcPreKeyArgs = {
   identity: number;
@@ -2228,6 +2291,46 @@ export function returnConverterPaymentProviderInternal(
   }
 }
 
+export function returnConverterProfile(
+  ffiInput: Native.ReturnFfiProfile
+): Profile {
+  return {
+    givenName: identity(ffiInput.given_name),
+    familyName: identity(ffiInput.family_name),
+    about: identity(ffiInput.about),
+    aboutEmoji: identity(ffiInput.about_emoji),
+    avatar: liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(ffiInput.avatar),
+    phoneNumberSharing: identity(ffiInput.phone_number_sharing),
+    paymentAddress: liftNull(identity)(ffiInput.payment_address),
+    badgeIds: ((arr: Array<string>) => arr.map(identity))(ffiInput.badge_ids),
+  };
+}
+
+export function returnConverterProfileFieldWithMaxLength(
+  ffiInput: Native.ReturnFfiProfileFieldWithMaxLength
+): ProfileFieldWithMaxLength {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'givenName';
+    case 1:
+      return 'familyName';
+    case 2:
+      return 'about';
+    case 3:
+      return 'aboutEmoji';
+    case 4:
+      return 'avatar';
+    case 5:
+      return 'paymentAddress';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for ProfileFieldWithMaxLength'
+      );
+  }
+}
+
 export function returnConverterProfileKeyCredentialRequestError(
   ffiInput: Native.ReturnFfiProfileKeyCredentialRequestError
 ): ProfileKeyCredentialRequestError {
@@ -2241,6 +2344,29 @@ export function returnConverterProfileKeyCredentialRequestError(
       ffiInput satisfies never;
       throw new Error(
         'Unknown FFI return enum type for ProfileKeyCredentialRequestError'
+      );
+  }
+}
+
+export function returnConverterProfileValidationErrorInternal(
+  ffiInput: Native.ReturnFfiProfileValidationErrorInternal
+): ProfileValidationErrorInternal {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        fieldTooLong: {
+          field: returnConverterProfileFieldWithMaxLength(ffiInput.field),
+          len: identity(ffiInput.len),
+          maxLen: identity(ffiInput.max_len),
+        },
+      };
+    case 1:
+      return 'givenNameEmpty';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for ProfileValidationErrorInternal'
       );
   }
 }
@@ -2515,6 +2641,70 @@ export function returnConverterSetOneTimeKemPreKeysArgs(
     preKeys: ((arr: Array<ReturnFfiTestingAnySignedPreKey>) =>
       arr.map(returnConverterTestingAnySignedPreKey))(ffiInput.pre_keys),
   };
+}
+
+export function returnConverterSetProfileArgs(
+  ffiInput: Native.ReturnFfiSetProfileArgs
+): SetProfileArgs {
+  return {
+    rngSeed: identity(ffiInput.rng_seed),
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
+    profile: returnConverterProfile(ffiInput.profile),
+    expectedCurrentDataHash: liftNull(identity)(
+      ffiInput.expected_current_data_hash
+    ),
+    expectedCurrentProfileKeyVersion: liftNull(
+      (x: Bytes) => new zkgroup.ProfileKeyVersion(x)
+    )(ffiInput.expected_current_profile_key_version),
+  };
+}
+
+export function returnConverterSetProfileError(
+  ffiInput: Native.ReturnFfiSetProfileError
+): SetProfileError {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        invalidProfile: returnConverterProfileValidationErrorInternal(
+          ffiInput._0
+        ),
+      };
+    case 1:
+      return 'expectedDataWriteConflict';
+    case 2:
+      return {
+        expectedVersionWriteConflict: liftNull(
+          (x: Bytes) => new zkgroup.ProfileKeyVersion(x)
+        )(ffiInput.current_profile_version),
+      };
+    case 3:
+      return 'paymentsForbiddenInRegion';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetProfileError');
+  }
+}
+
+export function returnConverterSetProfileOut(
+  ffiInput: Native.ReturnFfiSetProfileOut
+): SetProfileOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput._0),
+      };
+    case 1:
+      return {
+        failure: returnConverterSetProfileError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetProfileOut');
+  }
 }
 
 export function returnConverterSetSignedEcPreKeyArgs(
@@ -3013,6 +3203,29 @@ export function argConverterPaymentProviderInternal(
 
   niceInput satisfies never;
   throw new Error('Cannot match on PaymentProviderInternal argument');
+}
+
+export function argConverterProfile(niceInput: Profile): Native.ArgFfiProfile {
+  const {
+    givenName: given_name,
+    familyName: family_name,
+    about: about,
+    aboutEmoji: about_emoji,
+    avatar: avatar,
+    phoneNumberSharing: phone_number_sharing,
+    paymentAddress: payment_address,
+    badgeIds: badge_ids,
+  } = niceInput;
+  return {
+    given_name: identity(given_name),
+    family_name: identity(family_name),
+    about: identity(about),
+    about_emoji: identity(about_emoji),
+    avatar: liftNull((cdnUrl: CdnUrl) => cdnUrl)(avatar),
+    phone_number_sharing: identity(phone_number_sharing),
+    payment_address: liftNull(identity)(payment_address),
+    badge_ids: ((arr: Array<string>) => arr.map(identity))(badge_ids),
+  };
 }
 
 export async function AuthenticatedChatConnection_answer_challenge({
@@ -3880,6 +4093,45 @@ export async function AuthenticatedChatConnection_set_one_time_kem_pre_keys({
         ((arr: Array<Native.Wrapper<Native.KyberPublicKey>>) =>
           arr.map(identity))(pre_key_data),
         ((arr: Array<Bytes>) => arr.map(identity))(pre_key_signatures)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_profile({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  rng: rng,
+  aci: aci,
+  profileKey: profile_key,
+  profile: profile,
+  expectedCurrentDataHash: expected_current_data_hash,
+  expectedCurrentProfileKeyVersion: expected_current_profile_key_version,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  rng: Rng | undefined;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  profile: Profile;
+  expectedCurrentDataHash: Bytes | null;
+  expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+}): Promise<Bytes> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_profile(
+        asyncContext,
+        identity(chat),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key),
+        argConverterProfile(profile),
+        liftNull(identity)(expected_current_data_hash),
+        liftNull((profileKeyVersion: zkgroup.ProfileKeyVersion) =>
+          profileKeyVersion.getContents()
+        )(expected_current_profile_key_version)
       )
     )
   );
@@ -4776,6 +5028,18 @@ export function TESTING_MyTestStruct_to_string({
   );
 }
 
+export function TESTING_ProfileFieldMaxLengths(): Array<
+  [ProfileFieldWithMaxLength, number]
+> {
+  return ((arr: Array<[ReturnFfiProfileFieldWithMaxLength, number]>) =>
+    arr.map(
+      ([a, b]: [ReturnFfiProfileFieldWithMaxLength, number]): [
+        ProfileFieldWithMaxLength,
+        number
+      ] => [returnConverterProfileFieldWithMaxLength(a), identity(b)]
+    ))(Native.TESTING_ProfileFieldMaxLengths());
+}
+
 export function TESTING_RedeemBackupReceiptTests(): Array<
   GrpcTestCase<Bytes, RedeemBackupReceiptOut>
 > {
@@ -4905,6 +5169,24 @@ export function TESTING_SetOneTimeKemPreKeysTests(): Array<
     returnConverterSetOneTimeKemPreKeysArgs,
     identity
   )(Native.TESTING_SetOneTimeKemPreKeysTests());
+}
+
+export function TESTING_SetProfileTests(): Array<
+  GrpcTestCase<SetProfileArgs, SetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetProfileArgs,
+    returnConverterSetProfileOut
+  )(Native.TESTING_SetProfileTests());
+}
+
+export function TESTING_SetProfileValidationTests(): Array<
+  GrpcTestCase<SetProfileArgs, SetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetProfileArgs,
+    returnConverterSetProfileOut
+  )(Native.TESTING_SetProfileValidationTests());
 }
 
 export function TESTING_SetRegistrationLockTests(): Array<

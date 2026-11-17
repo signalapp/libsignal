@@ -19,8 +19,9 @@ use libsignal_net_chat::grpc::profiles::{CdnUrl, InvalidCdnUrl};
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use uuid::Uuid;
-use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
+use zkgroup::{PROFILE_KEY_VERSION_ENCODED_LEN, ZkGroupDeserializationFailure};
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -832,6 +833,44 @@ zkgroup_serialize_type!(
     zkgroup::avatars::AvatarUploadCredential,
     "AvatarUploadCredential"
 );
+
+impl SimpleArgTypeInfo for ProfileKeyVersion {
+    type ArgType = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let raw =
+            <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as SimpleArgTypeInfo>::convert_from(foreign)?;
+        Ok(ProfileKeyVersion::from_hex_bytes(&raw)
+            .map_err(|_| IllegalArgumentError::new("ProfileKeyVersion invalid hex bytes"))?)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let inner = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN]>::register_swift_arg_converter(ctx);
+        SwiftArgConverter {
+            nice_type: "ProfileKeyVersion".into(),
+            converter_type: format!("ProfileKeyVersionArgConverter<{}>", inner.converter_type),
+        }
+    }
+}
+impl ResultTypeInfo for ProfileKeyVersion {
+    type ResultType = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.hex_bytes().convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let inner = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN]>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: "ProfileKeyVersion".into(),
+            converter_type: format!("ProfileKeyVersionReturnConverter<{}>", inner.converter_type),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -2534,6 +2573,7 @@ simple_optional!(f32);
 simple_optional!(Vec<u8>);
 return_optional!(libsignal_protocol::Pni);
 return_optional!(uuid::Uuid);
+simple_optional!(ProfileKeyVersion);
 simple_optional!(zkgroup::avatars::AvatarUploadCredential);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);

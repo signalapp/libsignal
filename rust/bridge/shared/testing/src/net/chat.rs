@@ -25,6 +25,8 @@ use libsignal_net::infra::errors::RetryLater;
 use libsignal_net_chat::api::S3UploadForm;
 use libsignal_net_chat::grpc::accounts::ZkCredentialKeyRotationId;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
+use libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength;
+use strum::VariantArray;
 
 use crate::net::make_error_testing_enum;
 use crate::*;
@@ -503,7 +505,7 @@ use grpc_test_cases::*;
 mod remote_derives {
     use ::zkgroup::ServerPublicParams;
     use ::zkgroup::generic_server_params::GenericServerPublicParams;
-    use ::zkgroup::profiles::ProfileKey;
+    use ::zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
@@ -524,7 +526,9 @@ mod remote_derives {
     use libsignal_net_chat::grpc::donations::BadgeVisibility;
     use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
-    use libsignal_net_chat::grpc::profiles::{CdnUrl, test_cases as profile_test_cases};
+    use libsignal_net_chat::grpc::profiles::{
+        CdnUrl, ProfileDataHash, test_cases as profile_test_cases,
+    };
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
     use libsignal_protocol::{ServiceId, Timestamp};
     use uuid::Uuid;
@@ -1425,6 +1429,38 @@ mod remote_derives {
         NotFound,
         InvalidCredentials,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::SetProfileError)]
+    #[bridge(arg = false)]
+    pub enum SetProfileError {
+        InvalidProfile(
+            libsignal_bridge_types::net::chat::remote_derives::ProfileValidationErrorInternal,
+        ),
+        ExpectedDataWriteConflict,
+        ExpectedVersionWriteConflict {
+            current_profile_version: Option<ProfileKeyVersion>,
+        },
+        PaymentsForbiddenInRegion,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs)]
+    #[bridge(arg = false)]
+    pub struct SetProfileArgs {
+        pub rng_seed: i64,
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+        pub profile: libsignal_bridge_types::net::chat::remote_derives::Profile,
+        pub expected_current_data_hash: Option<ProfileDataHash>,
+        pub expected_current_profile_key_version: Option<ProfileKeyVersion>,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::SetProfileOut)]
+    #[bridge(arg = false)]
+    pub enum SetProfileOut {
+        Success(ProfileDataHash),
+        Failure(SetProfileError),
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1824,4 +1860,30 @@ fn TESTING_GetAvatarUploadFormLegacyTests()
 fn TESTING_GetAvatarCredentialTests()
 -> GrpcTestCases<remote_derives::GetAvatarCredentialArgs, Option<AvatarUploadCredential>> {
     libsignal_net_chat::grpc::profiles::test_cases::get_avatar_credential_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SetProfileTests()
+-> GrpcTestCases<remote_derives::SetProfileArgs, remote_derives::SetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::set_profile_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SetProfileValidationTests()
+-> GrpcTestCases<remote_derives::SetProfileArgs, remote_derives::SetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::set_profile_validation_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_ProfileFieldMaxLengths() -> BridgeVec<(ProfileFieldWithMaxLength, i32)> {
+    BridgeVec(
+        ProfileFieldWithMaxLength::VARIANTS
+            .iter()
+            .copied()
+            .map(|field| {
+                (
+                    field,
+                    i32::try_from(field.max_length()).expect("fits in i32"),
+                )
+            })
+            .collect(),
+    )
 }

@@ -918,9 +918,51 @@ export type ReturnFfiPaymentProviderInternal =
       __type: 3;
     };
 
+export type ReturnFfiProfile = {
+  given_name: string;
+  family_name: string;
+  about: string;
+  about_emoji: string;
+  avatar: string | null;
+  phone_number_sharing: boolean;
+  payment_address: Bytes | null;
+  badge_ids: Array<string>;
+};
+
+export type ReturnFfiProfileFieldWithMaxLength =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    }
+  | {
+      __type: 5;
+    };
+
 export type ReturnFfiProfileKeyCredentialRequestError =
   | {
       __type: 0;
+    }
+  | {
+      __type: 1;
+    };
+
+export type ReturnFfiProfileValidationErrorInternal =
+  | {
+      __type: 0;
+      field: ReturnFfiProfileFieldWithMaxLength;
+      len: number;
+      max_len: number;
     }
   | {
       __type: 1;
@@ -1070,6 +1112,41 @@ export type ReturnFfiSetOneTimeKemPreKeysArgs = {
   identity: number;
   pre_keys: Array<ReturnFfiTestingAnySignedPreKey>;
 };
+
+export type ReturnFfiSetProfileArgs = {
+  rng_seed: bigint;
+  aci: Bytes;
+  profile_key: Bytes;
+  profile: ReturnFfiProfile;
+  expected_current_data_hash: Bytes | null;
+  expected_current_profile_key_version: Bytes | null;
+};
+
+export type ReturnFfiSetProfileError =
+  | {
+      __type: 0;
+      _0: ReturnFfiProfileValidationErrorInternal;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+      current_profile_version: Bytes | null;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiSetProfileOut =
+  | {
+      __type: 0;
+      _0: Bytes;
+    }
+  | {
+      __type: 1;
+      _0: ReturnFfiSetProfileError;
+    };
 
 export type ReturnFfiSetSignedEcPreKeyArgs = {
   identity: number;
@@ -1329,6 +1406,17 @@ export type ArgFfiPaymentProviderInternal =
   | {
       __type: 3;
     };
+
+export type ArgFfiProfile = {
+  given_name: string;
+  family_name: string;
+  about: string;
+  about_emoji: string;
+  avatar: string | null;
+  phone_number_sharing: boolean;
+  payment_address: Bytes | null;
+  badge_ids: Array<string>;
+};
 
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
@@ -1650,6 +1738,16 @@ type NativeFunctions = {
     pre_key_data: Array<Wrapper<KyberPublicKey>>,
     pre_key_signatures: Array<Bytes>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_profile: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator,
+    aci: Bytes,
+    profile_key: Bytes,
+    profile: ArgFfiProfile,
+    expected_current_data_hash: Bytes | null,
+    expected_current_profile_key_version: Bytes | null
+  ) => CancellablePromise<Bytes>;
   AuthenticatedChatConnection_set_registration_lock: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -3632,6 +3730,9 @@ type NativeFunctions = {
   ) => CancellablePromise<null>;
   TESTING_PanicOnReturnSync: (_needs_cleanup: null) => null;
   TESTING_ProcessBytestringArray: (input: Array<Bytes>) => Array<Bytes>;
+  TESTING_ProfileFieldMaxLengths: () => Array<
+    [ReturnFfiProfileFieldWithMaxLength, number]
+  >;
   TESTING_RedeemBackupReceiptTests: () => Array<
     GrpcTestCaseFfi<Bytes, ReturnFfiRedeemBackupReceiptOut>
   >;
@@ -3714,6 +3815,12 @@ type NativeFunctions = {
   >;
   TESTING_SetOneTimeKemPreKeysTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetOneTimeKemPreKeysArgs, void>
+  >;
+  TESTING_SetProfileTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetProfileArgs, ReturnFfiSetProfileOut>
+  >;
+  TESTING_SetProfileValidationTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetProfileArgs, ReturnFfiSetProfileOut>
   >;
   TESTING_SetRegistrationLockTests: () => Array<GrpcTestCaseFfi<Bytes, void>>;
   TESTING_SetRegistrationRecoveryPasswordTests: () => Array<
@@ -4299,6 +4406,7 @@ const {
   AuthenticatedChatConnection_set_mfa_key_metadata,
   AuthenticatedChatConnection_set_one_time_ec_pre_keys,
   AuthenticatedChatConnection_set_one_time_kem_pre_keys,
+  AuthenticatedChatConnection_set_profile,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
@@ -4919,6 +5027,7 @@ const {
   TESTING_PanicOnReturnIo,
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
+  TESTING_ProfileFieldMaxLengths,
   TESTING_RedeemBackupReceiptTests,
   TESTING_RedeemDonationReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
@@ -4953,6 +5062,8 @@ const {
   TESTING_SetMfaKeyMetadataTests,
   TESTING_SetOneTimeEcPreKeysTests,
   TESTING_SetOneTimeKemPreKeysTests,
+  TESTING_SetProfileTests,
+  TESTING_SetProfileValidationTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetSignedEcPreKeyTests,
@@ -5171,6 +5282,7 @@ export {
   AuthenticatedChatConnection_set_mfa_key_metadata,
   AuthenticatedChatConnection_set_one_time_ec_pre_keys,
   AuthenticatedChatConnection_set_one_time_kem_pre_keys,
+  AuthenticatedChatConnection_set_profile,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
@@ -5791,6 +5903,7 @@ export {
   TESTING_PanicOnReturnIo,
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
+  TESTING_ProfileFieldMaxLengths,
   TESTING_RedeemBackupReceiptTests,
   TESTING_RedeemDonationReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
@@ -5825,6 +5938,8 @@ export {
   TESTING_SetMfaKeyMetadataTests,
   TESTING_SetOneTimeEcPreKeysTests,
   TESTING_SetOneTimeKemPreKeysTests,
+  TESTING_SetProfileTests,
+  TESTING_SetProfileValidationTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetSignedEcPreKeyTests,
