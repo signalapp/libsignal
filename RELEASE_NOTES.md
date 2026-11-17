@@ -5,3 +5,4 @@ v0.108.1
 - Typed APIs
   - UnauthKeysService.getPreKeys()
   - AuthRemoteConfigurationService.getBadges()
+  - Added `getProfile()` (unauth) (Not yet bridged to clients)

@@ -20,13 +20,15 @@ use libsignal_net_grpc::proto::chat::profile::profile_anonymous_client::ProfileA
 use libsignal_net_grpc::proto::chat::profile::profile_client::ProfileClient;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as GrpcSetProfileResponse;
 use libsignal_net_grpc::proto::chat::profile::{
-    CredentialType, ExpectedVersionConflict, GetProfileKeyCredentialRequest,
-    GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult, GetProfileRequest,
-    PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult, SetProfileV1Request,
+    CredentialType, ExpectedVersionConflict, GetProfileAnonymousRequest,
+    GetProfileKeyCredentialRequest, GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult,
+    GetProfileRequest, PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult,
+    SetProfileV1Request, get_profile_anonymous_request, get_profile_anonymous_response,
 };
 use libsignal_protocol::IdentityKey;
 use rand::CryptoRng;
 use strum::VariantArray;
+use zkgroup::groups::GroupSendFullToken;
 use zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
 use zkgroup::{PROFILE_KEY_VERSION_LEN, ProfileKeyBytes};
 
@@ -316,11 +318,21 @@ where
 }
 
 #[derive(Debug, Clone, Display, PartialEq, Eq)]
-pub enum AuthProfileGetError {
+pub enum AuthGetProfileError {
     /// A profile could not be found
     ProfileNotFound,
     /// The profile could not be decoded: {log_safe}
     ProfileDecodeError { log_safe: String },
+}
+
+#[derive(Debug, Clone, Display, PartialEq, Eq)]
+pub enum UnauthGetProfileError {
+    /// A profile could not be found
+    ProfileNotFound,
+    /// The profile could not be decoded: {log_safe}
+    ProfileDecodeError { log_safe: String },
+    /// Authorizaton failed
+    FailedUnidentifiedAuthorization,
 }
 
 impl std::fmt::Display for Redact<GetProfileRequest> {
@@ -427,7 +439,7 @@ impl<T: GrpcServiceProvider> Auth<T> {
         aci: Aci,
         profile_key: &ProfileKey,
         etag: Option<ProfileEtag>,
-    ) -> Result<Option<FetchedProfile>, RequestError<AuthProfileGetError>> {
+    ) -> Result<Option<FetchedProfile>, RequestError<AuthGetProfileError>> {
         let version = profile_key.get_profile_key_version(aci);
         let request = GetProfileRequest {
             account_identifier: Some(aci.into()),
@@ -450,7 +462,7 @@ impl<T: GrpcServiceProvider> Auth<T> {
                     .map(Some)
                     .map_err(|e| match e {
                         profile_utils::Error::ProfileDecodeError(e) => {
-                            RequestError::Other(AuthProfileGetError::ProfileDecodeError {
+                            RequestError::Other(AuthGetProfileError::ProfileDecodeError {
                                 log_safe: e.log_safe_display().to_string(),
                             })
                         }
@@ -459,16 +471,18 @@ impl<T: GrpcServiceProvider> Auth<T> {
                         }
                     })
             }
+            // We only care that the EtagMatched protobuf oneof variant is selected; we don't care
+            // about its value. In practice, the server will set it to true.
             GetProfileResponseEnum::EtagMatched(true | false) => Ok(None),
             GetProfileResponseEnum::NotFound(errors::NotFound {}) => {
-                Err(RequestError::Other(AuthProfileGetError::ProfileNotFound))
+                Err(RequestError::Other(AuthGetProfileError::ProfileNotFound))
             }
             GetProfileResponseEnum::LegacyProfile(legacy_profile_result) => {
                 profile_utils::v1::decrypt_profile(profile_key, &legacy_profile_result)
                     .map(Some)
                     .map_err(|e| match e {
                         profile_utils::Error::ProfileDecodeError(e) => {
-                            RequestError::Other(AuthProfileGetError::ProfileDecodeError {
+                            RequestError::Other(AuthGetProfileError::ProfileDecodeError {
                                 log_safe: e.log_safe_display().to_string(),
                             })
                         }
@@ -569,7 +583,119 @@ impl<T: GrpcServiceProvider> Auth<T> {
     }
 }
 
+#[derive(Clone)]
+pub enum UnauthProfileAuthentication {
+    UnidentifiedAccessKey([u8; 16]),
+    GroupSendFullToken(GroupSendFullToken),
+}
+
+impl std::fmt::Display for Redact<GetProfileAnonymousRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(GetProfileAnonymousRequest {
+            request,
+            authentication,
+        }) = self;
+        f.debug_struct("GetProfileAnonymousRequest")
+            .field("request", &request.as_ref().map(Redact))
+            .field(
+                "authentication",
+                &match authentication {
+                    Some(get_profile_anonymous_request::Authentication::UnidentifiedAccessKey(
+                        _,
+                    )) => "UnidentifiedAccessKey",
+                    Some(get_profile_anonymous_request::Authentication::GroupSendToken(_)) => {
+                        "GroupSendToken"
+                    }
+                    None => todo!(),
+                },
+            )
+            .finish_non_exhaustive()
+    }
+}
+
 impl<T: GrpcServiceProvider> Unauth<T> {
+    /// Retrieves profile data.
+    ///
+    /// If an `etag` is provided, and the profile etag remains unchanged, this returns `None` to
+    /// indicate that the profile was already up-to-date.
+    pub async fn get_profile(
+        &self,
+        aci: Aci,
+        profile_key: &ProfileKey,
+        auth: &UnauthProfileAuthentication,
+        etag: Option<ProfileEtag>,
+    ) -> Result<Option<FetchedProfile>, RequestError<UnauthGetProfileError>> {
+        let version = profile_key.get_profile_key_version(aci);
+        let request = GetProfileAnonymousRequest {
+            request: Some(GetProfileRequest {
+                account_identifier: Some(aci.into()),
+                version: version.as_ref().to_vec(),
+                etag: etag.map(|etag| etag.to_vec()).unwrap_or_default(),
+            }),
+            authentication: match auth {
+                UnauthProfileAuthentication::UnidentifiedAccessKey(uak) => Some(
+                    get_profile_anonymous_request::Authentication::UnidentifiedAccessKey(
+                        uak.to_vec(),
+                    ),
+                ),
+                UnauthProfileAuthentication::GroupSendFullToken(group_send_token) => Some(
+                    get_profile_anonymous_request::Authentication::GroupSendToken(
+                        zkgroup::serialize(&group_send_token),
+                    ),
+                ),
+            },
+        };
+        let log_safe_description = Redact(&request).to_string();
+        let mut profiles_service = ProfileAnonymousClient::new(self.0.service());
+        match log_and_send(Self::LOG_TAG, &log_safe_description, || {
+            profiles_service.get_profile(request)
+        })
+        .await?
+        .into_inner()
+        .response
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Missing response".into(),
+        })? {
+            get_profile_anonymous_response::Response::Profile(profile_result) => {
+                profile_utils::v2::decrypt_profile(profile_key, profile_result)
+                    .map(Some)
+                    .map_err(|e| match e {
+                        profile_utils::Error::ProfileDecodeError(e) => {
+                            RequestError::Other(UnauthGetProfileError::ProfileDecodeError {
+                                log_safe: e.log_safe_display().to_string(),
+                            })
+                        }
+                        profile_utils::Error::Unexpected { log_safe } => {
+                            RequestError::Unexpected { log_safe }
+                        }
+                    })
+            }
+            get_profile_anonymous_response::Response::ProfileV1(legacy_profile_result) => {
+                profile_utils::v1::decrypt_profile(profile_key, &legacy_profile_result)
+                    .map(Some)
+                    .map_err(|e| match e {
+                        profile_utils::Error::ProfileDecodeError(e) => {
+                            RequestError::Other(UnauthGetProfileError::ProfileDecodeError {
+                                log_safe: e.log_safe_display().to_string(),
+                            })
+                        }
+                        profile_utils::Error::Unexpected { log_safe } => {
+                            RequestError::Unexpected { log_safe }
+                        }
+                    })
+            }
+            get_profile_anonymous_response::Response::EtagMatched(true | false) => Ok(None),
+            get_profile_anonymous_response::Response::NotFound(errors::NotFound {}) => {
+                Err(RequestError::Other(UnauthGetProfileError::ProfileNotFound))
+            }
+            get_profile_anonymous_response::Response::FailedUnidentifiedAuthorization(
+                _failed_unidentified_authorization,
+            ) => Err(RequestError::Other(
+                UnauthGetProfileError::FailedUnidentifiedAuthorization,
+            )),
+        }
+    }
+
     pub async fn get_profile_key_credential(
         &self,
         profile_key_request_context: zkgroup::profiles::ProfileKeyCredentialRequestContext,
@@ -956,6 +1082,32 @@ mod test {
                     assert_eq!(actual.expect("success"), fetched_profile)
                 }
                 GetProfileOut::Failure(err) => match actual.expect_err("failure") {
+                    RequestError::Other(actual_err) => assert_eq!(err, actual_err),
+                    e => panic!("Expected RequestError::Other, not {e:?}"),
+                },
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_profile_unauth() {
+        run_tests(
+            get_profile_unauth_test_cases(),
+            |chat: Unauth<_>,
+             UnauthGetProfileArgs {
+                 inner:
+                     GetProfileArgs {
+                         aci,
+                         profile_key,
+                         etag,
+                     },
+                 auth,
+             }| async move { chat.get_profile(aci, &profile_key, &auth, etag).await },
+            |expected, actual| match expected {
+                UnauthGetProfileOut::Success(fetched_profile) => {
+                    assert_eq!(actual.expect("success"), fetched_profile)
+                }
+                UnauthGetProfileOut::Failure(err) => match actual.expect_err("failure") {
                     RequestError::Other(actual_err) => assert_eq!(err, actual_err),
                     e => panic!("Expected RequestError::Other, not {e:?}"),
                 },

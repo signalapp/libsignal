@@ -7,6 +7,7 @@ use aes_gcm::aead::Aead;
 use aes_gcm::aes::cipher::Array;
 use aes_gcm::{AeadInOut, Aes256Gcm, KeyInit, aead};
 use libsignal_core::Aci;
+use libsignal_net_grpc::proto::chat::profile::get_profile_anonymous_response::Response as UnauthGetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_response::Response as GetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as SetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::set_profile_v1_request::AvatarChange;
@@ -715,14 +716,20 @@ pub(super) fn build_set_profile_request(
 
 pub(super) mod test_cases {
     use libsignal_net_grpc::proto::chat::profile::{
-        GetProfileRequest, GetProfileResponse, SetProfileResponse, SetProfileResult,
+        GetProfileAnonymousRequest, GetProfileAnonymousResponse, GetProfileRequest,
+        GetProfileResponse, SetProfileResponse, SetProfileResult, get_profile_anonymous_request,
     };
     use rand::SeedableRng;
     use strum::VariantArray;
+    use zkgroup::groups::GroupSendFullToken;
 
     use super::*;
+    use crate::api::testutil_for_test_cases::SERIALIZED_GROUP_SEND_TOKEN;
     use crate::grpc::GrpcTestCase;
-    use crate::grpc::profiles::{AuthProfileGetError, ProfileFieldWithMaxLength, SetProfileError};
+    use crate::grpc::profiles::{
+        AuthGetProfileError, ProfileFieldWithMaxLength, SetProfileError, UnauthGetProfileError,
+        UnauthProfileAuthentication,
+    };
 
     /// The requirements from profile.proto
     fn validate_protobuf_set_profile_request(request: &SetProfileRequest) {
@@ -790,10 +797,27 @@ pub(super) mod test_cases {
     #[allow(clippy::large_enum_variant)] // This is just for testing
     pub enum GetProfileOut {
         Success(Option<FetchedProfile>),
-        Failure(AuthProfileGetError),
+        Failure(AuthGetProfileError),
     }
     pub type GetProfileTestCases =
         Vec<GrpcTestCase<GetProfileArgs, GetProfileRequest, GetProfileResponse, GetProfileOut>>;
+    pub struct UnauthGetProfileArgs {
+        pub inner: GetProfileArgs,
+        pub auth: UnauthProfileAuthentication,
+    }
+    #[allow(clippy::large_enum_variant)] // This is just for testing
+    pub enum UnauthGetProfileOut {
+        Success(Option<FetchedProfile>),
+        Failure(UnauthGetProfileError),
+    }
+    pub type UnauthGetProfileTestCases = Vec<
+        GrpcTestCase<
+            UnauthGetProfileArgs,
+            GetProfileAnonymousRequest,
+            GetProfileAnonymousResponse,
+            UnauthGetProfileOut,
+        >,
+    >;
 
     #[derive(Clone)]
     struct ProfileEncryptionRoundtripTest {
@@ -984,7 +1008,7 @@ pub(super) mod test_cases {
                 response_grpc: GetProfileResponse {
                     response: Some(GetProfileResponseEnum::LegacyProfile(test.v1_result)),
                 },
-                response: GetProfileOut::Failure(AuthProfileGetError::ProfileDecodeError {
+                response: GetProfileOut::Failure(AuthGetProfileError::ProfileDecodeError {
                     log_safe: ProfileDecodeError::ProfileV1FieldFailedDecryption {
                         field: v1::Field::Name,
                     }
@@ -1030,8 +1054,153 @@ pub(super) mod test_cases {
             response_grpc: GetProfileResponse {
                 response: Some(GetProfileResponseEnum::NotFound(Default::default())),
             },
-            response: GetProfileOut::Failure(AuthProfileGetError::ProfileNotFound),
+            response: GetProfileOut::Failure(AuthGetProfileError::ProfileNotFound),
         });
+        cases
+    }
+    pub fn get_profile_unauth_test_cases() -> UnauthGetProfileTestCases {
+        let method = "/org.signal.chat.profile.ProfileAnonymous/GetProfile";
+        let mut cases: UnauthGetProfileTestCases = Vec::new();
+        // Map the auth test cases to the unauth endpoint.
+        cases.extend(get_profile_test_cases().into_iter().map(
+            |GrpcTestCase {
+                 name,
+                 method: _,
+                 request,
+                 request_grpc,
+                 response_grpc,
+                 response,
+             }| GrpcTestCase {
+                name,
+                method: method.into(),
+                request: UnauthGetProfileArgs {
+                    inner: request,
+                    auth: UnauthProfileAuthentication::UnidentifiedAccessKey([0; 16]),
+                },
+                request_grpc: GetProfileAnonymousRequest {
+                    request: Some(request_grpc),
+                    authentication: Some(
+                        get_profile_anonymous_request::Authentication::UnidentifiedAccessKey(
+                            vec![0; 16],
+                        ),
+                    ),
+                },
+                response_grpc: GetProfileAnonymousResponse {
+                    response: Some(match response_grpc.response.expect("has response") {
+                        GetProfileResponseEnum::Profile(profile_result) => {
+                            UnauthGetProfileResponseEnum::Profile(profile_result)
+                        }
+                        GetProfileResponseEnum::EtagMatched(x) => {
+                            UnauthGetProfileResponseEnum::EtagMatched(x)
+                        }
+                        GetProfileResponseEnum::NotFound(not_found) => {
+                            UnauthGetProfileResponseEnum::NotFound(not_found)
+                        }
+                        GetProfileResponseEnum::LegacyProfile(legacy_profile_result) => {
+                            UnauthGetProfileResponseEnum::ProfileV1(legacy_profile_result)
+                        }
+                    }),
+                },
+                response: match response {
+                    GetProfileOut::Success(fetched_profile) => {
+                        UnauthGetProfileOut::Success(fetched_profile)
+                    }
+                    GetProfileOut::Failure(auth_get_profile_error) => {
+                        UnauthGetProfileOut::Failure(match auth_get_profile_error {
+                            AuthGetProfileError::ProfileNotFound => {
+                                UnauthGetProfileError::ProfileNotFound
+                            }
+                            AuthGetProfileError::ProfileDecodeError { log_safe } => {
+                                UnauthGetProfileError::ProfileDecodeError { log_safe }
+                            }
+                        })
+                    }
+                },
+            },
+        ));
+        // Now we just need to test the auth parameter, as well as the auth error (since everything
+        // else was tested via our inherited test cases)
+        let test = roundtrip_test_cases()
+            .into_iter()
+            .next()
+            .expect("non-empty");
+        let gsk: GroupSendFullToken =
+            zkgroup::deserialize(SERIALIZED_GROUP_SEND_TOKEN).expect("valid serialization");
+        for (name, auth, grpc_auth) in [
+            (
+                "UAK",
+                UnauthProfileAuthentication::UnidentifiedAccessKey([4; _]),
+                get_profile_anonymous_request::Authentication::UnidentifiedAccessKey(vec![4; 16]),
+            ),
+            (
+                "group send full token",
+                UnauthProfileAuthentication::GroupSendFullToken(gsk.clone()),
+                get_profile_anonymous_request::Authentication::GroupSendToken(zkgroup::serialize(
+                    &gsk,
+                )),
+            ),
+        ] {
+            cases.push(GrpcTestCase {
+                name: format!("unauth profile authentication: {name}"),
+                method: method.into(),
+                request: UnauthGetProfileArgs {
+                    inner: GetProfileArgs {
+                        aci: test.aci,
+                        profile_key: test.profile_key,
+                        etag: Some([3; _]),
+                    },
+                    auth: auth.clone(),
+                },
+                request_grpc: GetProfileAnonymousRequest {
+                    request: Some(GetProfileRequest {
+                        account_identifier: Some(test.aci.into()),
+                        version: test
+                            .profile_key
+                            .get_profile_key_version(test.aci)
+                            .bytes
+                            .to_vec(),
+                        etag: vec![3; 10],
+                    }),
+                    authentication: Some(grpc_auth.clone()),
+                },
+                response_grpc: GetProfileAnonymousResponse {
+                    response: Some(UnauthGetProfileResponseEnum::EtagMatched(true)),
+                },
+                response: UnauthGetProfileOut::Success(None),
+            });
+            cases.push(GrpcTestCase {
+                name: format!("unauth profile authentication failed: {name}"),
+                method: method.into(),
+                request: UnauthGetProfileArgs {
+                    inner: GetProfileArgs {
+                        aci: test.aci,
+                        profile_key: test.profile_key,
+                        etag: Some([3; _]),
+                    },
+                    auth,
+                },
+                request_grpc: GetProfileAnonymousRequest {
+                    request: Some(GetProfileRequest {
+                        account_identifier: Some(test.aci.into()),
+                        version: test
+                            .profile_key
+                            .get_profile_key_version(test.aci)
+                            .bytes
+                            .to_vec(),
+                        etag: vec![3; 10],
+                    }),
+                    authentication: Some(grpc_auth),
+                },
+                response_grpc: GetProfileAnonymousResponse {
+                    response: Some(UnauthGetProfileResponseEnum::FailedUnidentifiedAuthorization(
+                        libsignal_net_grpc::proto::chat::errors::FailedUnidentifiedAuthorization {
+                            description: Default::default()
+                        }
+                    )),
+                },
+                response: UnauthGetProfileOut::Failure(UnauthGetProfileError::FailedUnidentifiedAuthorization),
+            });
+        }
         cases
     }
     pub fn set_profile_test_cases() -> SetProfileTestCases {
