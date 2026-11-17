@@ -852,8 +852,10 @@ impl<'a> SimpleArgTypeInfo<'a> for ProfileKeyVersion {
             ));
         }
         let mut hex_buf = [0_u8; PROFILE_KEY_VERSION_ENCODED_LEN];
+        let hex_buf_i8: &mut [i8; PROFILE_KEY_VERSION_ENCODED_LEN] =
+            zerocopy::transmute_mut!(&mut hex_buf);
         foreign
-            .get_region(env, 0, zerocopy::transmute_mut!(&mut hex_buf))
+            .get_region(env, 0, hex_buf_i8.as_mut_slice())
             .check_exceptions(env, "ProfileKeyVersion::SimpleArgTypeInfo, get bytes")?;
         ProfileKeyVersion::from_hex_bytes(&hex_buf).map_err(|_| {
             BridgeLayerError::bad_argument("ProfileKeyVersion bytes aren't hex-encoded".into())
@@ -879,7 +881,9 @@ impl<'a> ResultTypeInfo<'a> for ProfileKeyVersion {
         let hex_buf = self.hex_bytes();
         JByteArray::new(env, PROFILE_KEY_VERSION_ENCODED_LEN)
             .and_then(|buf| {
-                buf.set_region(env, 0, zerocopy::transmute_ref!(&hex_buf))?;
+                let hex_buf_i8: &[i8; PROFILE_KEY_VERSION_ENCODED_LEN] =
+                    zerocopy::transmute_ref!(&hex_buf);
+                buf.set_region(env, 0, hex_buf_i8.as_slice())?;
                 Ok(buf)
             })
             .check_exceptions(env, "ProfileKeyVersion::convert_into()")
