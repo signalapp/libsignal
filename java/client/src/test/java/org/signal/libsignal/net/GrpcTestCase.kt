@@ -153,5 +153,8 @@ private fun FakeChatRemote.sendGrpcResponse(
     }
   }
 
+internal fun <T, E : BadRequestError> RequestResult<T, E>.assertSuccess(): T =
+  assertIs<RequestResult.Success<T>>(this, this.toString()).result
+
 internal inline fun <T, E : BadRequestError, reified SubError : E> RequestResult<T, E>.assertNonSuccess(): SubError =
   assertIs<SubError>(assertIs<RequestResult.NonSuccess<E>>(this).error)

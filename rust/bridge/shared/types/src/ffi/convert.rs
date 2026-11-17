@@ -814,6 +814,14 @@ zkgroup_serialize_type!(
     "DonationPermitRequestContext"
 );
 zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "ZkCredentialKeyPair"
+);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -2044,6 +2052,20 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)> {
         match self {
             Some(value) => Ok(OptionalOf::some(value.convert_into()?)),
             None => Ok(OptionalOf::NONE),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTypeInfo>
+    NiceResultConverter for Option<(A, B)>
+{
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let opt = OptionalOf::<<(A, B) as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+        let opt = opt.swift_name();
+        let ty = <(A, B) as NiceResultConverter>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("{}?", ty.nice_type),
+            converter_type: format!("OptionalReturnConverter<{}, {opt}>", ty.converter_type),
         }
     }
 }

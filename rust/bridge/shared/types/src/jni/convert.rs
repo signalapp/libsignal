@@ -812,6 +812,14 @@ zkgroup_serialize_type!(
     zkgroup::donations::DonationPermit,
     "org.signal.libsignal.zkgroup.donation.DonationPermit"
 );
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "org.signal.libsignal.zkgroup.ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "org.signal.libsignal.zkgroup.ZkCredentialKeyPair"
+);
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;

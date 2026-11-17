@@ -1467,6 +1467,43 @@ extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: Si
 
 }
 
+extension SignalCPromisePairOfOwnedBufferi64: SignalCPromise {
+
+    typealias Result = SignalPairOfOwnedBufferi64
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalPairOfOwnedBufferi64_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalPairOfOwnedBufferi64_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromisePairOfOwnedBufferOwnedBuffer: SignalCPromise {
 
     typealias Result = SignalPairOfOwnedBufferOwnedBuffer
@@ -3120,6 +3157,35 @@ extension SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: SignalPair
     }
 
     var generic_second: SignalOwnedBufferOfCStringPtr {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfOwnedBufferi64: SignalPairOf {
+
+    typealias First = SignalOwnedBuffer
+
+    typealias Second = Int64
+
+    init(
+        generic_first: SignalOwnedBuffer,
+        generic_second: Int64,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalOwnedBuffer {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: Int64 {
         get { self.second }
         set { second = newValue }
     }
@@ -6626,6 +6692,35 @@ internal enum NativeNice {
                     }
             }
         return try UuidNiceConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_set_zk_credential_key(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        rng: Int64,
+    ) async throws -> (ZkCredentialKeyPair, Int64) {
+        let rawOutput:
+            PairOfResultConverter<
+                ByteArrayConverter<ZkCredentialKeyPair>, IdentityResultConverter<Int64>, SignalPairOfOwnedBufferi64
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                                SignalFfi.signal_authenticated_chat_connection_set_zk_credential_key(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    rngFfi,
+                                )
+                            }
+                        }
+                }
+        return try PairOfResultConverter<
+            ByteArrayConverter<ZkCredentialKeyPair>, IdentityResultConverter<Int64>, SignalPairOfOwnedBufferi64
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_start_mfa_verification(

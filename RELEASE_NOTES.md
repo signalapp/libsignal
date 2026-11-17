@@ -6,3 +6,5 @@ v0.108.1
   - UnauthKeysService.getPreKeys()
   - AuthRemoteConfigurationService.getBadges()
   - Added `getProfile()` (unauth) (Not yet bridged to clients)
+  - Added `AuthAccountsService.setZkCredentialKey()`
+

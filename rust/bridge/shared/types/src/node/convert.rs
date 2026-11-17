@@ -901,7 +901,7 @@ macro_rules! zkgroup_serialize_type {
                 TsReturnConverter {
                     nice_type: format!("zkgroup.{}", $cls),
                     ffi_type: "Bytes".to_string(),
-                    converter_function: format!("((x) => new zkgroup.{}(x))", $cls),
+                    converter_function: format!("((x: Bytes) => new zkgroup.{}(x))", $cls),
                 }
             }
         }
@@ -934,6 +934,14 @@ zkgroup_serialize_type!(
     "DonationPermitRequestContext"
 );
 zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "ZkCredentialKeyPair"
+);
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

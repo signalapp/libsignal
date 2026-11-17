@@ -1351,7 +1351,7 @@ export function returnConverterCreateDonationPermitsArgs(
   ffiInput: Native.ReturnFfiCreateDonationPermitsArgs
 ): CreateDonationPermitsArgs {
   return {
-    requestContext: ((x) => new zkgroup.DonationPermitRequestContext(x))(
+    requestContext: ((x: Bytes) => new zkgroup.DonationPermitRequestContext(x))(
       ffiInput.request_context
     ),
     serverParams: returnConverterServerPublicParamsSerialized(
@@ -1367,7 +1367,7 @@ export function returnConverterCreateDonationPermitsOut(
     case 0:
       return {
         success: ((arr: Array<Bytes>) =>
-          arr.map((x) => new zkgroup.DonationPermit(x)))(ffiInput._0),
+          arr.map((x: Bytes) => new zkgroup.DonationPermit(x)))(ffiInput._0),
       };
     case 1:
       return {
@@ -1389,7 +1389,7 @@ export function returnConverterCreateLoginReceiptCredentialArgs(
       ffiInput.payment_processor
     ),
     purchaseIdentifier: identity(ffiInput.purchase_identifier),
-    receiptCredentialRequestContext: ((x) =>
+    receiptCredentialRequestContext: ((x: Bytes) =>
       new zkgroup.ReceiptCredentialRequestContext(x))(
       ffiInput.receipt_credential_request_context
     ),
@@ -1407,7 +1407,7 @@ export function returnConverterCreateLoginReceiptCredentialOut(
   switch (ffiInput.__type) {
     case 0:
       return {
-        success: ((x) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
+        success: ((x: Bytes) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
       };
     case 1:
       return {
@@ -1811,7 +1811,7 @@ export function returnConverterGetSubscriptionReceiptCredentialArgs(
 ): GetSubscriptionReceiptCredentialArgs {
   return {
     subscriberId: identity(ffiInput.subscriber_id),
-    receiptCredentialRequestContext: ((x) =>
+    receiptCredentialRequestContext: ((x: Bytes) =>
       new zkgroup.ReceiptCredentialRequestContext(x))(
       ffiInput.receipt_credential_request_context
     ),
@@ -1827,7 +1827,7 @@ export function returnConverterGetSubscriptionReceiptCredentialOut(
   switch (ffiInput.__type) {
     case 0:
       return {
-        success: ((x) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
+        success: ((x: Bytes) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
       };
     case 1:
       return {
@@ -3040,7 +3040,8 @@ export async function AuthenticatedChatConnection_create_donation_permits({
   requestContext: zkgroup.DonationPermitRequestContext;
   serverParams: Native.Wrapper<Native.ServerPublicParams>;
 }): Promise<Array<zkgroup.DonationPermit>> {
-  return ((arr: Array<Bytes>) => arr.map((x) => new zkgroup.DonationPermit(x)))(
+  return ((arr: Array<Bytes>) =>
+    arr.map((x: Bytes) => new zkgroup.DonationPermit(x)))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.AuthenticatedChatConnection_create_donation_permits(
@@ -3804,6 +3805,31 @@ export async function AuthenticatedChatConnection_set_username_link({
         identity(chat),
         identity(username_ciphertext),
         identity(keep_link_handle)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_zk_credential_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  rng: Rng | undefined;
+}): Promise<[zkgroup.ZkCredentialKeyPair, bigint]> {
+  return (([a, b]: [Bytes, bigint]): [zkgroup.ZkCredentialKeyPair, bigint] => [
+    ((x: Bytes) => new zkgroup.ZkCredentialKeyPair(x))(a),
+    identity(b),
+  ])(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_zk_credential_key(
+        asyncContext,
+        identity(chat),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )
   );
@@ -4691,6 +4717,20 @@ export function TESTING_SetUsernameLinkTests(): Array<
     returnConverterSetUsernameLinkArgs,
     returnConverterSetUsernameLinkOut
   )(Native.TESTING_SetUsernameLinkTests());
+}
+
+export function TESTING_SetZkCredentialKeyTests(): Array<
+  GrpcTestCase<void, [zkgroup.ZkCredentialKeyPair, bigint] | null>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    liftNull(
+      ([a, b]: [Bytes, bigint]): [zkgroup.ZkCredentialKeyPair, bigint] => [
+        ((x: Bytes) => new zkgroup.ZkCredentialKeyPair(x))(a),
+        identity(b),
+      ]
+    )
+  )(Native.TESTING_SetZkCredentialKeyTests());
 }
 
 export function TESTING_StartMfaVerificationTests(): Array<
@@ -5991,7 +6031,7 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
   purchaseTime: Timestamp;
   expectedLevel: LoginReceiptLevel;
 }): Promise<zkgroup.ReceiptCredential> {
-  return ((x) => new zkgroup.ReceiptCredential(x))(
+  return ((x: Bytes) => new zkgroup.ReceiptCredential(x))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.UnauthenticatedChatConnection_create_login_receipt_credential(
@@ -6049,7 +6089,7 @@ export async function UnauthenticatedChatConnection_get_subscription_receipt_cre
   receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
   serverParams: Native.Wrapper<Native.ServerPublicParams>;
 }): Promise<zkgroup.ReceiptCredential> {
-  return ((x) => new zkgroup.ReceiptCredential(x))(
+  return ((x: Bytes) => new zkgroup.ReceiptCredential(x))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.UnauthenticatedChatConnection_get_subscription_receipt_credential(

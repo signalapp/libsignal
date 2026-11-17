@@ -2539,6 +2539,37 @@ public object NativeNice {
       .makeCancelable(asyncCtx)
   }
 
+  public fun AuthenticatedChatConnection_set_zk_credential_key(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<Pair<org.signal.libsignal.zkgroup.ZkCredentialKeyPair, Long>> {
+    val ffi_chat = identity(chat)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_set_zk_credential_key(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        mapPair<ByteArray, Long, org.signal.libsignal.zkgroup.ZkCredentialKeyPair, Long>({
+          (
+            { x: ByteArray ->
+              org.signal.libsignal.zkgroup
+                .ZkCredentialKeyPair(x)
+            }
+          )(it)
+        }, { identity(it) })(it)
+      }
+  }
+
   public fun AuthenticatedChatConnection_start_mfa_verification(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

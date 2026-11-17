@@ -46,7 +46,7 @@ public class ZkCredentialKeyPair: ByteArray {
 }
 
 /// The public half of a ``ZkCredentialKeyPair``.
-public class ZkCredentialPublicKey: ByteArray {
+public class ZkCredentialPublicKey: ByteArray, @unchecked Sendable {
     public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_zk_credential_public_key_check_valid_contents)
     }

@@ -377,6 +377,33 @@ extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
 
 }
 
+extension SignalOptionalOfPairOfOwnedBufferi64: SignalOptionalOf {
+
+    public typealias Contents = SignalPairOfOwnedBufferi64
+
+    public init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfPairOfOwnedBufferi64,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    public var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    public var generic_value: MaybeUninitOfPairOfOwnedBufferi64 {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedc_uchar32: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalType_FixedArray32_uint8_t
@@ -5421,6 +5448,31 @@ internal enum NativeTestingNice {
         )
         return try GrpcTestCaseVecConverter<
             DerivedReturnConverterSetUsernameLinkArgs, DerivedReturnConverterSetUsernameLinkOut
+        >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_SetZkCredentialKeyTests() throws -> [GrpcTestCase<Void, (ZkCredentialKeyPair, Int64)?>]
+    {
+        var rawOutput = GrpcTestCaseVecConverter<
+            VoidConverter,
+            OptionalReturnConverter<
+                PairOfResultConverter<
+                    ByteArrayConverter<ZkCredentialKeyPair>, IdentityResultConverter<Int64>, SignalPairOfOwnedBufferi64
+                >, SignalOptionalOfPairOfOwnedBufferi64
+            >
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_set_zk_credential_key_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            VoidConverter,
+            OptionalReturnConverter<
+                PairOfResultConverter<
+                    ByteArrayConverter<ZkCredentialKeyPair>, IdentityResultConverter<Int64>, SignalPairOfOwnedBufferi64
+                >, SignalOptionalOfPairOfOwnedBufferi64
+            >
         >.convertReturn(consuming: rawOutput)
 
     }

@@ -14,10 +14,12 @@ import {
   AuthAccountsService,
   MFA_KEY_NAME_MAX_LENGTH,
   TokioAsyncContext,
+  ZkCredentialRotationId,
 } from '../../net.js';
 import { SvrKey } from '../../AccountKeys.js';
 import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
+import { ZkCredentialKeyPair } from '../../zkgroup/index.js';
 
 use(chaiAsPromised);
 
@@ -538,6 +540,31 @@ describe('AuthAccountsService', () => {
       async (chat, args, resp: boolean) => {
         const out = chat.answerChallenge({ token: args.token, ...args.answer });
         expect(await out).to.equal(resp);
+      }
+    );
+  });
+
+  describe('setZkCredentialKey', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetZkCredentialKeyTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _: void,
+        resp: [ZkCredentialKeyPair, ZkCredentialRotationId] | null
+      ) => {
+        const out = chat.setZkCredentialKey({
+          rngSeedForTesting: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (resp === null) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.IoError,
+            });
+        } else {
+          expect(await out).to.deep.equal(resp);
+        }
       }
     );
   });

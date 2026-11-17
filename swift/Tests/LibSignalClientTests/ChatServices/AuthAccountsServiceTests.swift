@@ -388,7 +388,7 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
             },
             check: { expected, actual in
                 XCTAssertEqual(expected, try actual.get())
-            }
+            },
         )
     }
 }
@@ -397,6 +397,29 @@ class AuthAccountsServiceTests: AuthChatServiceTestBase<any AuthAccountsService>
 // forward with an OS-random RNG.
 class AuthAccountsServiceImplTests: AuthChatServiceTestBase<any AuthAccountsServiceImpl> {
     override class var selector: SelectorCheck { .accountsImpl }
+
+    func testSetZkCredentialKey() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_SetZkCredentialKeyTests(),
+            invoke: { api, _ in
+                try await api.setZkCredentialKeyImpl(
+                    rngSeed: 0
+                )
+            },
+            check: { expected, actual in
+                if let (expectedKeyPair, expectedRotationId) = expected {
+                    let (actualKeyPair, actualRotationId) = try actual.get()
+                    XCTAssertEqual(expectedRotationId, actualRotationId)
+                    XCTAssertEqual(expectedKeyPair.serialize(), actualKeyPair.serialize())
+                } else {
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.networkProtocolError(_) {}
+                }
+            }
+        )
+    }
 
     func testConfirmTotpKey() async throws {
         signal_testing_enable_deterministic_rng_for_testing()

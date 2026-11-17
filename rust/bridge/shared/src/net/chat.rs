@@ -10,6 +10,7 @@ use std::time::Duration;
 use ::zkgroup::ServerPublicParams;
 use ::zkgroup::groups::GroupSendFullToken;
 use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
+use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use futures_util::TryStreamExt;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
@@ -48,7 +49,7 @@ use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::accounts::{
     ChallengeAnswer, ConfirmTotpKeyError, FinishWebAuthnRegistrationError, GenerateTotpKeyError,
     MAX_MFA_KEY_ID, MfaKeyId, MfaKeyNotFound, MfaVerificationFailed,
-    StartWebAuthnRegistrationError,
+    StartWebAuthnRegistrationError, ZkCredentialKeyRotationId,
 };
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
@@ -1617,4 +1618,16 @@ async fn AuthenticatedChatConnection_get_badges(
         .get_badges(etag.as_deref())
         .await?
         .map(|x| x.into()))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_zk_credential_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator,
+) -> Result<(ZkCredentialKeyPair, ZkCredentialKeyRotationId), RequestError<core::convert::Infallible>>
+{
+    chat.require_grpc()
+        .await
+        .set_zk_credential_key(&mut rng.create())
+        .await
 }

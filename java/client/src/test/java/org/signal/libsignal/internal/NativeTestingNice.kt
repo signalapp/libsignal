@@ -3399,6 +3399,31 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.SetUsernameLinkOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_SetZkCredentialKeyTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, Pair<org.signal.libsignal.zkgroup.ZkCredentialKeyPair, Long>?>> {
+    val ffiOut =
+      NativeTesting.TESTING_SetZkCredentialKeyTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Pair<ByteArray, Long>?, Void?, Pair<org.signal.libsignal.zkgroup.ZkCredentialKeyPair, Long>?>({
+        identity(it)
+      }, {
+        (
+          { x: Pair<ByteArray, Long>? ->
+            x?.let {
+              mapPair<ByteArray, Long, org.signal.libsignal.zkgroup.ZkCredentialKeyPair, Long>({
+                (
+                  { x: ByteArray ->
+                    org.signal.libsignal.zkgroup
+                      .ZkCredentialKeyPair(x)
+                  }
+                )(it)
+              }, { identity(it) })(it)
+            }
+          }
+        )(it)
+      })(ffiOut)
+  }
+
   public fun TESTING_StartMfaVerificationTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.StartMfaVerificationOut>> {
     val ffiOut =
       NativeTesting.TESTING_StartMfaVerificationTests()

@@ -10,6 +10,7 @@ pub use zkgroup::Timestamp;
 use zkgroup::groups::*;
 use zkgroup::profiles::*;
 use zkgroup::receipts::*;
+use zkgroup::zk_credential_key::ZkCredentialPublicKey;
 use zkgroup::*;
 
 use crate::support::*;
@@ -120,6 +121,10 @@ bridge_as_fixed_length_serializable!(ReceiptCredentialRequest);
 bridge_as_fixed_length_serializable!(ReceiptCredentialRequestContext);
 bridge_as_fixed_length_serializable!(ReceiptCredentialResponse);
 bridge_as_fixed_length_serializable!(UuidCiphertext);
+bridge_as_fixed_length_serializable!(
+    ZkCredentialPublicKey,
+    jni_class = "org.signal.libsignal.zkgroup.ZkCredentialPublicKey",
+);
 
 bridge_as_handle!(
     ServerPublicParams,

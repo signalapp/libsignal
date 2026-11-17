@@ -565,4 +565,27 @@ class AuthAccountsServiceTest {
         },
       )
     }
+
+  @Test
+  fun testSetZkCredentialKey() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_SetZkCredentialKeyTests(),
+        AuthenticatedChatConnection::fakeConnect,
+        ::AuthAccountsService,
+        invoke = { chat, _ ->
+          chat.setZkCredentialKey(
+            rngSeedForTesting = DeterministicRandomSeedUseOnlyForTesting(0),
+          )
+        },
+        check = { expected, actual ->
+          if (expected == null) {
+            assertIs<RequestResult.ApplicationError>(actual, actual.toString())
+          } else {
+            assertEquals(expected, actual.assertSuccess())
+          }
+        },
+      )
+    }
+  }
 }

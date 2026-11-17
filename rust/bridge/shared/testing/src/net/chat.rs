@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use itertools::Itertools;
@@ -20,6 +21,7 @@ use libsignal_net::chat::{
     ConnectError, RequestProto, Response as ChatResponse, ResponseProto, SendError,
 };
 use libsignal_net::infra::errors::RetryLater;
+use libsignal_net_chat::grpc::accounts::ZkCredentialKeyRotationId;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 
 use crate::net::make_error_testing_enum;
@@ -1719,4 +1721,10 @@ fn TESTING_GetCapabilitiesTests() -> GrpcTestCases<(), remote_derives::GetCapabi
 #[bridge_fn(nice = true)]
 fn TESTING_AnswerChallengeTests() -> GrpcTestCases<remote_derives::AnswerChallengeArgs, bool> {
     libsignal_net_chat::grpc::accounts::test_cases::answer_challenge_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetZkCredentialKeyTests()
+-> GrpcTestCases<(), Option<(ZkCredentialKeyPair, ZkCredentialKeyRotationId)>> {
+    libsignal_net_chat::grpc::accounts::test_cases::set_zk_credential_key_test_cases().into()
 }

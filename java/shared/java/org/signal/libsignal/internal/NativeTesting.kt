@@ -707,6 +707,9 @@ public object NativeTesting {
   public external fun TESTING_SetUsernameLinkTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_SetZkCredentialKeyTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
     sourcePublicKey: ObjectHandle,
     signedPreKey: SignedPublicPreKey<*>,

@@ -1619,6 +1619,11 @@ type NativeFunctions = {
     username_ciphertext: Bytes,
     keep_link_handle: boolean
   ) => CancellablePromise<Uuid>;
+  AuthenticatedChatConnection_set_zk_credential_key: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<[Bytes, bigint]>;
   AuthenticatedChatConnection_start_mfa_verification: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3645,6 +3650,9 @@ type NativeFunctions = {
   TESTING_SetUsernameLinkTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetUsernameLinkArgs, ReturnFfiSetUsernameLinkOut>
   >;
+  TESTING_SetZkCredentialKeyTests: () => Array<
+    GrpcTestCaseFfi<void, [Bytes, bigint] | null>
+  >;
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (
     source_public_key: Wrapper<PublicKey>,
     signed_pre_key: SignedPublicPreKey
@@ -4190,6 +4198,7 @@ const {
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_set_zk_credential_key,
   AuthenticatedChatConnection_start_mfa_verification,
   AuthenticatedChatConnection_start_web_authn_registration,
   AvatarUploadCredentialPresentation_CheckValidContents,
@@ -4837,6 +4846,7 @@ const {
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
+  TESTING_SetZkCredentialKeyTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_StartMfaVerificationTests,
   TESTING_StartWebAuthnRegistrationTests,
@@ -5043,6 +5053,7 @@ export {
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_set_zk_credential_key,
   AuthenticatedChatConnection_start_mfa_verification,
   AuthenticatedChatConnection_start_web_authn_registration,
   AvatarUploadCredentialPresentation_CheckValidContents,
@@ -5690,6 +5701,7 @@ export {
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
+  TESTING_SetZkCredentialKeyTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_StartMfaVerificationTests,
   TESTING_StartWebAuthnRegistrationTests,

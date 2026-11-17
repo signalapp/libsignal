@@ -768,6 +768,9 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalBridgeCopyBackupMediaIte
 typedef SignalChargeFailureFfiResult* SignalType_MutPointer_SignalChargeFailureFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalChargeFailureFfiResult) == 8);
+typedef SignalPairOfOwnedBufferi64 MaybeUninitOfPairOfOwnedBufferi64;
+static_assert_64bit(sizeof(MaybeUninitOfPairOfOwnedBufferi64) == 24);
+static_assert_64bit(alignof(MaybeUninitOfPairOfOwnedBufferi64) == 8);
 typedef enum {
   SignalBridgeChallengeAnswerFfiResultPush,
   SignalBridgeChallengeAnswerFfiResultCaptcha,
@@ -1801,6 +1804,14 @@ static_assert_64bit(offsetof(SignalMutPointerNonSuspendingBackgroundThreadRuntim
 static_assert_64bit(sizeof(SignalMutPointerNonSuspendingBackgroundThreadRuntime) == 8);
 static_assert_64bit(alignof(SignalMutPointerNonSuspendingBackgroundThreadRuntime) == 8);
 typedef struct {
+  bool present;
+  MaybeUninitOfPairOfOwnedBufferi64 value;
+} SignalOptionalOfPairOfOwnedBufferi64;
+static_assert_64bit(offsetof(SignalOptionalOfPairOfOwnedBufferi64, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfPairOfOwnedBufferi64, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfPairOfOwnedBufferi64) == 32);
+static_assert_64bit(alignof(SignalOptionalOfPairOfOwnedBufferi64) == 8);
+typedef struct {
   SignalCopyBackupMediaOutFfiResult* base;
   size_t length;
   size_t size_bytes;
@@ -2738,6 +2749,9 @@ SignalFfiError* signal_testing_set_signed_ec_pre_key_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_set_username_link_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_set_zk_credential_key_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_signed_public_pre_key_check_bridges_correctly(

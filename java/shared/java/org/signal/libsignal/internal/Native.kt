@@ -634,6 +634,13 @@ internal object Native {
   ): CompletableFuture<UUID>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_zk_credential_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    rng: Long,
+  ): CompletableFuture<Pair<ByteArray, Long>>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_start_mfa_verification(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
