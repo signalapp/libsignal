@@ -4043,6 +4043,7 @@ typedef enum {
   SignalErrorCodeProfileNotFound = 239,
   SignalErrorCodeReceiptAlreadyRedeemed = 240,
   SignalErrorCodeInvalidAvatarUploadCredentialPresentation = 241,
+  SignalErrorCodeAccountMissingZkCredentialKey = 242,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);
 static_assert_64bit(alignof(SignalErrorCode) == 4);
@@ -4437,6 +4438,17 @@ SignalFfiError* signal_authenticated_chat_connection_get_account_identity(
   SignalCPromiseBridgeAccountIdentityFfiResult* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat
+);
+SignalFfiError* signal_authenticated_chat_connection_get_avatar_credential(
+  SignalCPromiseOwnedBuffer* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const SignalType_FixedArray17_uint8_t* aci,
+  SignalBorrowedBuffer key_pair,
+  int64_t rotation_id,
+  SignalBorrowedBuffer server_public_params,
+  int64_t current_time_seconds,
+  int64_t rng
 );
 SignalFfiError* signal_authenticated_chat_connection_get_avatar_upload_form_legacy(
   SignalCPromiseS3UploadFormInternalFfiResult* promise,

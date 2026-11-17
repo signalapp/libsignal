@@ -28,5 +28,35 @@ class AuthProfilesServiceTests: AuthChatServiceTestBase<any AuthProfilesService>
         )
     }
 }
+class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatConnection> {
+    override class var selector: SelectorCheck { .allAuthenticatedConnection }
+
+    func testGetAvatarCredential() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetAvatarCredentialTests(),
+            invoke: { api, args in
+                try await api.getAvatarCredentialImpl(
+                    aci: args.aci,
+                    keyPair: args.keyPair,
+                    rotationId: args.rotationId,
+                    serverPublicParams: args.serverPublicParams,
+                    currentTimeSeconds: Date(timeIntervalSince1970: TimeInterval(args.currentTimeSeconds)),
+                    rng: 0,
+                )
+            },
+            check: { expected, actual in
+                if let cred = expected {
+                    XCTAssertEqual((try actual.get()).serialize(), cred.serialize())
+                } else {
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.accountMissingZkCredentialKey(_) {
+                    }
+                }
+            }
+        )
+    }
+}
 
 #endif

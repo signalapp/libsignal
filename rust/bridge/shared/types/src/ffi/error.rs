@@ -171,6 +171,7 @@ pub enum SignalErrorCode {
 
     ReceiptAlreadyRedeemed = 240,
     InvalidAvatarUploadCredentialPresentation = 241,
+    AccountMissingZkCredentialKey = 242,
 }
 
 pub trait UpcastAsAny {
@@ -1542,6 +1543,15 @@ impl IntoFfiError
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         SimpleError::new(
             SignalErrorCode::InvalidAvatarUploadCredentialPresentation,
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            SignalErrorCode::AccountMissingZkCredentialKey,
             self.to_string(),
         )
     }

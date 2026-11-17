@@ -11,4 +11,5 @@ v0.108.1
   - Added `deleteAvatar()` (bridged to clients)
   - Added `getAvatarUploadForm()` (bridged to clients)
   - Added `getAvatarUploadFormLegacy()` (bridged to clients)
+  - Added `getAvatarCredential()` (bridged to clients)
 

@@ -1169,6 +1169,15 @@ internal enum GetAccountIdentityOut {
     case missingIdentifiers
 }
 
+internal struct GetAvatarCredentialArgs {
+    var aci: Aci
+    var keyPair: ZkCredentialKeyPair
+    var rotationId: Int64
+    var serverPublicParams: GenericServerPublicParams
+    var currentTimeSeconds: Int64
+
+}
+
 internal struct GetAvatarUploadFormArgs {
     var credential: AvatarUploadCredentialPresentation
     var uploadLength: Int32
@@ -2242,6 +2251,36 @@ internal enum DerivedReturnConverterGetAccountIdentityOut: NiceReturnConverter {
         default:
             throw SignalError.internalError("Unexpected enum tag for GetAccountIdentityOut: \(ffiTag)")
         }
+    }
+}
+
+internal enum DerivedReturnConverterGetAvatarCredentialArgs: NiceReturnConverter {
+    typealias NiceReturn = GetAvatarCredentialArgs
+    typealias FfiReturn = SignalGetAvatarCredentialArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetAvatarCredentialArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let aci = Result { try AciConverter.convertReturn(consuming: ffiValue.aci) }
+        let key_pair = Result {
+            try ByteArrayConverter<ZkCredentialKeyPair>.convertReturn(consuming: ffiValue.key_pair)
+        }
+        let rotation_id = Result { try IdentityResultConverter<Int64>.convertReturn(consuming: ffiValue.rotation_id) }
+        let server_public_params = Result {
+            try ByteArrayConverter<GenericServerPublicParams>.convertReturn(consuming: ffiValue.server_public_params)
+        }
+        let current_time_seconds = Result {
+            try IdentityResultConverter<Int64>.convertReturn(consuming: ffiValue.current_time_seconds)
+        }
+
+        return GetAvatarCredentialArgs(
+            aci: try aci.get(),
+            keyPair: try key_pair.get(),
+            rotationId: try rotation_id.get(),
+            serverPublicParams: try server_public_params.get(),
+            currentTimeSeconds: try current_time_seconds.get()
+        )
     }
 }
 
@@ -4820,6 +4859,24 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_GetAvatarCredentialTests() throws -> [GrpcTestCase<
+        GetAvatarCredentialArgs, AvatarUploadCredential?
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetAvatarCredentialArgs,
+            OptionalReturnConverter<ByteArrayConverter<AvatarUploadCredential>, SignalOptionalOfOwnedBuffer>
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_avatar_credential_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetAvatarCredentialArgs,
+            OptionalReturnConverter<ByteArrayConverter<AvatarUploadCredential>, SignalOptionalOfOwnedBuffer>
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_GetAvatarUploadFormLegacyTests() throws -> [GrpcTestCase<

@@ -1961,6 +1961,51 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeAccountIdentity>(it) }
   }
 
+  public fun AuthenticatedChatConnection_get_avatar_credential(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    aci: org.signal.libsignal.protocol.ServiceId.Aci,
+    keyPair: org.signal.libsignal.zkgroup.ZkCredentialKeyPair,
+    rotationId: Long,
+    serverPublicParams: org.signal.libsignal.zkgroup.GenericServerPublicParams,
+    currentTimeSeconds: Long,
+    rng: org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting?,
+  ): CompletableFuture<org.signal.libsignal.zkgroup.avatars.AvatarUploadCredential> {
+    val ffi_chat = identity(chat)
+    val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
+    val ffi_key_pair = (org.signal.libsignal.zkgroup.ZkCredentialKeyPair::getInternalContentsForJNI)(keyPair)
+    val ffi_rotation_id = identity(rotationId)
+    val ffi_server_public_params =
+      (org.signal.libsignal.zkgroup.GenericServerPublicParams::getInternalContentsForJNI)(serverPublicParams)
+    val ffi_current_time_seconds = identity(currentTimeSeconds)
+    val ffi_rng =
+      org.signal.libsignal.net.DeterministicRandomSeedUseOnlyForTesting
+        .toFfi(rng)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_avatar_credential(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_aci,
+          ffi_key_pair,
+          ffi_rotation_id,
+          ffi_server_public_params,
+          ffi_current_time_seconds,
+          ffi_rng,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.avatars
+              .AvatarUploadCredential(x)
+          }
+        )(it)
+      }
+  }
+
   public fun AuthenticatedChatConnection_get_avatar_upload_form_legacy(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

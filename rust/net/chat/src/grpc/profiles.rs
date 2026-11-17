@@ -18,6 +18,7 @@ use libsignal_net_grpc::proto::chat::errors::{
 };
 use libsignal_net_grpc::proto::chat::profile::delete_avatar_response::Response as DeleteAvatarResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::extend_avatar_ttl_response::Response as ExtendAvatarResponseTtlEnum;
+use libsignal_net_grpc::proto::chat::profile::get_avatar_credential_response::Response as GetAvatarCredentialResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_avatar_upload_form_response::Response as GetAvatarUploadFormResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_key_credential_response::Response as GetProfileKeyCredentialResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_response::Response as GetProfileResponseEnum;
@@ -26,21 +27,28 @@ use libsignal_net_grpc::proto::chat::profile::profile_client::ProfileClient;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as GrpcSetProfileResponse;
 use libsignal_net_grpc::proto::chat::profile::{
     CredentialType, DeleteAvatarRequest, ExpectedVersionConflict, ExtendAvatarTtlRequest,
-    GetAvatarUploadFormRequest, GetProfileAnonymousRequest, GetProfileKeyCredentialRequest,
-    GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult, GetProfileRequest,
-    PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult, SetProfileV1Request,
-    SetV1AvatarRequest, get_profile_anonymous_request, get_profile_anonymous_response,
+    GetAvatarCredentialRequest, GetAvatarUploadFormRequest, GetProfileAnonymousRequest,
+    GetProfileKeyCredentialRequest, GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult,
+    GetProfileRequest, PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult,
+    SetProfileV1Request, SetV1AvatarRequest, get_profile_anonymous_request,
+    get_profile_anonymous_response,
 };
 use libsignal_protocol::IdentityKey;
-use rand::CryptoRng;
+use rand::{CryptoRng, Rng};
 use strum::VariantArray;
-use zkgroup::avatars::AvatarUploadCredentialPresentation;
+use zkgroup::avatars::{
+    AvatarUploadCredential, AvatarUploadCredentialPresentation,
+    AvatarUploadCredentialRequestContext,
+};
+use zkgroup::generic_server_params::GenericServerPublicParams;
 use zkgroup::groups::GroupSendFullToken;
 use zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
-use zkgroup::{PROFILE_KEY_VERSION_LEN, ProfileKeyBytes};
+use zkgroup::zk_credential_key::ZkCredentialKeyPair;
+use zkgroup::{PROFILE_KEY_VERSION_LEN, ProfileKeyBytes, ZkGroupVerificationFailure};
 
 use crate::api::profiles::ProfileKeyCredentialRequestError;
 use crate::api::{Auth, RequestError, S3UploadForm, Unauth};
+use crate::grpc::accounts::ZkCredentialKeyRotationId;
 use crate::grpc::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::impl_debug_from_display;
 use crate::logging::Redact;
@@ -453,7 +461,77 @@ impl std::fmt::Display for Redact<SetV1AvatarRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<GetAvatarCredentialRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(GetAvatarCredentialRequest {
+            avatar_credential_request,
+        }) = self;
+        f.debug_struct("GetAvatarCredentialRequest")
+            .field(
+                "avatar_credential_request.len()",
+                &avatar_credential_request.len(),
+            )
+            .finish()
+    }
+}
+
+/// The account is missing a ZK Credential key
+/// The account must've called `set_zk_credential_key()` before calling this.
+#[derive(Display, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AccountMissingZkCredentialKey;
+
 impl<T: GrpcServiceProvider> Auth<T> {
+    /// Returns an anonymous credential that may be presented with avatar operations in
+    /// `UnauthProfilesService`
+    ///
+    /// This method will error out if the account doesn't have a ZK credential key set
+    pub async fn get_avatar_credential(
+        &self,
+        aci: Aci,
+        key_pair: &ZkCredentialKeyPair,
+        rotation_id: ZkCredentialKeyRotationId,
+        server_public_params: &GenericServerPublicParams,
+        current_time: zkgroup::Timestamp,
+        rng: &mut (dyn CryptoRng + Send),
+    ) -> Result<AvatarUploadCredential, RequestError<AccountMissingZkCredentialKey>> {
+        let ctx = AvatarUploadCredentialRequestContext::new(
+            aci,
+            key_pair,
+            rotation_id.try_into().expect("Rotation ID must be >= 0"),
+            rng.random(),
+        );
+        let request = GetAvatarCredentialRequest {
+            avatar_credential_request: zkgroup::serialize(&ctx.get_request()),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        let mut profiles_service = ProfileClient::new(self.0.service());
+        match log_and_send(Self::LOG_TAG, &log_safe_description, || {
+            profiles_service.get_avatar_credential(request)
+        })
+        .await?
+        .into_inner()
+        .response
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Missing response".into(),
+        })? {
+            GetAvatarCredentialResponseEnum::AvatarCredential(credential) => ctx
+                .receive(
+                    zkgroup::deserialize(&credential).map_err(|_| RequestError::Unexpected {
+                        // We don't log the error, since it only describes the type name
+                        log_safe: "Unable to deserialize AvatarUploadCredentialResponse".into(),
+                    })?,
+                    server_public_params,
+                    current_time,
+                )
+                .map_err(|ZkGroupVerificationFailure| RequestError::Unexpected {
+                    log_safe: "Unable to receive AvatarUploadCredential".into(),
+                }),
+            GetAvatarCredentialResponseEnum::MissingZkCredentialKey(FailedPrecondition {
+                description: _,
+            }) => Err(RequestError::Other(AccountMissingZkCredentialKey)),
+        }
+    }
+
     /// Returns a form to upload a legacy (v1) avatar.
     pub async fn get_avatar_upload_form_legacy(
         &self,
@@ -981,12 +1059,15 @@ impl<T: GrpcServiceProvider> Unauth<T> {
 pub mod test_cases {
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
     use libsignal_net_grpc::proto::chat::profile::{
-        DeleteAvatarResponse, ExtendAvatarTtlResponse, GetAvatarUploadFormResponse,
-        SetV1AvatarResponse,
+        DeleteAvatarResponse, ExtendAvatarTtlResponse, GetAvatarCredentialResponse,
+        GetAvatarUploadFormResponse, SetV1AvatarResponse,
     };
     use uuid::{Uuid, uuid};
     use zkgroup::SECONDS_PER_DAY;
-    use zkgroup::avatars::AvatarUploadCredentialRequestContext;
+    use zkgroup::avatars::{
+        AvatarUploadCredentialRequest, AvatarUploadCredentialRequestContext,
+        AvatarUploadCredentialResponse,
+    };
     use zkgroup::generic_server_params::GenericServerSecretParamsStandard;
     use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 
@@ -997,6 +1078,79 @@ pub mod test_cases {
     pub(crate) const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
     #[cfg(test)]
     pub(crate) const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
+
+    pub struct GetAvatarCredentialArgs {
+        pub aci: Aci,
+        pub key_pair: ZkCredentialKeyPair,
+        pub rotation_id: ZkCredentialKeyRotationId,
+        pub server_public_params: GenericServerPublicParams,
+        pub current_time: zkgroup::Timestamp,
+    }
+    /// `None` if the account is missing a zk credential key
+    pub type GetAvatarCredentialOut = Option<AvatarUploadCredential>;
+    pub fn get_avatar_credential_test_cases() -> Vec<
+        GrpcTestCase<
+            GetAvatarCredentialArgs,
+            GetAvatarCredentialRequest,
+            GetAvatarCredentialResponse,
+            GetAvatarCredentialOut,
+        >,
+    > {
+        let method = "/org.signal.chat.profile.Profile/GetAvatarCredential";
+        let TestAvatarUploadCredential {
+            aci,
+            key_pair,
+            rotation_id,
+            current_time,
+            server_public_params,
+            request,
+            response,
+            credential,
+            presentation: _,
+        } = Default::default();
+        vec![
+            GrpcTestCase {
+                name: "success".into(),
+                method: method.into(),
+                request: GetAvatarCredentialArgs {
+                    aci,
+                    key_pair: key_pair.clone(),
+                    rotation_id,
+                    server_public_params: server_public_params.clone(),
+                    current_time,
+                },
+                request_grpc: GetAvatarCredentialRequest {
+                    avatar_credential_request: zkgroup::serialize(&request),
+                },
+                response_grpc: GetAvatarCredentialResponse {
+                    response: Some(GetAvatarCredentialResponseEnum::AvatarCredential(
+                        zkgroup::serialize(&response),
+                    )),
+                },
+                response: Some(credential),
+            },
+            GrpcTestCase {
+                name: "failure".into(),
+                method: method.into(),
+                request: GetAvatarCredentialArgs {
+                    aci,
+                    key_pair,
+                    rotation_id,
+                    server_public_params,
+                    current_time,
+                },
+                request_grpc: GetAvatarCredentialRequest {
+                    avatar_credential_request: zkgroup::serialize(&request),
+                },
+                response_grpc: GetAvatarCredentialResponse {
+                    response: Some(GetAvatarCredentialResponseEnum::MissingZkCredentialKey(
+                        Default::default(),
+                    )),
+                },
+                response: None,
+            },
+        ]
+    }
 
     #[derive(Clone)]
     pub struct GetAvatarUploadFormLegacyArgs {
@@ -1070,7 +1224,7 @@ pub mod test_cases {
         >,
     > {
         let method = "/org.signal.chat.profile.ProfileAnonymous/GetAvatarUploadForm";
-        let presentation = test_avatar_upload_credential_presentation();
+        let presentation = TestAvatarUploadCredential::default().presentation;
         vec![
             GrpcTestCase {
                 name: "success".into(),
@@ -1141,40 +1295,65 @@ pub mod test_cases {
     /// `true` if success. `false` if the credentials were invalid
     pub type DeleteAvatarOut = bool;
 
-    fn test_avatar_upload_credential_presentation() -> AvatarUploadCredentialPresentation {
-        let server_params = GenericServerSecretParamsStandard::generate([0x0; _]);
-        let aci = Aci::from_uuid_bytes([0x1; _]);
-        let key_pair = ZkCredentialKeyPair::generate([0x2; _]);
-        let rotation_id = 0x3;
-        let request_context =
-            AvatarUploadCredentialRequestContext::new(aci, &key_pair, rotation_id, [0x4; _]);
-        let current_time = zkgroup::Timestamp::from_epoch_seconds(SECONDS_PER_DAY * 100);
-        let server_public_params = server_params.get_public_params().into();
-        let cred_request = request_context.get_request();
-        request_context
-            .receive(
-                cred_request
-                    .issue(
-                        aci,
-                        &key_pair.public_key(),
-                        rotation_id,
-                        current_time,
-                        &server_params.into(),
-                        [0x6; _],
-                    )
-                    .expect("can generate response"),
-                &server_public_params,
+    pub(crate) struct TestAvatarUploadCredential {
+        aci: Aci,
+        key_pair: ZkCredentialKeyPair,
+        rotation_id: ZkCredentialKeyRotationId,
+        current_time: zkgroup::Timestamp,
+        server_public_params: GenericServerPublicParams,
+        request: AvatarUploadCredentialRequest,
+        response: AvatarUploadCredentialResponse,
+        credential: AvatarUploadCredential,
+        presentation: AvatarUploadCredentialPresentation,
+    }
+    impl Default for TestAvatarUploadCredential {
+        fn default() -> Self {
+            let server_params = GenericServerSecretParamsStandard::generate([0x0; _]);
+            let aci = Aci::from_uuid_bytes([0x1; _]);
+            let key_pair = ZkCredentialKeyPair::generate([0x2; _]);
+            let rotation_id = 0x3;
+            let request_context = AvatarUploadCredentialRequestContext::new(
+                aci,
+                &key_pair,
+                rotation_id,
+                profile_utils::test_cases::seeded_rng(0).random(),
+            );
+            let current_time = zkgroup::Timestamp::from_epoch_seconds(SECONDS_PER_DAY * 100);
+            let server_public_params = server_params.get_public_params().into();
+            let request = request_context.get_request();
+            let response = request
+                .issue(
+                    aci,
+                    &key_pair.public_key(),
+                    rotation_id,
+                    current_time,
+                    &server_params.into(),
+                    [0x6; _],
+                )
+                .expect("can generate response");
+            let credential = request_context
+                .receive(response.clone(), &server_public_params, current_time)
+                .expect("can receive credential");
+            let presentation = credential.present(&server_public_params, [0x7; _]);
+            Self {
+                aci,
+                key_pair,
+                rotation_id: rotation_id.try_into().expect("rotation id in range"),
                 current_time,
-            )
-            .expect("can receive credential")
-            .present(&server_public_params, [0x7; _])
+                server_public_params,
+                request,
+                response,
+                credential,
+                presentation,
+            }
+        }
     }
 
     pub fn delete_avatar_test_cases() -> Vec<
         GrpcTestCase<DeleteAvatarArgs, DeleteAvatarRequest, DeleteAvatarResponse, DeleteAvatarOut>,
     > {
         let method = "/org.signal.chat.profile.ProfileAnonymous/DeleteAvatar";
-        let presentation = test_avatar_upload_credential_presentation();
+        let presentation = TestAvatarUploadCredential::default().presentation;
         vec![
             GrpcTestCase {
                 name: "success".into(),
@@ -1214,7 +1393,7 @@ pub mod test_cases {
         >,
     > {
         let method = "/org.signal.chat.profile.ProfileAnonymous/ExtendAvatarTTL";
-        let presentation = test_avatar_upload_credential_presentation();
+        let presentation = TestAvatarUploadCredential::default().presentation;
         vec![
             GrpcTestCase {
                 name: "found".into(),
@@ -1690,6 +1869,41 @@ mod test {
                     actual.expect_err("failure"),
                     RequestError::Other(InvalidAvatarUploadCredentialPresentation)
                 ),
+            },
+        );
+    }
+
+    #[test]
+    fn test_get_avatar_credential() {
+        run_tests(
+            get_avatar_credential_test_cases(),
+            |chat: Auth<_>,
+             GetAvatarCredentialArgs {
+                 aci,
+                 key_pair,
+                 rotation_id,
+                 server_public_params,
+                 current_time,
+             }| async move {
+                chat.get_avatar_credential(
+                    aci,
+                    &key_pair,
+                    rotation_id,
+                    &server_public_params,
+                    current_time,
+                    &mut profile_utils::test_cases::seeded_rng(0),
+                )
+                .await
+            },
+            |expected, actual| match expected {
+                Some(cred) => assert_eq!(
+                    zkgroup::serialize(&cred),
+                    zkgroup::serialize(&actual.expect("valid"))
+                ),
+                None => assert!(matches!(
+                    actual,
+                    Err(RequestError::Other(AccountMissingZkCredentialKey))
+                )),
             },
         );
     }

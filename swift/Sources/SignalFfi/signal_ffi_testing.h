@@ -1051,6 +1051,20 @@ typedef struct {
 static_assert_64bit(sizeof(SignalGetAccountIdentityOutFfiResult) == 104);
 static_assert_64bit(alignof(SignalGetAccountIdentityOutFfiResult) == 8);
 typedef struct {
+  SignalType_FixedArray17_uint8_t aci;
+  SignalOwnedBuffer key_pair;
+  int64_t rotation_id;
+  SignalOwnedBuffer server_public_params;
+  int64_t current_time_seconds;
+} SignalGetAvatarCredentialArgsFfiResult;
+static_assert_64bit(offsetof(SignalGetAvatarCredentialArgsFfiResult, aci) == 0);
+static_assert_64bit(offsetof(SignalGetAvatarCredentialArgsFfiResult, key_pair) == 24);
+static_assert_64bit(offsetof(SignalGetAvatarCredentialArgsFfiResult, rotation_id) == 40);
+static_assert_64bit(offsetof(SignalGetAvatarCredentialArgsFfiResult, server_public_params) == 48);
+static_assert_64bit(offsetof(SignalGetAvatarCredentialArgsFfiResult, current_time_seconds) == 64);
+static_assert_64bit(sizeof(SignalGetAvatarCredentialArgsFfiResult) == 72);
+static_assert_64bit(alignof(SignalGetAvatarCredentialArgsFfiResult) == 8);
+typedef struct {
   SignalOwnedBuffer credential;
   int32_t upload_length;
 } SignalGetAvatarUploadFormArgsFfiResult;
@@ -2513,6 +2527,9 @@ SignalFfiError* signal_testing_generate_totp_key_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_account_identity_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_avatar_credential_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_avatar_upload_form_legacy_tests(

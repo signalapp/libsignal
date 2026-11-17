@@ -589,6 +589,14 @@ export type ReturnFfiGetAccountIdentityOut =
       __type: 1;
     };
 
+export type ReturnFfiGetAvatarCredentialArgs = {
+  aci: Bytes;
+  key_pair: Bytes;
+  rotation_id: bigint;
+  server_public_params: Bytes;
+  current_time_seconds: bigint;
+};
+
 export type ReturnFfiGetAvatarUploadFormArgs = {
   credential: Bytes;
   upload_length: number;
@@ -1468,6 +1476,16 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgeAccountIdentity>;
+  AuthenticatedChatConnection_get_avatar_credential: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    aci: Bytes,
+    key_pair: Bytes,
+    rotation_id: bigint,
+    server_public_params: Bytes,
+    current_time_seconds: bigint,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<Bytes>;
   AuthenticatedChatConnection_get_avatar_upload_form_legacy: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -3457,6 +3475,9 @@ type NativeFunctions = {
   TESTING_GetAccountIdentityTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetAccountIdentityOut>
   >;
+  TESTING_GetAvatarCredentialTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiGetAvatarCredentialArgs, Bytes | null>
+  >;
   TESTING_GetAvatarUploadFormLegacyTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiGetAvatarUploadFormLegacyArgs,
@@ -4248,6 +4269,7 @@ const {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_avatar_credential,
   AuthenticatedChatConnection_get_avatar_upload_form_legacy,
   AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
@@ -4840,6 +4862,7 @@ const {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarCredentialTests,
   TESTING_GetAvatarUploadFormLegacyTests,
   TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
@@ -5118,6 +5141,7 @@ export {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_avatar_credential,
   AuthenticatedChatConnection_get_avatar_upload_form_legacy,
   AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
@@ -5710,6 +5734,7 @@ export {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarCredentialTests,
   TESTING_GetAvatarUploadFormLegacyTests,
   TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,

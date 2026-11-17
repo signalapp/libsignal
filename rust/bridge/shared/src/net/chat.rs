@@ -8,10 +8,9 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use ::zkgroup::ServerPublicParams;
-#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
-use ::zkgroup::avatars::AvatarUploadCredentialPresentation;
+use ::zkgroup::avatars::{AvatarUploadCredential, AvatarUploadCredentialPresentation};
+use ::zkgroup::generic_server_params::GenericServerPublicParams;
 use ::zkgroup::groups::GroupSendFullToken;
-#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
 use ::zkgroup::profiles::ProfileKey;
 use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
 use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
@@ -1693,5 +1692,33 @@ async fn AuthenticatedChatConnection_get_avatar_upload_form_legacy(
     chat.require_grpc()
         .await
         .get_avatar_upload_form_legacy(aci, &profile_key)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_avatar_credential(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    aci: Aci,
+    key_pair: ZkCredentialKeyPair,
+    rotation_id: ZkCredentialKeyRotationId,
+    server_public_params: GenericServerPublicParams,
+    current_time_seconds: i64,
+    rng: RandomNumberGenerator,
+) -> Result<
+    AvatarUploadCredential,
+    RequestError<libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey>,
+> {
+    chat.require_grpc()
+        .await
+        .get_avatar_credential(
+            aci,
+            &key_pair,
+            rotation_id,
+            &server_public_params,
+            ::zkgroup::Timestamp::from_epoch_seconds(
+                current_time_seconds.try_into().expect("negative seconds"),
+            ),
+            &mut rng.create(),
+        )
         .await
 }

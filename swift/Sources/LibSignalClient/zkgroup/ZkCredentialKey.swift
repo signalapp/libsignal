@@ -13,7 +13,7 @@ import SignalFfi
 ///
 /// The secret half must be persisted by the account holder and synced to linked devices. The
 /// public half is uploaded to the server.
-public class ZkCredentialKeyPair: ByteArray {
+public class ZkCredentialKeyPair: ByteArray, @unchecked Sendable {
     public static func generate() -> ZkCredentialKeyPair {
         return failOnError {
             self.generate(randomness: try Randomness.generate())

@@ -405,6 +405,9 @@ public object NativeTesting {
   public external fun TESTING_GetAccountIdentityTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetAvatarCredentialTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetAvatarUploadFormLegacyTests(): Array<Object>
 
   @JvmStatic

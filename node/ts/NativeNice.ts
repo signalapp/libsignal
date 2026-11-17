@@ -76,6 +76,7 @@ import type {
   ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetAccountIdentityOut,
+  ReturnFfiGetAvatarCredentialArgs,
   ReturnFfiGetAvatarUploadFormArgs,
   ReturnFfiGetAvatarUploadFormLegacyArgs,
   ReturnFfiGetAvatarUploadFormOut,
@@ -491,6 +492,14 @@ export type GetAccountIdentityOut =
       success: BridgeAccountIdentity;
     }
   | 'missingIdentifiers';
+
+export type GetAvatarCredentialArgs = {
+  aci: Aci;
+  keyPair: zkgroup.ZkCredentialKeyPair;
+  rotationId: bigint;
+  serverPublicParams: zkgroup.GenericServerPublicParams;
+  currentTimeSeconds: bigint;
+};
 
 export type GetAvatarUploadFormArgs = {
   credential: zkgroup.AvatarUploadCredentialPresentation;
@@ -1637,6 +1646,23 @@ export function returnConverterGetAccountIdentityOut(
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for GetAccountIdentityOut');
   }
+}
+
+export function returnConverterGetAvatarCredentialArgs(
+  ffiInput: Native.ReturnFfiGetAvatarCredentialArgs
+): GetAvatarCredentialArgs {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    keyPair: ((x: Bytes) => new zkgroup.ZkCredentialKeyPair(x))(
+      ffiInput.key_pair
+    ),
+    rotationId: identity(ffiInput.rotation_id),
+    serverPublicParams: ((x: Bytes) =>
+      new zkgroup.GenericServerPublicParams(x))(ffiInput.server_public_params),
+    currentTimeSeconds: identity(ffiInput.current_time_seconds),
+  };
 }
 
 export function returnConverterGetAvatarUploadFormArgs(
@@ -3294,6 +3320,43 @@ export async function AuthenticatedChatConnection_get_account_identity({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_avatar_credential({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  keyPair: key_pair,
+  rotationId: rotation_id,
+  serverPublicParams: server_public_params,
+  currentTimeSeconds: current_time_seconds,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  aci: Aci;
+  keyPair: zkgroup.ZkCredentialKeyPair;
+  rotationId: bigint;
+  serverPublicParams: zkgroup.GenericServerPublicParams;
+  currentTimeSeconds: bigint;
+  rng: Rng | undefined;
+}): Promise<zkgroup.AvatarUploadCredential> {
+  return ((x: Bytes) => new zkgroup.AvatarUploadCredential(x))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_avatar_credential(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(key_pair),
+        identity(rotation_id),
+        ByteArray.prototype.getContents.call(server_public_params),
+        identity(current_time_seconds),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_avatar_upload_form_legacy({
   asyncContext,
   abortSignal,
@@ -4307,6 +4370,15 @@ export function TESTING_GetAccountIdentityTests(): Array<
     identity,
     returnConverterGetAccountIdentityOut
   )(Native.TESTING_GetAccountIdentityTests());
+}
+
+export function TESTING_GetAvatarCredentialTests(): Array<
+  GrpcTestCase<GetAvatarCredentialArgs, zkgroup.AvatarUploadCredential | null>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetAvatarCredentialArgs,
+    liftNull((x: Bytes) => new zkgroup.AvatarUploadCredential(x))
+  )(Native.TESTING_GetAvatarCredentialTests());
 }
 
 export function TESTING_GetAvatarUploadFormLegacyTests(): Array<

@@ -1275,3 +1275,15 @@ impl SignalNodeError
         )
     }
 }
+
+impl SignalNodeError for libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey {
+    fn into_throwable<'cx>(self, cx: &mut Cx<'cx>, operation_name: &str) -> Handle<'cx, JsError> {
+        new_js_error(
+            cx,
+            Some("AccountMissingZkCredentialKey"),
+            &self.to_string(),
+            operation_name,
+            no_extra_properties,
+        )
+    }
+}

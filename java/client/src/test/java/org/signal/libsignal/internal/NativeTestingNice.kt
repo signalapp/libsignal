@@ -183,6 +183,14 @@ public sealed class GetAccountIdentityOut {
   public data object MissingIdentifiers : GetAccountIdentityOut()
 }
 
+public data class GetAvatarCredentialArgs(
+  public val aci: org.signal.libsignal.protocol.ServiceId.Aci,
+  public val keyPair: org.signal.libsignal.zkgroup.ZkCredentialKeyPair,
+  public val rotationId: Long,
+  public val serverPublicParams: org.signal.libsignal.zkgroup.GenericServerPublicParams,
+  public val currentTimeSeconds: Long,
+)
+
 public data class GetAvatarUploadFormArgs(
   public val credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
   public val uploadLength: Int,
@@ -1242,6 +1250,42 @@ public object GetAccountIdentityOut_MissingIdentifiers_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = GetAccountIdentityOut.MissingIdentifiers
+}
+
+public object GetAvatarCredentialArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    aci: Any?,
+    key_pair: Any?,
+    rotation_id: Any?,
+    server_public_params: Any?,
+    current_time_seconds: Any?,
+  ): Any? =
+    GetAvatarCredentialArgs(
+      aci =
+        org.signal.libsignal.protocol.ServiceId.Aci
+          .parseFromFixedWidthBinary(aci as ByteArray),
+      keyPair =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup
+              .ZkCredentialKeyPair(x)
+          }
+        )(key_pair as ByteArray),
+      rotationId =
+        identity(rotation_id as Long),
+      serverPublicParams =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup
+              .GenericServerPublicParams(x)
+          }
+        )(server_public_params as ByteArray),
+      currentTimeSeconds =
+        identity(current_time_seconds as Long),
+    )
 }
 
 public object GetAvatarUploadFormArgs_ReturnConverter {
@@ -2986,6 +3030,29 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetAccountIdentityOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetAccountIdentityOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetAvatarCredentialTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetAvatarCredentialArgs, org.signal.libsignal.zkgroup.avatars.AvatarUploadCredential?>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetAvatarCredentialTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, ByteArray?, org.signal.libsignal.internal.GetAvatarCredentialArgs, org.signal.libsignal.zkgroup.avatars.AvatarUploadCredential?>({
+        downcastFromObject<org.signal.libsignal.internal.GetAvatarCredentialArgs>(it)
+      }, {
+        (
+          { x: ByteArray? ->
+            x?.let {
+              (
+                { x: ByteArray ->
+                  org.signal.libsignal.zkgroup.avatars
+                    .AvatarUploadCredential(x)
+                }
+              )(it)
+            }
+          }
+        )(it)
+      })(ffiOut)
   }
 
   public fun TESTING_GetAvatarUploadFormLegacyTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetAvatarUploadFormLegacyArgs, org.signal.libsignal.net.S3UploadForm>> {

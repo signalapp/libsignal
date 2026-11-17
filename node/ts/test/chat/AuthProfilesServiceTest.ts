@@ -10,6 +10,8 @@ import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import { AuthProfilesService } from '../../net.js';
 import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
+import type { AvatarUploadCredential } from '../../zkgroup/index.js';
+import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
 
@@ -28,6 +30,42 @@ describe('AuthProfilesService', () => {
       ) => {
         const out = chat.getAvatarUploadFormLegacy({ aci, profileKey });
         expect(await out).to.deep.equal(resp);
+      }
+    );
+  });
+
+  describe('getAvatarCredential', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetAvatarCredentialTests(),
+      connectAuth<AuthProfilesService>,
+      async (
+        chat: AuthProfilesService,
+        {
+          aci,
+          keyPair,
+          rotationId,
+          serverPublicParams,
+          currentTimeSeconds,
+        }: NativeNice.GetAvatarCredentialArgs,
+        resp: AvatarUploadCredential | null
+      ) => {
+        const out = chat.getAvatarCredential({
+          aci,
+          keyPair,
+          rotationId,
+          serverPublicParams,
+          currentTimeSeconds: Number(currentTimeSeconds),
+          rng: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (resp === null) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.AccountMissingZkCredentialKey,
+            });
+        } else {
+          expect(await out).to.deep.equal(resp);
+        }
       }
     );
   });

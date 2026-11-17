@@ -98,6 +98,7 @@ public enum SignalError: Error {
     case profileNotFound(String)
     case receiptAlreadyRedeemed(String)
     case invalidAvatarUploadCredentialPresentation(String)
+    case accountMissingZkCredentialKey(String)
 
     case unknown(UInt32, String)
 
@@ -418,6 +419,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.receiptAlreadyRedeemed(errStr)
     case SignalErrorCodeInvalidAvatarUploadCredentialPresentation:
         throw SignalError.invalidAvatarUploadCredentialPresentation(errStr)
+    case SignalErrorCodeAccountMissingZkCredentialKey:
+        throw SignalError.accountMissingZkCredentialKey(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

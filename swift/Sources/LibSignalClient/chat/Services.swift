@@ -150,6 +150,10 @@ public struct UnauthServiceSelectorHelper<Api>: UnauthServiceSelector {
 public protocol AuthServiceSelector: ServiceSelector where Connection == AuthenticatedChatConnection {
 }
 
+extension AuthServiceSelector where Self == AuthServiceSelectorHelper<AuthenticatedChatConnection> {
+    internal static var allAuthenticatedConnection: Self { .init() }
+}
+
 public struct AuthServiceSelectorHelper<Api>: AuthServiceSelector {
     // swiftlint:disable:previous explicit_init_for_public_struct
 

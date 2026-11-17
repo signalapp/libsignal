@@ -828,6 +828,10 @@ zkgroup_serialize_type!(
     "AvatarUploadCredentialPresentation"
 );
 zkgroup_serialize_type!(zkgroup::profiles::ProfileKey, "ProfileKey");
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredential,
+    "AvatarUploadCredential"
+);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -2530,6 +2534,7 @@ simple_optional!(f32);
 simple_optional!(Vec<u8>);
 return_optional!(libsignal_protocol::Pni);
 return_optional!(uuid::Uuid);
+simple_optional!(zkgroup::avatars::AvatarUploadCredential);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
 return_optional!(crate::net::chat::remote_derives::TaggedBadges);

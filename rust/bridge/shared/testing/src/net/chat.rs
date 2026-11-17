@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-use ::zkgroup::avatars::AvatarUploadCredentialPresentation;
+use ::zkgroup::avatars::{AvatarUploadCredential, AvatarUploadCredentialPresentation};
 use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
@@ -502,8 +502,10 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use ::zkgroup::ServerPublicParams;
+    use ::zkgroup::generic_server_params::GenericServerPublicParams;
     use ::zkgroup::profiles::ProfileKey;
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
+    use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::{
         AccountEntitlements, GetStickerUploadFormsResponse, ListMediaResponse,
@@ -517,16 +519,48 @@ mod remote_derives {
     use libsignal_core::Aci;
     use libsignal_net_chat::api::purchase::{ChargeFailure, PaymentProvider};
     use libsignal_net_chat::api::{S3UploadForm, UserBasedAuthorization};
+    use libsignal_net_chat::grpc::accounts::ZkCredentialKeyRotationId;
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::donations::BadgeVisibility;
     use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
-    use libsignal_net_chat::grpc::profiles::CdnUrl;
+    use libsignal_net_chat::grpc::profiles::{CdnUrl, test_cases as profile_test_cases};
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
     use libsignal_protocol::{ServiceId, Timestamp};
     use uuid::Uuid;
 
     use super::*;
+
+    #[derive(BridgedAsValue)]
+    pub struct GetAvatarCredentialArgs {
+        pub aci: Aci,
+        pub key_pair: ZkCredentialKeyPair,
+        pub rotation_id: ZkCredentialKeyRotationId,
+        pub server_public_params: GenericServerPublicParams,
+        pub current_time_seconds: i64,
+    }
+    impl From<profile_test_cases::GetAvatarCredentialArgs> for GetAvatarCredentialArgs {
+        fn from(
+            profile_test_cases::GetAvatarCredentialArgs {
+                aci,
+                key_pair,
+                rotation_id,
+                server_public_params,
+                current_time,
+            }: profile_test_cases::GetAvatarCredentialArgs,
+        ) -> Self {
+            Self {
+                aci,
+                key_pair,
+                rotation_id,
+                server_public_params,
+                current_time_seconds: current_time
+                    .epoch_seconds()
+                    .try_into()
+                    .expect("fits in i64"),
+            }
+        }
+    }
 
     #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(
@@ -1785,4 +1819,9 @@ fn TESTING_GetAvatarUploadFormLegacyTests()
 -> GrpcTestCases<remote_derives::GetAvatarUploadFormLegacyArgs, S3UploadForm> {
     libsignal_net_chat::grpc::profiles::test_cases::get_avatar_upload_form_legacy_test_cases()
         .into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetAvatarCredentialTests()
+-> GrpcTestCases<remote_derives::GetAvatarCredentialArgs, Option<AvatarUploadCredential>> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_avatar_credential_test_cases().into()
 }

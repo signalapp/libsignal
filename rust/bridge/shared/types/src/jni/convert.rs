@@ -23,6 +23,7 @@ use libsignal_net_chat::grpc::profiles::{CdnUrl, InvalidCdnUrl};
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use ref_cast::RefCast as _;
+use zkgroup::avatars::AvatarUploadCredential;
 use zkgroup::groups::GroupSendFullToken;
 
 use super::*;
@@ -828,6 +829,10 @@ zkgroup_serialize_type!(
 zkgroup_serialize_type!(
     zkgroup::profiles::ProfileKey,
     "org.signal.libsignal.zkgroup.profiles.ProfileKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredential,
+    "org.signal.libsignal.zkgroup.avatars.AvatarUploadCredential"
 );
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
@@ -3829,6 +3834,7 @@ nice_identity_arg_converter!(i64, "Long");
 impl_result_type_info_for_option!(BridgeWebAuthnAuthenticationParameters);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::TaggedBadges);
 impl_result_type_info_for_option!(CdnUrl);
+impl_result_type_info_for_option!(AvatarUploadCredential);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
 
 #[cfg(feature = "metadata")]

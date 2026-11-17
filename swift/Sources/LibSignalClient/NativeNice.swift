@@ -6069,6 +6069,53 @@ internal enum NativeNice {
         return try DerivedReturnConverterBridgeAccountIdentity.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_get_avatar_credential(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        aci: Aci,
+        keyPair key_pair: ZkCredentialKeyPair,
+        rotationId rotation_id: Int64,
+        serverPublicParams server_public_params: GenericServerPublicParams,
+        currentTimeSeconds current_time_seconds: Int64,
+        rng: Int64,
+    ) async throws -> AvatarUploadCredential {
+        let rawOutput: ByteArrayConverter<AvatarUploadCredential>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        AciConverter.convertArgBorrowed(aci) { aciFfi in
+                            ByteArrayConverter<ZkCredentialKeyPair>.convertArgBorrowed(key_pair) { key_pairFfi in
+                                IdentityArgConverter<Int64>.convertArgBorrowed(rotation_id) { rotation_idFfi in
+                                    ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(
+                                        server_public_params
+                                    ) { server_public_paramsFfi in
+                                        IdentityArgConverter<Int64>.convertArgBorrowed(current_time_seconds) {
+                                            current_time_secondsFfi in
+                                            IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                                                SignalFfi.signal_authenticated_chat_connection_get_avatar_credential(
+                                                    promiseFfi,
+                                                    asyncContextFfi.const(),
+                                                    chatFfi,
+                                                    aciFfi,
+                                                    key_pairFfi,
+                                                    rotation_idFfi,
+                                                    server_public_paramsFfi,
+                                                    current_time_secondsFfi,
+                                                    rngFfi,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try ByteArrayConverter<AvatarUploadCredential>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_get_avatar_upload_form_legacy(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

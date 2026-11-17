@@ -2172,3 +2172,17 @@ impl JniError for libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredent
         )
     }
 }
+
+impl JniError for libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName("org.signal.libsignal.net.AccountMissingZkCredentialKeyException"),
+        )
+    }
+}

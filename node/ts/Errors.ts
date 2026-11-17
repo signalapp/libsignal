@@ -128,6 +128,7 @@ export enum ErrorCode {
 
   InvalidProvisioningMessage,
   InvalidAvatarUploadCredentialPresentation,
+  AccountMissingZkCredentialKey,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -660,7 +661,9 @@ export type InvalidProvisioningMessageError = LibSignalErrorCommon & {
 export type InvalidAvatarUploadCredentialPresentation = LibSignalErrorCommon & {
   code: ErrorCode.InvalidAvatarUploadCredentialPresentation;
 };
-
+export type AccountMissingZkCredentialKey = LibSignalErrorCommon & {
+  code: ErrorCode.AccountMissingZkCredentialKey;
+};
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -748,4 +751,5 @@ export type LibSignalError =
   | ProfileNotFound
   | ReceiptAlreadyRedeemed
   | InvalidProvisioningMessageError
-  | InvalidAvatarUploadCredentialPresentation;
+  | InvalidAvatarUploadCredentialPresentation
+  | AccountMissingZkCredentialKey;

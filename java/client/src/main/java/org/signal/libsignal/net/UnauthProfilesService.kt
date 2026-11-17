@@ -96,7 +96,8 @@ public class UnauthProfilesService(
    * @return either the CdnUrl of the current v2 avatar, or null, if none is set.
    *
    * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
-   * [RequestResult.ApplicationError].
+   * [RequestResult.ApplicationError]. An [InvalidAvatarUploadCredentialPresentationException]
+   * will be thrown if the credential presentation is invalid.
    */
   public fun extendAvatarTtl(
     credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
@@ -119,6 +120,10 @@ public class UnauthProfilesService(
    * Delete the account’s avatar from the CDN.
    *
    * Clients must also call setProfile() to remove the avatar URL from the profile data.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. An [InvalidAvatarUploadCredentialPresentationException]
+   * will be thrown if the credential presentation is invalid.
    */
   public fun deleteAvatar(
     credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
@@ -154,6 +159,10 @@ public class UnauthProfilesService(
    *
    * @param uploadLength Uploads will be limited to uploadLength bytes. It must be in the range [1, 10485760] (10 MiB),
    * else the server will reject the upload.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. An [InvalidAvatarUploadCredentialPresentationException]
+   * will be thrown if the credential presentation is invalid.
    */
   public fun getAvatarUploadForm(
     credential: AvatarUploadCredentialPresentation,
