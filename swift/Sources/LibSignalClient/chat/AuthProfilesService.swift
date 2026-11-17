@@ -20,6 +20,7 @@ public protocol AuthProfilesService: Sendable {
         aci: Aci,
         profileKey: ProfileKey,
         etag: ProfileEtag?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     ) async throws -> FetchedProfile?
     /// Set the profile for the current account.
     ///
@@ -50,6 +51,7 @@ public protocol AuthProfilesService: Sendable {
         profile: Profile,
         expectedCurrentDataHash: ProfileDataHash?,
         expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     ) async throws -> ProfileDataHash
     /// Returns an anonymous credential that may be presented with avatar operations in
     /// UnauthProfilesService
@@ -80,13 +82,19 @@ public protocol AuthProfilesService: Sendable {
 
 extension AuthenticatedChatConnection: AuthProfilesService {
 
-    public func getProfile(aci: Aci, profileKey: ProfileKey, etag: Data?, ) async throws -> FetchedProfile? {
+    public func getProfile(
+        aci: Aci,
+        profileKey: ProfileKey,
+        etag: Data?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
+    ) async throws -> FetchedProfile? {
         return try await NativeNice.AuthenticatedChatConnection_get_profile(
             asyncContext: self.tokioAsyncContext,
             chat: self,
             aci: aci,
             profileKey: profileKey,
             etag: etag,
+            avatarCdnConfig: avatarCdnUrlValidationConfig,
         )
     }
 
@@ -96,6 +104,7 @@ extension AuthenticatedChatConnection: AuthProfilesService {
         profile: Profile,
         expectedCurrentDataHash: ProfileDataHash?,
         expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     ) async throws -> ProfileDataHash {
         return try await self.setProfileImpl(
             aci: aci,
@@ -103,6 +112,7 @@ extension AuthenticatedChatConnection: AuthProfilesService {
             profile: profile,
             expectedCurrentDataHash: expectedCurrentDataHash,
             expectedCurrentProfileKeyVersion: expectedCurrentProfileKeyVersion,
+            avatarCdnUrlValidationConfig: avatarCdnUrlValidationConfig,
         )
     }
 
@@ -143,6 +153,7 @@ extension AuthenticatedChatConnection {
         profile: Profile,
         expectedCurrentDataHash: Data?,
         expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     ) async throws -> Data {
         return try await NativeNice.AuthenticatedChatConnection_set_profile(
             asyncContext: self.tokioAsyncContext,
@@ -153,6 +164,7 @@ extension AuthenticatedChatConnection {
             profile: profile,
             expectedCurrentDataHash: expectedCurrentDataHash,
             expectedCurrentProfileKeyVersion: expectedCurrentProfileKeyVersion,
+            avatarCdnConfig: avatarCdnUrlValidationConfig,
         )
     }
     internal func getAvatarCredentialImpl(

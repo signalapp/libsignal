@@ -444,7 +444,7 @@ public data class Profile(
   public val familyName: String,
   public val about: String,
   public val aboutEmoji: String,
-  public val avatar: org.signal.libsignal.net.CdnUrl?,
+  public val avatar: String?,
   public val phoneNumberSharing: Boolean?,
   public val paymentAddress: ByteArray?,
   public val badgeIds: List<String>,
@@ -481,7 +481,7 @@ public sealed class ProfileValidationErrorInternal {
     public val maxLen: Int,
   ) : ProfileValidationErrorInternal()
 
-  public data object GivenNameEmpty : ProfileValidationErrorInternal()
+  public data object AvatarUrlInvalid : ProfileValidationErrorInternal()
 }
 
 */
@@ -1292,11 +1292,7 @@ public object Profile_ReturnConverter {
       aboutEmoji =
         identity(about_emoji as String),
       avatar =
-        (
-          { x: String? ->
-            x?.let { (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(it) }
-          }
-        )(avatar as String?),
+        ({ x: String? -> x?.let { identity(it) } })(avatar as String?),
       phoneNumberSharing =
         identity(phone_number_sharing as Boolean?),
       paymentAddress =
@@ -1367,11 +1363,11 @@ public object ProfileValidationErrorInternal_FieldTooLong_ReturnConverter {
     )
 }
 
-public object ProfileValidationErrorInternal_GivenNameEmpty_ReturnConverter {
+public object ProfileValidationErrorInternal_AvatarUrlInvalid_ReturnConverter {
   @CalledFromNative
   @JvmStatic
   @JvmName("fromNative")
-  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileValidationError.GivenNameEmpty
+  internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileValidationError.AvatarUrlInvalid
 }
 
 public object S3UploadFormInternal_ReturnConverter {
@@ -1947,12 +1943,7 @@ public fun org.signal.libsignal.net.Profile.toFfiArgType(): Profile_FfiArgType =
     family_name = identity(familyName),
     about = identity(about),
     about_emoji = identity(aboutEmoji),
-    avatar =
-      (
-        { x: org.signal.libsignal.net.CdnUrl? ->
-          x?.url
-        }
-      )(avatar),
+    avatar = identity(avatar),
     phone_number_sharing = identity(phoneNumberSharing),
     payment_address = identity(paymentAddress),
     badge_ids =
@@ -2488,12 +2479,14 @@ public object NativeNice {
     aci: org.signal.libsignal.protocol.ServiceId.Aci,
     profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
     etag: ByteArray?,
+    avatarCdnConfig: org.signal.libsignal.net.AvatarCdnUrlValidationConfig,
   ): CompletableFuture<org.signal.libsignal.net.FetchedProfile?> {
     val ffi_chat = identity(chat)
     val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
     val ffi_profile_key =
       (org.signal.libsignal.zkgroup.profiles.ProfileKey::getInternalContentsForJNI)(profileKey)
     val ffi_etag = identity(etag)
+    val ffi_avatar_cdn_config = identity(avatarCdnConfig)
     val ffiOut =
       NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
         Native.AuthenticatedChatConnection_get_profile(
@@ -2502,6 +2495,7 @@ public object NativeNice {
           ffi_aci,
           ffi_profile_key,
           ffi_etag,
+          ffi_avatar_cdn_config,
         )
       }
     return ffiOut
@@ -2876,6 +2870,7 @@ public object NativeNice {
     profile: org.signal.libsignal.net.Profile,
     expectedCurrentDataHash: ByteArray?,
     expectedCurrentProfileKeyVersion: org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion?,
+    avatarCdnConfig: org.signal.libsignal.net.AvatarCdnUrlValidationConfig,
   ): CompletableFuture<ByteArray> {
     val ffi_chat = identity(chat)
     val ffi_rng =
@@ -2894,6 +2889,7 @@ public object NativeNice {
           }
         }
       )(expectedCurrentProfileKeyVersion)
+    val ffi_avatar_cdn_config = identity(avatarCdnConfig)
     val ffiOut =
       NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
         Native.AuthenticatedChatConnection_set_profile(
@@ -2905,6 +2901,7 @@ public object NativeNice {
           ffi_profile,
           ffi_expected_current_data_hash,
           ffi_expected_current_profile_key_version,
+          ffi_avatar_cdn_config,
         )
       }
     return ffiOut
@@ -3083,14 +3080,17 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeWebAuthnCreateParameters>(it) }
   }
 
-  public fun CdnUrl_validate(url: String): Boolean {
-    val ffi_url = identity(url)
+  public fun AvatarCdnUrlValidationConfig_new(
+    validUrlPrefixes: List<String>,
+  ): org.signal.libsignal.net.AvatarCdnUrlValidationConfig {
+    val ffi_valid_url_prefixes = mapBridgeVecArg<String, String>({ identity(it) })(validUrlPrefixes)
     val ffiOut =
-      Native.CdnUrl_validate(
-        ffi_url,
+      Native.AvatarCdnUrlValidationConfig_new(
+        ffi_valid_url_prefixes,
       )
 
-    return identity(ffiOut)
+    return org.signal.libsignal.net
+      .AvatarCdnUrlValidationConfig(ffiOut)
   }
 
   public fun CopyBackupMediaStream_next(
@@ -3690,7 +3690,7 @@ public object NativeNice {
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
     credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
-  ): CompletableFuture<org.signal.libsignal.net.CdnUrl?> {
+  ): CompletableFuture<String?> {
     val ffi_chat = identity(chat)
     val ffi_credential =
       (org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation::getInternalContentsForJNI)(
@@ -3706,13 +3706,7 @@ public object NativeNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
-      .thenApply {
-        (
-          { x: String? ->
-            x?.let { (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(it) }
-          }
-        )(it)
-      }
+      .thenApply { ({ x: String? -> x?.let { identity(it) } })(it) }
   }
 
   public fun UnauthenticatedChatConnection_get_avatar_upload_form(
@@ -3748,6 +3742,7 @@ public object NativeNice {
     profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
     auth: org.signal.libsignal.internal.UnauthProfileAuthorization,
     etag: ByteArray?,
+    avatarCdnConfig: org.signal.libsignal.net.AvatarCdnUrlValidationConfig,
   ): CompletableFuture<org.signal.libsignal.net.FetchedProfile?> {
     val ffi_chat = identity(chat)
     val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
@@ -3755,6 +3750,7 @@ public object NativeNice {
       (org.signal.libsignal.zkgroup.profiles.ProfileKey::getInternalContentsForJNI)(profileKey)
     val ffi_auth = (org.signal.libsignal.internal.UnauthProfileAuthorization::toFfiArgTypeObject)(auth)
     val ffi_etag = identity(etag)
+    val ffi_avatar_cdn_config = identity(avatarCdnConfig)
     val ffiOut =
       NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
         Native.UnauthenticatedChatConnection_get_profile(
@@ -3764,6 +3760,7 @@ public object NativeNice {
           ffi_profile_key,
           ffi_auth,
           ffi_etag,
+          ffi_avatar_cdn_config,
         )
       }
     return ffiOut

@@ -230,6 +230,7 @@ public class UnauthProfilesService(
     profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
     auth: UnauthProfileAuthorization,
     etag: ProfileEtag?,
+    avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
   ): CompletableFuture<RequestResult<FetchedProfile?, UnauthGetProfileErrorException>> =
     try {
       NativeNice
@@ -248,6 +249,7 @@ public class UnauthProfilesService(
                 UnauthProfileAuthorizationInternal.AccessKey(auth.unidentifiedAccessKey)
             },
           etag = etag,
+          avatarCdnConfig = avatarCdnUrlValidationConfig,
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult<UnauthGetProfileErrorException>() },

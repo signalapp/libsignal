@@ -20,10 +20,14 @@ import type {
   InvalidAvatarUploadCredentialPresentation,
 } from '../../Errors.js';
 import type { S3UploadForm } from '../Chat.js';
-import type { CdnUrl } from './CdnUrl.js';
 import * as zkgroup from '../../zkgroup/index.js';
 import type { Bytes } from '@signalapp/types';
-import type { FetchedProfile, ProfileEtag } from './Profile';
+import type {
+  FetchedProfile,
+  ProfileEtag,
+  CdnUrl,
+  AvatarCdnUrlValidationConfig,
+} from './Profile';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -146,6 +150,7 @@ export interface UnauthProfilesService {
       profileKey: zkgroup.ProfileKey;
       auth: UnauthProfileAuthorization;
       etag: ProfileEtag | null;
+      avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig;
     },
     options?: RequestOptions
   ) => Promise<FetchedProfile | null>;
@@ -235,7 +240,7 @@ UnauthenticatedChatConnection.prototype.getAvatarUploadForm = async function (
 };
 
 UnauthenticatedChatConnection.prototype.getProfile = async function (
-  { aci, profileKey, auth, etag },
+  { aci, profileKey, auth, etag, avatarCdnUrlValidationConfig },
   options?: RequestOptions
 ): Promise<FetchedProfile | null> {
   return await NativeNice.UnauthenticatedChatConnection_get_profile({
@@ -247,5 +252,6 @@ UnauthenticatedChatConnection.prototype.getProfile = async function (
     auth:
       'accessKey' in auth ? { accessKey: auth.accessKey } : { groupSend: auth },
     etag,
+    avatarCdnConfig: avatarCdnUrlValidationConfig,
   });
 };

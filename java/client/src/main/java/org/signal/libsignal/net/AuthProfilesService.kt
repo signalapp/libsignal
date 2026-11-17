@@ -46,9 +46,9 @@ public sealed class ProfileValidationError {
   ) : ProfileValidationError()
 
   /**
-   * The profile's "given name" field cannot be empty
+   * The provided avatar URL did not live on one of the provided CDNs
    */
-  public data object GivenNameEmpty : ProfileValidationError()
+  public data object AvatarUrlInvalid : ProfileValidationError()
 }
 
 public sealed interface SetProfileException : BadRequestError {
@@ -222,6 +222,7 @@ public class AuthProfilesService(
     profile: Profile,
     expectedCurrentDataHash: ProfileDataHash?,
     expectedCurrentProfileKeyVersion: ProfileKeyVersion?,
+    avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     rng: DeterministicRandomSeedUseOnlyForTesting? = null,
   ): CompletableFuture<RequestResult<ProfileDataHash, SetProfileException>> =
     liftExceptions {
@@ -235,6 +236,7 @@ public class AuthProfilesService(
           profile = profile,
           expectedCurrentDataHash = expectedCurrentDataHash,
           expectedCurrentProfileKeyVersion = expectedCurrentProfileKeyVersion,
+          avatarCdnConfig = avatarCdnUrlValidationConfig,
         )
     }.mapWithCancellation(
       onSuccess = { RequestResult.Success(it) },
@@ -258,6 +260,7 @@ public class AuthProfilesService(
     aci: ServiceId.Aci,
     profileKey: ProfileKey,
     etag: ProfileEtag?,
+    avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
   ): CompletableFuture<RequestResult<FetchedProfile?, AuthGetProfileError>> =
     try {
       NativeNice
@@ -267,6 +270,7 @@ public class AuthProfilesService(
           aci = aci,
           profileKey = profileKey,
           etag = etag,
+          avatarCdnConfig = avatarCdnUrlValidationConfig,
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(it) },
           onError = { err -> err.toRequestResult<AuthGetProfileError>() },

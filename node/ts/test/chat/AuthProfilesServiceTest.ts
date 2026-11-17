@@ -11,6 +11,7 @@ import * as Native from '../../Native.js';
 import * as util from '../util.js';
 import {
   AuthProfilesService,
+  AvatarCdnUrlValidationConfig,
   PROFILE_FIELD_MAX_LENGTHS,
   TokioAsyncContext,
 } from '../../net.js';
@@ -85,6 +86,7 @@ describe('AuthProfilesService', () => {
         profile,
         expectedCurrentDataHash,
         expectedCurrentProfileKeyVersion,
+        avatarCdnConfigValidUrls,
       }: NativeNice.SetProfileArgs,
       resp: NativeNice.SetProfileOut
     ): Promise<void> {
@@ -95,6 +97,10 @@ describe('AuthProfilesService', () => {
         profile,
         expectedCurrentDataHash,
         expectedCurrentProfileKeyVersion,
+        avatarCdnUrlValidationConfig:
+          AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+            avatarCdnConfigValidUrls
+          ),
       });
       if ('success' in resp) {
         expect(await out).to.deep.equal(resp.success);
@@ -176,10 +182,23 @@ describe('AuthProfilesService', () => {
       connectAuth<AuthProfilesService>,
       async (
         chat: AuthProfilesService,
-        { aci, profileKey, etag }: NativeNice.GetProfileArgs,
+        {
+          aci,
+          profileKey,
+          etag,
+          avatarCdnConfigValidUrls,
+        }: NativeNice.GetProfileArgs,
         resp: NativeNice.GetProfileOut
       ) => {
-        const out = chat.getProfile({ aci, profileKey, etag });
+        const out = chat.getProfile({
+          aci,
+          profileKey,
+          etag,
+          avatarCdnUrlValidationConfig:
+            AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+              avatarCdnConfigValidUrls
+            ),
+        });
         if ('success' in resp) {
           const profile = await out;
           expect(profile).to.deep.equal(resp.success);

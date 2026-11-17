@@ -800,12 +800,6 @@ public object NativeTesting {
   public external fun TESTING_conversion_BridgeVecString_to_string(x: Array<*>): String
 
   @JvmStatic
-  public external fun TESTING_conversion_CdnUrl_identity(x: String): String
-
-  @JvmStatic
-  public external fun TESTING_conversion_CdnUrl_to_string(x: String): String
-
-  @JvmStatic
   public external fun TESTING_conversion_Data32_identity(x: ByteArray): ByteArray
 
   @JvmStatic
@@ -852,12 +846,6 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_conversion_OptionBool_to_string(x: Boolean?): String
-
-  @JvmStatic
-  public external fun TESTING_conversion_OptionCdnUrl_identity(x: String?): String?
-
-  @JvmStatic
-  public external fun TESTING_conversion_OptionCdnUrl_to_string(x: String?): String
 
   @JvmStatic
   public external fun TESTING_conversion_OptionalBytes_identity(x: ByteArray?): ByteArray?

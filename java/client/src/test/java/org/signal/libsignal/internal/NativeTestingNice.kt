@@ -141,7 +141,7 @@ public sealed class DeleteBackupMediaOut {
 
 public sealed class ExtendAvatarTtlOut {
   public data class Found(
-    public val _0: org.signal.libsignal.net.CdnUrl,
+    public val _0: String,
   ) : ExtendAvatarTtlOut()
 
   public data object NotFound : ExtendAvatarTtlOut()
@@ -290,6 +290,7 @@ public data class GetProfileArgs(
   public val aci: org.signal.libsignal.protocol.ServiceId.Aci,
   public val profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
   public val etag: ByteArray?,
+  public val avatarCdnConfigValidUrls: List<String>,
 )
 
 public data class GetProfileKeyCredentialArgs(
@@ -611,6 +612,7 @@ public data class SetProfileArgs(
   public val profile: org.signal.libsignal.net.Profile,
   public val expectedCurrentDataHash: ByteArray?,
   public val expectedCurrentProfileKeyVersion: org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion?,
+  public val avatarCdnConfigValidUrls: List<String>,
 )
 
 public sealed class SetProfileError {
@@ -1229,7 +1231,7 @@ public object ExtendAvatarTtlOut_Found_ReturnConverter {
   internal fun fromNative(_0: Any?): Any? =
     ExtendAvatarTtlOut.Found(
       _0 =
-        (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(_0 as String),
+        identity(_0 as String),
     )
 }
 
@@ -1643,6 +1645,7 @@ public object GetProfileArgs_ReturnConverter {
     aci: Any?,
     profile_key: Any?,
     etag: Any?,
+    avatar_cdn_config_valid_urls: Any?,
   ): Any? =
     GetProfileArgs(
       aci =
@@ -1657,6 +1660,8 @@ public object GetProfileArgs_ReturnConverter {
         )(profile_key as ByteArray),
       etag =
         ({ x: ByteArray? -> x?.let { identity(it) } })(etag as ByteArray?),
+      avatarCdnConfigValidUrls =
+        mapBridgeVecReturn<String, String>({ identity(it) })(avatar_cdn_config_valid_urls as Array<*>),
     )
 }
 
@@ -2510,6 +2515,7 @@ public object SetProfileArgs_ReturnConverter {
     profile: Any?,
     expected_current_data_hash: Any?,
     expected_current_profile_key_version: Any?,
+    avatar_cdn_config_valid_urls: Any?,
   ): Any? =
     SetProfileArgs(
       rngSeed =
@@ -2545,6 +2551,8 @@ public object SetProfileArgs_ReturnConverter {
             }
           }
         )(expected_current_profile_key_version as ByteArray?),
+      avatarCdnConfigValidUrls =
+        mapBridgeVecReturn<String, String>({ identity(it) })(avatar_cdn_config_valid_urls as Array<*>),
     )
 }
 
@@ -4181,26 +4189,6 @@ public object NativeTestingNice {
     return identity(ffiOut)
   }
 
-  public fun TESTING_conversion_CdnUrl_identity(x: org.signal.libsignal.net.CdnUrl): org.signal.libsignal.net.CdnUrl {
-    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl -> x.url })(x)
-    val ffiOut =
-      NativeTesting.TESTING_conversion_CdnUrl_identity(
-        ffi_x,
-      )
-
-    return (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(ffiOut)
-  }
-
-  public fun TESTING_conversion_CdnUrl_to_string(x: org.signal.libsignal.net.CdnUrl): String {
-    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl -> x.url })(x)
-    val ffiOut =
-      NativeTesting.TESTING_conversion_CdnUrl_to_string(
-        ffi_x,
-      )
-
-    return identity(ffiOut)
-  }
-
   public fun TESTING_conversion_Data32_identity(x: ByteArray): ByteArray {
     val ffi_x = identity(x)
     val ffiOut =
@@ -4369,36 +4357,6 @@ public object NativeTestingNice {
     val ffi_x = identity(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_OptionBool_to_string(
-        ffi_x,
-      )
-
-    return identity(ffiOut)
-  }
-
-  public fun TESTING_conversion_OptionCdnUrl_identity(
-    x: org.signal.libsignal.net.CdnUrl?,
-  ): org.signal.libsignal.net.CdnUrl? {
-    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl? -> x?.url })(x)
-    val ffiOut =
-      NativeTesting.TESTING_conversion_OptionCdnUrl_identity(
-        ffi_x,
-      )
-
-    return (
-      { x: String? ->
-        x?.let {
-          (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(
-            it,
-          )
-        }
-      }
-    )(ffiOut)
-  }
-
-  public fun TESTING_conversion_OptionCdnUrl_to_string(x: org.signal.libsignal.net.CdnUrl?): String {
-    val ffi_x = ({ x: org.signal.libsignal.net.CdnUrl? -> x?.url })(x)
-    val ffiOut =
-      NativeTesting.TESTING_conversion_OptionCdnUrl_to_string(
         ffi_x,
       )
 

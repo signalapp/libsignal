@@ -446,6 +446,7 @@ internal object Native {
     aci: ByteArray,
     profileKey: ByteArray,
     etag: ByteArray?,
+    avatarCdnConfig: SimpleOwner,
   ): CompletableFuture<Object?>
 
   @JvmStatic
@@ -633,6 +634,7 @@ internal object Native {
     profile: Object,
     expectedCurrentDataHash: ByteArray?,
     expectedCurrentProfileKeyVersion: ByteArray?,
+    avatarCdnConfig: SimpleOwner,
   ): CompletableFuture<ByteArray>
 
   @JvmStatic
@@ -692,6 +694,12 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
   ): CompletableFuture<Object>
+
+  @JvmStatic
+  public external fun AvatarCdnUrlValidationConfig_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun AvatarCdnUrlValidationConfig_new(validUrlPrefixes: Array<*>): ObjectHandle
 
   @JvmStatic
   @Throws(Exception::class)
@@ -1026,9 +1034,6 @@ internal object Native {
 
   @JvmStatic
   public external fun CallLinkSecretParams_GetPublicParams(paramsBytes: ByteArray): ByteArray
-
-  @JvmStatic
-  public external fun CdnUrl_validate(url: String): Boolean
 
   @JvmStatic
   @Throws(Exception::class)
@@ -3601,6 +3606,7 @@ internal object Native {
     profileKey: ByteArray,
     auth: Object,
     etag: ByteArray?,
+    avatarCdnConfig: SimpleOwner,
   ): CompletableFuture<Object?>
 
   @JvmStatic

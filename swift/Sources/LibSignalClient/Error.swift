@@ -432,7 +432,8 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         switch e {
         case .fieldTooLong(let field, let len, let maxLen):
             eConverted = .fieldTooLong(field: field, len: Int(len), maxLen: Int(maxLen))
-        case .givenNameEmpty: eConverted = .givenNameEmpty
+        case .avatarUrlInvalid:
+            eConverted = .avatarUrlInvalid
         }
         throw SignalError.setProfileInvalidProfile(profileValidationError: eConverted, message: errStr)
     case SignalErrorCodeSetProfileExpectedDataWriteConflict:

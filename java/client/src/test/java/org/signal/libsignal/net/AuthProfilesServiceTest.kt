@@ -25,6 +25,7 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.seconds
 
@@ -89,6 +90,7 @@ class AuthProfilesServiceTest {
         profile = req.profile,
         expectedCurrentDataHash = req.expectedCurrentDataHash,
         expectedCurrentProfileKeyVersion = req.expectedCurrentProfileKeyVersion,
+        avatarCdnUrlValidationConfig = AvatarCdnUrlValidationConfig.fromUrlPrefixes(req.avatarCdnConfigValidUrls),
       )
 
     fun check(
@@ -187,6 +189,7 @@ class AuthProfilesServiceTest {
             aci = req.aci,
             profileKey = req.profileKey,
             etag = req.etag,
+            avatarCdnUrlValidationConfig = AvatarCdnUrlValidationConfig.fromUrlPrefixes(req.avatarCdnConfigValidUrls),
           )
         },
         check = { expected, actual ->
@@ -204,5 +207,13 @@ class AuthProfilesServiceTest {
         },
       )
     }
+  }
+
+  @Test
+  fun testAvatarCdnUrlValidationConfig() {
+    // Should not throw
+    AvatarCdnUrlValidationConfig.fromUrlPrefixes(listOf("https://www.example.com/"))
+    // Should throw
+    assertFailsWith<AssertionError> { AvatarCdnUrlValidationConfig.fromUrlPrefixes(listOf("")) }
   }
 }

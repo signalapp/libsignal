@@ -3,18 +3,48 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import type { CdnUrl } from './CdnUrl.js';
 import type { Bytes } from '@signalapp/types';
 import type * as EcKeys from '../../EcKeys.js';
+import * as Native from '../../Native.js';
 
 export type BadgeId = string;
 export type PaymentAddress = Bytes;
 export type ProfileDataHash = Bytes;
 export type ProfileEtag = Bytes;
+export type CdnUrl = string;
+
+export class AvatarCdnUrlValidationConfig {
+  readonly _nativeHandle: Native.AvatarCdnUrlValidationConfig;
+
+  private constructor(handle: Native.AvatarCdnUrlValidationConfig) {
+    this._nativeHandle = handle;
+  }
+
+  static _fromNativeHandle(
+    handle: Native.AvatarCdnUrlValidationConfig
+  ): AvatarCdnUrlValidationConfig {
+    return new AvatarCdnUrlValidationConfig(handle);
+  }
+
+  /**
+   * URL prefixes must:
+   * 1. Start with `http://` or `https://`
+   * 2. end with a `/`
+   *
+   * @throws an internal error if these constraints are validated
+   */
+  public static fromUrlPrefixes(
+    validUrlPrefixes: string[]
+  ): AvatarCdnUrlValidationConfig {
+    return AvatarCdnUrlValidationConfig._fromNativeHandle(
+      Native.AvatarCdnUrlValidationConfig_new(validUrlPrefixes)
+    );
+  }
+}
 
 export type Profile = {
   /**
-   * Non-empty; max-length is 128 bytes
+   * Optional (can be empty); max-length is 128 bytes
    */
   givenName: string;
   /**
@@ -29,6 +59,12 @@ export type Profile = {
    * Optional (can be empty); max-length is 32 bytes
    */
   aboutEmoji: string;
+  /**
+   * If provided, it must be the full URL to the avatar.
+   *
+   * The URL must point to a Signal CDN server. (This will be validated on outgoing and incoming
+   * profiles.)
+   */
   avatar: CdnUrl | null;
   // The following fields are conceptually part of the user's profile, but live outside of the
   // encrypted v2 PlaintextProfileData
@@ -99,4 +135,4 @@ export type ProfileValidationError =
         maxLen: number;
       };
     }
-  | 'givenNameEmpty';
+  | 'avatarUrlInvalid';

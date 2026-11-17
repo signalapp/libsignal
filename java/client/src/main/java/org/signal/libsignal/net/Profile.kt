@@ -5,13 +5,17 @@
 
 package org.signal.libsignal.net
 
+import org.signal.libsignal.internal.Native
+import org.signal.libsignal.internal.NativeHandleGuard
 import org.signal.libsignal.internal.NativeNice
+import org.signal.libsignal.internal.ObjectHandle
 import org.signal.libsignal.protocol.IdentityKey
 
 public typealias BadgeId = String
 public typealias PaymentAddress = ByteArray
 public typealias ProfileDataHash = ByteArray
 public typealias ProfileEtag = ByteArray
+public typealias CdnUrl = String
 
 /**
  *  The result of fetching a profile.
@@ -70,7 +74,7 @@ public data class FetchedProfile(
 @Suppress("ktlint:standard:no-consecutive-comments")
 public data class Profile(
   /**
-   * Non-empty; max-length is 128 bytes
+   * Optional (can be empty); max-length is 128 bytes
    */
   public val givenName: String,
   /**
@@ -85,6 +89,12 @@ public data class Profile(
    * Optional (can be empty); max-length is 32 bytes
    */
   public val aboutEmoji: String,
+  /**
+   * If provided, it must be the full URL to the avatar.
+   *
+   * The URL must point to a Signal CDN server. (This will be validated on outgoing and incoming
+   * profiles.)
+   */
   public val avatar: CdnUrl?,
   // The following fields are conceptually part of the user's profile, but live outside of the
   // encrypted v2 PlaintextProfileData
@@ -129,23 +139,24 @@ public data class Profile(
   }
 }
 
-/**
- * A URL that points to a Signal CDN
- */
-@ConsistentCopyVisibility
-public data class CdnUrl private constructor(
-  public val url: String,
-) {
+public class AvatarCdnUrlValidationConfig internal constructor(
+  nativeHandle: ObjectHandle,
+) : NativeHandleGuard.SimpleOwner(
+    NativeHandleGuard.SimpleOwner.throwIfNull(nativeHandle),
+  ) {
   public companion object {
-    // Public only for testing
-    public fun libsignalOnlyFromPreValidatedString(url: String): CdnUrl = CdnUrl(url)
-
     /**
-     * @throws IllegalArgumentException if the URL doesn't point at a Signal CDN
+     * URL prefixes must:
+     * 1. Start with `http://` or `https://`
+     * 2. end with a `/`
+     *
+     * @throws AssertionError if these constraints are validated
      */
-    public fun fromString(url: String): CdnUrl {
-      if (!NativeNice.CdnUrl_validate(url)) throw IllegalArgumentException("Illegal CDN URL")
-      return CdnUrl(url)
-    }
+    public fun fromUrlPrefixes(validUrlPrefixes: List<String>): AvatarCdnUrlValidationConfig =
+      NativeNice.AvatarCdnUrlValidationConfig_new(validUrlPrefixes = validUrlPrefixes)
+  }
+
+  protected override fun release(nativeHandle: ObjectHandle) {
+    Native.AvatarCdnUrlValidationConfig_Destroy(nativeHandle)
   }
 }

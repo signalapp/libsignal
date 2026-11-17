@@ -19,7 +19,6 @@ use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::grpc::keys::DeviceSpecifier;
-use libsignal_net_chat::grpc::profiles::{CdnUrl, InvalidCdnUrl};
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use ref_cast::RefCast as _;
@@ -3949,7 +3948,6 @@ nice_identity_arg_converter!(i64, "Long");
 
 impl_result_type_info_for_option!(BridgeWebAuthnAuthenticationParameters);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::TaggedBadges);
-impl_result_type_info_for_option!(CdnUrl);
 impl_result_type_info_for_option!(AvatarUploadCredential);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
 impl_result_type_info_for_option!(ProfileKeyVersion);
@@ -4005,71 +4003,6 @@ where
                 "({{ x: {}? -> x?.let {{ {}(it) }} }})",
                 non_optional.ffi_type, non_optional.converter_function
             ),
-        }
-    }
-}
-
-impl<'a> SimpleArgTypeInfo<'a> for CdnUrl {
-    type ArgType = JString<'a>;
-
-    fn convert_from(
-        env: &mut jni::Env<'a>,
-        foreign: &Self::ArgType,
-    ) -> Result<Self, BridgeLayerError> {
-        CdnUrl::try_from(String::convert_from(env, foreign)?)
-            .map_err(|InvalidCdnUrl| BridgeLayerError::bad_argument("Invalid CdnUrl".into()))
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceArgConverter for CdnUrl {
-    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
-        KtArgConverter {
-            nice_type: "org.signal.libsignal.net.CdnUrl".into(),
-            ffi_type: "String".into(),
-            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
-            converter_function: "({ x: org.signal.libsignal.net.CdnUrl -> x.url })".into(),
-        }
-    }
-}
-impl<'a> SimpleArgTypeInfo<'a> for Option<CdnUrl> {
-    type ArgType = Nullable<JString<'a>>;
-    fn convert_from(
-        env: &mut jni::Env<'a>,
-        foreign: &Self::ArgType,
-    ) -> Result<Self, BridgeLayerError> {
-        if foreign.0.is_null() {
-            Ok(None)
-        } else {
-            CdnUrl::convert_from(env, &foreign.0).map(Some)
-        }
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceArgConverter for Option<CdnUrl> {
-    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
-        KtArgConverter {
-            nice_type: "org.signal.libsignal.net.CdnUrl?".into(),
-            ffi_type: "String?".into(),
-            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
-            converter_function: "({ x: org.signal.libsignal.net.CdnUrl? -> x?.url })".into(),
-        }
-    }
-}
-impl<'a> ResultTypeInfo<'a> for CdnUrl {
-    type ResultType = JString<'a>;
-
-    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
-        String::from(self).convert_into(env)
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceResultConverter for CdnUrl {
-    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
-        KtReturnConverter {
-            nice_type: "org.signal.libsignal.net.CdnUrl".into(),
-            ffi_type: "String".into(),
-            converter_function:
-                "(org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)".into(),
         }
     }
 }

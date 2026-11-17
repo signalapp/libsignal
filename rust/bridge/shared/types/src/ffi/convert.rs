@@ -15,7 +15,6 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::{ChallengeOption, UploadForm};
 use libsignal_net_chat::grpc::keys::DeviceSpecifier;
-use libsignal_net_chat::grpc::profiles::{CdnUrl, InvalidCdnUrl};
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use uuid::Uuid;
@@ -1181,42 +1180,6 @@ impl SimpleArgTypeInfo for Box<dyn ConnectChatBridge> {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let foreign = unsafe { foreign.into_inner().as_ref() }.ok_or(NullPointerError)?;
         Ok(Box::new(FfiConnectChatBridge::new(foreign)?))
-    }
-}
-
-impl SimpleArgTypeInfo for CdnUrl {
-    type ArgType = <String as SimpleArgTypeInfo>::ArgType;
-
-    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
-        let raw = String::convert_from(foreign)?;
-        CdnUrl::try_from(raw)
-            .map_err(|InvalidCdnUrl| IllegalArgumentError::new("Invalid CdnUrl").into())
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceArgConverter for CdnUrl {
-    fn register_swift_arg_converter(_ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
-        SwiftArgConverter {
-            nice_type: "CdnUrl".into(),
-            converter_type: "CdnUrlConverter".into(),
-        }
-    }
-}
-
-impl ResultTypeInfo for CdnUrl {
-    type ResultType = <String as ResultTypeInfo>::ResultType;
-
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        String::from(self).convert_into()
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceResultConverter for CdnUrl {
-    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
-        SwiftReturnConverter {
-            nice_type: "CdnUrl".into(),
-            converter_type: "CdnUrlConverter".into(),
-        }
     }
 }
 
@@ -2589,7 +2552,6 @@ macro_rules! simple_optional {
         return_optional!($ty);
     };
 }
-simple_optional!(CdnUrl);
 simple_optional!(f32);
 simple_optional!(bool);
 simple_optional!(Vec<u8>);

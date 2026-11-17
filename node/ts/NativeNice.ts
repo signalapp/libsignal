@@ -171,7 +171,6 @@ import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
 import type { TokioAsyncContext } from './net.js';
 import type { CdnCredentials } from './net/chat/CdnCredentials.js';
-import { CdnUrl } from './net/chat/CdnUrl.js';
 import {
   DeviceId,
   Timestamp,
@@ -481,7 +480,7 @@ export type DeviceCapabilityInternal =
 
 export type ExtendAvatarTtlOut =
   | {
-      found: CdnUrl;
+      found: string;
     }
   | 'notFound'
   | 'invalidCredentials';
@@ -607,6 +606,7 @@ export type GetProfileArgs = {
   aci: Aci;
   profileKey: zkgroup.ProfileKey;
   etag: Bytes | null;
+  avatarCdnConfigValidUrls: Array<string>;
 };
 
 export type GetProfileKeyCredentialArgs = {
@@ -786,7 +786,7 @@ export type Profile = {
   familyName: string;
   about: string;
   aboutEmoji: string;
-  avatar: CdnUrl | null;
+  avatar: string | null;
   phoneNumberSharing: boolean | null;
   paymentAddress: Bytes | null;
   badgeIds: Array<string>;
@@ -810,7 +810,7 @@ export type ProfileValidationErrorInternal =
         maxLen: number;
       };
     }
-  | 'givenNameEmpty';
+  | 'avatarUrlInvalid';
 
 export type ReceiptCredentialError =
   | 'paymentStillProcessing'
@@ -923,6 +923,7 @@ export type SetProfileArgs = {
   profile: Profile;
   expectedCurrentDataHash: Bytes | null;
   expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+  avatarCdnConfigValidUrls: Array<string>;
 };
 
 export type SetProfileError =
@@ -1696,7 +1697,7 @@ export function returnConverterExtendAvatarTtlOut(
   switch (ffiInput.__type) {
     case 0:
       return {
-        found: ((cdnUrl: string) => cdnUrl as CdnUrl)(ffiInput._0),
+        found: identity(ffiInput._0),
       };
     case 1:
       return 'notFound';
@@ -2016,6 +2017,9 @@ export function returnConverterGetProfileArgs(
     ),
     profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
     etag: liftNull(identity)(ffiInput.etag),
+    avatarCdnConfigValidUrls: ((arr: Array<string>) => arr.map(identity))(
+      ffiInput.avatar_cdn_config_valid_urls
+    ),
   };
 }
 
@@ -2430,7 +2434,7 @@ export function returnConverterProfile(
     familyName: identity(ffiInput.family_name),
     about: identity(ffiInput.about),
     aboutEmoji: identity(ffiInput.about_emoji),
-    avatar: liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(ffiInput.avatar),
+    avatar: liftNull(identity)(ffiInput.avatar),
     phoneNumberSharing: liftNull(identity)(ffiInput.phone_number_sharing),
     paymentAddress: liftNull(identity)(ffiInput.payment_address),
     badgeIds: ((arr: Array<string>) => arr.map(identity))(ffiInput.badge_ids),
@@ -2492,7 +2496,7 @@ export function returnConverterProfileValidationErrorInternal(
         },
       };
     case 1:
-      return 'givenNameEmpty';
+      return 'avatarUrlInvalid';
 
     default:
       ffiInput satisfies never;
@@ -2790,6 +2794,9 @@ export function returnConverterSetProfileArgs(
     expectedCurrentProfileKeyVersion: liftNull(
       (x: Bytes) => new zkgroup.ProfileKeyVersion(x)
     )(ffiInput.expected_current_profile_key_version),
+    avatarCdnConfigValidUrls: ((arr: Array<string>) => arr.map(identity))(
+      ffiInput.avatar_cdn_config_valid_urls
+    ),
   };
 }
 
@@ -3422,7 +3429,7 @@ export function argConverterProfile(niceInput: Profile): Native.ArgFfiProfile {
     family_name: identity(family_name),
     about: identity(about),
     about_emoji: identity(about_emoji),
-    avatar: liftNull((cdnUrl: CdnUrl) => cdnUrl)(avatar),
+    avatar: liftNull(identity)(avatar),
     phone_number_sharing: liftNull(identity)(phone_number_sharing),
     payment_address: liftNull(identity)(payment_address),
     badge_ids: ((arr: Array<string>) => arr.map(identity))(badge_ids),
@@ -3943,6 +3950,7 @@ export async function AuthenticatedChatConnection_get_profile({
   aci: aci,
   profileKey: profile_key,
   etag: etag,
+  avatarCdnConfig: avatar_cdn_config,
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
@@ -3950,6 +3958,7 @@ export async function AuthenticatedChatConnection_get_profile({
   aci: Aci;
   profileKey: zkgroup.ProfileKey;
   etag: Bytes | null;
+  avatarCdnConfig: Native.Wrapper<Native.AvatarCdnUrlValidationConfig>;
 }): Promise<FetchedProfile | null> {
   return liftNull(returnConverterFetchedProfile)(
     await asyncContext.makeCancellable(
@@ -3959,7 +3968,8 @@ export async function AuthenticatedChatConnection_get_profile({
         identity(chat),
         serviceIdArgConverter(aci),
         ByteArray.prototype.getContents.call(profile_key),
-        liftNull(identity)(etag)
+        liftNull(identity)(etag),
+        identity(avatar_cdn_config)
       )
     )
   );
@@ -4357,6 +4367,7 @@ export async function AuthenticatedChatConnection_set_profile({
   profile: profile,
   expectedCurrentDataHash: expected_current_data_hash,
   expectedCurrentProfileKeyVersion: expected_current_profile_key_version,
+  avatarCdnConfig: avatar_cdn_config,
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
@@ -4367,6 +4378,7 @@ export async function AuthenticatedChatConnection_set_profile({
   profile: Profile;
   expectedCurrentDataHash: Bytes | null;
   expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+  avatarCdnConfig: Native.Wrapper<Native.AvatarCdnUrlValidationConfig>;
 }): Promise<Bytes> {
   return identity(
     await asyncContext.makeCancellable(
@@ -4381,7 +4393,8 @@ export async function AuthenticatedChatConnection_set_profile({
         liftNull(identity)(expected_current_data_hash),
         liftNull((profileKeyVersion: zkgroup.ProfileKeyVersion) =>
           profileKeyVersion.getContents()
-        )(expected_current_profile_key_version)
+        )(expected_current_profile_key_version),
+        identity(avatar_cdn_config)
       )
     )
   );
@@ -4548,10 +4561,6 @@ export async function AuthenticatedChatConnection_start_web_authn_registration({
       )
     )
   );
-}
-
-export function CdnUrl_validate({ url: url }: { url: string }): boolean {
-  return identity(Native.CdnUrl_validate(identity(url)));
 }
 export async function CopyBackupMediaStream_next({
   asyncContext,
@@ -5653,45 +5662,6 @@ export function TESTING_conversion_BridgeVecString_to_string({
   );
 }
 
-export function TESTING_conversion_CdnUrl_identity({
-  x: x,
-}: {
-  x: CdnUrl;
-}): CdnUrl {
-  return ((cdnUrl: string) => cdnUrl as CdnUrl)(
-    Native.TESTING_conversion_CdnUrl_identity(((cdnUrl: CdnUrl) => cdnUrl)(x))
-  );
-}
-export async function TESTING_conversion_CdnUrl_identity_async({
-  asyncContext,
-  abortSignal,
-  x: x,
-}: {
-  asyncContext: TokioAsyncContext;
-  abortSignal?: AbortSignal;
-  x: CdnUrl;
-}): Promise<CdnUrl> {
-  return ((cdnUrl: string) => cdnUrl as CdnUrl)(
-    await asyncContext.makeCancellable(
-      abortSignal,
-      Native.TESTING_conversion_CdnUrl_identity_async(
-        asyncContext,
-        ((cdnUrl: CdnUrl) => cdnUrl)(x)
-      )
-    )
-  );
-}
-
-export function TESTING_conversion_CdnUrl_to_string({
-  x: x,
-}: {
-  x: CdnUrl;
-}): string {
-  return identity(
-    Native.TESTING_conversion_CdnUrl_to_string(((cdnUrl: CdnUrl) => cdnUrl)(x))
-  );
-}
-
 export function TESTING_conversion_Data32_identity({
   x: x,
 }: {
@@ -5990,49 +5960,6 @@ export function TESTING_conversion_OptionBool_to_string({
 }): string {
   return identity(
     Native.TESTING_conversion_OptionBool_to_string(liftNull(identity)(x))
-  );
-}
-
-export function TESTING_conversion_OptionCdnUrl_identity({
-  x: x,
-}: {
-  x: CdnUrl | null;
-}): CdnUrl | null {
-  return liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(
-    Native.TESTING_conversion_OptionCdnUrl_identity(
-      liftNull((cdnUrl: CdnUrl) => cdnUrl)(x)
-    )
-  );
-}
-export async function TESTING_conversion_OptionCdnUrl_identity_async({
-  asyncContext,
-  abortSignal,
-  x: x,
-}: {
-  asyncContext: TokioAsyncContext;
-  abortSignal?: AbortSignal;
-  x: CdnUrl | null;
-}): Promise<CdnUrl | null> {
-  return liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(
-    await asyncContext.makeCancellable(
-      abortSignal,
-      Native.TESTING_conversion_OptionCdnUrl_identity_async(
-        asyncContext,
-        liftNull((cdnUrl: CdnUrl) => cdnUrl)(x)
-      )
-    )
-  );
-}
-
-export function TESTING_conversion_OptionCdnUrl_to_string({
-  x: x,
-}: {
-  x: CdnUrl | null;
-}): string {
-  return identity(
-    Native.TESTING_conversion_OptionCdnUrl_to_string(
-      liftNull((cdnUrl: CdnUrl) => cdnUrl)(x)
-    )
   );
 }
 
@@ -6976,8 +6903,8 @@ export async function UnauthenticatedChatConnection_extend_avatar_ttl({
   abortSignal?: AbortSignal;
   chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
   credential: zkgroup.AvatarUploadCredentialPresentation;
-}): Promise<CdnUrl | null> {
-  return liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(
+}): Promise<string | null> {
+  return liftNull(identity)(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.UnauthenticatedChatConnection_extend_avatar_ttl(
@@ -7021,6 +6948,7 @@ export async function UnauthenticatedChatConnection_get_profile({
   profileKey: profile_key,
   auth: auth,
   etag: etag,
+  avatarCdnConfig: avatar_cdn_config,
 }: {
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
@@ -7029,6 +6957,7 @@ export async function UnauthenticatedChatConnection_get_profile({
   profileKey: zkgroup.ProfileKey;
   auth: UnauthProfileAuthorization;
   etag: Bytes | null;
+  avatarCdnConfig: Native.Wrapper<Native.AvatarCdnUrlValidationConfig>;
 }): Promise<FetchedProfile | null> {
   return liftNull(returnConverterFetchedProfile)(
     await asyncContext.makeCancellable(
@@ -7039,7 +6968,8 @@ export async function UnauthenticatedChatConnection_get_profile({
         serviceIdArgConverter(aci),
         ByteArray.prototype.getContents.call(profile_key),
         argConverterUnauthProfileAuthorization(auth),
-        liftNull(identity)(etag)
+        liftNull(identity)(etag),
+        identity(avatar_cdn_config)
       )
     )
   );

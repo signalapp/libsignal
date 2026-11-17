@@ -1326,8 +1326,8 @@ impl SignalNodeError for SetProfileError {
                             wrapper.prop(cx, "fieldTooLong").set(err)?;
                             wrapper.upcast()
                         }
-                        ProfileValidationError::GivenNameEmpty => {
-                            JsString::new(cx, "givenNameEmpty").upcast()
+                        ProfileValidationError::AvatarUrlInvalid => {
+                            cx.string("avatarUrlInvalid").upcast()
                         }
                     };
                     props.prop(cx, "_profileValidationError").set(value)?;

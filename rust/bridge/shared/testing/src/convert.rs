@@ -393,7 +393,6 @@ pub mod test_conversions {
     use std::collections::HashMap;
 
     use libsignal_core::ServiceId;
-    use libsignal_net_chat::grpc::profiles::CdnUrl;
     use libsignal_protocol::Timestamp;
 
     use super::*;
@@ -746,32 +745,6 @@ pub mod test_conversions {
     async fn TESTING_conversion_MapStringMySimpleTestEnum_identity_async(
         x: HashMap<String, MySimpleTestEnum>,
     ) -> HashMap<String, MySimpleTestEnum> {
-        x
-    }
-
-    #[bridge_fn(nice = true)]
-    fn TESTING_conversion_CdnUrl_to_string(x: CdnUrl) -> String {
-        x.into()
-    }
-    #[bridge_fn(nice = true)]
-    fn TESTING_conversion_CdnUrl_identity(x: CdnUrl) -> CdnUrl {
-        x
-    }
-    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
-    async fn TESTING_conversion_CdnUrl_identity_async(x: CdnUrl) -> CdnUrl {
-        x
-    }
-
-    #[bridge_fn(nice = true)]
-    fn TESTING_conversion_OptionCdnUrl_to_string(x: Option<CdnUrl>) -> String {
-        x.map(Into::into).unwrap_or_default()
-    }
-    #[bridge_fn(nice = true)]
-    fn TESTING_conversion_OptionCdnUrl_identity(x: Option<CdnUrl>) -> Option<CdnUrl> {
-        x
-    }
-    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
-    async fn TESTING_conversion_OptionCdnUrl_identity_async(x: Option<CdnUrl>) -> Option<CdnUrl> {
         x
     }
 

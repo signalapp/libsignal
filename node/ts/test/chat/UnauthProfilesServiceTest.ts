@@ -9,7 +9,11 @@ import chaiAsPromised from 'chai-as-promised';
 import * as Native from '../../Native.js';
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
-import { TokioAsyncContext, UnauthProfilesService } from '../../net.js';
+import {
+  AvatarCdnUrlValidationConfig,
+  TokioAsyncContext,
+  UnauthProfilesService,
+} from '../../net.js';
 import { connectUnauth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { Aci, Pni } from '../../Address.js';
 import {
@@ -188,7 +192,7 @@ describe('UnauthProfilesService', () => {
       async (
         chat: UnauthProfilesService,
         {
-          inner: { aci, profileKey, etag },
+          inner: { aci, profileKey, etag, avatarCdnConfigValidUrls },
           auth,
         }: NativeNice.UnauthGetProfileArgs,
         resp: NativeNice.UnauthGetProfileOut
@@ -201,6 +205,10 @@ describe('UnauthProfilesService', () => {
               ? { accessKey: auth.accessKey }
               : auth.groupSend,
           etag,
+          avatarCdnUrlValidationConfig:
+            AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+              avatarCdnConfigValidUrls
+            ),
         });
         if ('success' in resp) {
           const profile = await out;

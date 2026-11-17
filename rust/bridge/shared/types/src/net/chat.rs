@@ -49,6 +49,7 @@ use libsignal_net_chat::grpc::backups::{
     MediaBackupInfo, MessageBackupInfo,
 };
 use libsignal_net_chat::grpc::keys::PreKeyCounts;
+use libsignal_net_chat::grpc::profiles::AvatarCdnUrlValidationConfig;
 use libsignal_net_chat::stream_util::{
     BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
 };
@@ -1233,6 +1234,12 @@ impl From<DeleteBackupMediaItem> for BridgeDeleteBackupMediaItem {
     }
 }
 
+bridge_as_handle!(
+    AvatarCdnUrlValidationConfig,
+    swift_type = "AvatarCdnUrlValidationConfig",
+    jni_class = "org.signal.libsignal.net.AvatarCdnUrlValidationConfig",
+);
+
 #[derive(BridgedAsValue)]
 #[bridge(arg = false)]
 pub struct DeleteBackupMediaNextChunk {
@@ -1314,7 +1321,7 @@ pub mod remote_derives {
             len: i32,
             max_len: i32,
         },
-        GivenNameEmpty,
+        AvatarUrlInvalid,
     }
     impl From<libsignal_net_chat::grpc::profiles::ProfileValidationError>
         for ProfileValidationErrorInternal
@@ -1330,8 +1337,8 @@ pub mod remote_derives {
                     len: len.try_into().expect("fits in i32"),
                     max_len: max_len.try_into().expect("fits in i32"),
                 },
-                libsignal_net_chat::grpc::profiles::ProfileValidationError::GivenNameEmpty => {
-                    Self::GivenNameEmpty
+                libsignal_net_chat::grpc::profiles::ProfileValidationError::AvatarUrlInvalid => {
+                    Self::AvatarUrlInvalid
                 }
             }
         }

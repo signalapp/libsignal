@@ -1196,7 +1196,7 @@ internal enum DeleteBackupMediaOut {
 }
 
 internal enum ExtendAvatarTtlOut {
-    case found(CdnUrl)
+    case found(String)
     case notFound
     case invalidCredentials
 }
@@ -1309,6 +1309,7 @@ internal struct GetProfileArgs {
     var aci: Aci
     var profileKey: ProfileKey
     var etag: Data?
+    var avatarCdnConfigValidUrls: [String]
 
 }
 
@@ -1593,6 +1594,7 @@ internal struct SetProfileArgs {
     var profile: Profile
     var expectedCurrentDataHash: Data?
     var expectedCurrentProfileKeyVersion: ProfileKeyVersion?
+    var avatarCdnConfigValidUrls: [String]
 
 }
 
@@ -2255,7 +2257,7 @@ internal enum DerivedReturnConverterExtendAvatarTtlOut: NiceReturnConverter {
         switch ffiTag {
         case SignalExtendAvatarTtlOutFfiResultFound:
             let _0 = Result {
-                try CdnUrlConverter.convertReturn(
+                try StringConverter.convertReturn(
                     consuming: ffiValue.found._0
                 )
             }
@@ -2693,8 +2695,18 @@ internal enum DerivedReturnConverterGetProfileArgs: NiceReturnConverter {
             try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper10>, SignalOptionalOfc_uchar10>
                 .convertReturn(consuming: ffiValue.etag)
         }
+        let avatar_cdn_config_valid_urls = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.avatar_cdn_config_valid_urls
+            )
+        }
 
-        return GetProfileArgs(aci: try aci.get(), profileKey: try profile_key.get(), etag: try etag.get())
+        return GetProfileArgs(
+            aci: try aci.get(),
+            profileKey: try profile_key.get(),
+            etag: try etag.get(),
+            avatarCdnConfigValidUrls: try avatar_cdn_config_valid_urls.get()
+        )
     }
 }
 
@@ -3722,6 +3734,11 @@ internal enum DerivedReturnConverterSetProfileArgs: NiceReturnConverter {
                 SignalOptionalOfc_uchar64
             >.convertReturn(consuming: ffiValue.expected_current_profile_key_version)
         }
+        let avatar_cdn_config_valid_urls = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.avatar_cdn_config_valid_urls
+            )
+        }
 
         return SetProfileArgs(
             rngSeed: try rng_seed.get(),
@@ -3729,7 +3746,8 @@ internal enum DerivedReturnConverterSetProfileArgs: NiceReturnConverter {
             profileKey: try profile_key.get(),
             profile: try profile.get(),
             expectedCurrentDataHash: try expected_current_data_hash.get(),
-            expectedCurrentProfileKeyVersion: try expected_current_profile_key_version.get()
+            expectedCurrentProfileKeyVersion: try expected_current_profile_key_version.get(),
+            avatarCdnConfigValidUrls: try avatar_cdn_config_valid_urls.get()
         )
     }
 }
@@ -6326,36 +6344,6 @@ internal enum NativeTestingNice {
         }
 
     }
-    internal static func TESTING_conversion_CdnUrl_identity(
-        x: CdnUrl,
-    ) throws -> CdnUrl {
-        try CdnUrlConverter.convertArgBorrowed(x) { xFfi in
-            var rawOutput = CdnUrlConverter.emptyFfiReturn()
-            try checkError(
-                SignalFfi.signal_testing_conversion_cdn_url_identity(
-                    &rawOutput,
-                    xFfi,
-                )
-            )
-            return try CdnUrlConverter.convertReturn(consuming: rawOutput)
-        }
-
-    }
-    internal static func TESTING_conversion_CdnUrl_to_string(
-        x: CdnUrl,
-    ) throws -> String {
-        try CdnUrlConverter.convertArgBorrowed(x) { xFfi in
-            var rawOutput = StringConverter.emptyFfiReturn()
-            try checkError(
-                SignalFfi.signal_testing_conversion_cdn_url_to_string(
-                    &rawOutput,
-                    xFfi,
-                )
-            )
-            return try StringConverter.convertReturn(consuming: rawOutput)
-        }
-
-    }
     internal static func TESTING_conversion_Data32_identity(
         x: Data,
     ) throws -> Data {
@@ -6615,38 +6603,6 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_option_bool_to_string(
-                    &rawOutput,
-                    xFfi,
-                )
-            )
-            return try StringConverter.convertReturn(consuming: rawOutput)
-        }
-
-    }
-    internal static func TESTING_conversion_OptionCdnUrl_identity(
-        x: CdnUrl?,
-    ) throws -> CdnUrl? {
-        try OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArgBorrowed(x) { xFfi in
-            var rawOutput = OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.emptyFfiReturn()
-            try checkError(
-                SignalFfi.signal_testing_conversion_option_cdn_url_identity(
-                    &rawOutput,
-                    xFfi,
-                )
-            )
-            return try OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertReturn(
-                consuming: rawOutput
-            )
-        }
-
-    }
-    internal static func TESTING_conversion_OptionCdnUrl_to_string(
-        x: CdnUrl?,
-    ) throws -> String {
-        try OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArgBorrowed(x) { xFfi in
-            var rawOutput = StringConverter.emptyFfiReturn()
-            try checkError(
-                SignalFfi.signal_testing_conversion_option_cdn_url_to_string(
                     &rawOutput,
                     xFfi,
                 )

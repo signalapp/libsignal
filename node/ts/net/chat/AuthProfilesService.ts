@@ -25,6 +25,7 @@ import type {
   ProfileDataHash,
   ProfileEtag,
   FetchedProfile,
+  AvatarCdnUrlValidationConfig,
 } from './Profile.js';
 
 declare module '../Chat' {
@@ -122,6 +123,7 @@ export interface AuthProfilesService {
       profile: Profile;
       expectedCurrentDataHash: ProfileDataHash | null;
       expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+      avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig;
       rng?: Rng;
     },
     options?: RequestOptions
@@ -143,6 +145,7 @@ export interface AuthProfilesService {
       aci: Aci;
       profileKey: zkgroup.ProfileKey;
       etag: ProfileEtag | null;
+      avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig;
     },
     options?: RequestOptions
   ) => Promise<FetchedProfile | null>;
@@ -211,6 +214,7 @@ AuthenticatedChatConnection.prototype.setProfile = async function (
     profile,
     expectedCurrentDataHash,
     expectedCurrentProfileKeyVersion,
+    avatarCdnUrlValidationConfig,
   },
   options?: RequestOptions
 ): Promise<ProfileDataHash> {
@@ -224,19 +228,12 @@ AuthenticatedChatConnection.prototype.setProfile = async function (
     profile,
     expectedCurrentDataHash,
     expectedCurrentProfileKeyVersion,
+    avatarCdnConfig: avatarCdnUrlValidationConfig,
   });
 };
 
 AuthenticatedChatConnection.prototype.getProfile = async function (
-  {
-    aci,
-    profileKey,
-    etag,
-  }: {
-    aci: Aci;
-    profileKey: zkgroup.ProfileKey;
-    etag: ProfileEtag | null;
-  },
+  { aci, profileKey, etag, avatarCdnUrlValidationConfig },
   options?: RequestOptions
 ): Promise<FetchedProfile | null> {
   return await NativeNice.AuthenticatedChatConnection_get_profile({
@@ -246,5 +243,6 @@ AuthenticatedChatConnection.prototype.getProfile = async function (
     aci,
     profileKey,
     etag,
+    avatarCdnConfig: avatarCdnUrlValidationConfig,
   });
 };

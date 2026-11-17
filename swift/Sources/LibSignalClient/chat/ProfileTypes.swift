@@ -4,30 +4,13 @@
 //
 
 import Foundation
+import SignalFfi
 
 public typealias ProfileDataHash = Data
 public typealias PaymentAddress = Data
 public typealias BadgeId = String
 public typealias ProfileEtag = Data
-
-/// A URL that points to a Signal CDN
-public struct CdnUrl: Sendable, Equatable {
-    public let url: String
-
-    internal init(withPreValidatedUrl url: String) {
-        self.url = url
-    }
-
-    /// - Returns:
-    ///   - `nil` if the given URL isn't valid
-    public init?(_ url: String) {
-        let isValid = try! NativeNice.CdnUrl_validate(url: url)
-        if !isValid {
-            return nil
-        }
-        self.url = url
-    }
-}
+public typealias CdnUrl = String
 
 /// The result of fetching a profile.
 ///
@@ -84,7 +67,7 @@ public struct Profile: Sendable, Equatable {
         self.badgeIds = badgeIds
     }
 
-    /// Non-empty; max-length is 128 bytes
+    /// Optional (can be empty); max-length is 128 bytes
     public var givenName: String
     /// Optional (can be empty); max-length is 128 bytes
     public var familyName: String
@@ -92,7 +75,10 @@ public struct Profile: Sendable, Equatable {
     public var about: String
     /// Optional (can be empty); max-length is 32 bytes
     public var aboutEmoji: String
-    /// If provided, it should be the full URL to the avatar.
+    /// If provided, it must be the full URL to the avatar.
+    ///
+    /// The URL must point to a Signal CDN server. (This will be validated on outgoing and incoming
+    /// profiles.)
     public var avatar: CdnUrl?
     // The following fields are conceptually part of the user's profile, but live outside of the
     // encrypted v2 PlaintextProfileData
@@ -126,5 +112,46 @@ public enum ProfileFieldWithMaxLength: Sendable, Equatable {
 
 public enum ProfileValidationError: Sendable, Equatable {
     case fieldTooLong(field: ProfileFieldWithMaxLength, len: Int, maxLen: Int)
-    case givenNameEmpty
+    case avatarUrlInvalid
+}
+
+public class AvatarCdnUrlValidationConfig: NativeHandleOwner<SignalMutPointerAvatarCdnUrlValidationConfig> {
+
+    /// URL prefixes must:
+    /// 1. Start with `http://` or `https://`
+    /// 2. end with a `/`
+    ///
+    /// - Throws:
+    ///   - ``SignalError/internalError(_:)`` if the prefixes are invalid
+    public static func fromUrlPrefixes(_ validUrlPrefixes: [String]) throws -> AvatarCdnUrlValidationConfig {
+        return try NativeNice.AvatarCdnUrlValidationConfig_new(validUrlPrefixes: validUrlPrefixes)
+    }
+
+    override internal class func destroyNativeHandle(
+        _ handle: NonNull<SignalMutPointerAvatarCdnUrlValidationConfig>
+    ) -> SignalFfiErrorRef? {
+        return signal_avatar_cdn_url_validation_config_destroy(handle.pointer)
+    }
+}
+
+extension SignalMutPointerAvatarCdnUrlValidationConfig: SignalMutPointer {
+    public typealias ConstPointer = SignalConstPointerAvatarCdnUrlValidationConfig
+
+    public init(untyped: OpaquePointer?) {
+        self.init(raw: untyped)
+    }
+
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
+
+    public func const() -> Self.ConstPointer {
+        Self.ConstPointer(raw: self.raw)
+    }
+}
+
+extension SignalConstPointerAvatarCdnUrlValidationConfig: SignalConstPointer {
+    public func toOpaque() -> OpaquePointer? {
+        self.raw
+    }
 }

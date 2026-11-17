@@ -12,6 +12,7 @@ import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import {
   AuthAccountsService,
+  AvatarCdnUrlValidationConfig,
   MFA_KEY_NAME_MAX_LENGTH,
   TokioAsyncContext,
   ZkCredentialRotationId,
@@ -567,5 +568,17 @@ describe('AuthAccountsService', () => {
         }
       }
     );
+  });
+  describe('AvatarCdnUrlValidationConfig', () => {
+    it('should not throw exceptions for valid inputs', () => {
+      AvatarCdnUrlValidationConfig.fromUrlPrefixes([
+        'https://www.example.com/',
+      ]);
+    });
+    it('should throw exceptions for invalid inputs', () => {
+      expect(() =>
+        AvatarCdnUrlValidationConfig.fromUrlPrefixes([''])
+      ).to.throw();
+    });
   });
 });

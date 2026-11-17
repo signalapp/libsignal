@@ -25,6 +25,7 @@ public protocol UnauthProfilesService: Sendable {
         profileKey: ProfileKey,
         auth: UnauthProfileAuthorization,
         etag: ProfileEtag?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     ) async throws -> FetchedProfile?
     /// Returns a credential to upload a v2 avatar.
     ///
@@ -102,6 +103,7 @@ extension UnauthenticatedChatConnection: UnauthProfilesService {
         profileKey: ProfileKey,
         auth: UnauthProfileAuthorization,
         etag: ProfileEtag?,
+        avatarCdnUrlValidationConfig: AvatarCdnUrlValidationConfig,
     ) async throws -> FetchedProfile? {
         return try await NativeNice.UnauthenticatedChatConnection_get_profile(
             asyncContext: self.tokioAsyncContext,
@@ -110,6 +112,7 @@ extension UnauthenticatedChatConnection: UnauthProfilesService {
             profileKey: profileKey,
             auth: auth,
             etag: etag,
+            avatarCdnConfig: avatarCdnUrlValidationConfig,
         )
     }
 

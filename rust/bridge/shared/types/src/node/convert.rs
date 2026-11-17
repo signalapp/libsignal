@@ -16,7 +16,6 @@ use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
 use libsignal_net_chat::grpc::keys::DeviceSpecifier;
-use libsignal_net_chat::grpc::profiles::{CdnUrl, InvalidCdnUrl};
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use neon::types::JsBigInt;
 use paste::paste;
@@ -2142,56 +2141,6 @@ impl NiceResultConverter for libsignal_net_chat::api::backups::CdnCredentials {
             nice_type: "CdnCredentials".to_owned(),
             ffi_type: "[[string, string]]".to_owned(),
             converter_function: "cdnCredentialReturnConverter".to_owned(),
-        }
-    }
-}
-
-impl SimpleArgTypeInfo for CdnUrl {
-    type ArgType = JsString;
-
-    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
-        match CdnUrl::try_from(foreign.value(cx)) {
-            Ok(x) => Ok(x),
-            Err(InvalidCdnUrl) => cx.throw_range_error("Invalid CdnUrl"),
-        }
-    }
-
-    #[cfg(feature = "metadata")]
-    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
-        "string".into()
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceArgConverter for CdnUrl {
-    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
-        TsArgConverter {
-            nice_type: "CdnUrl".into(),
-            ffi_type: "string".into(),
-            converter_function: "((cdnUrl: CdnUrl) => cdnUrl)".into(),
-        }
-    }
-}
-
-impl<'a> ResultTypeInfo<'a> for CdnUrl {
-    type ResultType = JsString;
-
-    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
-        Ok(cx.string(String::from(self)))
-    }
-
-    #[cfg(feature = "metadata")]
-    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
-        "string".into()
-    }
-}
-#[cfg(feature = "metadata")]
-impl NiceResultConverter for CdnUrl {
-    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
-        TsReturnConverter {
-            nice_type: "CdnUrl".into(),
-            ffi_type: "string".into(),
-            // We don't need to re-validate any CdnUrl strings that we return
-            converter_function: "((cdnUrl: string) => cdnUrl as CdnUrl)".into(),
         }
     }
 }

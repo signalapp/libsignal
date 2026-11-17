@@ -213,6 +213,10 @@ class UnauthProfilesServiceTest {
                     )
               },
             etag = req.inner.etag,
+            avatarCdnUrlValidationConfig =
+              AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+                req.inner.avatarCdnConfigValidUrls,
+              ),
           )
         },
         check = { expected, actual ->

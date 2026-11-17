@@ -25,6 +25,7 @@ use super::{
     CdnUrl, FetchedProfile, PROFILE_ETAG_LEN, PaymentAddress, Profile, ProfileDataHash,
     ProfileDecodeError, ProfileEtag, ProfileValidationError,
 };
+use crate::grpc::profiles::AvatarCdnUrlValidationConfig;
 
 // These constants are from the protobuf.
 const V1_NAME_ALLOWED_SIZES: &[usize] = &[81, 285];
@@ -75,8 +76,9 @@ impl FetchedProfile {
         etag: Option<ProfileEtag>,
         profile: Profile,
         v2_data_hash: Option<ProfileDataHash>,
+        avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<FetchedProfile, Error> {
-        if let Err(e) = profile.validate() {
+        if let Err(e) = profile.validate(avatar_cdn_config) {
             return Err(ProfileDecodeError::IncomingProfileValidationFailed(e).into());
         }
         Ok(FetchedProfile {
@@ -155,6 +157,7 @@ pub(super) mod v2 {
     pub(crate) fn decrypt_profile(
         profile_key: &ProfileKey,
         profile_result: ProfilesV2GrpcResult,
+        avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<FetchedProfile, Error> {
         let Some(account_info) = profile_result.account_info.as_ref() else {
             return Err(Error::Unexpected {
@@ -193,16 +196,18 @@ pub(super) mod v2 {
             family_name,
             about,
             about_emoji,
-            avatar: if avatar_url.is_empty() {
-                None
-            } else {
-                Some(CdnUrl::try_from(avatar_url).map_err(ProfileDecodeError::InvalidAvatarUrl)?)
-            },
+            avatar: Some(avatar_url).filter(|url| !url.is_empty()),
             phone_number_sharing: Some(phone_number_sharing),
             payment_address,
             badge_ids: account_info.badge_ids.clone(),
         };
-        FetchedProfile::new(account_info, etag, profile, Some(v2_data_hash))
+        FetchedProfile::new(
+            account_info,
+            etag,
+            profile,
+            Some(v2_data_hash),
+            avatar_cdn_config,
+        )
     }
 
     mod padding {
@@ -455,6 +460,7 @@ pub(super) mod v1 {
     pub(crate) fn decrypt_profile(
         profile_key: &ProfileKey,
         profile_result: &ProfilesV1GrpcResult,
+        avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<FetchedProfile, Error> {
         let Some(account_info) = profile_result.account_info.as_ref() else {
             return Err(Error::Unexpected {
@@ -469,10 +475,10 @@ pub(super) mod v1 {
             family_name: family_name.to_string(),
             about: decrypt_string(&key, Field::About, &profile_result.about)?,
             about_emoji: decrypt_string(&key, Field::AboutEmoji, &profile_result.about_emoji)?,
-            avatar: if profile_result.avatar.is_empty() {
+            avatar: if profile_result.avatar_url.is_empty() {
                 None
             } else {
-                Some(CdnUrl::from_cdn0_path(&profile_result.avatar))
+                Some(profile_result.avatar_url.clone())
             },
             phone_number_sharing: decrypt_boolean(
                 &key,
@@ -482,7 +488,7 @@ pub(super) mod v1 {
             payment_address: decrypt_payment_address(&key, &profile_result.payment_address)?,
             badge_ids: account_info.badge_ids.clone(),
         };
-        FetchedProfile::new(account_info, None, profile, None)
+        FetchedProfile::new(account_info, None, profile, None, avatar_cdn_config)
     }
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -663,7 +669,7 @@ pub(super) fn build_set_profile_request(
         family_name,
         about,
         about_emoji,
-        avatar_url: avatar.map(|url| url.into()).unwrap_or_default(),
+        avatar_url: avatar.unwrap_or_default(),
         phone_number_sharing,
     };
     let data = plaintext.encode_to_vec();
@@ -728,9 +734,13 @@ pub(super) mod test_cases {
     use crate::api::testutil_for_test_cases::SERIALIZED_GROUP_SEND_TOKEN;
     use crate::grpc::GrpcTestCase;
     use crate::grpc::profiles::{
-        AuthGetProfileError, ProfileFieldWithMaxLength, SetProfileError, UnauthGetProfileError,
-        UnauthProfileAuthorization,
+        AuthGetProfileError, AvatarCdnUrlValidationConfig, ProfileFieldWithMaxLength,
+        SetProfileError, UnauthGetProfileError, UnauthProfileAuthorization,
     };
+
+    fn cdn0_config() -> AvatarCdnUrlValidationConfig {
+        AvatarCdnUrlValidationConfig::new(vec!["https://cdn.signal.org/".into()]).expect("Valid")
+    }
 
     /// The requirements from profile.proto
     fn validate_protobuf_set_profile_request(request: &SetProfileRequest) {
@@ -785,6 +795,7 @@ pub(super) mod test_cases {
         pub profile: Profile,
         pub expected_current_data_hash: Option<ProfileDataHash>,
         pub expected_current_profile_key_version: Option<ProfileKeyVersion>,
+        pub avatar_cdn_config: AvatarCdnUrlValidationConfig,
     }
     pub enum SetProfileOut {
         Success(ProfileDataHash),
@@ -796,6 +807,7 @@ pub(super) mod test_cases {
         pub aci: Aci,
         pub profile_key: ProfileKey,
         pub etag: Option<ProfileEtag>,
+        pub avatar_cdn_config: AvatarCdnUrlValidationConfig,
     }
     #[allow(clippy::large_enum_variant)] // This is just for testing
     pub enum GetProfileOut {
@@ -832,15 +844,17 @@ pub(super) mod test_cases {
         v1_result: ProfilesV1GrpcResult,
         v2_result: ProfilesV2GrpcResult,
         profile_hash: ProfileDataHash,
+        avatar_cdn_config: AvatarCdnUrlValidationConfig,
     }
     impl ProfileEncryptionRoundtripTest {
-        /// Avatar must be a CDN0 url (so long as we support profiles v1).
+        /// Avatar must be a CDN0 url.
         /// Input `etag` and `v2_data_hash` are ignored
         fn new(
             seed: u64,
             aci: Aci,
             profile_key: ProfileKey,
             mut correct_fetched_profile: FetchedProfile,
+            avatar_cdn_config: AvatarCdnUrlValidationConfig,
         ) -> Self {
             let FetchedProfile {
                 profile,
@@ -850,13 +864,6 @@ pub(super) mod test_cases {
                 unidentified_access_key_fingerprint,
                 unrestricted_unidentified_access,
             } = &correct_fetched_profile;
-            if let Some(avatar_url) = profile.avatar.as_ref() {
-                // So long as we're supporting profiles v1, avatars must live in CDN0
-                assert!(
-                    avatar_url.as_ref().starts_with(CdnUrl::CDN0),
-                    "{avatar_url:?}"
-                );
-            }
             let mut rng = seeded_rng(seed);
             let (req, profile_hash) =
                 build_set_profile_request(&mut rng, aci, &profile_key, profile.clone(), None, None);
@@ -881,17 +888,7 @@ pub(super) mod test_cases {
                 name: v1_req.name.clone(),
                 about: v1_req.about.clone(),
                 about_emoji: v1_req.about_emoji.clone(),
-                avatar: profile
-                    .avatar
-                    .as_ref()
-                    .map(|avatar| {
-                        avatar
-                            .as_ref()
-                            .strip_prefix(CdnUrl::CDN0)
-                            .expect("we validated that the avatar is on CDN0")
-                            .to_string()
-                    })
-                    .unwrap_or_default(),
+                avatar_url: profile.avatar.clone().unwrap_or_default(),
                 phone_number_sharing: v1_req.phone_number_sharing.clone(),
                 payment_address: req.payment_address.clone(),
                 account_info: Some(account_info.clone()),
@@ -908,6 +905,7 @@ pub(super) mod test_cases {
                 v1_result,
                 v2_result,
                 profile_hash,
+                avatar_cdn_config,
             }
         }
     }
@@ -928,6 +926,7 @@ pub(super) mod test_cases {
                     aci: test.aci,
                     profile_key: test.profile_key,
                     etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: GetProfileRequest {
                     account_identifier: Some(test.aci.into()),
@@ -946,6 +945,7 @@ pub(super) mod test_cases {
                     aci: test.aci,
                     profile_key: test.profile_key,
                     etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: GetProfileRequest {
                     account_identifier: Some(test.aci.into()),
@@ -978,6 +978,7 @@ pub(super) mod test_cases {
                     aci: test.aci,
                     profile_key: test.profile_key,
                     etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: GetProfileRequest {
                     account_identifier: Some(test.aci.into()),
@@ -1002,6 +1003,7 @@ pub(super) mod test_cases {
                     aci: test.aci,
                     profile_key: test.profile_key,
                     etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: GetProfileRequest {
                     account_identifier: Some(test.aci.into()),
@@ -1026,6 +1028,7 @@ pub(super) mod test_cases {
                     aci: test.aci,
                     profile_key: test.profile_key,
                     etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: GetProfileRequest {
                     account_identifier: Some(test.aci.into()),
@@ -1054,6 +1057,7 @@ pub(super) mod test_cases {
                 aci,
                 profile_key,
                 etag: Some(etag),
+                avatar_cdn_config: cdn0_config(),
             },
             request_grpc: GetProfileRequest {
                 account_identifier: Some(aci.into()),
@@ -1072,6 +1076,7 @@ pub(super) mod test_cases {
                 aci,
                 profile_key,
                 etag: Some(etag),
+                avatar_cdn_config: cdn0_config(),
             },
             request_grpc: GetProfileRequest {
                 account_identifier: Some(aci.into()),
@@ -1175,6 +1180,7 @@ pub(super) mod test_cases {
                         aci: test.aci,
                         profile_key: test.profile_key,
                         etag: Some([3; _]),
+                        avatar_cdn_config: test.avatar_cdn_config.clone(),
                     },
                     auth: auth.clone(),
                 },
@@ -1203,6 +1209,7 @@ pub(super) mod test_cases {
                         aci: test.aci,
                         profile_key: test.profile_key,
                         etag: Some([3; _]),
+                avatar_cdn_config: test.avatar_cdn_config.clone(),
                     },
                     auth,
                 },
@@ -1237,23 +1244,6 @@ pub(super) mod test_cases {
         let aci = Aci::from_uuid_bytes([0x4; 16]);
         let profile_key = ProfileKey { bytes: [0x73; 32] };
         cases.push(GrpcTestCase {
-            name: "given name empty error".into(),
-            method: method.into(),
-            request: SetProfileArgs {
-                rng_seed: 12,
-                aci,
-                profile_key,
-                profile: Profile::default(),
-                expected_current_data_hash: None,
-                expected_current_profile_key_version: None,
-            },
-            request_grpc: Default::default(),
-            response_grpc: Default::default(),
-            response: SetProfileOut::Failure(SetProfileError::InvalidProfile(
-                ProfileValidationError::GivenNameEmpty,
-            )),
-        });
-        cases.push(GrpcTestCase {
             name: "indeterminate phone number sharing".into(),
             method: method.into(),
             request: SetProfileArgs {
@@ -1267,6 +1257,7 @@ pub(super) mod test_cases {
                 },
                 expected_current_data_hash: None,
                 expected_current_profile_key_version: None,
+                avatar_cdn_config: cdn0_config(),
             },
             request_grpc: Default::default(),
             response_grpc: Default::default(),
@@ -1287,7 +1278,7 @@ pub(super) mod test_cases {
                 ProfileFieldWithMaxLength::About => profile.about = body,
                 ProfileFieldWithMaxLength::AboutEmoji => profile.about_emoji = body,
                 ProfileFieldWithMaxLength::Avatar => {
-                    body = format!("{}{body}", CdnUrl::CDN0);
+                    body = format!("https://cdn0.signal.org/{body}");
                     body.truncate(len);
                     profile.avatar = Some(CdnUrl::try_from(body).expect("valid"))
                 }
@@ -1305,6 +1296,7 @@ pub(super) mod test_cases {
                     profile,
                     expected_current_data_hash: None,
                     expected_current_profile_key_version: None,
+                    avatar_cdn_config: cdn0_config(),
                 },
                 request_grpc: Default::default(),
                 response_grpc: Default::default(),
@@ -1317,6 +1309,27 @@ pub(super) mod test_cases {
                 )),
             });
         }
+        cases.push(GrpcTestCase {
+            name: "invalid avatar url".into(),
+            method: method.into(),
+            request: SetProfileArgs {
+                rng_seed: 12,
+                aci,
+                profile_key,
+                profile: Profile {
+                    avatar: Some("https://example.com/not-a-signal-cdn".into()),
+                    ..Default::default()
+                },
+                expected_current_data_hash: None,
+                expected_current_profile_key_version: None,
+                avatar_cdn_config: cdn0_config(),
+            },
+            request_grpc: Default::default(),
+            response_grpc: Default::default(),
+            response: SetProfileOut::Failure(SetProfileError::InvalidProfile(
+                ProfileValidationError::AvatarUrlInvalid,
+            )),
+        });
         cases
     }
     pub fn set_profile_test_cases() -> SetProfileTestCases {
@@ -1333,6 +1346,7 @@ pub(super) mod test_cases {
                     profile: test.correct_fetched_profile.profile.clone(),
                     expected_current_data_hash: None,
                     expected_current_profile_key_version: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: test.set_profile_request.clone(),
                 response_grpc: SetProfileResponse {
@@ -1360,6 +1374,7 @@ pub(super) mod test_cases {
                     expected_current_profile_key_version: Some(
                         expected_current_profile_key_version,
                     ),
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
                 },
                 request_grpc: test.set_profile_request,
                 response_grpc: SetProfileResponse {
@@ -1385,6 +1400,7 @@ pub(super) mod test_cases {
                 profile: test.correct_fetched_profile.profile.clone(),
                 expected_current_data_hash: Some(expected_current_data_hash),
                 expected_current_profile_key_version: Some(expected_current_profile_key_version),
+                avatar_cdn_config: test.avatar_cdn_config.clone(),
             };
             cases.push(GrpcTestCase {
                 name: "ExpectedDataWriteConflict".into(),
@@ -1472,14 +1488,16 @@ pub(super) mod test_cases {
                         family_name: "N".repeat(FamilyName.max_length()),
                         about: "a".repeat(About.max_length()),
                         about_emoji: "A".repeat(AboutEmoji.max_length()),
-                        avatar: Some(
-                            CdnUrl::try_from(format!(
-                                "{}{}",
-                                CdnUrl::CDN0,
-                                "U".repeat(Avatar.max_length() - CdnUrl::CDN0.len())
-                            ))
-                            .expect("valid url"),
-                        ),
+                        avatar: {
+                            let cdn0 = "https://cdn.signal.org/";
+                            Some(
+                                CdnUrl::try_from(format!(
+                                    "{cdn0}{}",
+                                    "U".repeat(Avatar.max_length() - cdn0.len())
+                                ))
+                                .expect("valid url"),
+                            )
+                        },
                         phone_number_sharing: Some(true),
                         payment_address: Some(vec![b'p'; PaymentAddress.max_length()]),
                         badge_ids: vec![
@@ -1495,6 +1513,7 @@ pub(super) mod test_cases {
                     unidentified_access_key_fingerprint: Some([4; 32]),
                     unrestricted_unidentified_access: true,
                 },
+                cdn0_config(),
             ),
             // Short
             ProfileEncryptionRoundtripTest::new(
@@ -1518,6 +1537,59 @@ pub(super) mod test_cases {
                     unidentified_access_key_fingerprint: Some([4; 32]),
                     unrestricted_unidentified_access: false,
                 },
+                cdn0_config(),
+            ),
+            // Empty given name
+            ProfileEncryptionRoundtripTest::new(
+                1,
+                Aci::from_uuid_bytes([2; 16]),
+                ProfileKey { bytes: [3; 32] },
+                FetchedProfile {
+                    profile: Profile {
+                        given_name: String::new(),
+                        family_name: String::new(),
+                        about: String::new(),
+                        about_emoji: String::new(),
+                        avatar: None,
+                        phone_number_sharing: Some(false),
+                        payment_address: None,
+                        badge_ids: Vec::new(),
+                    },
+                    etag: None,         // Set by new()
+                    v2_data_hash: None, // set by new()
+                    identity_key: identity_key_from_seed(5),
+                    unidentified_access_key_fingerprint: Some([4; 32]),
+                    unrestricted_unidentified_access: false,
+                },
+                cdn0_config(),
+            ),
+            // Multiple Avatar CDNs
+            ProfileEncryptionRoundtripTest::new(
+                1,
+                Aci::from_uuid_bytes([2; 16]),
+                ProfileKey { bytes: [3; 32] },
+                FetchedProfile {
+                    profile: Profile {
+                        given_name: String::new(),
+                        family_name: String::new(),
+                        about: String::new(),
+                        about_emoji: String::new(),
+                        avatar: Some("https://cdn1.signal.org/abcd".into()),
+                        phone_number_sharing: Some(false),
+                        payment_address: None,
+                        badge_ids: Vec::new(),
+                    },
+                    etag: None,         // Set by new()
+                    v2_data_hash: None, // set by new()
+                    identity_key: identity_key_from_seed(5),
+                    unidentified_access_key_fingerprint: Some([4; 32]),
+                    unrestricted_unidentified_access: false,
+                },
+                AvatarCdnUrlValidationConfig::new(vec![
+                    "https://cdn.signal.org/".into(),
+                    "https://cdn1.signal.org/".into(),
+                ])
+                .expect("valid"),
             ),
         ]
     }
@@ -1527,21 +1599,29 @@ pub(super) mod test_cases {
         use base64::prelude::*;
 
         use super::*;
-        use crate::grpc::profiles::InvalidCdnUrl;
 
         #[test]
         fn successful_roundtrip() {
             for mut test in roundtrip_test_cases() {
                 assert_eq!(
-                    v2::decrypt_profile(&test.profile_key, test.v2_result.clone())
-                        .expect("success"),
+                    v2::decrypt_profile(
+                        &test.profile_key,
+                        test.v2_result.clone(),
+                        &test.avatar_cdn_config
+                    )
+                    .expect("success"),
                     test.correct_fetched_profile
                 );
                 // Clear out the v2-specific fields for the v1 test
                 test.correct_fetched_profile.etag = None;
                 test.correct_fetched_profile.v2_data_hash = None;
                 assert_eq!(
-                    v1::decrypt_profile(&test.profile_key, &test.v1_result).expect("success"),
+                    v1::decrypt_profile(
+                        &test.profile_key,
+                        &test.v1_result,
+                        &test.avatar_cdn_config
+                    )
+                    .expect("success"),
                     test.correct_fetched_profile
                 );
             }
@@ -1570,7 +1650,7 @@ pub(super) mod test_cases {
                     "rdtKzEEFKMLpJAxXj/6MhRdyPLwVUy3lsMZVhxW4nF0oAOIF4h42ZdVl7ikINEuUhZIzO5w19lCEL\
                     R40",
                 ),
-                avatar: String::new(),
+                avatar_url: String::new(),
                 phone_number_sharing: b64("NWQoEO2KjN7Etux9ZaiUWZ8ZXP11Bsej93BC204="),
                 payment_address: b64(
                     "WYbTOrzjp13MrBDuTJOx3cPgfNe7wGoDVkLzR2u6t1l8T3AUioAhlt9MtKK/meDPc3oVOiP+6YyuZ\
@@ -1592,7 +1672,7 @@ pub(super) mod test_cases {
                 }),
             };
             assert_eq!(
-                v1::decrypt_profile(&profile_key, &test_vector)
+                v1::decrypt_profile(&profile_key, &test_vector, &cdn0_config())
                     .expect("Decodes successfully")
                     .profile,
                 Profile {
@@ -1651,7 +1731,7 @@ pub(super) mod test_cases {
                 family_name: "Lnu".into(),
                 about: "A bout".into(),
                 about_emoji: "Y".into(),
-                avatar: Some(CdnUrl(format!("{}abcd", CdnUrl::CDN0))),
+                avatar: Some("https://cdn.signal.org/abcd".into()),
                 phone_number_sharing: Some(true),
                 payment_address: Some(vec![0xec; 128]),
                 badge_ids,
@@ -1666,7 +1746,8 @@ pub(super) mod test_cases {
             };
             assert_eq!(
                 true_profile,
-                v2::decrypt_profile(&profile_key, test_vector).expect("can decrypt")
+                v2::decrypt_profile(&profile_key, test_vector, &cdn0_config())
+                    .expect("can decrypt")
             );
         }
 
@@ -1681,9 +1762,7 @@ pub(super) mod test_cases {
                         family_name: "family name".into(),
                         about: "A bout".into(),
                         about_emoji: "X".into(),
-                        avatar: Some(
-                            CdnUrl::try_from(format!("{}abc", CdnUrl::CDN0)).expect("valid url"),
-                        ),
+                        avatar: Some("https://cdn.signal.org/abcd".into()),
                         phone_number_sharing: Some(true),
                         payment_address: Some(vec![4]),
                         badge_ids: Vec::new(),
@@ -1694,42 +1773,10 @@ pub(super) mod test_cases {
                     unidentified_access_key_fingerprint: None,
                     unrestricted_unidentified_access: false,
                 },
+                cdn0_config(),
             );
             out.v2_result.etag.clear();
             out
-        }
-
-        #[test]
-        fn test_profile_decode_invalid_profile() {
-            // NOTE: individual profile decode errors are tested via GrpcTestCase above (since
-            // clients can dispatch on them, when set_profile() is called). This test only aims to
-            // ensure that the profile validation logic is called.
-            let mut test = ProfileEncryptionRoundtripTest::new(
-                1237,
-                Aci::from_uuid_bytes([0x8; _]),
-                ProfileKey { bytes: [0x9; _] },
-                FetchedProfile {
-                    profile: Profile::default(),
-                    etag: None,         // Set by new()
-                    v2_data_hash: None, // set by new()
-                    identity_key: identity_key_from_seed(8427),
-                    unidentified_access_key_fingerprint: None,
-                    unrestricted_unidentified_access: false,
-                },
-            );
-            test.v2_result.etag.clear();
-            assert_eq!(
-                v1::decrypt_profile(&test.profile_key, &test.v1_result).expect_err("failure"),
-                Error::ProfileDecodeError(ProfileDecodeError::IncomingProfileValidationFailed(
-                    ProfileValidationError::GivenNameEmpty
-                ))
-            );
-            assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
-                Error::ProfileDecodeError(ProfileDecodeError::IncomingProfileValidationFailed(
-                    ProfileValidationError::GivenNameEmpty
-                ))
-            );
         }
 
         #[test]
@@ -1741,28 +1788,9 @@ pub(super) mod test_cases {
                 vec![0xff; 13],
             );
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2InvalidProtobuf)
-            );
-        }
-
-        #[test]
-        fn test_profile_decode_invalid_cdn_url() {
-            // We only test v2 profiles, since v1 profiles can't be invalid (by construction)
-            let mut test = a_roundtrip_test();
-            test.v2_result.data = v2::encrypt_profile_data(
-                &Aes256Gcm::new(&Array(test.profile_key.bytes)),
-                &mut seeded_rng(3141),
-                PlaintextProfileData {
-                    given_name: "non-empty".into(),
-                    avatar_url: "https://example.com/not-a-signal-cdn.png".into(),
-                    ..Default::default()
-                }
-                .encode_to_vec(),
-            );
-            assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
-                Error::ProfileDecodeError(ProfileDecodeError::InvalidAvatarUrl(InvalidCdnUrl))
             );
         }
 
@@ -1773,7 +1801,8 @@ pub(super) mod test_cases {
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV2DataEmptyProfileBufferCannotContainPadding
                 )
@@ -1787,7 +1816,8 @@ pub(super) mod test_cases {
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![1, 2, 3, 0]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2BufferZeroPadding)
             );
         }
@@ -1799,7 +1829,8 @@ pub(super) mod test_cases {
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![1, 2, 3, 255]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV2DataTooSmallForClaimedPadding {
                         buffer_size: 4,
@@ -1816,7 +1847,8 @@ pub(super) mod test_cases {
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![1, 2, 255, 2]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataInvalidPaddingByte {
                     padding_size: 2,
                 })
@@ -1828,7 +1860,8 @@ pub(super) mod test_cases {
             let mut test = a_roundtrip_test();
             test.v2_result.data = vec![1, 2, 3];
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataTooSmallForNonce {
                     len: 3
                 })
@@ -1843,7 +1876,8 @@ pub(super) mod test_cases {
                 .iter_mut()
                 .for_each(|byte| *byte = !*byte);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataFailedDecryption)
             );
         }
@@ -1862,7 +1896,7 @@ pub(super) mod test_cases {
                     name,
                     about,
                     about_emoji,
-                    avatar: _,
+                    avatar_url: _,
                     phone_number_sharing,
                     payment_address,
                     account_info: _,
@@ -1889,7 +1923,12 @@ pub(super) mod test_cases {
                     .iter_mut()
                     .for_each(|byte| *byte = !*byte);
                 assert_eq!(
-                    v1::decrypt_profile(&test.profile_key, &test.v1_result).expect_err("failure"),
+                    v1::decrypt_profile(
+                        &test.profile_key,
+                        &test.v1_result,
+                        &test.avatar_cdn_config
+                    )
+                    .expect_err("failure"),
                     Error::ProfileDecodeError(ProfileDecodeError::ProfileV1FieldFailedDecryption {
                         field
                     })
@@ -1914,7 +1953,12 @@ pub(super) mod test_cases {
                     &[255],
                 );
                 assert_eq!(
-                    v1::decrypt_profile(&test.profile_key, &test.v1_result).expect_err("failure"),
+                    v1::decrypt_profile(
+                        &test.profile_key,
+                        &test.v1_result,
+                        &test.avatar_cdn_config
+                    )
+                    .expect_err("failure"),
                     Error::ProfileDecodeError(ProfileDecodeError::ProfileV1FieldInvalidUtf8 {
                         field
                     })
@@ -1933,7 +1977,8 @@ pub(super) mod test_cases {
                 &[255],
             );
             assert_eq!(
-                v1::decrypt_profile(&test.profile_key, &test.v1_result).expect_err("failure"),
+                v1::decrypt_profile(&test.profile_key, &test.v1_result, &test.avatar_cdn_config)
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV1FieldInvalidBoolean {
                     field
                 })
@@ -1951,14 +1996,16 @@ pub(super) mod test_cases {
                 &[255],
             );
             assert_eq!(
-                v1::decrypt_profile(&test.profile_key, &test.v1_result).expect_err("failure"),
+                v1::decrypt_profile(&test.profile_key, &test.v1_result, &test.avatar_cdn_config)
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV1FieldTooShortToIncludeLength { field }
                 )
             );
             test.v2_result.payment_address = test.v1_result.payment_address;
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &test.avatar_cdn_config)
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV1FieldTooShortToIncludeLength { field }
                 )
@@ -1976,7 +2023,8 @@ pub(super) mod test_cases {
                 &1024_u32.to_le_bytes(),
             );
             assert_eq!(
-                v1::decrypt_profile(&test.profile_key, &test.v1_result).expect_err("failure"),
+                v1::decrypt_profile(&test.profile_key, &test.v1_result, &test.avatar_cdn_config)
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV1FieldTooShortForLength {
                     field,
                     len: 0,
@@ -1985,7 +2033,8 @@ pub(super) mod test_cases {
             );
             test.v2_result.payment_address = test.v1_result.payment_address;
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result).expect_err("failure"),
+                v2::decrypt_profile(&test.profile_key, test.v2_result, &test.avatar_cdn_config)
+                    .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV1FieldTooShortForLength {
                     field,
                     len: 0,

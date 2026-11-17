@@ -157,6 +157,9 @@ class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesSe
                     profileKey: inner.profileKey,
                     auth: args.auth,
                     etag: inner.etag,
+                    avatarCdnUrlValidationConfig: try AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+                        args.inner.avatarCdnConfigValidUrls
+                    )
                 )
             },
             check: { expected, actual in

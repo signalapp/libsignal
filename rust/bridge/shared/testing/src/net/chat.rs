@@ -536,12 +536,32 @@ mod remote_derives {
 
     use super::*;
 
-    #[derive(BridgedAsValue, StructuralFrom)]
-    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs)]
+    #[derive(BridgedAsValue)]
     pub struct GetProfileArgs {
         pub aci: Aci,
         pub profile_key: ProfileKey,
         pub etag: Option<ProfileEtag>,
+        pub avatar_cdn_config_valid_urls: BridgeVec<String>,
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs> for GetProfileArgs {
+        fn from(
+            libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs {
+                aci,
+                profile_key,
+                etag,
+                avatar_cdn_config,
+            }: libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs,
+        ) -> Self {
+            Self {
+                aci,
+                profile_key,
+                etag,
+                avatar_cdn_config_valid_urls: avatar_cdn_config
+                    .valid_url_prefixes()
+                    .to_vec()
+                    .into(),
+            }
+        }
     }
 
     #[derive(BridgedAsValue)]
@@ -1480,8 +1500,7 @@ mod remote_derives {
         PaymentsForbiddenInRegion,
         IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
     }
-    #[derive(BridgedAsValue, StructuralFrom)]
-    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs)]
+    #[derive(BridgedAsValue)]
     #[bridge(arg = false)]
     pub struct SetProfileArgs {
         pub rng_seed: i64,
@@ -1490,7 +1509,35 @@ mod remote_derives {
         pub profile: libsignal_bridge_types::net::chat::remote_derives::Profile,
         pub expected_current_data_hash: Option<ProfileDataHash>,
         pub expected_current_profile_key_version: Option<ProfileKeyVersion>,
+        pub avatar_cdn_config_valid_urls: BridgeVec<String>,
     }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs> for SetProfileArgs {
+        fn from(
+            libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs {
+                rng_seed,
+                aci,
+                profile_key,
+                profile,
+                expected_current_data_hash,
+                expected_current_profile_key_version,
+                avatar_cdn_config,
+            }: libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs,
+        ) -> Self {
+            Self {
+                rng_seed,
+                aci,
+                profile_key,
+                profile: profile.into(),
+                expected_current_data_hash,
+                expected_current_profile_key_version,
+                avatar_cdn_config_valid_urls: avatar_cdn_config
+                    .valid_url_prefixes()
+                    .to_vec()
+                    .into(),
+            }
+        }
+    }
+
     #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::SetProfileOut)]
     #[bridge(arg = false)]

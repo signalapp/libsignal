@@ -4,6 +4,7 @@
 //
 
 use std::convert::Infallible;
+use std::str::FromStr;
 use std::time::SystemTime;
 
 use async_trait::async_trait;
@@ -60,69 +61,81 @@ pub type PaymentAddress = Vec<u8>;
 pub type ProfileDataHash = [u8; 32];
 pub const PROFILE_ETAG_LEN: usize = 10;
 pub type ProfileEtag = [u8; PROFILE_ETAG_LEN];
+pub type CdnUrl = String;
 
-/// A CDN URL.
-///
-/// It must point to a Signal CDN server.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct CdnUrl(String);
-
-impl CdnUrl {
-    // NOTE: the trailing slash is important! Otherwise someone could point at a non-signal domain
-    pub const CDN0: &str = "https://cdn.signal.org/";
-    pub const VALID_PREFIXES: &[&str] = &[
-        Self::CDN0,
-        "https://cdn2.signal.org/",
-        "https://cdn3.signal.org/",
-    ];
+/// The provided AvatarCdnUrlValidationConfig ({config:?}) was invalid.
+#[derive(Debug, Display, Clone)]
+pub struct InvalidAvatarCdnUrlValidationConfig {
+    pub config: AvatarCdnUrlValidationConfig,
+}
+impl LogSafeDisplay for InvalidAvatarCdnUrlValidationConfig where
+    AvatarCdnUrlValidationConfig: LogSafeDisplay
+{
 }
 
-/// Invalid CDN URL
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Display)]
-pub struct InvalidCdnUrl;
-impl LogSafeDisplay for InvalidCdnUrl {}
-impl TryFrom<String> for CdnUrl {
-    type Error = InvalidCdnUrl;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if !value.is_ascii() {
-            log::warn!("CdnUrl isn't ASCII");
-            return Err(InvalidCdnUrl);
+#[derive(Debug, Clone)]
+pub struct AvatarCdnUrlValidationConfig {
+    /// URL prefixes must:
+    /// 1. Start with `http://` or `https://`
+    /// 2. end with a `/`
+    valid_url_prefixes: Vec<String>,
+}
+impl AvatarCdnUrlValidationConfig {
+    pub fn new(
+        valid_url_prefixes: Vec<String>,
+    ) -> Result<Self, InvalidAvatarCdnUrlValidationConfig> {
+        let config = Self { valid_url_prefixes };
+        for prefix in config.valid_url_prefixes.iter() {
+            if !prefix.ends_with('/')
+                || (!prefix.starts_with("http://") && !prefix.starts_with("https://"))
+            {
+                return Err(InvalidAvatarCdnUrlValidationConfig { config });
+            }
         }
-        if !Self::VALID_PREFIXES
+        Ok(config)
+    }
+    pub fn valid_url_prefixes(&self) -> &[String] {
+        &self.valid_url_prefixes
+    }
+    pub fn validate_url(&self, url: &str) -> bool {
+        if !url.is_ascii() {
+            log::warn!("Avatar URL isn't ASCII.");
+            return false;
+        }
+        if !self
+            .valid_url_prefixes()
             .iter()
-            .any(|prefix| value.starts_with(prefix))
+            .any(|prefix| url.starts_with(prefix))
         {
-            log::warn!("CdnUrl didn't start with any valid prefix.");
-            return Err(InvalidCdnUrl);
+            log::warn!(
+                "Avatar URL didn't start with any valid prefix ({})",
+                self.log_safe_display()
+            );
+            return false;
         }
-        Ok(CdnUrl(value))
+        if url.contains("../") || url.contains("/..") {
+            log::warn!("Avatar URL contains '../' or '/..'");
+            return false;
+        }
+        if http::Uri::from_str(url).is_err() {
+            log::warn!("Avatar URL isn't even a valid URL");
+            return false;
+        }
+        true
     }
 }
-
-impl CdnUrl {
-    pub fn from_cdn0_path(path: &str) -> Self {
-        Self::try_from(format!("{}{}", Self::CDN0, path))
-            .expect("we've definitely added the prefix")
+impl std::fmt::Display for AvatarCdnUrlValidationConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
     }
 }
-
-impl From<CdnUrl> for String {
-    fn from(value: CdnUrl) -> Self {
-        value.0
-    }
-}
-impl AsRef<str> for CdnUrl {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
+/// This structure is configuration and, therefore, log-safe
+impl LogSafeDisplay for AvatarCdnUrlValidationConfig {}
 
 #[derive(Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub struct Profile {
-    /// Non-empty; max-length is 128 bytes
+    /// Optional (can be empty); max-length is 128 bytes
     pub given_name: String,
     /// Optional (can be empty); max-length is 128 bytes
     pub family_name: String,
@@ -130,7 +143,10 @@ pub struct Profile {
     pub about: String,
     /// Optional (can be empty); max-length is 32 bytes
     pub about_emoji: String,
-    /// If provided, it should be the full URL to the avatar.
+    /// If provided, it must be the full URL to the avatar.
+    ///
+    /// The URL must point to a Signal CDN server. (This will be validated on outgoing and incoming
+    /// profiles.)
     pub avatar: Option<CdnUrl>,
     // The following fields are conceptually part of the user's profile, but live outside of the
     // encrypted v2 PlaintextProfileData
@@ -186,19 +202,18 @@ pub enum ProfileValidationError {
         len: usize,
         max_len: usize,
     },
-    /// The given name field cannot be empty
-    GivenNameEmpty,
+    /// The avatar URL is invalid
+    AvatarUrlInvalid,
 }
 impl LogSafeDisplay for ProfileValidationError {}
 
 impl Profile {
     /// Validate that a profile meets the validation rules.
-    fn validate(&self) -> Result<(), ProfileValidationError> {
+    fn validate(
+        &self,
+        cdn_config: &AvatarCdnUrlValidationConfig,
+    ) -> Result<(), ProfileValidationError> {
         use ProfileFieldWithMaxLength::*;
-        use ProfileValidationError::*;
-        if self.given_name.is_empty() {
-            return Err(GivenNameEmpty);
-        }
         for (field, len) in [
             (GivenName, self.given_name.len()),
             (FamilyName, self.family_name.len()),
@@ -208,7 +223,7 @@ impl Profile {
                 Avatar,
                 self.avatar
                     .as_ref()
-                    .map(|url| url.as_ref().len())
+                    .map(|url| url.len())
                     .unwrap_or_default(),
             ),
             (
@@ -226,6 +241,11 @@ impl Profile {
                     max_len: field.max_length(),
                 });
             }
+        }
+        if let Some(avatar) = self.avatar.as_ref()
+            && !cdn_config.validate_url(avatar)
+        {
+            return Err(ProfileValidationError::AvatarUrlInvalid);
         }
         Ok(())
     }
@@ -309,8 +329,6 @@ enum ProfileDecodeError {
     IncomingProfileValidationFailed(ProfileValidationError),
     /// Failed to protobuf decode the plaintext profile v2 data
     ProfileV2InvalidProtobuf,
-    /// Invalid avatar URL: {0}
-    InvalidAvatarUrl(InvalidCdnUrl),
     /// A profile v2 data buffer couldn't be un-padded because it was empty
     ProfileV2DataEmptyProfileBufferCannotContainPadding,
     /// A profile v2 data buffer couldn't be un-padded because the padding byte was 0 (i.e. the
@@ -349,12 +367,7 @@ enum ProfileDecodeError {
         claimed: usize,
     },
 }
-impl LogSafeDisplay for ProfileDecodeError
-where
-    InvalidCdnUrl: LogSafeDisplay,
-    ProfileValidationError: LogSafeDisplay,
-{
-}
+impl LogSafeDisplay for ProfileDecodeError where ProfileValidationError: LogSafeDisplay {}
 
 #[derive(Debug, Clone, Display, PartialEq, Eq)]
 pub enum AuthGetProfileError {
@@ -589,6 +602,7 @@ impl<T: GrpcServiceProvider> Auth<T> {
         aci: Aci,
         profile_key: &ProfileKey,
         etag: Option<ProfileEtag>,
+        avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<Option<FetchedProfile>, RequestError<AuthGetProfileError>> {
         let version = profile_key.get_profile_key_version(aci);
         let request = GetProfileRequest {
@@ -608,7 +622,7 @@ impl<T: GrpcServiceProvider> Auth<T> {
             log_safe: "Missing response".into(),
         })? {
             GetProfileResponseEnum::Profile(profile_result) => {
-                profile_utils::v2::decrypt_profile(profile_key, profile_result)
+                profile_utils::v2::decrypt_profile(profile_key, profile_result, avatar_cdn_config)
                     .map(Some)
                     .map_err(|e| match e {
                         profile_utils::Error::ProfileDecodeError(e) => {
@@ -628,18 +642,22 @@ impl<T: GrpcServiceProvider> Auth<T> {
                 Err(RequestError::Other(AuthGetProfileError::ProfileNotFound))
             }
             GetProfileResponseEnum::LegacyProfile(legacy_profile_result) => {
-                profile_utils::v1::decrypt_profile(profile_key, &legacy_profile_result)
-                    .map(Some)
-                    .map_err(|e| match e {
-                        profile_utils::Error::ProfileDecodeError(e) => {
-                            RequestError::Other(AuthGetProfileError::ProfileDecodeError {
-                                log_safe: e.log_safe_display().to_string(),
-                            })
-                        }
-                        profile_utils::Error::Unexpected { log_safe } => {
-                            RequestError::Unexpected { log_safe }
-                        }
-                    })
+                profile_utils::v1::decrypt_profile(
+                    profile_key,
+                    &legacy_profile_result,
+                    avatar_cdn_config,
+                )
+                .map(Some)
+                .map_err(|e| match e {
+                    profile_utils::Error::ProfileDecodeError(e) => {
+                        RequestError::Other(AuthGetProfileError::ProfileDecodeError {
+                            log_safe: e.log_safe_display().to_string(),
+                        })
+                    }
+                    profile_utils::Error::Unexpected { log_safe } => {
+                        RequestError::Unexpected { log_safe }
+                    }
+                })
             }
         }
     }
@@ -673,9 +691,10 @@ impl<T: GrpcServiceProvider> Auth<T> {
         profile: Profile,
         expected_current_data_hash: Option<ProfileDataHash>,
         expected_current_profile_key_version: Option<&ProfileKeyVersion>,
+        avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<ProfileDataHash, RequestError<SetProfileError>> {
         profile
-            .validate()
+            .validate(avatar_cdn_config)
             .map_err(|e| RequestError::Other(SetProfileError::InvalidProfile(e)))?;
         if profile.phone_number_sharing.is_none() {
             return Err(RequestError::Other(
@@ -891,7 +910,7 @@ impl<T: GrpcServiceProvider> Unauth<T> {
         .ok_or_else(|| RequestError::Unexpected {
             log_safe: "Missing response".into(),
         })? {
-            ExtendAvatarResponseTtlEnum::Path(path) => Ok(Some(CdnUrl::from_cdn0_path(&path))),
+            ExtendAvatarResponseTtlEnum::Url(url) => Ok(Some(url)),
             ExtendAvatarResponseTtlEnum::InvalidCredentialPresentation(
                 FailedZkAuthentication { description },
             ) => {
@@ -946,6 +965,7 @@ impl<T: GrpcServiceProvider> Unauth<T> {
         profile_key: &ProfileKey,
         auth: &UnauthProfileAuthorization,
         etag: Option<ProfileEtag>,
+        avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<Option<FetchedProfile>, RequestError<UnauthGetProfileError>> {
         let version = profile_key.get_profile_key_version(aci);
         let request = GetProfileAnonymousRequest {
@@ -979,7 +999,7 @@ impl<T: GrpcServiceProvider> Unauth<T> {
             log_safe: "Missing response".into(),
         })? {
             get_profile_anonymous_response::Response::Profile(profile_result) => {
-                profile_utils::v2::decrypt_profile(profile_key, profile_result)
+                profile_utils::v2::decrypt_profile(profile_key, profile_result, avatar_cdn_config)
                     .map(Some)
                     .map_err(|e| match e {
                         profile_utils::Error::ProfileDecodeError(e) => {
@@ -993,18 +1013,22 @@ impl<T: GrpcServiceProvider> Unauth<T> {
                     })
             }
             get_profile_anonymous_response::Response::ProfileV1(legacy_profile_result) => {
-                profile_utils::v1::decrypt_profile(profile_key, &legacy_profile_result)
-                    .map(Some)
-                    .map_err(|e| match e {
-                        profile_utils::Error::ProfileDecodeError(e) => {
-                            RequestError::Other(UnauthGetProfileError::ProfileDecodeError {
-                                log_safe: e.log_safe_display().to_string(),
-                            })
-                        }
-                        profile_utils::Error::Unexpected { log_safe } => {
-                            RequestError::Unexpected { log_safe }
-                        }
-                    })
+                profile_utils::v1::decrypt_profile(
+                    profile_key,
+                    &legacy_profile_result,
+                    avatar_cdn_config,
+                )
+                .map(Some)
+                .map_err(|e| match e {
+                    profile_utils::Error::ProfileDecodeError(e) => {
+                        RequestError::Other(UnauthGetProfileError::ProfileDecodeError {
+                            log_safe: e.log_safe_display().to_string(),
+                        })
+                    }
+                    profile_utils::Error::Unexpected { log_safe } => {
+                        RequestError::Unexpected { log_safe }
+                    }
+                })
             }
             get_profile_anonymous_response::Response::EtagMatched(true | false) => Ok(None),
             get_profile_anonymous_response::Response::NotFound(errors::NotFound {}) => {
@@ -1429,11 +1453,11 @@ pub mod test_cases {
                     avatar_credential_presentation: zkgroup::serialize(&presentation),
                 },
                 response_grpc: ExtendAvatarTtlResponse {
-                    response: Some(ExtendAvatarResponseTtlEnum::Path("asdf".into())),
+                    response: Some(ExtendAvatarResponseTtlEnum::Url(
+                        "https://cdn.signal.org/asdf".into(),
+                    )),
                 },
-                response: ExtendAvatarTtlOut::Found(
-                    CdnUrl::try_from("https://cdn.signal.org/asdf".to_owned()).expect("valid url"),
-                ),
+                response: ExtendAvatarTtlOut::Found("https://cdn.signal.org/asdf".to_owned()),
             },
             GrpcTestCase {
                 name: "not found".into(),
@@ -1729,36 +1753,6 @@ mod test {
     }
 
     #[test]
-    fn test_cdn_url() {
-        for (url, success) in [
-            ("https://cdn.signal.org/profiles/asdf", true),
-            ("xhttps://cdn.signal.org/profiles/asdf", false),
-            ("https://cdn2.signal.org/profiles/asdf", true),
-            ("https://cdn3.signal.org/profiles/asdf", true),
-            ("https://cdn3.signal.org/profiles/../asdf", true),
-            ("https://cdn3.signal.or/profiles/asdf", false),
-            ("https://example.com/profiles/asdf", false),
-            ("ftp://example.com/profiles/asdf", false),
-            ("gopher://example.com/profiles/asdf", false),
-            ("https://cdn.signal.org.not-signal.example.com/asdf", false),
-        ] {
-            let out = CdnUrl::try_from(url.to_string());
-            if success {
-                assert_eq!(out.expect("success").as_ref(), url);
-            } else {
-                out.expect_err("bad url");
-            }
-        }
-    }
-
-    #[test]
-    fn cdn_url_prefixes_have_trailing_slashes() {
-        for prefix in CdnUrl::VALID_PREFIXES {
-            assert!(prefix.ends_with('/'));
-        }
-    }
-
-    #[test]
     fn test_get_profile() {
         run_tests(
             get_profile_test_cases(),
@@ -1767,7 +1761,11 @@ mod test {
                  aci,
                  profile_key,
                  etag,
-             }| async move { chat.get_profile(aci, &profile_key, etag).await },
+                 avatar_cdn_config,
+             }| async move {
+                chat.get_profile(aci, &profile_key, etag, &avatar_cdn_config)
+                    .await
+            },
             |expected, actual| match expected {
                 GetProfileOut::Success(fetched_profile) => {
                     assert_eq!(actual.expect("success"), fetched_profile)
@@ -1791,9 +1789,13 @@ mod test {
                          aci,
                          profile_key,
                          etag,
+                         avatar_cdn_config,
                      },
                  auth,
-             }| async move { chat.get_profile(aci, &profile_key, &auth, etag).await },
+             }| async move {
+                chat.get_profile(aci, &profile_key, &auth, etag, &avatar_cdn_config)
+                    .await
+            },
             |expected, actual| match expected {
                 UnauthGetProfileOut::Success(fetched_profile) => {
                     assert_eq!(actual.expect("success"), fetched_profile)
@@ -1820,6 +1822,7 @@ mod test {
                  profile,
                  expected_current_data_hash,
                  expected_current_profile_key_version,
+                 avatar_cdn_config,
              }| async move {
                 chat.set_profile(
                     &mut seeded_rng(rng_seed as u64),
@@ -1828,6 +1831,7 @@ mod test {
                     profile,
                     expected_current_data_hash,
                     expected_current_profile_key_version.as_ref(),
+                    &avatar_cdn_config,
                 )
                 .await
             },
@@ -1934,5 +1938,53 @@ mod test {
                 )),
             },
         );
+    }
+
+    // Not using #[test_case], since it choked on "vec!"
+    #[test]
+    fn validate_avatar_cdn_url_validation_config() {
+        for (prefixes, valid) in [
+            (vec![], true),
+            (
+                vec![
+                    "http://localhost:1234/".to_string(),
+                    "https://cdn.signal.org/profiles/".to_string(),
+                ],
+                true,
+            ),
+            (vec!["ftp://localhost:1234/".to_string()], false),
+            (vec!["https://localhost:1234".to_string()], false),
+        ] {
+            let result = AvatarCdnUrlValidationConfig::new(prefixes);
+            if valid {
+                result.expect("valid");
+            } else {
+                result.expect_err("invalid");
+            }
+        }
+    }
+
+    #[test]
+    fn validate_url() {
+        let config = AvatarCdnUrlValidationConfig::new(vec![
+            "http://localhost:8080/profiles/".into(),
+            "https://cdn.signal.org/profiles/".into(),
+        ])
+        .expect("valid");
+        for (url, valid) in [
+            // So long as a URL starts with the prefix, we call it valid.
+            ("https://cdn.signal.org/profiles/", true),
+            ("https://cdn.signal.org/profiles/asdf.png", true),
+            ("http://localhost:8080/profiles/asdf.png", true),
+            ("https://cdn.signal.org/profiles/../asdf.png", false),
+            ("https://cdn.signal.org/profiles/..", false),
+            ("https://cdn.signal.org/profiles/asdf.png/..", false),
+            ("https://example.com/test.png", false),
+            ("I am not a URL", false),
+            ("https://cdn.signal.org/profiles/img.\u{21B5}.png", false),
+            ("https://cdn.signal.org/profiles/img.\u{0000}.png", false),
+        ] {
+            assert_eq!(config.validate_url(url), valid);
+        }
     }
 }

@@ -70,6 +70,9 @@ class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatCon
             profile: args.profile,
             expectedCurrentDataHash: args.expectedCurrentDataHash,
             expectedCurrentProfileKeyVersion: args.expectedCurrentProfileKeyVersion,
+            avatarCdnUrlValidationConfig: try AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+                args.avatarCdnConfigValidUrls
+            )
         )
     }
     private static func setProfileCheck(
@@ -109,7 +112,8 @@ class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatCon
                     switch expectedValidationErrorInternal {
                     case .fieldTooLong(let field, let len, let maxLen):
                         expectedValidationError = .fieldTooLong(field: field, len: Int(len), maxLen: Int(maxLen))
-                    case .givenNameEmpty: expectedValidationError = .givenNameEmpty
+                    case .avatarUrlInvalid:
+                        expectedValidationError = .avatarUrlInvalid
                     }
                     XCTAssertEqual(validationError, expectedValidationError)
                 }
@@ -168,6 +172,9 @@ class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatCon
                     aci: args.aci,
                     profileKey: args.profileKey,
                     etag: args.etag,
+                    avatarCdnUrlValidationConfig: try AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+                        args.avatarCdnConfigValidUrls
+                    )
                 )
             },
             check: { expected, actual in
@@ -192,6 +199,16 @@ class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatCon
                 }
             }
         )
+    }
+
+    func testAvatarCdnUrlValidationConfig() throws {
+        // Should not throw
+        _ = try AvatarCdnUrlValidationConfig.fromUrlPrefixes(["https://www.example.com/"])
+        // Should throw
+        do {
+            _ = try AvatarCdnUrlValidationConfig.fromUrlPrefixes([""])
+            XCTFail("Expected exception")
+        } catch SignalError.internalError(_) {}
     }
 }
 

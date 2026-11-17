@@ -63,7 +63,9 @@ use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceipt
 use libsignal_net_chat::grpc::keys::{
     DeviceSpecifier, GetPreKeysFailure, PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey,
 };
-use libsignal_net_chat::grpc::profiles::{CdnUrl, ProfileDataHash, ProfileEtag};
+use libsignal_net_chat::grpc::profiles::{
+    AvatarCdnUrlValidationConfig, CdnUrl, ProfileDataHash, ProfileEtag,
+};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -82,6 +84,7 @@ bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
 bridge_handle_fns!(ProvisioningChatConnection, clone = false);
 bridge_handle_fns!(CopyBackupMediaStream, clone = false);
 bridge_handle_fns!(DeleteBackupMediaStream, clone = false);
+bridge_handle_fns!(AvatarCdnUrlValidationConfig, clone = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -1636,11 +1639,6 @@ async fn AuthenticatedChatConnection_set_zk_credential_key(
         .await
 }
 
-#[bridge_fn(nice = true)]
-fn CdnUrl_validate(url: String) -> bool {
-    CdnUrl::try_from(url).is_ok()
-}
-
 #[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_extend_avatar_ttl(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
@@ -1730,6 +1728,7 @@ async fn AuthenticatedChatConnection_set_profile(
     profile: remote_derives::Profile,
     expected_current_data_hash: Option<ProfileDataHash>,
     expected_current_profile_key_version: Option<ProfileKeyVersion>,
+    avatar_cdn_config: BridgeHandleRef<'_, AvatarCdnUrlValidationConfig>,
 ) -> Result<ProfileDataHash, RequestError<libsignal_net_chat::grpc::profiles::SetProfileError>> {
     let mut rng = rng.create();
     chat.require_grpc()
@@ -1741,6 +1740,7 @@ async fn AuthenticatedChatConnection_set_profile(
             profile.into(),
             expected_current_data_hash,
             expected_current_profile_key_version.as_ref(),
+            &avatar_cdn_config,
         )
         .await
 }
@@ -1751,6 +1751,7 @@ async fn AuthenticatedChatConnection_get_profile(
     aci: Aci,
     profile_key: ProfileKey,
     etag: Option<ProfileEtag>,
+    avatar_cdn_config: BridgeHandleRef<'_, AvatarCdnUrlValidationConfig>,
 ) -> Result<
     Option<remote_derives::FetchedProfile>,
     RequestError<libsignal_net_chat::grpc::profiles::AuthGetProfileError>,
@@ -1758,7 +1759,7 @@ async fn AuthenticatedChatConnection_get_profile(
     Ok(chat
         .require_grpc()
         .await
-        .get_profile(aci, &profile_key, etag)
+        .get_profile(aci, &profile_key, etag, &avatar_cdn_config)
         .await?
         .map(Into::into))
 }
@@ -1770,6 +1771,7 @@ async fn UnauthenticatedChatConnection_get_profile(
     profile_key: ProfileKey,
     auth: libsignal_net_chat::grpc::profiles::UnauthProfileAuthorization,
     etag: Option<ProfileEtag>,
+    avatar_cdn_config: BridgeHandleRef<'_, AvatarCdnUrlValidationConfig>,
 ) -> Result<
     Option<remote_derives::FetchedProfile>,
     RequestError<libsignal_net_chat::grpc::profiles::UnauthGetProfileError>,
@@ -1777,7 +1779,17 @@ async fn UnauthenticatedChatConnection_get_profile(
     Ok(chat
         .require_grpc()
         .await
-        .get_profile(aci, &profile_key, &auth, etag)
+        .get_profile(aci, &profile_key, &auth, etag, &avatar_cdn_config)
         .await?
         .map(Into::into))
+}
+
+// Since any invalid input is a bug in the client library, we simply our error reporting and panic
+// on invalid input
+#[bridge_fn(nice = true, nice_node = false)]
+pub fn AvatarCdnUrlValidationConfig_new(
+    valid_url_prefixes: BridgeVec<String>,
+) -> AvatarCdnUrlValidationConfig {
+    AvatarCdnUrlValidationConfig::new(valid_url_prefixes.0)
+        .expect("AvatarCdnUrlValidationConfiguration was invalid")
 }
