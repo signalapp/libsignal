@@ -149,6 +149,7 @@ pub enum GroupChatUpdate {
         removerAci: Option<Aci>,
         #[serde_as(as = "serialize::ServiceIdAsString")]
         removedAci: Aci,
+        deleteData: NoValidation<bool>,
     },
     SelfInvitedToGroupUpdate {
         #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
@@ -258,6 +259,7 @@ pub enum GroupChatUpdate {
     GroupTerminateChangeUpdate {
         #[serde_as(as = "Option<serialize::ServiceIdAsString>")]
         updaterAci: Option<Aci>,
+        deleteData: NoValidation<bool>,
     },
 }
 

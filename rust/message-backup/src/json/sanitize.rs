@@ -1442,6 +1442,7 @@ impl Visit<Sanitizer> for proto::GroupMemberRemovedUpdate {
         let Self {
             removerAci: _,
             removedAci: _,
+            deleteData: _,
             special_fields: _,
         } = self;
     }
@@ -1678,6 +1679,7 @@ impl Visit<Sanitizer> for proto::GroupTerminateChangeUpdate {
     fn accept(&mut self, _visitor: &mut Sanitizer) {
         let Self {
             updaterAci: _,
+            deleteData: _,
             special_fields: _,
         } = self;
     }
