@@ -18,6 +18,7 @@ pub mod login_purchase;
 pub mod messages;
 pub mod payments;
 pub mod profiles;
+pub mod remote_configuration;
 pub mod stickers;
 pub mod subscriptions;
 pub mod usernames;

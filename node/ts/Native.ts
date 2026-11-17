@@ -185,10 +185,25 @@ export type ReturnFfiBackupEntitlement = {
   expiration: Timestamp;
 };
 
+export type ReturnFfiBadge = {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  sprites6: Array<string>;
+  svg: string;
+  svgs: Array<ReturnFfiBadgeSvg>;
+};
+
 export type ReturnFfiBadgeEntitlement = {
   badge_id: string;
   expiration: Timestamp;
   visible: boolean;
+};
+
+export type ReturnFfiBadgeSvg = {
+  light: string;
+  dark: string;
 };
 
 export type ReturnFfiBadgeVisibility =
@@ -1070,6 +1085,11 @@ export type ReturnFfiStartWebAuthnRegistrationOut =
       __type: 1;
     };
 
+export type ReturnFfiTaggedBadges = {
+  badges: StringMapFfiContents<ReturnFfiBadge>;
+  etag: Bytes;
+};
+
 export type ReturnFfiTestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -1417,6 +1437,11 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgeAccountIdentity>;
+  AuthenticatedChatConnection_get_badges: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    etag: Bytes | null
+  ) => CancellablePromise<ReturnFfiTaggedBadges | null>;
   AuthenticatedChatConnection_get_capabilities: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -3391,6 +3416,9 @@ type NativeFunctions = {
   TESTING_GetBackupSvrBCredentialsTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetSvrBCredentialsOut>
   >;
+  TESTING_GetBadgesTests: () => Array<
+    GrpcTestCaseFfi<Bytes | null, ReturnFfiTaggedBadges | null>
+  >;
   TESTING_GetCapabilitiesTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetCapabilitiesOut>
   >;
@@ -4129,6 +4157,7 @@ const {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -4717,6 +4746,7 @@ const {
   TESTING_GetAccountIdentityTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetBadgesTests,
   TESTING_GetCapabilitiesTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
@@ -4979,6 +5009,7 @@ export {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
@@ -5567,6 +5598,7 @@ export {
   TESTING_GetAccountIdentityTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetBadgesTests,
   TESTING_GetCapabilitiesTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,

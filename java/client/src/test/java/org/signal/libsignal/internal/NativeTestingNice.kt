@@ -2864,6 +2864,32 @@ public object NativeTestingNice {
       }, { downcastFromObject<org.signal.libsignal.internal.GetSvrBCredentialsOut>(it) })(ffiOut)
   }
 
+  public fun TESTING_GetBadgesTests(): List<org.signal.libsignal.net.GrpcTestCase<ByteArray?, org.signal.libsignal.net.TaggedBadges?>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetBadgesTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<ByteArray?, Object?, ByteArray?, org.signal.libsignal.net.TaggedBadges?>({
+        (
+          { x: ByteArray? ->
+            x?.let {
+              identity(it)
+            }
+          }
+        )(it)
+      }, {
+        (
+          { x: Object? ->
+            x?.let {
+              downcastFromObject<org.signal.libsignal.net.TaggedBadges>(
+                it,
+              )
+            }
+          }
+        )(it)
+      })(ffiOut)
+  }
+
   public fun TESTING_GetCapabilitiesTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.internal.GetCapabilitiesOut>> {
     val ffiOut =
       NativeTesting.TESTING_GetCapabilitiesTests()

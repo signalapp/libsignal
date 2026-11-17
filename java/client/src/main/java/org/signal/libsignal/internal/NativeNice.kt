@@ -23,6 +23,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.identity
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+import org.signal.libsignal.internal.NativeNiceHelpers.stringMapReturnConverter
 
 /*
 // org.signal.libsignal.net.AccountEntitlements
@@ -58,12 +59,37 @@ public data class BackupEntitlement(
 */
 
 /*
+// org.signal.libsignal.net.Badge
+
+public data class Badge(
+  public val id: String,
+  public val category: String,
+  public val name: String,
+  public val description: String,
+  public val sprites6: List<String>,
+  public val svg: String,
+  public val svgs: List<org.signal.libsignal.net.BadgeSvg>,
+)
+
+*/
+
+/*
 // org.signal.libsignal.net.BadgeEntitlement
 
 public data class BadgeEntitlement(
   public val badgeId: String,
   public val expiration: java.time.Instant,
   public val visible: Boolean,
+)
+
+*/
+
+/*
+// org.signal.libsignal.net.BadgeSvg
+
+public data class BadgeSvg(
+  public val light: String,
+  public val dark: String,
 )
 
 */
@@ -421,6 +447,16 @@ public data class StartMfaVerificationResponse(
 
 */
 
+/*
+// org.signal.libsignal.net.TaggedBadges
+
+public data class TaggedBadges(
+  public val badges: Map<String, org.signal.libsignal.net.Badge>,
+  public val etag: ByteArray,
+)
+
+*/
+
 public object AccountEntitlements_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -480,6 +516,39 @@ public object BackupEntitlement_ReturnConverter {
     )
 }
 
+public object Badge_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    id: Any?,
+    category: Any?,
+    name: Any?,
+    description: Any?,
+    sprites6: Any?,
+    svg: Any?,
+    svgs: Any?,
+  ): Any? =
+    org.signal.libsignal.net.Badge(
+      id =
+        identity(id as String),
+      category =
+        identity(category as String),
+      name =
+        identity(name as String),
+      description =
+        identity(description as String),
+      sprites6 =
+        mapBridgeVecReturn<String, String>({ identity(it) })(sprites6 as Array<*>),
+      svg =
+        identity(svg as String),
+      svgs =
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.BadgeSvg>({
+          downcastFromObject<org.signal.libsignal.net.BadgeSvg>(it)
+        })(svgs as Array<*>),
+    )
+}
+
 public object BadgeEntitlement_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -496,6 +565,22 @@ public object BadgeEntitlement_ReturnConverter {
         (java.time.Instant::ofEpochMilli)(expiration as Long),
       visible =
         identity(visible as Boolean),
+    )
+}
+
+public object BadgeSvg_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    light: Any?,
+    dark: Any?,
+  ): Any? =
+    org.signal.libsignal.net.BadgeSvg(
+      light =
+        identity(light as String),
+      dark =
+        identity(dark as String),
     )
 }
 
@@ -1117,6 +1202,24 @@ public object StartMfaVerificationResponse_ReturnConverter {
             x?.let { downcastFromObject<org.signal.libsignal.net.WebAuthnAuthenticationParameters>(it) }
           }
         )(webauthn_params as Object?),
+    )
+}
+
+public object TaggedBadges_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    badges: Any?,
+    etag: Any?,
+  ): Any? =
+    org.signal.libsignal.net.TaggedBadges(
+      badges =
+        stringMapReturnConverter<Object, org.signal.libsignal.net.Badge>({
+          downcastFromObject<org.signal.libsignal.net.Badge>(it)
+        })(badges as Array<*>),
+      etag =
+        identity(etag as ByteArray),
     )
 }
 
@@ -1856,6 +1959,32 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeAccountIdentity>(it) }
+  }
+
+  public fun AuthenticatedChatConnection_get_badges(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    etag: ByteArray?,
+  ): CompletableFuture<org.signal.libsignal.net.TaggedBadges?> {
+    val ffi_chat = identity(chat)
+    val ffi_etag = identity(etag)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_badges(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_etag,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.TaggedBadges>(it) }
+          }
+        )(it)
+      }
   }
 
   public fun AuthenticatedChatConnection_get_capabilities(

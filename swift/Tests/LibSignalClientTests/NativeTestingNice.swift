@@ -387,40 +387,6 @@ extension SignalOptionalOfPairOfMutPointerHttpRequestu64: SignalOptionalOf {
 
 }
 
-extension SignalOwnedBufferOfMaxAlignedCStringPtr: SignalOwnedBufferOfMaxAligned {
-
-    public typealias Element = SignalCStringPtr?
-
-    public init(
-        generic_base: SignalType_MutPointer_SignalCStringPtr?,
-        generic_length: size_t,
-        generic_size_bytes: size_t,
-    ) {
-        self.init(
-            base: generic_base,
-            length: generic_length,
-            size_bytes: generic_size_bytes,
-
-        )
-    }
-
-    public var generic_base: SignalType_MutPointer_SignalCStringPtr? {
-        get { self.base }
-        set { base = newValue }
-    }
-
-    public var generic_length: size_t {
-        get { self.length }
-        set { length = newValue }
-    }
-
-    public var generic_size_bytes: size_t {
-        get { self.size_bytes }
-        set { size_bytes = newValue }
-    }
-
-}
-
 extension SignalOwnedBufferOfMaxAlignedc_uchar32: SignalOwnedBufferOfMaxAligned {
 
     public typealias Element = SignalType_FixedArray32_uint8_t
@@ -4725,6 +4691,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetSvrBCredentialsOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_GetBadgesTests() throws -> [GrpcTestCase<Data?, TaggedBadges?>] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>,
+            OptionalReturnConverter<DerivedReturnConverterTaggedBadges, SignalOptionalOfTaggedBadgesFfiResult>
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_badges_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>,
+            OptionalReturnConverter<DerivedReturnConverterTaggedBadges, SignalOptionalOfTaggedBadgesFfiResult>
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_GetCapabilitiesTests() throws -> [GrpcTestCase<Void, GetCapabilitiesOut>] {

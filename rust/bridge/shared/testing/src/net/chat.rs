@@ -1679,6 +1679,18 @@ fn TESTING_GetSubscriptionReceiptCredentialTests() -> GrpcTestCases<
 }
 
 #[bridge_fn(nice = true)]
+fn TESTING_GetBadgesTests() -> GrpcTestCases<
+    Option<Vec<u8>>,
+    Option<libsignal_bridge_types::net::chat::remote_derives::TaggedBadges>,
+> {
+    libsignal_net_chat::grpc::remote_configuration::test_cases::get_badges_test_cases()
+        .into_iter()
+        .map(|tc| tc.map_response(|x| x.map(Into::into)))
+        .collect_vec()
+        .into()
+}
+
+#[bridge_fn(nice = true)]
 fn TESTING_CreateDonationPermitsTests() -> GrpcTestCases<
     remote_derives::CreateDonationPermitsArgs,
     remote_derives::CreateDonationPermitsOut,

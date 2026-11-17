@@ -41,6 +41,7 @@ export * from './net/chat/AuthDonationsService.js';
 export * from './net/chat/AuthKeysService.js';
 export * from './net/chat/AuthMessagesService.js';
 export * from './net/chat/AuthPaymentsService.js';
+export * from './net/chat/AuthRemoteConfigurationService.js';
 export * from './net/chat/AuthStickersService.js';
 export * from './net/chat/AuthUsernamesService.js';
 export * from './net/chat/PurchaseTypes.js';

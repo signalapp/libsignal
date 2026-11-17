@@ -31,7 +31,9 @@ import type {
   ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
   ReturnFfiBackupEntitlement,
+  ReturnFfiBadge,
   ReturnFfiBadgeEntitlement,
+  ReturnFfiBadgeSvg,
   ReturnFfiBadgeVisibility,
   ReturnFfiBridgeAccountIdentity,
   ReturnFfiBridgeChallengeAnswer,
@@ -134,6 +136,7 @@ import type {
   ReturnFfiStartMfaVerificationOut,
   ReturnFfiStartMfaVerificationResponse,
   ReturnFfiStartWebAuthnRegistrationOut,
+  ReturnFfiTaggedBadges,
   ReturnFfiTestStreamChunk,
   ReturnFfiTestingAnySignedPreKey,
   ReturnFfiTestingUserBasedAuthorization,
@@ -179,10 +182,25 @@ export type BackupEntitlement = {
   expiration: Timestamp;
 };
 
+export type Badge = {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  sprites6: Array<string>;
+  svg: string;
+  svgs: Array<BadgeSvg>;
+};
+
 export type BadgeEntitlement = {
   badgeId: string;
   expiration: Timestamp;
   visible: boolean;
+};
+
+export type BadgeSvg = {
+  light: string;
+  dark: string;
 };
 
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
@@ -824,6 +842,11 @@ export type StartWebAuthnRegistrationOut =
     }
   | 'tooManyMfaKeys';
 
+export type TaggedBadges = {
+  badges: Map<string, Badge>;
+  etag: Bytes;
+};
+
 export type TestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -889,6 +912,20 @@ export function returnConverterBackupEntitlement(
   };
 }
 
+export function returnConverterBadge(ffiInput: Native.ReturnFfiBadge): Badge {
+  return {
+    id: identity(ffiInput.id),
+    category: identity(ffiInput.category),
+    name: identity(ffiInput.name),
+    description: identity(ffiInput.description),
+    sprites6: ((arr: Array<string>) => arr.map(identity))(ffiInput.sprites6),
+    svg: identity(ffiInput.svg),
+    svgs: ((arr: Array<ReturnFfiBadgeSvg>) => arr.map(returnConverterBadgeSvg))(
+      ffiInput.svgs
+    ),
+  };
+}
+
 export function returnConverterBadgeEntitlement(
   ffiInput: Native.ReturnFfiBadgeEntitlement
 ): BadgeEntitlement {
@@ -896,6 +933,15 @@ export function returnConverterBadgeEntitlement(
     badgeId: identity(ffiInput.badge_id),
     expiration: identity(ffiInput.expiration),
     visible: identity(ffiInput.visible),
+  };
+}
+
+export function returnConverterBadgeSvg(
+  ffiInput: Native.ReturnFfiBadgeSvg
+): BadgeSvg {
+  return {
+    light: identity(ffiInput.light),
+    dark: identity(ffiInput.dark),
   };
 }
 
@@ -2459,6 +2505,17 @@ export function returnConverterStartWebAuthnRegistrationOut(
   }
 }
 
+export function returnConverterTaggedBadges(
+  ffiInput: Native.ReturnFfiTaggedBadges
+): TaggedBadges {
+  return {
+    badges: stringMapResultConverter<ReturnFfiBadge, Badge>(
+      returnConverterBadge
+    )(ffiInput.badges),
+    etag: identity(ffiInput.etag),
+  };
+}
+
 export function returnConverterTestStreamChunk(
   ffiInput: Native.ReturnFfiTestStreamChunk
 ): TestStreamChunk {
@@ -3145,6 +3202,28 @@ export async function AuthenticatedChatConnection_get_account_identity({
       Native.AuthenticatedChatConnection_get_account_identity(
         asyncContext,
         identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_get_badges({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  etag: etag,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  etag: Bytes | null;
+}): Promise<TaggedBadges | null> {
+  return liftNull(returnConverterTaggedBadges)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_badges(
+        asyncContext,
+        identity(chat),
+        liftNull(identity)(etag)
       )
     )
   );
@@ -4086,6 +4165,15 @@ export function TESTING_GetBackupSvrBCredentialsTests(): Array<
     identity,
     returnConverterGetSvrBCredentialsOut
   )(Native.TESTING_GetBackupSvrBCredentialsTests());
+}
+
+export function TESTING_GetBadgesTests(): Array<
+  GrpcTestCase<Bytes | null, TaggedBadges | null>
+> {
+  return grpcTestCaseConverter(
+    liftNull(identity),
+    liftNull(returnConverterTaggedBadges)
+  )(Native.TESTING_GetBadgesTests());
 }
 
 export function TESTING_GetCapabilitiesTests(): Array<

@@ -1097,6 +1097,43 @@ extension SignalCPromiseOptionalOfUuid: SignalCPromise {
 
 }
 
+extension SignalCPromiseOptionalOfTaggedBadgesFfiResult: SignalCPromise {
+
+    typealias Result = SignalOptionalOfTaggedBadgesFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfTaggedBadgesFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfTaggedBadgesFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOwnedBufferOfc_uchar17: SignalCPromise {
 
     typealias Result = SignalOwnedBufferOfc_uchar17
@@ -2228,6 +2265,67 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
 
 }
 
+extension SignalOptionalOfTaggedBadgesFfiResult: SignalOptionalOf {
+
+    typealias Contents = SignalTaggedBadgesFfiResult
+
+    init(
+        generic_present: CBool,
+        generic_value: MaybeUninitOfTaggedBadgesFfiResult,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: MaybeUninitOfTaggedBadgesFfiResult {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedCStringPtr: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalCStringPtr?
+
+    init(
+        generic_base: SignalType_MutPointer_SignalCStringPtr?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalCStringPtr? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedi32: SignalOwnedBufferOfMaxAligned {
 
     typealias Element = Int32
@@ -2364,6 +2462,40 @@ extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult:
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrBadgeFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalPairOfCStringPtrBadgeFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalPairOfCStringPtrBadgeFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalPairOfCStringPtrBadgeFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedBridgeConfirmedMfaKeyFfiResult: SignalOwnedBufferOfMaxAligned {
 
     typealias Element = SignalBridgeConfirmedMfaKeyFfiResult
@@ -2484,6 +2616,40 @@ extension SignalOwnedBufferOfMaxAlignedBadgeEntitlementFfiResult: SignalOwnedBuf
     }
 
     var generic_base: SignalType_MutPointer_SignalBadgeEntitlementFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedBadgeSvgFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalBadgeSvgFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalBadgeSvgFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalBadgeSvgFfiResult? {
         get { self.base }
         set { base = newValue }
     }
@@ -2809,6 +2975,35 @@ extension SignalPairOfCStringPtrAuthCheckResultFfiResult: SignalPairOf {
     }
 
     var generic_second: SignalAuthCheckResultFfiResult {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrBadgeFfiResult: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalBadgeFfiResult
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalBadgeFfiResult,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalBadgeFfiResult {
         get { self.second }
         set { second = newValue }
     }
@@ -3192,12 +3387,39 @@ internal struct BackupEntitlement {
 */
 
 /*
+// Badge
+
+internal struct Badge {
+    var id: String
+    var category: String
+    var name: String
+    var description: String
+    var sprites6: [String]
+    var svg: String
+    var svgs: [BadgeSvg]
+
+}
+
+*/
+
+/*
 // BadgeEntitlement
 
 internal struct BadgeEntitlement {
     var badgeId: String
     var expiration: Date
     var visible: Bool
+
+}
+
+*/
+
+/*
+// BadgeSvg
+
+internal struct BadgeSvg {
+    var light: String
+    var dark: String
 
 }
 
@@ -3519,6 +3741,17 @@ internal struct StartMfaVerificationResponse {
 
 */
 
+/*
+// TaggedBadges
+
+internal struct TaggedBadges {
+    var badges: [String: Badge]
+    var etag: Data
+
+}
+
+*/
+
 internal enum DerivedReturnConverterAccountEntitlements: NiceReturnConverter {
     typealias NiceReturn = AccountEntitlements
     typealias FfiReturn = SignalAccountEntitlementsFfiResult
@@ -3578,6 +3811,41 @@ internal enum DerivedReturnConverterBackupEntitlement: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterBadge: NiceReturnConverter {
+    typealias NiceReturn = Badge
+    typealias FfiReturn = SignalBadgeFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let id = Result { try StringConverter.convertReturn(consuming: ffiValue.id) }
+        let category = Result { try StringConverter.convertReturn(consuming: ffiValue.category) }
+        let name = Result { try StringConverter.convertReturn(consuming: ffiValue.name) }
+        let description = Result { try StringConverter.convertReturn(consuming: ffiValue.description) }
+        let sprites6 = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.sprites6
+            )
+        }
+        let svg = Result { try StringConverter.convertReturn(consuming: ffiValue.svg) }
+        let svgs = Result {
+            try ArrayReturnConverter<DerivedReturnConverterBadgeSvg, SignalOwnedBufferOfMaxAlignedBadgeSvgFfiResult>
+                .convertReturn(consuming: ffiValue.svgs)
+        }
+
+        return Badge(
+            id: try id.get(),
+            category: try category.get(),
+            name: try name.get(),
+            description: try description.get(),
+            sprites6: try sprites6.get(),
+            svg: try svg.get(),
+            svgs: try svgs.get()
+        )
+    }
+}
+
 internal enum DerivedReturnConverterBadgeEntitlement: NiceReturnConverter {
     typealias NiceReturn = BadgeEntitlement
     typealias FfiReturn = SignalBadgeEntitlementFfiResult
@@ -3595,6 +3863,21 @@ internal enum DerivedReturnConverterBadgeEntitlement: NiceReturnConverter {
             expiration: try expiration.get(),
             visible: try visible.get()
         )
+    }
+}
+
+internal enum DerivedReturnConverterBadgeSvg: NiceReturnConverter {
+    typealias NiceReturn = BadgeSvg
+    typealias FfiReturn = SignalBadgeSvgFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeSvgFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let light = Result { try StringConverter.convertReturn(consuming: ffiValue.light) }
+        let dark = Result { try StringConverter.convertReturn(consuming: ffiValue.dark) }
+
+        return BadgeSvg(light: try light.get(), dark: try dark.get())
     }
 }
 
@@ -4249,6 +4532,26 @@ internal enum DerivedReturnConverterStartMfaVerificationResponse: NiceReturnConv
         }
 
         return StartMfaVerificationResponse(hasTotp: try has_totp.get(), webauthnParams: try webauthn_params.get())
+    }
+}
+
+internal enum DerivedReturnConverterTaggedBadges: NiceReturnConverter {
+    typealias NiceReturn = TaggedBadges
+    typealias FfiReturn = SignalTaggedBadgesFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalTaggedBadgesFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let badges = Result {
+            try StringMapReturnConverter<
+                DerivedReturnConverterBadge, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrBadgeFfiResult,
+                SignalPairOfCStringPtrBadgeFfiResult
+            >.convertReturn(consuming: ffiValue.badges)
+        }
+        let etag = Result { try DataConverter.convertReturn(consuming: ffiValue.etag) }
+
+        return TaggedBadges(badges: try badges.get(), etag: try etag.get())
     }
 }
 
@@ -5597,6 +5900,33 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgeAccountIdentity.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_badges(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        etag: Data?,
+    ) async throws -> TaggedBadges? {
+        let rawOutput:
+            OptionalReturnConverter<DerivedReturnConverterTaggedBadges, SignalOptionalOfTaggedBadgesFfiResult>.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.convertArgBorrowed(etag)
+                            { etagFfi in
+                                SignalFfi.signal_authenticated_chat_connection_get_badges(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    etagFfi,
+                                )
+                            }
+                        }
+                }
+        return try OptionalReturnConverter<DerivedReturnConverterTaggedBadges, SignalOptionalOfTaggedBadgesFfiResult>
+            .convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_capabilities(

@@ -405,6 +405,9 @@ public object NativeTesting {
   public external fun TESTING_GetBackupSvrBCredentialsTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetBadgesTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetCapabilitiesTests(): Array<Object>
 
   @JvmStatic

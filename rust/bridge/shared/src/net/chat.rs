@@ -1605,3 +1605,16 @@ mod test {
         );
     }
 }
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_badges(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    etag: Option<Vec<u8>>,
+) -> Result<Option<remote_derives::TaggedBadges>, RequestError<Infallible>> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_badges(etag.as_deref())
+        .await?
+        .map(|x| x.into()))
+}

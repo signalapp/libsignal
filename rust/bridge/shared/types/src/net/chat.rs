@@ -1284,6 +1284,53 @@ pub mod remote_derives {
 
     #[derive(BridgedAsValue)]
     #[bridge(
+        remote = libsignal_net_grpc::proto::chat::common::BadgeSvg,
+        ffi_nice_type = "BadgeSvg",
+        jni_nice_type = "org.signal.libsignal.net.BadgeSvg",
+    )]
+    #[allow(unused)]
+    struct BadgeSvg {
+        light: String,
+        dark: String,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[bridge(
+        ffi_nice_type = "Badge",
+        jni_nice_type = "org.signal.libsignal.net.Badge"
+    )]
+    #[structural_from(libsignal_net_grpc::proto::chat::common::Badge)]
+    pub struct Badge {
+        pub id: String,
+        pub category: String,
+        pub name: String,
+        pub description: String,
+        pub sprites6: BridgeVec<String>,
+        pub svg: String,
+        pub svgs: BridgeVec<libsignal_net_chat::grpc::remote_configuration::BadgeSvg>,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        ffi_nice_type = "TaggedBadges",
+        jni_nice_type = "org.signal.libsignal.net.TaggedBadges"
+    )]
+    pub struct TaggedBadges {
+        pub badges: HashMap<String, Badge>,
+        pub etag: Vec<u8>,
+    }
+    impl From<libsignal_net_chat::grpc::remote_configuration::TaggedBadges> for TaggedBadges {
+        fn from(
+            libsignal_net_chat::grpc::remote_configuration::TaggedBadges{ badges, etag }: libsignal_net_chat::grpc::remote_configuration::TaggedBadges,
+        ) -> Self {
+            TaggedBadges {
+                badges: badges.into_iter().map(|(k, v)| (k, v.into())).collect(),
+                etag,
+            }
+        }
+    }
+    #[derive(BridgedAsValue)]
+    #[bridge(
         remote = libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel,
         ffi_nice_type = "LoginReceiptLevel",
         jni_nice_type = "org.signal.libsignal.net.LoginReceiptLevel",

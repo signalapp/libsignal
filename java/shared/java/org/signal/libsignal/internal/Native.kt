@@ -383,6 +383,13 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_badges(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    etag: ByteArray?,
+  ): CompletableFuture<Object?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_capabilities(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

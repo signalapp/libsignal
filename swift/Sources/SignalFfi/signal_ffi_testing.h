@@ -11,16 +11,6 @@ typedef const SignalTestStream* SignalType_ConstPointer_SignalTestStream;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalTestStream) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalTestStream) == 8);
 typedef struct {
-  SignalCStringPtr* base;
-  size_t length;
-  size_t size_bytes;
-} SignalOwnedBufferOfMaxAlignedCStringPtr;
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedCStringPtr, base) == 0);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedCStringPtr, length) == 8);
-static_assert_64bit(offsetof(SignalOwnedBufferOfMaxAlignedCStringPtr, size_bytes) == 16);
-static_assert_64bit(sizeof(SignalOwnedBufferOfMaxAlignedCStringPtr) == 24);
-static_assert_64bit(alignof(SignalOwnedBufferOfMaxAlignedCStringPtr) == 8);
-typedef struct {
   SignalOwnedBufferOfMaxAlignedCStringPtr chunk;
   SignalFfiBulkPolledStreamTerminationReason termination;
 } SignalTestStreamChunkFfiResult;
@@ -2449,6 +2439,9 @@ SignalFfiError* signal_testing_get_backup_cdn_credentials_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_backup_svr_b_credentials_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_badges_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_capabilities_tests(
