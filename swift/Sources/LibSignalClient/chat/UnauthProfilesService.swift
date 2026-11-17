@@ -5,7 +5,27 @@
 
 import Foundation
 
+public enum UnauthProfileAuthorization: Sendable {
+    /// The unauthenticated access key
+    case accessKey(Data)
+    case groupSend(GroupSendFullToken)
+}
+
 public protocol UnauthProfilesService: Sendable {
+    /// Retrieves profile data.
+    ///
+    /// - Returns: nil if the provided etag is up-to-date
+    /// - Throws:
+    ///   - ``SignalError/profileNotFound(_:)`` if the profile (version) could not be found
+    ///   - ``SignalError/profileCantBeDecoded(_:)`` if the profile failed to decode (e.g. due to encryption or validation errors)
+    ///   - ``SignalError/requestUnauthorized(_:)`` if the authorization fails
+    ///   - the standard Signal network errors
+    func getProfile(
+        aci: Aci,
+        profileKey: ProfileKey,
+        auth: UnauthProfileAuthorization,
+        etag: ProfileEtag?,
+    ) async throws -> FetchedProfile?
     /// Returns a credential to upload a v2 avatar.
     ///
     /// After uploading the avatar, the client
@@ -76,6 +96,22 @@ public protocol UnauthProfilesService: Sendable {
 }
 
 extension UnauthenticatedChatConnection: UnauthProfilesService {
+
+    public func getProfile(
+        aci: Aci,
+        profileKey: ProfileKey,
+        auth: UnauthProfileAuthorization,
+        etag: ProfileEtag?,
+    ) async throws -> FetchedProfile? {
+        return try await NativeNice.UnauthenticatedChatConnection_get_profile(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            aci: aci,
+            profileKey: profileKey,
+            auth: auth,
+            etag: etag,
+        )
+    }
 
     public func getAvatarUploadForm(
         credential: AvatarUploadCredentialPresentation,

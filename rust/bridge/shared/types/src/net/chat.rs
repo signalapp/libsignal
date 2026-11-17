@@ -1263,6 +1263,17 @@ pub mod remote_derives {
 
     use super::*;
 
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::profiles::UnauthProfileAuthorization,
+        ffi_nice_type = "UnauthProfileAuthorization",
+    )]
+    #[allow(unused)]
+    enum UnauthProfileAuthorization {
+        AccessKey([u8; 16]),
+        GroupSend(::zkgroup::groups::GroupSendFullToken),
+    }
+
     #[derive(BridgedAsValue, StructuralFrom)]
     #[bridge(
         arg = false,

@@ -942,6 +942,18 @@ internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
     }
 }
 
+internal enum FixedByteArrayHelper16: FixedByteArrayHelper {
+    public typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
+    )
+    public static func count() -> Int {
+        16
+    }
+    public static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     public typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -1646,6 +1658,23 @@ internal enum TestingUserBasedAuthorization {
     case accessKey(key: Data)
     case groupSendToken(token: Data)
     case unrestricted
+}
+
+internal struct UnauthGetProfileArgs {
+    var inner: GetProfileArgs
+    var auth: UnauthProfileAuthorization
+
+}
+
+internal enum UnauthGetProfileError {
+    case profileNotFound
+    case profileDecodeError(logSafe: String)
+    case failedUnidentifiedAuthorization
+}
+
+internal enum UnauthGetProfileOut {
+    case success(FetchedProfile?)
+    case failure(UnauthGetProfileError)
 }
 
 extension ProfileKeyCredentialRequestError: Equatable {}
@@ -3969,6 +3998,109 @@ internal enum DerivedReturnConverterTestingUserBasedAuthorization: NiceReturnCon
     }
 }
 
+internal enum DerivedReturnConverterUnauthGetProfileArgs: NiceReturnConverter {
+    typealias NiceReturn = UnauthGetProfileArgs
+    typealias FfiReturn = SignalUnauthGetProfileArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalUnauthGetProfileArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let inner = Result { try DerivedReturnConverterGetProfileArgs.convertReturn(consuming: ffiValue.inner) }
+        let auth = Result {
+            try DerivedReturnConverterUnauthProfileAuthorization.convertReturn(consuming: ffiValue.auth)
+        }
+
+        return UnauthGetProfileArgs(inner: try inner.get(), auth: try auth.get())
+    }
+}
+
+internal enum DerivedReturnConverterUnauthGetProfileError: NiceReturnConverter {
+    typealias NiceReturn = UnauthGetProfileError
+    typealias FfiReturn = SignalUnauthGetProfileErrorFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalUnauthGetProfileErrorFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalUnauthGetProfileErrorFfiResultProfileNotFound:
+            return UnauthGetProfileError.profileNotFound
+        case SignalUnauthGetProfileErrorFfiResultProfileDecodeError:
+            let log_safe = Result {
+                try StringConverter.convertReturn(
+                    consuming: ffiValue.profile_decode_error.log_safe
+                )
+            }
+            return UnauthGetProfileError.profileDecodeError(logSafe: try log_safe.get())
+        case SignalUnauthGetProfileErrorFfiResultFailedUnidentifiedAuthorization:
+            return UnauthGetProfileError.failedUnidentifiedAuthorization
+        default:
+            throw SignalError.internalError("Unexpected enum tag for UnauthGetProfileError: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterUnauthGetProfileOut: NiceReturnConverter {
+    typealias NiceReturn = UnauthGetProfileOut
+    typealias FfiReturn = SignalUnauthGetProfileOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalUnauthGetProfileOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalUnauthGetProfileOutFfiResultSuccess:
+            let _0 = Result {
+                try OptionalReturnConverter<
+                    DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult
+                >.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return UnauthGetProfileOut.success(try _0.get())
+        case SignalUnauthGetProfileOutFfiResultFailure:
+            let _0 = Result {
+                try DerivedReturnConverterUnauthGetProfileError.convertReturn(
+                    consuming: ffiValue.failure._0
+                )
+            }
+            return UnauthGetProfileOut.failure(try _0.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for UnauthGetProfileOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterUnauthProfileAuthorization: NiceReturnConverter {
+    typealias NiceReturn = UnauthProfileAuthorization
+    typealias FfiReturn = SignalUnauthProfileAuthorizationFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalUnauthProfileAuthorizationFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalUnauthProfileAuthorizationFfiResultAccessKey:
+            let _0 = Result {
+                try FixedByteArrayConverter<FixedByteArrayHelper16>.convertReturn(
+                    consuming: ffiValue.access_key._0
+                )
+            }
+            return UnauthProfileAuthorization.accessKey(try _0.get())
+        case SignalUnauthProfileAuthorizationFfiResultGroupSend:
+            let _0 = Result {
+                try ByteArrayConverter<GroupSendFullToken>.convertReturn(
+                    consuming: ffiValue.group_send._0
+                )
+            }
+            return UnauthProfileAuthorization.groupSend(try _0.get())
+        default:
+            throw SignalError.internalError("Unexpected enum tag for UnauthProfileAuthorization: \(ffiTag)")
+        }
+    }
+}
+
 internal enum MyNiceTypeEnumNotArgConverterKeepAlive {
     case unit(())
     case single((IdentityArgConverter<Int32>.KeepAlive?))
@@ -6104,6 +6236,22 @@ internal enum NativeTestingNice {
                 }
             }
         return try DataConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_UnauthGetProfileTests() throws -> [GrpcTestCase<
+        UnauthGetProfileArgs, UnauthGetProfileOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterUnauthGetProfileArgs, DerivedReturnConverterUnauthGetProfileOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_unauth_get_profile_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterUnauthGetProfileArgs, DerivedReturnConverterUnauthGetProfileOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_conversion_BridgeVecData32_identity(

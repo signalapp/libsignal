@@ -14,4 +14,5 @@ v0.108.1
   - Added `getAvatarCredential()` (bridged to clients)
   - Bridged `setProfile()` to clients
   - Bridged `getProfile()` (auth) to clients
+  - Bridged `getProfile()` (unauth) to clients
 

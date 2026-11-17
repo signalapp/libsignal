@@ -725,7 +725,7 @@ pub(super) mod test_cases {
     use crate::grpc::GrpcTestCase;
     use crate::grpc::profiles::{
         AuthGetProfileError, ProfileFieldWithMaxLength, SetProfileError, UnauthGetProfileError,
-        UnauthProfileAuthentication,
+        UnauthProfileAuthorization,
     };
 
     /// The requirements from profile.proto
@@ -800,7 +800,7 @@ pub(super) mod test_cases {
         Vec<GrpcTestCase<GetProfileArgs, GetProfileRequest, GetProfileResponse, GetProfileOut>>;
     pub struct UnauthGetProfileArgs {
         pub inner: GetProfileArgs,
-        pub auth: UnauthProfileAuthentication,
+        pub auth: UnauthProfileAuthorization,
     }
     #[allow(clippy::large_enum_variant)] // This is just for testing
     pub enum UnauthGetProfileOut {
@@ -1072,7 +1072,7 @@ pub(super) mod test_cases {
                 method: method.into(),
                 request: UnauthGetProfileArgs {
                     inner: request,
-                    auth: UnauthProfileAuthentication::UnidentifiedAccessKey([0; 16]),
+                    auth: UnauthProfileAuthorization::AccessKey([0; 16]),
                 },
                 request_grpc: GetProfileAnonymousRequest {
                     request: Some(request_grpc),
@@ -1126,12 +1126,12 @@ pub(super) mod test_cases {
         for (name, auth, grpc_auth) in [
             (
                 "UAK",
-                UnauthProfileAuthentication::UnidentifiedAccessKey([4; _]),
+                UnauthProfileAuthorization::AccessKey([4; _]),
                 get_profile_anonymous_request::Authentication::UnidentifiedAccessKey(vec![4; 16]),
             ),
             (
                 "group send full token",
-                UnauthProfileAuthentication::GroupSendFullToken(gsk.clone()),
+                UnauthProfileAuthorization::GroupSend(gsk.clone()),
                 get_profile_anonymous_request::Authentication::GroupSendToken(zkgroup::serialize(
                     &gsk,
                 )),

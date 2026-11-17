@@ -15,7 +15,8 @@ import java.io.IOException
  */
 public class ProfileCantBeDecodedException :
   IOException,
-  AuthGetProfileError {
+  AuthGetProfileError,
+  UnauthGetProfileErrorException {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }

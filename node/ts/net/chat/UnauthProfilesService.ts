@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { ServiceId } from '../../Address.js';
+import { Aci, ServiceId } from '../../Address.js';
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
 import type {
   ExpiringProfileKeyCredential,
+  GroupSendFullToken,
   ProfileKeyCredentialRequestContext,
   ServerPublicParams,
 } from '../../zkgroup/index.js';
@@ -15,16 +16,25 @@ import type {
   StandardNetworkError,
   RequestUnauthorizedError,
   ProfileNotFound,
+  ProfileCantBeDecoded,
   InvalidAvatarUploadCredentialPresentation,
 } from '../../Errors.js';
 import type { S3UploadForm } from '../Chat.js';
 import type { CdnUrl } from './CdnUrl.js';
 import * as zkgroup from '../../zkgroup/index.js';
+import type { Bytes } from '@signalapp/types';
+import type { FetchedProfile, ProfileEtag } from './Profile';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface UnauthenticatedChatConnection extends UnauthProfilesService {}
 }
+
+export type UnauthProfileAuthorization =
+  | {
+      accessKey: Bytes;
+    }
+  | GroupSendFullToken;
 
 export interface UnauthProfilesService {
   /**
@@ -120,6 +130,25 @@ export interface UnauthProfilesService {
     },
     options?: RequestOptions
   ) => Promise<S3UploadForm>;
+  /**
+   * Retrieves profile data.
+   *
+   * @returns null if the provided etag is up-to-date.
+   * @throws {ProfileNotFound} if the profile (version) could not be found
+   * @throws {ProfileCantBeDecoded} if the profile failed to decode (e.g. due to
+   * encryption or validation errors)
+   * @throws {RequestUnauthorizedError} if the authorization fails
+   * @throws {StandardNetworkError}
+   */
+  getProfile: (
+    request: {
+      aci: Aci;
+      profileKey: zkgroup.ProfileKey;
+      auth: UnauthProfileAuthorization;
+      etag: ProfileEtag | null;
+    },
+    options?: RequestOptions
+  ) => Promise<FetchedProfile | null>;
 }
 
 UnauthenticatedChatConnection.prototype.accountExists = async function (
@@ -202,5 +231,21 @@ UnauthenticatedChatConnection.prototype.getAvatarUploadForm = async function (
     chat: this._chatService,
     credential,
     uploadLength,
+  });
+};
+
+UnauthenticatedChatConnection.prototype.getProfile = async function (
+  { aci, profileKey, auth, etag },
+  options?: RequestOptions
+): Promise<FetchedProfile | null> {
+  return await NativeNice.UnauthenticatedChatConnection_get_profile({
+    asyncContext: this._asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this._chatService,
+    aci,
+    profileKey,
+    auth:
+      'accessKey' in auth ? { accessKey: auth.accessKey } : { groupSend: auth },
+    etag,
   });
 };

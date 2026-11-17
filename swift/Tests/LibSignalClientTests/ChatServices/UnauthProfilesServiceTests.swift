@@ -146,6 +146,48 @@ class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesSe
             }
         )
     }
+
+    func testGetProfile() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_UnauthGetProfileTests(),
+            invoke: { api, args in
+                let inner = args.inner
+                return try await api.getProfile(
+                    aci: inner.aci,
+                    profileKey: inner.profileKey,
+                    auth: args.auth,
+                    etag: inner.etag,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .failure(let err):
+                    switch err {
+                    case .profileDecodeError(_):
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.profileCantBeDecoded(_) {
+                        }
+                    case .profileNotFound:
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.profileNotFound(_) {
+                        }
+                    case .failedUnidentifiedAuthorization:
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.requestUnauthorized(_) {
+                        }
+                    }
+                case .success(let fetchedProfile):
+                    XCTAssertEqual(fetchedProfile, try actual.get())
+                }
+            }
+        )
+    }
 }
 
 #endif

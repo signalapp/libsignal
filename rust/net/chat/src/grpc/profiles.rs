@@ -715,9 +715,10 @@ impl<T: GrpcServiceProvider> Auth<T> {
 }
 
 #[derive(Clone)]
-pub enum UnauthProfileAuthentication {
-    UnidentifiedAccessKey([u8; 16]),
-    GroupSendFullToken(GroupSendFullToken),
+pub enum UnauthProfileAuthorization {
+    /// An unidentified access key
+    AccessKey([u8; 16]),
+    GroupSend(GroupSendFullToken),
 }
 
 impl std::fmt::Display for Redact<GetProfileAnonymousRequest> {
@@ -919,7 +920,7 @@ impl<T: GrpcServiceProvider> Unauth<T> {
         &self,
         aci: Aci,
         profile_key: &ProfileKey,
-        auth: &UnauthProfileAuthentication,
+        auth: &UnauthProfileAuthorization,
         etag: Option<ProfileEtag>,
     ) -> Result<Option<FetchedProfile>, RequestError<UnauthGetProfileError>> {
         let version = profile_key.get_profile_key_version(aci);
@@ -930,12 +931,12 @@ impl<T: GrpcServiceProvider> Unauth<T> {
                 etag: etag.map(|etag| etag.to_vec()).unwrap_or_default(),
             }),
             authentication: match auth {
-                UnauthProfileAuthentication::UnidentifiedAccessKey(uak) => Some(
+                UnauthProfileAuthorization::AccessKey(uak) => Some(
                     get_profile_anonymous_request::Authentication::UnidentifiedAccessKey(
                         uak.to_vec(),
                     ),
                 ),
-                UnauthProfileAuthentication::GroupSendFullToken(group_send_token) => Some(
+                UnauthProfileAuthorization::GroupSend(group_send_token) => Some(
                     get_profile_anonymous_request::Authentication::GroupSendToken(
                         zkgroup::serialize(&group_send_token),
                     ),

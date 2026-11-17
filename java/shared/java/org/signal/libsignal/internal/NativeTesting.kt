@@ -785,6 +785,9 @@ public object NativeTesting {
   ): CompletableFuture<Int>
 
   @JvmStatic
+  public external fun TESTING_UnauthGetProfileTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_conversion_BridgeVecData32_identity(x: Array<*>): Array<*>
 
   @JvmStatic

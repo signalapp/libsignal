@@ -23,7 +23,9 @@ use libsignal_net_chat::api::purchase::ChargeFailure;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
 use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
-use libsignal_net_chat::grpc::profiles::{AuthGetProfileError, SetProfileError};
+use libsignal_net_chat::grpc::profiles::{
+    AuthGetProfileError, SetProfileError, UnauthGetProfileError,
+};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
@@ -1582,6 +1584,23 @@ impl IntoFfiError for AuthGetProfileError {
                 AuthGetProfileError::ProfileNotFound => SignalErrorCode::ProfileNotFound,
                 AuthGetProfileError::ProfileDecodeError { log_safe: _ } => {
                     SignalErrorCode::ProfileCantBeDecoded
+                }
+            },
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for UnauthGetProfileError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            match self {
+                UnauthGetProfileError::ProfileNotFound => SignalErrorCode::ProfileNotFound,
+                UnauthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                    SignalErrorCode::ProfileCantBeDecoded
+                }
+                UnauthGetProfileError::FailedUnidentifiedAuthorization => {
+                    SignalErrorCode::RequestUnauthorized
                 }
             },
             self.to_string(),

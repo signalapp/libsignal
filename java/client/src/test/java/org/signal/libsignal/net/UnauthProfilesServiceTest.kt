@@ -13,6 +13,8 @@ import org.signal.libsignal.internal.GetProfileKeyCredentialOut
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.ProfileKeyCredentialRequestError
 import org.signal.libsignal.internal.TokioAsyncContext
+import org.signal.libsignal.internal.UnauthGetProfileError
+import org.signal.libsignal.internal.UnauthGetProfileOut
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.zkgroup.ServerPublicParams
 import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredential
@@ -22,6 +24,7 @@ import kotlin.arrayOf
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import org.signal.libsignal.internal.UnauthProfileAuthorization as UnauthProfileAuthorizationInternal
 
 class UnauthProfilesServiceTest {
   @Test
@@ -177,6 +180,55 @@ class UnauthProfilesServiceTest {
               actual
                 .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
             is GetAvatarUploadFormOut.Success -> assertEquals(expected._0, actual.assertSuccess())
+          }
+        },
+      )
+    }
+  }
+
+  @Test
+  fun testGetProfile() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_UnauthGetProfileTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.getProfile(
+            aci = req.inner.aci,
+            profileKey = req.inner.profileKey,
+            auth =
+              when (req.auth) {
+                is UnauthProfileAuthorizationInternal.GroupSend ->
+                  UnauthProfileAuthorization
+                    .GroupSend(
+                      req.auth._0,
+                    )
+                is UnauthProfileAuthorizationInternal.AccessKey ->
+                  UnauthProfileAuthorization
+                    .AccessKey(
+                      req.auth._0,
+                    )
+              },
+            etag = req.inner.etag,
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is UnauthGetProfileOut.Failure ->
+              when (expected._0) {
+                is UnauthGetProfileError.ProfileDecodeError ->
+                  actual.assertNonSuccess<_, _, ProfileCantBeDecodedException>()
+                UnauthGetProfileError.ProfileNotFound ->
+                  actual.assertNonSuccess<_, _, ProfileNotFoundException>()
+                UnauthGetProfileError.FailedUnidentifiedAuthorization ->
+                  actual
+                    .assertNonSuccess<_, _, RequestUnauthorizedException>()
+              }
+            is UnauthGetProfileOut.Success ->
+              assertEquals(expected._0, actual.assertSuccess())
           }
         },
       )

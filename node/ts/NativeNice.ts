@@ -28,6 +28,7 @@ import type {
   ArgFfiMyTestStruct,
   ArgFfiPaymentProviderInternal,
   ArgFfiProfile,
+  ArgFfiUnauthProfileAuthorization,
   ReturnFfiAccountEntitlements,
   ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
@@ -156,6 +157,10 @@ import type {
   ReturnFfiTestStreamChunk,
   ReturnFfiTestingAnySignedPreKey,
   ReturnFfiTestingUserBasedAuthorization,
+  ReturnFfiUnauthGetProfileArgs,
+  ReturnFfiUnauthGetProfileError,
+  ReturnFfiUnauthGetProfileOut,
+  ReturnFfiUnauthProfileAuthorization,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
@@ -1000,6 +1005,34 @@ export type TestingUserBasedAuthorization =
       groupSendToken: Bytes;
     }
   | 'unrestricted';
+
+export type UnauthGetProfileArgs = {
+  inner: GetProfileArgs;
+  auth: UnauthProfileAuthorization;
+};
+
+export type UnauthGetProfileError =
+  | 'profileNotFound'
+  | {
+      profileDecodeError: string;
+    }
+  | 'failedUnidentifiedAuthorization';
+
+export type UnauthGetProfileOut =
+  | {
+      success: FetchedProfile | null;
+    }
+  | {
+      failure: UnauthGetProfileError;
+    };
+
+export type UnauthProfileAuthorization =
+  | {
+      accessKey: Bytes;
+    }
+  | {
+      groupSend: zkgroup.GroupSendFullToken;
+    };
 
 export function returnConverterAccountEntitlements(
   ffiInput: Native.ReturnFfiAccountEntitlements
@@ -2958,6 +2991,74 @@ export function returnConverterTestingUserBasedAuthorization(
   }
 }
 
+export function returnConverterUnauthGetProfileArgs(
+  ffiInput: Native.ReturnFfiUnauthGetProfileArgs
+): UnauthGetProfileArgs {
+  return {
+    inner: returnConverterGetProfileArgs(ffiInput.inner),
+    auth: returnConverterUnauthProfileAuthorization(ffiInput.auth),
+  };
+}
+
+export function returnConverterUnauthGetProfileError(
+  ffiInput: Native.ReturnFfiUnauthGetProfileError
+): UnauthGetProfileError {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'profileNotFound';
+    case 1:
+      return {
+        profileDecodeError: identity(ffiInput.log_safe),
+      };
+    case 2:
+      return 'failedUnidentifiedAuthorization';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for UnauthGetProfileError');
+  }
+}
+
+export function returnConverterUnauthGetProfileOut(
+  ffiInput: Native.ReturnFfiUnauthGetProfileOut
+): UnauthGetProfileOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: liftNull(returnConverterFetchedProfile)(ffiInput._0),
+      };
+    case 1:
+      return {
+        failure: returnConverterUnauthGetProfileError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for UnauthGetProfileOut');
+  }
+}
+
+export function returnConverterUnauthProfileAuthorization(
+  ffiInput: Native.ReturnFfiUnauthProfileAuthorization
+): UnauthProfileAuthorization {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        accessKey: identity(ffiInput._0),
+      };
+    case 1:
+      return {
+        groupSend: ((x: Bytes) => new zkgroup.GroupSendFullToken(x))(
+          ffiInput._0
+        ),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for UnauthProfileAuthorization'
+      );
+  }
+}
+
 export function argConverterBadgeVisibility(
   niceInput: BadgeVisibility
 ): Native.ArgFfiBadgeVisibility {
@@ -3323,6 +3424,27 @@ export function argConverterProfile(niceInput: Profile): Native.ArgFfiProfile {
     payment_address: liftNull(identity)(payment_address),
     badge_ids: ((arr: Array<string>) => arr.map(identity))(badge_ids),
   };
+}
+
+export function argConverterUnauthProfileAuthorization(
+  niceInput: UnauthProfileAuthorization
+): Native.ArgFfiUnauthProfileAuthorization {
+  if ('accessKey' in niceInput) {
+    return {
+      __type: 0,
+      _0: identity(niceInput.accessKey),
+    };
+  }
+
+  if ('groupSend' in niceInput) {
+    return {
+      __type: 1,
+      _0: ByteArray.prototype.getContents.call(niceInput.groupSend),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on UnauthProfileAuthorization argument');
 }
 
 export async function AuthenticatedChatConnection_answer_challenge({
@@ -5433,6 +5555,15 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
   );
 }
 
+export function TESTING_UnauthGetProfileTests(): Array<
+  GrpcTestCase<UnauthGetProfileArgs, UnauthGetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterUnauthGetProfileArgs,
+    returnConverterUnauthGetProfileOut
+  )(Native.TESTING_UnauthGetProfileTests());
+}
+
 export function TESTING_conversion_BridgeVecData32_identity({
   x: x,
 }: {
@@ -6836,6 +6967,37 @@ export async function UnauthenticatedChatConnection_get_avatar_upload_form({
         identity(chat),
         ByteArray.prototype.getContents.call(credential),
         identity(upload_length)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_get_profile({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  profileKey: profile_key,
+  auth: auth,
+  etag: etag,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  auth: UnauthProfileAuthorization;
+  etag: Bytes | null;
+}): Promise<FetchedProfile | null> {
+  return liftNull(returnConverterFetchedProfile)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_get_profile(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key),
+        argConverterUnauthProfileAuthorization(auth),
+        liftNull(identity)(etag)
       )
     )
   );

@@ -1264,6 +1264,43 @@ export type ReturnFfiTestingUserBasedAuthorization =
       __type: 2;
     };
 
+export type ReturnFfiUnauthGetProfileArgs = {
+  inner: ReturnFfiGetProfileArgs;
+  auth: ReturnFfiUnauthProfileAuthorization;
+};
+
+export type ReturnFfiUnauthGetProfileError =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      log_safe: string;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiUnauthGetProfileOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiFetchedProfile | null;
+    }
+  | {
+      __type: 1;
+      _0: ReturnFfiUnauthGetProfileError;
+    };
+
+export type ReturnFfiUnauthProfileAuthorization =
+  | {
+      __type: 0;
+      _0: Bytes;
+    }
+  | {
+      __type: 1;
+      _0: Bytes;
+    };
+
 export type ArgFfiBadgeVisibility =
   | {
       __type: 0;
@@ -1451,6 +1488,16 @@ export type ArgFfiProfile = {
   payment_address: Bytes | null;
   badge_ids: Array<string>;
 };
+
+export type ArgFfiUnauthProfileAuthorization =
+  | {
+      __type: 0;
+      _0: Bytes;
+    }
+  | {
+      __type: 1;
+      _0: Bytes;
+    };
 
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
@@ -3908,6 +3955,9 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_UnauthGetProfileTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiUnauthGetProfileArgs, ReturnFfiUnauthGetProfileOut>
+  >;
   TESTING_conversion_BridgeVecData32_identity: (
     x: Array<Bytes>
   ) => Array<Bytes>;
@@ -4254,6 +4304,14 @@ type NativeFunctions = {
     target: Bytes,
     device: number
   ) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_profile: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    aci: Bytes,
+    profile_key: Bytes,
+    auth: ArgFfiUnauthProfileAuthorization,
+    etag: Bytes | null
+  ) => CancellablePromise<ReturnFfiFetchedProfile | null>;
   UnauthenticatedChatConnection_get_profile_key_credential: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -5127,6 +5185,7 @@ const {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_UnauthGetProfileTests,
   TESTING_conversion_BridgeVecData32_identity,
   TESTING_conversion_BridgeVecData32_identity_async,
   TESTING_conversion_BridgeVecData32_to_string,
@@ -5227,6 +5286,7 @@ const {
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
+  UnauthenticatedChatConnection_get_profile,
   UnauthenticatedChatConnection_get_profile_key_credential,
   UnauthenticatedChatConnection_get_subscription_receipt_credential,
   UnauthenticatedChatConnection_info,
@@ -6005,6 +6065,7 @@ export {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_UnauthGetProfileTests,
   TESTING_conversion_BridgeVecData32_identity,
   TESTING_conversion_BridgeVecData32_identity_async,
   TESTING_conversion_BridgeVecData32_to_string,
@@ -6105,6 +6166,7 @@ export {
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
+  UnauthenticatedChatConnection_get_profile,
   UnauthenticatedChatConnection_get_profile_key_credential,
   UnauthenticatedChatConnection_get_subscription_receipt_credential,
   UnauthenticatedChatConnection_info,

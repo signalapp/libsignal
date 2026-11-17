@@ -4349,6 +4349,25 @@ static_assert_64bit(offsetof(SignalProfileFfiArg, badge_ids) == 80);
 static_assert_64bit(sizeof(SignalProfileFfiArg) == 96);
 static_assert_64bit(alignof(SignalProfileFfiArg) == 8);
 typedef enum {
+  SignalUnauthProfileAuthorizationFfiArgAccessKey,
+  SignalUnauthProfileAuthorizationFfiArgGroupSend,
+} SignalUnauthProfileAuthorizationFfiArg_Tag;
+typedef struct {
+  const SignalType_FixedArray16_uint8_t* _0;
+} SignalUnauthProfileAuthorizationFfiArgSignalAccessKey_Body;
+typedef struct {
+  SignalBorrowedBuffer _0;
+} SignalUnauthProfileAuthorizationFfiArgSignalGroupSend_Body;
+typedef struct {
+  SignalUnauthProfileAuthorizationFfiArg_Tag tag;
+  union {
+    SignalUnauthProfileAuthorizationFfiArgSignalAccessKey_Body access_key;
+    SignalUnauthProfileAuthorizationFfiArgSignalGroupSend_Body group_send;
+  };
+} SignalUnauthProfileAuthorizationFfiArg;
+static_assert_64bit(sizeof(SignalUnauthProfileAuthorizationFfiArg) == 24);
+static_assert_64bit(alignof(SignalUnauthProfileAuthorizationFfiArg) == 8);
+typedef enum {
   SignalCiphertextMessageTypeWhisper = 2,
   SignalCiphertextMessageTypePreKey = 3,
   SignalCiphertextMessageTypeSenderKey = 7,
@@ -7615,6 +7634,15 @@ SignalFfiError* signal_unauthenticated_chat_connection_get_pre_keys_unrestricted
   SignalConstPointerUnauthenticatedChatConnection chat,
   const SignalType_FixedArray17_uint8_t* target,
   int32_t device
+);
+SignalFfiError* signal_unauthenticated_chat_connection_get_profile(
+  SignalCPromiseOptionalOfFetchedProfileFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  const SignalType_FixedArray17_uint8_t* aci,
+  SignalBorrowedBuffer profile_key,
+  SignalUnauthProfileAuthorizationFfiArg auth,
+  const SignalType_FixedArray10_uint8_t* etag
 );
 SignalFfiError* signal_unauthenticated_chat_connection_get_profile_key_credential(
   SignalCPromisec_uchar153* promise,

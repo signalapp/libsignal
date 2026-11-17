@@ -180,4 +180,64 @@ describe('UnauthProfilesService', () => {
       }
     );
   });
+
+  describe('getProfile', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_UnauthGetProfileTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        {
+          inner: { aci, profileKey, etag },
+          auth,
+        }: NativeNice.UnauthGetProfileArgs,
+        resp: NativeNice.UnauthGetProfileOut
+      ) => {
+        const out = chat.getProfile({
+          aci,
+          profileKey,
+          auth:
+            'accessKey' in auth
+              ? { accessKey: auth.accessKey }
+              : auth.groupSend,
+          etag,
+        });
+        if ('success' in resp) {
+          const profile = await out;
+          expect(profile).to.deep.equal(resp.success);
+          // chai will assume that all handles are equal, so we need to manually
+          // compare the identity keys
+          expect(profile?.identityKey?.serialize()).to.deep.equal(
+            resp.success?.identityKey?.serialize()
+          );
+        } else if ('failure' in resp) {
+          if (resp.failure === 'profileNotFound') {
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.ProfileNotFound,
+              });
+          } else if (resp.failure === 'failedUnidentifiedAuthorization') {
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.RequestUnauthorized,
+              });
+          } else if ('profileDecodeError' in resp.failure) {
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.ProfileCantBeDecoded,
+              });
+          } else {
+            resp.failure satisfies never;
+            throw new Error('Unreachable!');
+          }
+        } else {
+          resp satisfies never;
+          throw new Error('Unreachable!');
+        }
+      }
+    );
+  });
 });

@@ -521,6 +521,16 @@ public data class TaggedBadges(
 
 */
 
+public sealed class UnauthProfileAuthorization {
+  public data class AccessKey(
+    public val _0: ByteArray,
+  ) : UnauthProfileAuthorization()
+
+  public data class GroupSend(
+    public val _0: org.signal.libsignal.zkgroup.groupsend.GroupSendFullToken,
+  ) : UnauthProfileAuthorization()
+}
+
 public object AccountEntitlements_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1952,6 +1962,50 @@ public fun org.signal.libsignal.net.Profile.toFfiArgType(): Profile_FfiArgType =
   )
 
 public fun org.signal.libsignal.net.Profile.toFfiArgTypeObject(): Object = convertToObject(this.toFfiArgType())
+
+public sealed class UnauthProfileAuthorization_FfiArgType
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class UnauthProfileAuthorization_AccessKey_FfiArgType : UnauthProfileAuthorization_FfiArgType {
+  @CalledFromNative
+  internal val _0: Any?
+  internal constructor(
+    _0: Any?,
+  ) {
+    this._0 = _0
+  }
+}
+
+public fun UnauthProfileAuthorization.AccessKey.toFfiArgType(): UnauthProfileAuthorization_AccessKey_FfiArgType =
+  UnauthProfileAuthorization_AccessKey_FfiArgType(
+    _0 = identity(_0),
+  )
+
+@CalledFromNative
+@Suppress("ktlint:standard:backing-property-naming")
+public class UnauthProfileAuthorization_GroupSend_FfiArgType : UnauthProfileAuthorization_FfiArgType {
+  @CalledFromNative
+  internal val _0: Any?
+  internal constructor(
+    _0: Any?,
+  ) {
+    this._0 = _0
+  }
+}
+
+public fun UnauthProfileAuthorization.GroupSend.toFfiArgType(): UnauthProfileAuthorization_GroupSend_FfiArgType =
+  UnauthProfileAuthorization_GroupSend_FfiArgType(
+    _0 = (org.signal.libsignal.zkgroup.groupsend.GroupSendFullToken::getInternalContentsForJNI)(_0),
+  )
+
+public fun UnauthProfileAuthorization.toFfiArgTypeObject(): Object =
+  convertToObject(
+    when (this) {
+      is UnauthProfileAuthorization.AccessKey -> this.toFfiArgType()
+      is UnauthProfileAuthorization.GroupSend -> this.toFfiArgType()
+    },
+  )
 
 public object NativeNice {
   public fun AuthenticatedChatConnection_answer_challenge(
@@ -3685,6 +3739,42 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.net.S3UploadForm>(it) }
+  }
+
+  public fun UnauthenticatedChatConnection_get_profile(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    aci: org.signal.libsignal.protocol.ServiceId.Aci,
+    profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+    auth: org.signal.libsignal.internal.UnauthProfileAuthorization,
+    etag: ByteArray?,
+  ): CompletableFuture<org.signal.libsignal.net.FetchedProfile?> {
+    val ffi_chat = identity(chat)
+    val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
+    val ffi_profile_key =
+      (org.signal.libsignal.zkgroup.profiles.ProfileKey::getInternalContentsForJNI)(profileKey)
+    val ffi_auth = (org.signal.libsignal.internal.UnauthProfileAuthorization::toFfiArgTypeObject)(auth)
+    val ffi_etag = identity(etag)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_get_profile(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_aci,
+          ffi_profile_key,
+          ffi_auth,
+          ffi_etag,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply {
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.FetchedProfile>(it) }
+          }
+        )(it)
+      }
   }
 
   public fun UnauthenticatedChatConnection_get_profile_key_credential(

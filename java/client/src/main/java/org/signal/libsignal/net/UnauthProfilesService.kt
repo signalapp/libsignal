@@ -16,6 +16,7 @@ import org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation
 import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredential
 import org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialRequestContext
 import java.io.IOException
+import org.signal.libsignal.internal.UnauthProfileAuthorization as UnauthProfileAuthorizationInternal
 
 /** Either [`RequestUnauthorizedException`] or [`ProfileNotFoundException`] */
 public sealed interface GetProfileKeyCredentialFailure : BadRequestError
@@ -29,10 +30,37 @@ public sealed interface GetProfileKeyCredentialFailure : BadRequestError
 public class ProfileNotFoundException :
   IOException,
   GetProfileKeyCredentialFailure,
-  AuthGetProfileError {
+  AuthGetProfileError,
+  UnauthGetProfileErrorException {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }
+}
+
+public sealed interface UnauthGetProfileErrorException : BadRequestError
+
+public sealed class UnauthProfileAuthorization {
+  public data class AccessKey(
+    public val unidentifiedAccessKey: ByteArray,
+  ) : UnauthProfileAuthorization() {
+    // Due to ByteArray
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+
+      other as AccessKey
+
+      if (!unidentifiedAccessKey.contentEquals(other.unidentifiedAccessKey)) return false
+
+      return true
+    }
+
+    override fun hashCode(): Int = unidentifiedAccessKey.contentHashCode()
+  }
+
+  public data class GroupSend(
+    public val token: org.signal.libsignal.zkgroup.groupsend.GroupSendFullToken,
+  ) : UnauthProfileAuthorization()
 }
 
 public class UnauthProfilesService(
@@ -181,6 +209,48 @@ public class UnauthProfilesService(
           onError = { err ->
             err.toRequestResult<InvalidAvatarUploadCredentialPresentationException>()
           },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Retrieves profile data.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError]. This method can also result in a [ProfileNotFoundException]
+   * if the profile (version) cannot be found. A [ProfileCantBeDecodedException] will result if the
+   * profile failed to decode (e.g. due to encryption or validation errors). A [RequestUnauthorizedException] will
+   * result if the [UnauthProfileAuthorization] failed.
+   *
+   * @return null if the provided etag is up-to-date.
+   */
+  public fun getProfile(
+    aci: ServiceId.Aci,
+    profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+    auth: UnauthProfileAuthorization,
+    etag: ProfileEtag?,
+  ): CompletableFuture<RequestResult<FetchedProfile?, UnauthGetProfileErrorException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_get_profile(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          aci = aci,
+          profileKey = profileKey,
+          // Ideally we'd have an option to override the field names of the nice-generated structure. But this is
+          // quicker
+          auth =
+            when (auth) {
+              is UnauthProfileAuthorization.GroupSend ->
+                UnauthProfileAuthorizationInternal.GroupSend(auth.token)
+              is UnauthProfileAuthorization.AccessKey ->
+                UnauthProfileAuthorizationInternal.AccessKey(auth.unidentifiedAccessKey)
+            },
+          etag = etag,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult<UnauthGetProfileErrorException>() },
         )
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))

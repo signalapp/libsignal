@@ -702,6 +702,31 @@ public sealed class TestingUserBasedAuthorization {
   public data object Unrestricted : TestingUserBasedAuthorization()
 }
 
+public data class UnauthGetProfileArgs(
+  public val inner: org.signal.libsignal.internal.GetProfileArgs,
+  public val auth: org.signal.libsignal.internal.UnauthProfileAuthorization,
+)
+
+public sealed class UnauthGetProfileError {
+  public data object ProfileNotFound : UnauthGetProfileError()
+
+  public data class ProfileDecodeError(
+    public val logSafe: String,
+  ) : UnauthGetProfileError()
+
+  public data object FailedUnidentifiedAuthorization : UnauthGetProfileError()
+}
+
+public sealed class UnauthGetProfileOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.net.FetchedProfile?,
+  ) : UnauthGetProfileOut()
+
+  public data class Failure(
+    public val _0: org.signal.libsignal.internal.UnauthGetProfileError,
+  ) : UnauthGetProfileOut()
+}
+
 public object AnswerChallengeArgs_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -2761,6 +2786,100 @@ public object TestingUserBasedAuthorization_Unrestricted_ReturnConverter {
   internal fun fromNative(): Any? = TestingUserBasedAuthorization.Unrestricted
 }
 
+public object UnauthGetProfileArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    inner: Any?,
+    auth: Any?,
+  ): Any? =
+    UnauthGetProfileArgs(
+      inner =
+        downcastFromObject<org.signal.libsignal.internal.GetProfileArgs>(inner as Object),
+      auth =
+        downcastFromObject<org.signal.libsignal.internal.UnauthProfileAuthorization>(auth as Object),
+    )
+}
+
+public object UnauthGetProfileError_ProfileNotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = UnauthGetProfileError.ProfileNotFound
+}
+
+public object UnauthGetProfileError_ProfileDecodeError_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(log_safe: Any?): Any? =
+    UnauthGetProfileError.ProfileDecodeError(
+      logSafe =
+        identity(log_safe as String),
+    )
+}
+
+public object UnauthGetProfileError_FailedUnidentifiedAuthorization_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = UnauthGetProfileError.FailedUnidentifiedAuthorization
+}
+
+public object UnauthGetProfileOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    UnauthGetProfileOut.Success(
+      _0 =
+        (
+          { x: Object? ->
+            x?.let { downcastFromObject<org.signal.libsignal.net.FetchedProfile>(it) }
+          }
+        )(_0 as Object?),
+    )
+}
+
+public object UnauthGetProfileOut_Failure_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    UnauthGetProfileOut.Failure(
+      _0 =
+        downcastFromObject<org.signal.libsignal.internal.UnauthGetProfileError>(_0 as Object),
+    )
+}
+
+public object UnauthProfileAuthorization_AccessKey_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    UnauthProfileAuthorization.AccessKey(
+      _0 =
+        identity(_0 as ByteArray),
+    )
+}
+
+public object UnauthProfileAuthorization_GroupSend_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    UnauthProfileAuthorization.GroupSend(
+      _0 =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.groupsend
+              .GroupSendFullToken(x)
+          }
+        )(_0 as ByteArray),
+    )
+}
+
 public sealed class MyNiceTypeEnumNot_FfiArgType
 
 @CalledFromNative
@@ -4001,6 +4120,16 @@ public object NativeTestingNice {
       }
     return ffiOut
       .makeCancelable(asyncCtx)
+  }
+
+  public fun TESTING_UnauthGetProfileTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.UnauthGetProfileArgs, org.signal.libsignal.internal.UnauthGetProfileOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_UnauthGetProfileTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.UnauthGetProfileArgs, org.signal.libsignal.internal.UnauthGetProfileOut>({
+        downcastFromObject<org.signal.libsignal.internal.UnauthGetProfileArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.UnauthGetProfileOut>(it) })(ffiOut)
   }
 
   public fun TESTING_conversion_BridgeVecData32_identity(x: List<ByteArray>): List<ByteArray> {

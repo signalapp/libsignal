@@ -527,7 +527,8 @@ mod remote_derives {
     use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
     use libsignal_net_chat::grpc::profiles::{
-        CdnUrl, ProfileDataHash, ProfileEtag, test_cases as profile_test_cases,
+        CdnUrl, ProfileDataHash, ProfileEtag, UnauthProfileAuthorization,
+        test_cases as profile_test_cases,
     };
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
     use libsignal_protocol::{ServiceId, Timestamp};
@@ -1496,6 +1497,46 @@ mod remote_derives {
         Success(ProfileDataHash),
         Failure(SetProfileError),
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::UnauthGetProfileArgs)]
+    #[bridge(arg = false)]
+    pub struct UnauthGetProfileArgs {
+        pub inner: GetProfileArgs,
+        pub auth: UnauthProfileAuthorization,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    #[allow(clippy::large_enum_variant)] // This is just for testing
+    pub enum UnauthGetProfileOut {
+        Success(Option<libsignal_bridge_types::net::chat::remote_derives::FetchedProfile>),
+        Failure(UnauthGetProfileError),
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::UnauthGetProfileOut>
+        for UnauthGetProfileOut
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::profiles::test_cases::UnauthGetProfileOut,
+        ) -> Self {
+            match value {
+                profile_test_cases::UnauthGetProfileOut::Success(fetched_profile) => {
+                    Self::Success(fetched_profile.map(Into::into))
+                }
+                profile_test_cases::UnauthGetProfileOut::Failure(unauth_get_profile_error) => {
+                    Self::Failure(unauth_get_profile_error.into())
+                }
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::UnauthGetProfileError)]
+    pub enum UnauthGetProfileError {
+        ProfileNotFound,
+        ProfileDecodeError { log_safe: String },
+        FailedUnidentifiedAuthorization,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1926,4 +1967,10 @@ fn TESTING_ProfileFieldMaxLengths() -> BridgeVec<(ProfileFieldWithMaxLength, i32
 fn TESTING_GetProfileTests()
 -> GrpcTestCases<remote_derives::GetProfileArgs, remote_derives::GetProfileOut> {
     libsignal_net_chat::grpc::profiles::test_cases::get_profile_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_UnauthGetProfileTests()
+-> GrpcTestCases<remote_derives::UnauthGetProfileArgs, remote_derives::UnauthGetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_profile_unauth_test_cases().into()
 }

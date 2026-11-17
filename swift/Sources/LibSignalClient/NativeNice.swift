@@ -3545,6 +3545,18 @@ internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
     }
 }
 
+internal enum FixedByteArrayHelper16: FixedByteArrayHelper {
+    typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
+    )
+    static func count() -> Int {
+        16
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
@@ -4148,6 +4160,16 @@ internal struct TaggedBadges {
     var badges: [String: Badge]
     var etag: Data
 
+}
+
+*/
+
+/*
+// UnauthProfileAuthorization
+
+internal enum UnauthProfileAuthorization {
+    case accessKey(Data)
+    case groupSend(GroupSendFullToken)
 }
 
 */
@@ -6254,6 +6276,119 @@ internal enum DerivedArgConverterProfile: NiceArgConverter {
             }
         }
 
+    }
+}
+
+internal enum UnauthProfileAuthorizationArgConverterKeepAlive {
+    case accessKey((FixedByteArrayConverter<FixedByteArrayHelper16>.KeepAlive?))
+    case groupSend((ByteArrayConverter<GroupSendFullToken>.KeepAlive?))
+}
+
+internal enum DerivedArgConverterUnauthProfileAuthorization: NiceArgConverter {
+    typealias NiceArg = UnauthProfileAuthorization
+    typealias FfiArg = SignalUnauthProfileAuthorizationFfiArg
+    typealias KeepAlive = UnauthProfileAuthorizationArgConverterKeepAlive
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+        case .accessKey(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    FixedByteArrayConverter<FixedByteArrayHelper16>.FfiArg,
+                    FixedByteArrayConverter<FixedByteArrayHelper16>.KeepAlive?,
+                ) = FixedByteArrayConverter<FixedByteArrayHelper16>.convertArg(_0)
+
+            let ffiStructArg = SignalUnauthProfileAuthorizationFfiArgSignalAccessKey_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (FixedByteArrayConverter<FixedByteArrayHelper16>.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalUnauthProfileAuthorizationFfiArg.init(
+                    tag: SignalUnauthProfileAuthorizationFfiArgAccessKey,
+                    .init(access_key: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .accessKey($0) },
+            )
+
+        case .groupSend(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    ByteArrayConverter<GroupSendFullToken>.FfiArg,
+                    ByteArrayConverter<GroupSendFullToken>.KeepAlive?,
+                ) = ByteArrayConverter<GroupSendFullToken>.convertArg(_0)
+
+            let ffiStructArg = SignalUnauthProfileAuthorizationFfiArgSignalGroupSend_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (ByteArrayConverter<GroupSendFullToken>.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalUnauthProfileAuthorizationFfiArg.init(
+                    tag: SignalUnauthProfileAuthorizationFfiArgGroupSend,
+                    .init(group_send: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .groupSend($0) },
+            )
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .accessKey(
+            let _0,
+        ):
+
+            return try FixedByteArrayConverter<FixedByteArrayHelper16>.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalUnauthProfileAuthorizationFfiArg.init(
+                        tag: SignalUnauthProfileAuthorizationFfiArgAccessKey,
+                        .init(
+                            access_key:
+                                SignalUnauthProfileAuthorizationFfiArgSignalAccessKey_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        case .groupSend(
+            let _0,
+        ):
+
+            return try ByteArrayConverter<GroupSendFullToken>.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalUnauthProfileAuthorizationFfiArg.init(
+                        tag: SignalUnauthProfileAuthorizationFfiArgGroupSend,
+                        .init(
+                            group_send:
+                                SignalUnauthProfileAuthorizationFfiArgSignalGroupSend_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        }
     }
 }
 
@@ -8493,6 +8628,48 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterS3UploadFormInternal.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_get_profile(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+        auth: UnauthProfileAuthorization,
+        etag: Data?,
+    ) async throws -> FetchedProfile? {
+        let rawOutput:
+            OptionalReturnConverter<DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult>
+                .FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<
+                        SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection
+                    >.convertArgBorrowed(chat) { chatFfi in
+                        AciConverter.convertArgBorrowed(aci) { aciFfi in
+                            ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                DerivedArgConverterUnauthProfileAuthorization.convertArgBorrowed(auth) { authFfi in
+                                    OptionalFixedByteArrayConverter<FixedByteArrayHelper10>.convertArgBorrowed(etag) {
+                                        etagFfi in
+                                        SignalFfi.signal_unauthenticated_chat_connection_get_profile(
+                                            promiseFfi,
+                                            asyncContextFfi.const(),
+                                            chatFfi,
+                                            aciFfi,
+                                            profile_keyFfi,
+                                            authFfi,
+                                            etagFfi,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        return try OptionalReturnConverter<
+            DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_get_profile_key_credential(

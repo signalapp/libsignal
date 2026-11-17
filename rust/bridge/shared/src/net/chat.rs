@@ -1762,3 +1762,22 @@ async fn AuthenticatedChatConnection_get_profile(
         .await?
         .map(Into::into))
 }
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_get_profile(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    aci: Aci,
+    profile_key: ProfileKey,
+    auth: libsignal_net_chat::grpc::profiles::UnauthProfileAuthorization,
+    etag: Option<ProfileEtag>,
+) -> Result<
+    Option<remote_derives::FetchedProfile>,
+    RequestError<libsignal_net_chat::grpc::profiles::UnauthGetProfileError>,
+> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_profile(aci, &profile_key, &auth, etag)
+        .await?
+        .map(Into::into))
+}

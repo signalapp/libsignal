@@ -33,7 +33,9 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
-use libsignal_net_chat::grpc::profiles::{AuthGetProfileError, SetProfileError};
+use libsignal_net_chat::grpc::profiles::{
+    AuthGetProfileError, SetProfileError, UnauthGetProfileError,
+};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
@@ -2264,6 +2266,22 @@ impl MessageOnlyExceptionJniError for AuthGetProfileError {
             }
             AuthGetProfileError::ProfileDecodeError { log_safe: _ } => {
                 ClassName("org.signal.libsignal.net.ProfileCantBeDecodedException")
+            }
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for UnauthGetProfileError {
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            UnauthGetProfileError::ProfileNotFound => {
+                ClassName("org.signal.libsignal.net.ProfileNotFoundException")
+            }
+            UnauthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                ClassName("org.signal.libsignal.net.ProfileCantBeDecodedException")
+            }
+            UnauthGetProfileError::FailedUnidentifiedAuthorization => {
+                ClassName("org.signal.libsignal.net.RequestUnauthorizedException")
             }
         }
     }
