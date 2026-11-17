@@ -949,6 +949,30 @@ impl<const LEN: usize> NiceResultConverter for [u8; LEN] {
     }
 }
 
+impl<const LEN: usize> ResultTypeInfo for Option<[u8; LEN]> {
+    type ResultType = OptionalOf<<[u8; LEN] as ResultTypeInfo>::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(if let Some(x) = self {
+            OptionalOf::some(x.convert_into()?)
+        } else {
+            OptionalOf::NONE
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceResultConverter for Option<[u8; LEN]> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let opt = OptionalOf::<<[u8; LEN] as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+        let opt = opt.swift_name();
+        let ty = <[u8; LEN] as NiceResultConverter>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("{}?", ty.nice_type),
+            converter_type: format!("OptionalReturnConverter<{}, {opt}>", ty.converter_type),
+        }
+    }
+}
+
 impl SimpleArgTypeInfo for Box<[String]> {
     type ArgType = BorrowedBytestringArray;
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {

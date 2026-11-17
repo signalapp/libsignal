@@ -1875,6 +1875,18 @@ impl<const LEN: usize> NiceArgConverter for Option<[u8; LEN]> {
     }
 }
 
+impl<'a, const LEN: usize> ResultTypeInfo<'a> for Option<[u8; LEN]> {
+    type ResultType = Nullable<JByteArray<'a>>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        if let Some(x) = self {
+            Ok(Nullable(x.convert_into(env)?))
+        } else {
+            Ok(Nullable(JByteArray::null()))
+        }
+    }
+}
+
 impl<'storage, 'param: 'storage, 'context: 'param, const LEN: usize>
     ArgTypeInfo<'storage, 'param, 'context> for &'storage [u8; LEN]
 {

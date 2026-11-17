@@ -572,21 +572,18 @@ describe('NativeTestingNice', () => {
     });
   });
   it('OptionalData32', async () => {
-    // There's no result conversion for optional fixed-size arrays, so this
-    // can't use testConversion (which also checks the identity function).
     for (const item of [null, crypto.getRandomValues(new Uint8Array(32))]) {
-      const expected = item === null ? '%' : toBase64(item);
-      assert.strictEqual(
-        NativeNice.TESTING_conversion_OptionalData32_to_string({ x: item }),
-        expected
-      );
-      assert.strictEqual(
-        await NativeNice.TESTING_conversion_OptionalData32_to_string_async({
-          asyncContext,
-          x: item,
-        }),
-        expected
-      );
+      const toString = item === null ? '%' : toBase64(item);
+      await testConversion({
+        item,
+        toString,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionalData32_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionalData32_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionalData32_identity_async,
+      });
     }
     assert.throws(() =>
       NativeNice.TESTING_conversion_OptionalData32_to_string({

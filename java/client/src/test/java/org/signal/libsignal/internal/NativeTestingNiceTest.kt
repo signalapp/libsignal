@@ -508,15 +508,19 @@ class NativeTestingNiceTest {
 
   @Test
   fun testOptionalData32() {
-    val tokio = TokioAsyncContext()
-    for (item in sequenceOf(null, Random.nextBytes(32))) {
-      val expected = item?.let(Base64::encode) ?: "%"
-      assertEquals(expected, NativeTestingNice.TESTING_conversion_OptionalData32_to_string(item))
-      assertEquals(
-        expected,
-        NativeTestingNice.TESTING_conversion_OptionalData32_to_string_async(tokio, item).get(),
-      )
-    }
+    testConversion(
+      sequenceOf(null, Random.nextBytes(32)),
+      toString = {
+        if (it == null) {
+          "%"
+        } else {
+          Base64.encode(it)
+        }
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionalData32_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalData32_identity,
+      equality = java.util.Arrays::equals,
+    )
     assertFailsWith<IllegalArgumentException> {
       NativeTestingNice.TESTING_conversion_OptionalData32_to_string(ByteArray(31))
     }

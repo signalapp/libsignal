@@ -5140,16 +5140,16 @@ export function TESTING_conversion_OptionalBytes_to_string({
   );
 }
 
-export function TESTING_conversion_OptionalData32_to_string({
+export function TESTING_conversion_OptionalData32_identity({
   x: x,
 }: {
   x: Bytes | null;
-}): string {
-  return identity(
-    Native.TESTING_conversion_OptionalData32_to_string(liftNull(identity)(x))
+}): Bytes | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionalData32_identity(liftNull(identity)(x))
   );
 }
-export async function TESTING_conversion_OptionalData32_to_string_async({
+export async function TESTING_conversion_OptionalData32_identity_async({
   asyncContext,
   abortSignal,
   x: x,
@@ -5157,15 +5157,25 @@ export async function TESTING_conversion_OptionalData32_to_string_async({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   x: Bytes | null;
-}): Promise<string> {
-  return identity(
+}): Promise<Bytes | null> {
+  return liftNull(identity)(
     await asyncContext.makeCancellable(
       abortSignal,
-      Native.TESTING_conversion_OptionalData32_to_string_async(
+      Native.TESTING_conversion_OptionalData32_identity_async(
         asyncContext,
         liftNull(identity)(x)
       )
     )
+  );
+}
+
+export function TESTING_conversion_OptionalData32_to_string({
+  x: x,
+}: {
+  x: Bytes | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionalData32_to_string(liftNull(identity)(x))
   );
 }
 

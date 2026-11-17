@@ -642,12 +642,18 @@ pub mod test_conversions {
     }
 
     #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalData32_identity(x: Option<[u8; 32]>) -> Option<[u8; 32]> {
+        x
+    }
+    #[bridge_fn(nice = true)]
     fn TESTING_conversion_OptionalData32_to_string(x: Option<[u8; 32]>) -> String {
         TESTING_conversion_OptionalBytes_to_string(x.map(Vec::from))
     }
-    #[bridge_io(TokioAsyncContext, nice = true)]
-    async fn TESTING_conversion_OptionalData32_to_string_async(x: Option<[u8; 32]>) -> String {
-        TESTING_conversion_OptionalData32_to_string(x)
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionalData32_identity_async(
+        x: Option<[u8; 32]>,
+    ) -> Option<[u8; 32]> {
+        x
     }
 
     #[bridge_fn(nice = true)]

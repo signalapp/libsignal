@@ -184,18 +184,13 @@ struct NativeTestingNiceTests {
     }
     @Test
     func testOptionalData32() async throws {
-        // Argument-only: there's no result conversion for optional fixed-size arrays.
-        let items: [Data?] = [nil, Data((0..<32).map { _ in .random(in: 0...255) })]
-        let toString = { (item: Data?) in item?.base64EncodedString() ?? "%" }
-        let asyncContext = TokioAsyncContext()
-        for item in items {
-            #expect(try NativeTestingNice.TESTING_conversion_OptionalData32_to_string(x: item) == toString(item))
-            let asyncString = try await NativeTestingNice.TESTING_conversion_OptionalData32_to_string_async(
-                asyncContext: asyncContext,
-                x: item
-            )
-            #expect(asyncString == toString(item))
-        }
+        try OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.testConversion(
+            items: [nil, Data((0..<32).map { _ in .random(in: 0...255) })],
+            toString: { (item: Data?) in item?.base64EncodedString() ?? "%" },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_OptionalData32_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_optional_data32_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionalData32_identity(x: $0) }
+        )
     }
     @Test
     func testBridgeVecData32() throws {

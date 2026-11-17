@@ -535,6 +535,20 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerUnauthenticate
 typedef SignalMutPointerRegisterAccountResponse* SignalType_MutPointer_SignalMutPointerRegisterAccountResponse;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerRegisterAccountResponse) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerRegisterAccountResponse) == 8);
+typedef SignalType_FixedArray32_uint8_t MaybeUninitOfc_uchar32;
+static_assert_64bit(sizeof(MaybeUninitOfc_uchar32) == 32);
+static_assert_64bit(alignof(MaybeUninitOfc_uchar32) == 1);
+typedef struct {
+  bool present;
+  MaybeUninitOfc_uchar32 value;
+} SignalOptionalOfc_uchar32;
+static_assert_64bit(offsetof(SignalOptionalOfc_uchar32, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfc_uchar32, value) == 1);
+static_assert_64bit(sizeof(SignalOptionalOfc_uchar32) == 33);
+static_assert_64bit(alignof(SignalOptionalOfc_uchar32) == 1);
+typedef SignalOptionalOfc_uchar32* SignalType_MutPointer_SignalOptionalOfc_uchar32;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfc_uchar32) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfc_uchar32) == 8);
 typedef SignalOptionalOff32* SignalType_MutPointer_SignalOptionalOff32;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOff32) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOff32) == 8);
@@ -654,22 +668,6 @@ static_assert_64bit(alignof(SignalCPromiseRawPointer) == 8);
 typedef SignalCPromiseRawPointer* SignalType_MutPointer_SignalCPromiseRawPointer;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseRawPointer) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseRawPointer) == 8);
-typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalCStringPtr, SignalType_ConstPointer_void);
-static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void) == 8);
-static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void) == 8);
-typedef struct {
-  SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void complete;
-  const void* context;
-  uint64_t cancellation_id;
-} SignalCPromiseCStringPtr;
-static_assert_64bit(offsetof(SignalCPromiseCStringPtr, complete) == 0);
-static_assert_64bit(offsetof(SignalCPromiseCStringPtr, context) == 8);
-static_assert_64bit(offsetof(SignalCPromiseCStringPtr, cancellation_id) == 16);
-static_assert_64bit(sizeof(SignalCPromiseCStringPtr) == 24);
-static_assert_64bit(alignof(SignalCPromiseCStringPtr) == 8);
-typedef SignalCPromiseCStringPtr* SignalType_MutPointer_SignalCPromiseCStringPtr;
-static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseCStringPtr) == 8);
-static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseCStringPtr) == 8);
 typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalTestStreamChunkFfiResult_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalTestStreamChunkFfiResult, SignalType_ConstPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalTestStreamChunkFfiResult_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalTestStreamChunkFfiResult_ConstPointer_void) == 8);
@@ -2135,13 +2133,12 @@ SignalFfiError* signal_testing_conversion_optional_bytes_to_string(
   SignalCStringPtr* out,
   SignalOptionalOfBorrowedBuffer x
 );
-SignalFfiError* signal_testing_conversion_optional_data32_to_string(
-  SignalCStringPtr* out,
+SignalFfiError* signal_testing_conversion_optional_data32_identity(
+  SignalOptionalOfc_uchar32* out,
   const SignalType_FixedArray32_uint8_t* x
 );
-SignalFfiError* signal_testing_conversion_optional_data32_to_string_async(
-  SignalCPromiseCStringPtr* promise,
-  SignalConstPointerTokioAsyncContext async_runtime,
+SignalFfiError* signal_testing_conversion_optional_data32_to_string(
+  SignalCStringPtr* out,
   const SignalType_FixedArray32_uint8_t* x
 );
 SignalFfiError* signal_testing_conversion_optional_float_identity(

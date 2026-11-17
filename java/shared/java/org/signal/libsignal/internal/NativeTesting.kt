@@ -815,13 +815,10 @@ public object NativeTesting {
   public external fun TESTING_conversion_OptionalBytes_to_string(x: ByteArray?): String
 
   @JvmStatic
-  public external fun TESTING_conversion_OptionalData32_to_string(x: ByteArray?): String
+  public external fun TESTING_conversion_OptionalData32_identity(x: ByteArray?): ByteArray?
 
   @JvmStatic
-  public external fun TESTING_conversion_OptionalData32_to_string_async(
-    asyncRuntime: ObjectHandle,
-    x: ByteArray?,
-  ): CompletableFuture<String>
+  public external fun TESTING_conversion_OptionalData32_to_string(x: ByteArray?): String
 
   @JvmStatic
   public external fun TESTING_conversion_OptionalFloat_identity(x: Float?): Float?
