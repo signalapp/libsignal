@@ -16,6 +16,23 @@ import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredential
 import org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialRequestContext
 import java.io.IOException
 
+/** Either [`RequestUnauthorizedException`] or [`ProfileNotFoundException`] */
+public sealed interface GetProfileKeyCredentialFailure : BadRequestError
+
+/**
+ * The account's profile or profile version was not found, possibly because the account is not on
+ * Signal.
+ *
+ * See the specific request docs for more information.
+ */
+public class ProfileNotFoundException :
+  IOException,
+  GetProfileKeyCredentialFailure {
+  @CalledFromNative
+  public constructor(message: String) : super(message) {
+  }
+}
+
 public class UnauthProfilesService(
   private val connection: UnauthenticatedChatConnection,
 ) {
@@ -64,21 +81,36 @@ public class UnauthProfilesService(
       onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult<GetProfileKeyCredentialFailure>() },
     )
-}
 
-/** Either [`RequestUnauthorizedException`] or [`ProfileNotFoundException`] */
-public sealed interface GetProfileKeyCredentialFailure : BadRequestError
-
-/**
- * The account's profile or profile version was not found, possibly because the account is not on
- * Signal.
- *
- * See the specific request docs for more information.
- */
-public class ProfileNotFoundException :
-  IOException,
-  GetProfileKeyCredentialFailure {
-  @CalledFromNative
-  public constructor(message: String) : super(message) {
-  }
+  /**
+   * Extend the TTL of a v2 avatar
+   *
+   * The server doesn’t know which v2 avatars correspond to which Signal account. As a result,
+   * v2 avatars expire after a time. To keep an account’s avatar from expiring, clients must
+   * call extendAvatarTtl() on a regular basis (recommended: every 90 days).
+   *
+   * It is safe to keep calling this during the v1->v2 transition. v1 avatars will just be
+   * treated as "not found."
+   *
+   * @return either the CdnUrl of the current v2 avatar, or null, if none is set.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun extendAvatarTtl(
+    credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
+  ): CompletableFuture<RequestResult<CdnUrl?, InvalidAvatarUploadCredentialPresentationException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_extend_avatar_ttl(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = credential,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult<InvalidAvatarUploadCredentialPresentationException>() },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }

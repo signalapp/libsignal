@@ -70,6 +70,7 @@ import type {
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiDeviceCapabilityInternal,
+  ReturnFfiExtendAvatarTtlOut,
   ReturnFfiFinishMfaVerificationOut,
   ReturnFfiFinishWebAuthnRegistrationArgs,
   ReturnFfiFinishWebAuthnRegistrationOut,
@@ -450,6 +451,13 @@ export type DeviceCapabilityInternal =
   | 'profilesV2'
   | 'usernameChangeSyncMessage'
   | 'optionalPhoneNumber';
+
+export type ExtendAvatarTtlOut =
+  | {
+      found: CdnUrl;
+    }
+  | 'notFound'
+  | 'invalidCredentials';
 
 export type FinishMfaVerificationOut = 'success' | 'failedToVerify';
 
@@ -1504,6 +1512,25 @@ export function returnConverterDeviceCapabilityInternal(
       throw new Error(
         'Unknown FFI return enum type for DeviceCapabilityInternal'
       );
+  }
+}
+
+export function returnConverterExtendAvatarTtlOut(
+  ffiInput: Native.ReturnFfiExtendAvatarTtlOut
+): ExtendAvatarTtlOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        found: ((cdnUrl: string) => cdnUrl as CdnUrl)(ffiInput._0),
+      };
+    case 1:
+      return 'notFound';
+    case 2:
+      return 'invalidCredentials';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for ExtendAvatarTtlOut');
   }
 }
 
@@ -4144,6 +4171,15 @@ export function TESTING_DeleteUsernameLinkTests(): Array<
   )(Native.TESTING_DeleteUsernameLinkTests());
 }
 
+export function TESTING_ExtendAvatarTtlTests(): Array<
+  GrpcTestCase<zkgroup.AvatarUploadCredentialPresentation, ExtendAvatarTtlOut>
+> {
+  return grpcTestCaseConverter(
+    (x: Bytes) => new zkgroup.AvatarUploadCredentialPresentation(x),
+    returnConverterExtendAvatarTtlOut
+  )(Native.TESTING_ExtendAvatarTtlTests());
+}
+
 export function TESTING_FinishMfaVerificationTests(): Array<
   GrpcTestCase<BridgeMfaVerificationCredential, FinishMfaVerificationOut>
 > {
@@ -6132,6 +6168,28 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
         identity(server_params),
         identity(purchase_time),
         argConverterLoginReceiptLevel(expected_level)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_extend_avatar_ttl({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+}): Promise<CdnUrl | null> {
+  return liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_extend_avatar_ttl(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential)
       )
     )
   );

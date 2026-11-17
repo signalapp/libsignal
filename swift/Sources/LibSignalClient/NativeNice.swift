@@ -1023,6 +1023,43 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: SignalCPromise {
 
 }
 
+extension SignalCPromiseOptionalOfCStringPtr: SignalCPromise {
+
+    typealias Result = SignalOptionalOfCStringPtr
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfCStringPtr_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfCStringPtr_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseOptionalOfPairOfCStringPtrc_uchar32: SignalCPromise {
 
     typealias Result = SignalOptionalOfPairOfCStringPtrc_uchar32
@@ -2055,6 +2092,33 @@ extension SignalCPromiseStartMfaVerificationResponseFfiResult: SignalCPromise {
     var generic_cancellation_id: UInt64 {
         get { self.cancellation_id }
         set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalOptionalOfCStringPtr: SignalOptionalOf {
+
+    typealias Contents = SignalCStringPtr?
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalCStringPtr?,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalCStringPtr? {
+        get { self.value }
+        set { value = newValue }
     }
 
 }
@@ -7578,6 +7642,33 @@ internal enum NativeNice {
                     }
             }
         return try ByteArrayConverter<ReceiptCredential>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_extend_avatar_ttl(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: AvatarUploadCredentialPresentation,
+    ) async throws -> CdnUrl? {
+        let rawOutput: OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<AvatarUploadCredentialPresentation>.convertArgBorrowed(credential) {
+                            credentialFfi in
+                            SignalFfi.signal_unauthenticated_chat_connection_extend_avatar_ttl(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                credentialFfi,
+                            )
+                        }
+                    }
+            }
+        return try OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertReturn(
+            consuming: rawOutput
+        )
 
     }
     internal static func UnauthenticatedChatConnection_get_profile_key_credential(

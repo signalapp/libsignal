@@ -535,17 +535,6 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerUnauthenticate
 typedef SignalMutPointerRegisterAccountResponse* SignalType_MutPointer_SignalMutPointerRegisterAccountResponse;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalMutPointerRegisterAccountResponse) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalMutPointerRegisterAccountResponse) == 8);
-typedef const int8_t* MaybeUninitOfCStringPtr;
-static_assert_64bit(sizeof(MaybeUninitOfCStringPtr) == 8);
-static_assert_64bit(alignof(MaybeUninitOfCStringPtr) == 8);
-typedef struct {
-  bool present;
-  MaybeUninitOfCStringPtr value;
-} SignalOptionalOfCStringPtr;
-static_assert_64bit(offsetof(SignalOptionalOfCStringPtr, present) == 0);
-static_assert_64bit(offsetof(SignalOptionalOfCStringPtr, value) == 8);
-static_assert_64bit(sizeof(SignalOptionalOfCStringPtr) == 16);
-static_assert_64bit(alignof(SignalOptionalOfCStringPtr) == 8);
 typedef SignalOptionalOfCStringPtr* SignalType_MutPointer_SignalOptionalOfCStringPtr;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfCStringPtr) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfCStringPtr) == 8);
@@ -978,6 +967,22 @@ typedef struct {
 } SignalCreateLoginReceiptCredentialOutFfiResult;
 static_assert_64bit(sizeof(SignalCreateLoginReceiptCredentialOutFfiResult) == 40);
 static_assert_64bit(alignof(SignalCreateLoginReceiptCredentialOutFfiResult) == 8);
+typedef enum {
+  SignalExtendAvatarTtlOutFfiResultFound,
+  SignalExtendAvatarTtlOutFfiResultNotFound,
+  SignalExtendAvatarTtlOutFfiResultInvalidCredentials,
+} SignalExtendAvatarTtlOutFfiResult_Tag;
+typedef struct {
+  const int8_t* _0;
+} SignalExtendAvatarTtlOutFfiResultSignalFound_Body;
+typedef struct {
+  SignalExtendAvatarTtlOutFfiResult_Tag tag;
+  union {
+    SignalExtendAvatarTtlOutFfiResultSignalFound_Body found;
+  };
+} SignalExtendAvatarTtlOutFfiResult;
+static_assert_64bit(sizeof(SignalExtendAvatarTtlOutFfiResult) == 16);
+static_assert_64bit(alignof(SignalExtendAvatarTtlOutFfiResult) == 8);
 typedef enum {
   SignalFinishMfaVerificationOutFfiResultSuccess,
   SignalFinishMfaVerificationOutFfiResultFailedToVerify,
@@ -2321,6 +2326,9 @@ SignalFfiError* signal_testing_error_on_return_io(
 SignalFfiError* signal_testing_error_on_return_sync(
   SignalType_ConstPointer_void* out,
   const void* _needs_cleanup
+);
+SignalFfiError* signal_testing_extend_avatar_ttl_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_fake_chat_connection_create(
   SignalMutPointerFakeChatConnection* out,

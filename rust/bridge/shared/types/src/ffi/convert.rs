@@ -823,6 +823,10 @@ zkgroup_serialize_type!(
     zkgroup::zk_credential_key::ZkCredentialKeyPair,
     "ZkCredentialKeyPair"
 );
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredentialPresentation,
+    "AvatarUploadCredentialPresentation"
+);
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;

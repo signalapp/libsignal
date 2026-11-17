@@ -6,8 +6,8 @@
 package org.signal.libsignal.net
 
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.signal.libsignal.internal.ExtendAvatarTtlOut
 import org.signal.libsignal.internal.GetProfileKeyCredentialOut
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.ProfileKeyCredentialRequestError
@@ -19,6 +19,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.arrayOf
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class UnauthProfilesServiceTest {
@@ -101,4 +102,31 @@ class UnauthProfilesServiceTest {
         },
       )
     }
+
+  @Test
+  fun testExtendAvatarTtl() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_ExtendAvatarTtlTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.extendAvatarTtl(
+            credential = req,
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is ExtendAvatarTtlOut.Found -> assertEquals(actual.assertSuccess(), expected._0)
+            ExtendAvatarTtlOut.InvalidCredentials ->
+              actual
+                .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+            ExtendAvatarTtlOut.NotFound -> assertEquals(null, actual.assertSuccess())
+          }
+        },
+      )
+    }
+  }
 }

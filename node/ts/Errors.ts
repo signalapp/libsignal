@@ -127,6 +127,7 @@ export enum ErrorCode {
   ReceiptAlreadyRedeemed,
 
   InvalidProvisioningMessage,
+  InvalidAvatarUploadCredentialPresentation,
 }
 
 /** Called out as a separate type so it's not confused with a normal ServiceIdBinary. */
@@ -656,6 +657,10 @@ export type InvalidProvisioningMessageError = LibSignalErrorCommon & {
   code: ErrorCode.InvalidProvisioningMessage;
 };
 
+export type InvalidAvatarUploadCredentialPresentation = LibSignalErrorCommon & {
+  code: ErrorCode.InvalidAvatarUploadCredentialPresentation;
+};
+
 export type LibSignalError =
   | GenericError
   | DuplicatedMessageError
@@ -742,4 +747,5 @@ export type LibSignalError =
   | WebAuthnRegistrationUnsuccessful
   | ProfileNotFound
   | ReceiptAlreadyRedeemed
-  | InvalidProvisioningMessageError;
+  | InvalidProvisioningMessageError
+  | InvalidAvatarUploadCredentialPresentation;

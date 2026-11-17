@@ -943,6 +943,10 @@ zkgroup_serialize_type!(
     zkgroup::zk_credential_key::ZkCredentialKeyPair,
     "ZkCredentialKeyPair"
 );
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredentialPresentation,
+    "AvatarUploadCredentialPresentation"
+);
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

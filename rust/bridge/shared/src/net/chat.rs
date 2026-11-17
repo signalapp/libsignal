@@ -8,6 +8,8 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use ::zkgroup::ServerPublicParams;
+#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
+use ::zkgroup::avatars::AvatarUploadCredentialPresentation;
 use ::zkgroup::groups::GroupSendFullToken;
 use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
 use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
@@ -1636,4 +1638,18 @@ async fn AuthenticatedChatConnection_set_zk_credential_key(
 #[bridge_fn(nice = true)]
 fn CdnUrl_validate(url: String) -> bool {
     CdnUrl::try_from(url).is_ok()
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_extend_avatar_ttl(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: AvatarUploadCredentialPresentation,
+) -> Result<
+    Option<CdnUrl>,
+    RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
+> {
+    chat.require_grpc()
+        .await
+        .extend_avatar_ttl(&credential)
+        .await
 }

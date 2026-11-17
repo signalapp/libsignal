@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use ::zkgroup::avatars::AvatarUploadCredentialPresentation;
 use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
@@ -518,6 +519,7 @@ mod remote_derives {
     use libsignal_net_chat::grpc::donations::BadgeVisibility;
     use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
+    use libsignal_net_chat::grpc::profiles::CdnUrl;
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
     use libsignal_protocol::{ServiceId, Timestamp};
     use uuid::Uuid;
@@ -1356,6 +1358,15 @@ mod remote_derives {
         token: String,
         answer: libsignal_net_chat::grpc::accounts::ChallengeAnswer,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::ExtendAvatarTtlOut)]
+    #[bridge(arg = false)]
+    pub enum ExtendAvatarTtlOut {
+        Found(CdnUrl),
+        NotFound,
+        InvalidCredentials,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1727,4 +1738,9 @@ fn TESTING_AnswerChallengeTests() -> GrpcTestCases<remote_derives::AnswerChallen
 fn TESTING_SetZkCredentialKeyTests()
 -> GrpcTestCases<(), Option<(ZkCredentialKeyPair, ZkCredentialKeyRotationId)>> {
     libsignal_net_chat::grpc::accounts::test_cases::set_zk_credential_key_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_ExtendAvatarTtlTests()
+-> GrpcTestCases<AvatarUploadCredentialPresentation, remote_derives::ExtendAvatarTtlOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::extend_avatar_ttl_test_cases().into()
 }

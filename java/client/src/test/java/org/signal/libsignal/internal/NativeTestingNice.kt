@@ -131,6 +131,16 @@ public sealed class DeleteBackupMediaOut {
   public data object CredentialRejectedWithoutAppropriateServerInfo : DeleteBackupMediaOut()
 }
 
+public sealed class ExtendAvatarTtlOut {
+  public data class Found(
+    public val _0: org.signal.libsignal.net.CdnUrl,
+  ) : ExtendAvatarTtlOut()
+
+  public data object NotFound : ExtendAvatarTtlOut()
+
+  public data object InvalidCredentials : ExtendAvatarTtlOut()
+}
+
 public sealed class FinishMfaVerificationOut {
   public data object Success : FinishMfaVerificationOut()
 
@@ -1082,6 +1092,31 @@ public object DeleteBackupMediaOut_CredentialRejectedWithoutAppropriateServerInf
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = DeleteBackupMediaOut.CredentialRejectedWithoutAppropriateServerInfo
+}
+
+public object ExtendAvatarTtlOut_Found_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    ExtendAvatarTtlOut.Found(
+      _0 =
+        (org.signal.libsignal.net.CdnUrl::libsignalOnlyFromPreValidatedString)(_0 as String),
+    )
+}
+
+public object ExtendAvatarTtlOut_NotFound_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ExtendAvatarTtlOut.NotFound
+}
+
+public object ExtendAvatarTtlOut_InvalidCredentials_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = ExtendAvatarTtlOut.InvalidCredentials
 }
 
 public object FinishMfaVerificationOut_Success_ReturnConverter {
@@ -2802,6 +2837,21 @@ public object NativeTestingNice {
     return org.signal.libsignal.net.GrpcTestCase.resultConverter<Void?, Void?, Void?, Void?>({
       identity(it)
     }, { identity(it) })(ffiOut)
+  }
+
+  public fun TESTING_ExtendAvatarTtlTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation, org.signal.libsignal.internal.ExtendAvatarTtlOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_ExtendAvatarTtlTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<ByteArray, Object, org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation, org.signal.libsignal.internal.ExtendAvatarTtlOut>({
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.avatars
+              .AvatarUploadCredentialPresentation(x)
+          }
+        )(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.ExtendAvatarTtlOut>(it) })(ffiOut)
   }
 
   public fun TESTING_FinishMfaVerificationTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.net.MfaVerificationCredential, org.signal.libsignal.internal.FinishMfaVerificationOut>> {

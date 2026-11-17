@@ -13,14 +13,17 @@ use libsignal_net_grpc::proto::chat::account::accounts_anonymous_client::Account
 use libsignal_net_grpc::proto::chat::account::{
     CheckAccountExistenceRequest, CheckAccountExistenceResponse,
 };
-use libsignal_net_grpc::proto::chat::errors::{self, FailedPrecondition};
+use libsignal_net_grpc::proto::chat::errors::{
+    self, FailedPrecondition, FailedZkAuthentication, NotFound,
+};
+use libsignal_net_grpc::proto::chat::profile::extend_avatar_ttl_response::Response as ExtendAvatarResponseTtlEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_key_credential_response::Response as GetProfileKeyCredentialResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_response::Response as GetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::profile_anonymous_client::ProfileAnonymousClient;
 use libsignal_net_grpc::proto::chat::profile::profile_client::ProfileClient;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as GrpcSetProfileResponse;
 use libsignal_net_grpc::proto::chat::profile::{
-    CredentialType, ExpectedVersionConflict, GetProfileAnonymousRequest,
+    CredentialType, ExpectedVersionConflict, ExtendAvatarTtlRequest, GetProfileAnonymousRequest,
     GetProfileKeyCredentialRequest, GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult,
     GetProfileRequest, PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult,
     SetProfileV1Request, get_profile_anonymous_request, get_profile_anonymous_response,
@@ -28,6 +31,7 @@ use libsignal_net_grpc::proto::chat::profile::{
 use libsignal_protocol::IdentityKey;
 use rand::CryptoRng;
 use strum::VariantArray;
+use zkgroup::avatars::AvatarUploadCredentialPresentation;
 use zkgroup::groups::GroupSendFullToken;
 use zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
 use zkgroup::{PROFILE_KEY_VERSION_LEN, ProfileKeyBytes};
@@ -83,6 +87,13 @@ impl TryFrom<String> for CdnUrl {
             return Err(InvalidCdnUrl);
         }
         Ok(CdnUrl(value))
+    }
+}
+
+impl CdnUrl {
+    pub fn from_cdn0_path(path: &str) -> Self {
+        Self::try_from(format!("{}{}", Self::CDN0, path))
+            .expect("we've definitely added the prefix")
     }
 }
 
@@ -613,7 +624,68 @@ impl std::fmt::Display for Redact<GetProfileAnonymousRequest> {
     }
 }
 
+#[derive(Clone, Copy, Debug, Display)]
+/// Invalid AvatarUploadCredentialPresentation
+pub struct InvalidAvatarUploadCredentialPresentation;
+
+impl std::fmt::Display for Redact<ExtendAvatarTtlRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(ExtendAvatarTtlRequest {
+            avatar_credential_presentation,
+        }) = self;
+        f.debug_struct("ExtendAvatarTtlRequest")
+            .field(
+                "avatar_credential_presentation.len()",
+                &avatar_credential_presentation.len(),
+            )
+            .finish()
+    }
+}
+
 impl<T: GrpcServiceProvider> Unauth<T> {
+    /// Extend the TTL of a v2 avatar
+    ///
+    /// The server doesn't know which v2 avatars correspond to which Signal account. As a result,
+    /// v2 avatars expire after a time. To keep an account's avatar from expiring, clients must
+    /// call `extend_avatar_ttl()` on a regular basis (recommended: every 90 days).
+    ///
+    /// It is safe to keep calling this during the v1->v2 transition. v1 avatars will just be
+    /// treated as "not found."
+    ///
+    /// Returns either the [`CdnUrl`] of the current v2 avtar, or `None`, if none is set.
+    pub async fn extend_avatar_ttl(
+        &self,
+        credential: &AvatarUploadCredentialPresentation,
+    ) -> Result<Option<CdnUrl>, RequestError<InvalidAvatarUploadCredentialPresentation>> {
+        let mut service = ProfileAnonymousClient::new(self.0.service());
+        let request = ExtendAvatarTtlRequest {
+            avatar_credential_presentation: zkgroup::serialize(credential),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        match log_and_send(Self::LOG_TAG, &log_safe_description, || {
+            service.extend_avatar_ttl(request)
+        })
+        .await?
+        .into_inner()
+        .response
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Missing response".into(),
+        })? {
+            ExtendAvatarResponseTtlEnum::Path(path) => Ok(Some(CdnUrl::from_cdn0_path(&path))),
+            ExtendAvatarResponseTtlEnum::InvalidCredentialPresentation(
+                FailedZkAuthentication { description },
+            ) => {
+                log::warn!(
+                    "ExtendAvatarTtl failed due to invalid credential presentation: {description}"
+                );
+                Err(RequestError::Other(
+                    InvalidAvatarUploadCredentialPresentation,
+                ))
+            }
+            ExtendAvatarResponseTtlEnum::NotFound(NotFound {}) => Ok(None),
+        }
+    }
+
     /// Retrieves profile data.
     ///
     /// If an `etag` is provided, and the profile etag remains unchanged, this returns `None` to
@@ -762,8 +834,12 @@ impl<T: GrpcServiceProvider> Unauth<T> {
 
 pub mod test_cases {
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
+    use libsignal_net_grpc::proto::chat::profile::ExtendAvatarTtlResponse;
     use uuid::{Uuid, uuid};
     use zkgroup::SECONDS_PER_DAY;
+    use zkgroup::avatars::AvatarUploadCredentialRequestContext;
+    use zkgroup::generic_server_params::GenericServerSecretParamsStandard;
+    use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 
     use super::*;
     use crate::grpc::GrpcTestCase;
@@ -772,6 +848,93 @@ pub mod test_cases {
     pub(crate) const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
     #[cfg(test)]
     pub(crate) const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
+
+    pub type ExtendAvatarTtlArgs = AvatarUploadCredentialPresentation;
+    #[derive(Clone, Debug)]
+    pub enum ExtendAvatarTtlOut {
+        Found(CdnUrl),
+        NotFound,
+        InvalidCredentials,
+    }
+
+    pub fn extend_avatar_ttl_test_cases() -> Vec<
+        GrpcTestCase<
+            ExtendAvatarTtlArgs,
+            ExtendAvatarTtlRequest,
+            ExtendAvatarTtlResponse,
+            ExtendAvatarTtlOut,
+        >,
+    > {
+        let method = "/org.signal.chat.profile.ProfileAnonymous/ExtendAvatarTTL";
+        let server_params = GenericServerSecretParamsStandard::generate([0x0; _]);
+        let aci = Aci::from_uuid_bytes([0x1; _]);
+        let key_pair = ZkCredentialKeyPair::generate([0x2; _]);
+        let rotation_id = 0x3;
+        let request_context =
+            AvatarUploadCredentialRequestContext::new(aci, &key_pair, rotation_id, [0x4; _]);
+        let current_time = zkgroup::Timestamp::from_epoch_seconds(SECONDS_PER_DAY * 100);
+        let server_public_params = server_params.get_public_params().into();
+        let cred_request = request_context.get_request();
+        let presentation = request_context
+            .receive(
+                cred_request
+                    .issue(
+                        aci,
+                        &key_pair.public_key(),
+                        rotation_id,
+                        current_time,
+                        &server_params.into(),
+                        [0x6; _],
+                    )
+                    .expect("can generate response"),
+                &server_public_params,
+                current_time,
+            )
+            .expect("can receive credential")
+            .present(&server_public_params, [0x7; _]);
+        vec![
+            GrpcTestCase {
+                name: "found".into(),
+                method: method.into(),
+                request: presentation.clone(),
+                request_grpc: ExtendAvatarTtlRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                },
+                response_grpc: ExtendAvatarTtlResponse {
+                    response: Some(ExtendAvatarResponseTtlEnum::Path("asdf".into())),
+                },
+                response: ExtendAvatarTtlOut::Found(
+                    CdnUrl::try_from("https://cdn.signal.org/asdf".to_owned()).expect("valid url"),
+                ),
+            },
+            GrpcTestCase {
+                name: "not found".into(),
+                method: method.into(),
+                request: presentation.clone(),
+                request_grpc: ExtendAvatarTtlRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                },
+                response_grpc: ExtendAvatarTtlResponse {
+                    response: Some(ExtendAvatarResponseTtlEnum::NotFound(Default::default())),
+                },
+                response: ExtendAvatarTtlOut::NotFound,
+            },
+            GrpcTestCase {
+                name: "bad credential".into(),
+                method: method.into(),
+                request: presentation.clone(),
+                request_grpc: ExtendAvatarTtlRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                },
+                response_grpc: ExtendAvatarTtlResponse {
+                    response: Some(ExtendAvatarResponseTtlEnum::InvalidCredentialPresentation(
+                        Default::default(),
+                    )),
+                },
+                response: ExtendAvatarTtlOut::InvalidCredentials,
+            },
+        ]
+    }
 
     #[derive(Clone)]
     pub struct GetProfileKeyCredentialArgs {
@@ -1146,5 +1309,23 @@ mod test {
                 },
             },
         );
+    }
+
+    #[test]
+    fn test_extend_avatar_ttl() {
+        run_tests(
+            extend_avatar_ttl_test_cases(),
+            |chat: Unauth<_>, pres| async move { chat.extend_avatar_ttl(&pres).await },
+            |expected, actual| match expected {
+                ExtendAvatarTtlOut::Found(cdn_url) => {
+                    assert_eq!(actual.expect("success"), Some(cdn_url))
+                }
+                ExtendAvatarTtlOut::NotFound => assert_eq!(actual.expect("success"), None),
+                ExtendAvatarTtlOut::InvalidCredentials => assert_matches!(
+                    actual.expect_err("failure"),
+                    RequestError::Other(InvalidAvatarUploadCredentialPresentation)
+                ),
+            },
+        )
     }
 }

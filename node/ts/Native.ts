@@ -528,6 +528,18 @@ export type ReturnFfiDeviceCapabilityInternal =
       __type: 6;
     };
 
+export type ReturnFfiExtendAvatarTtlOut =
+  | {
+      __type: 0;
+      _0: string;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
 export type ReturnFfiFinishMfaVerificationOut =
   | {
       __type: 0;
@@ -3292,6 +3304,9 @@ type NativeFunctions = {
     _needs_cleanup: null
   ) => CancellablePromise<null>;
   TESTING_ErrorOnReturnSync: (_needs_cleanup: null) => null;
+  TESTING_ExtendAvatarTtlTests: () => Array<
+    GrpcTestCaseFfi<Bytes, ReturnFfiExtendAvatarTtlOut>
+  >;
   TESTING_FakeChatConnection_Create: (
     tokio: Wrapper<TokioAsyncContext>,
     listener: ChatListener,
@@ -3993,6 +4008,11 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_extend_avatar_ttl: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Bytes
+  ) => CancellablePromise<string | null>;
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -4737,6 +4757,7 @@ const {
   TESTING_ErrorOnReturnAsync,
   TESTING_ErrorOnReturnIo,
   TESTING_ErrorOnReturnSync,
+  TESTING_ExtendAvatarTtlTests,
   TESTING_FakeChatConnection_Create,
   TESTING_FakeChatConnection_CreateProvisioning,
   TESTING_FakeChatConnection_TakeAuthenticatedChat,
@@ -4967,6 +4988,7 @@ const {
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_create_login_receipt_credential,
   UnauthenticatedChatConnection_disconnect,
+  UnauthenticatedChatConnection_extend_avatar_ttl,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
@@ -5599,6 +5621,7 @@ export {
   TESTING_ErrorOnReturnAsync,
   TESTING_ErrorOnReturnIo,
   TESTING_ErrorOnReturnSync,
+  TESTING_ExtendAvatarTtlTests,
   TESTING_FakeChatConnection_Create,
   TESTING_FakeChatConnection_CreateProvisioning,
   TESTING_FakeChatConnection_TakeAuthenticatedChat,
@@ -5829,6 +5852,7 @@ export {
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_create_login_receipt_credential,
   UnauthenticatedChatConnection_disconnect,
+  UnauthenticatedChatConnection_extend_avatar_ttl,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,

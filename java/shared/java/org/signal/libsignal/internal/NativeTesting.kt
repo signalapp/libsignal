@@ -233,6 +233,9 @@ public object NativeTesting {
   public external fun TESTING_ErrorOnReturnSync(_needsCleanup: Object): Object
 
   @JvmStatic
+  public external fun TESTING_ExtendAvatarTtlTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_FakeChatConnection_Create(
     tokio: ObjectHandle,
     listener: BridgeChatListener,

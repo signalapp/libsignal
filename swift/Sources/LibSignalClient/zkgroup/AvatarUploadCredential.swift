@@ -237,7 +237,7 @@ public class AvatarUploadCredential: ByteArray {
 }
 
 /// A presentation of an ``AvatarUploadCredential``, sent to a verifying server.
-public class AvatarUploadCredentialPresentation: ByteArray {
+public class AvatarUploadCredentialPresentation: ByteArray, @unchecked Sendable {
     public required init(contents: Data) throws {
         try super.init(contents, checkValid: signal_avatar_upload_credential_presentation_check_valid_contents)
     }

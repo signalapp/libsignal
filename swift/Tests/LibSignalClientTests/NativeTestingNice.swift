@@ -323,33 +323,6 @@ extension SignalCPromiseOptionalOfPairOfMutPointerHttpRequestu64: SignalCPromise
 
 }
 
-extension SignalOptionalOfCStringPtr: SignalOptionalOf {
-
-    public typealias Contents = SignalCStringPtr?
-
-    public init(
-        generic_present: CBool,
-        generic_value: SignalCStringPtr?,
-    ) {
-        self.init(
-            present: generic_present,
-            value: generic_value,
-
-        )
-    }
-
-    public var generic_present: CBool {
-        get { self.present }
-        set { present = newValue }
-    }
-
-    public var generic_value: SignalCStringPtr? {
-        get { self.value }
-        set { value = newValue }
-    }
-
-}
-
 extension SignalOptionalOfc_uchar32: SignalOptionalOf {
 
     public typealias Contents = SignalType_FixedArray32_uint8_t
@@ -1157,6 +1130,12 @@ internal enum DeleteBackupMediaOut {
     case invalidDataInStream
     case credentialRejected
     case credentialRejectedWithoutAppropriateServerInfo
+}
+
+internal enum ExtendAvatarTtlOut {
+    case found(CdnUrl)
+    case notFound
+    case invalidCredentials
 }
 
 internal enum FinishMfaVerificationOut {
@@ -2096,6 +2075,32 @@ internal enum DerivedReturnConverterDeleteBackupMediaOut: NiceReturnConverter {
             return DeleteBackupMediaOut.credentialRejectedWithoutAppropriateServerInfo
         default:
             throw SignalError.internalError("Unexpected enum tag for DeleteBackupMediaOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterExtendAvatarTtlOut: NiceReturnConverter {
+    typealias NiceReturn = ExtendAvatarTtlOut
+    typealias FfiReturn = SignalExtendAvatarTtlOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalExtendAvatarTtlOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalExtendAvatarTtlOutFfiResultFound:
+            let _0 = Result {
+                try CdnUrlConverter.convertReturn(
+                    consuming: ffiValue.found._0
+                )
+            }
+            return ExtendAvatarTtlOut.found(try _0.get())
+        case SignalExtendAvatarTtlOutFfiResultNotFound:
+            return ExtendAvatarTtlOut.notFound
+        case SignalExtendAvatarTtlOutFfiResultInvalidCredentials:
+            return ExtendAvatarTtlOut.invalidCredentials
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ExtendAvatarTtlOut: \(ffiTag)")
         }
     }
 }
@@ -4651,6 +4656,22 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<VoidConverter, VoidConverter>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_ExtendAvatarTtlTests() throws -> [GrpcTestCase<
+        AvatarUploadCredentialPresentation, ExtendAvatarTtlOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            ByteArrayConverter<AvatarUploadCredentialPresentation>, DerivedReturnConverterExtendAvatarTtlOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_extend_avatar_ttl_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            ByteArrayConverter<AvatarUploadCredentialPresentation>, DerivedReturnConverterExtendAvatarTtlOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_FinishMfaVerificationTests() throws -> [GrpcTestCase<

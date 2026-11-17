@@ -15,7 +15,10 @@ import type {
   StandardNetworkError,
   RequestUnauthorizedError,
   ProfileNotFound,
+  InvalidAvatarUploadCredentialPresentation,
 } from '../../Errors.js';
+import type { CdnUrl } from './CdnUrl.js';
+import * as zkgroup from '../../zkgroup/index.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -52,6 +55,27 @@ export interface UnauthProfilesService {
     },
     options?: RequestOptions
   ) => Promise<ExpiringProfileKeyCredential>;
+  /**
+   * Extend the TTL of a v2 avatar
+   *
+   * The server doesn’t know which v2 avatars correspond to which Signal account. As a result,
+   * v2 avatars expire after a time. To keep an account’s avatar from expiring, clients must
+   * call extendAvatarTtl() on a regular basis (recommended: every 90 days).
+   *
+   * It is safe to keep calling this during the v1->v2 transition. v1 avatars will just be
+   * treated as "not found."
+   *
+   * @returns either the CdnUrl of the current v2 avatar, or null, if none is set.
+   * @throws {StandardNetworkError}
+   * @throws {InvalidAvatarUploadCredentialPresentation} if the presented
+   * credential is invalid.
+   */
+  extendAvatarTtl: (
+    request: {
+      credential: zkgroup.AvatarUploadCredentialPresentation;
+    },
+    options?: RequestOptions
+  ) => Promise<CdnUrl | null>;
 }
 
 UnauthenticatedChatConnection.prototype.accountExists = async function (
@@ -85,3 +109,19 @@ UnauthenticatedChatConnection.prototype.getProfileKeyCredential =
       }
     );
   };
+
+UnauthenticatedChatConnection.prototype.extendAvatarTtl = async function (
+  {
+    credential,
+  }: {
+    credential: zkgroup.AvatarUploadCredentialPresentation;
+  },
+  options?: RequestOptions
+): Promise<CdnUrl | null> {
+  return await NativeNice.UnauthenticatedChatConnection_extend_avatar_ttl({
+    asyncContext: this._asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this._chatService,
+    credential,
+  });
+};

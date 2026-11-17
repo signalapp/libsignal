@@ -479,6 +479,20 @@ static_assert_64bit(alignof(SignalMutPointerRegisterAccountResponse) == 8);
 typedef const SignalMutPointerRegisterAccountResponse* SignalType_ConstPointer_SignalMutPointerRegisterAccountResponse;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalMutPointerRegisterAccountResponse) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalMutPointerRegisterAccountResponse) == 8);
+typedef const int8_t* MaybeUninitOfCStringPtr;
+static_assert_64bit(sizeof(MaybeUninitOfCStringPtr) == 8);
+static_assert_64bit(alignof(MaybeUninitOfCStringPtr) == 8);
+typedef struct {
+  bool present;
+  MaybeUninitOfCStringPtr value;
+} SignalOptionalOfCStringPtr;
+static_assert_64bit(offsetof(SignalOptionalOfCStringPtr, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfCStringPtr, value) == 8);
+static_assert_64bit(sizeof(SignalOptionalOfCStringPtr) == 16);
+static_assert_64bit(alignof(SignalOptionalOfCStringPtr) == 8);
+typedef const SignalOptionalOfCStringPtr* SignalType_ConstPointer_SignalOptionalOfCStringPtr;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalOptionalOfCStringPtr) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalOptionalOfCStringPtr) == 8);
 typedef struct {
   const int8_t* first;
   SignalType_FixedArray32_uint8_t second;
@@ -2877,6 +2891,22 @@ static_assert_64bit(alignof(SignalCPromiseMutPointerRegisterAccountResponse) == 
 typedef SignalCPromiseMutPointerRegisterAccountResponse* SignalType_MutPointer_SignalCPromiseMutPointerRegisterAccountResponse;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseMutPointerRegisterAccountResponse) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseMutPointerRegisterAccountResponse) == 8);
+typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfCStringPtr_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalOptionalOfCStringPtr, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfCStringPtr_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfCStringPtr_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfCStringPtr_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseOptionalOfCStringPtr;
+static_assert_64bit(offsetof(SignalCPromiseOptionalOfCStringPtr, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseOptionalOfCStringPtr, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseOptionalOfCStringPtr, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseOptionalOfCStringPtr) == 24);
+static_assert_64bit(alignof(SignalCPromiseOptionalOfCStringPtr) == 8);
+typedef SignalCPromiseOptionalOfCStringPtr* SignalType_MutPointer_SignalCPromiseOptionalOfCStringPtr;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseOptionalOfCStringPtr) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseOptionalOfCStringPtr) == 8);
 typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32, SignalType_ConstPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void) == 8);
@@ -3993,6 +4023,7 @@ typedef enum {
   SignalErrorCodeWebAuthnRegistrationUnsuccessful = 238,
   SignalErrorCodeProfileNotFound = 239,
   SignalErrorCodeReceiptAlreadyRedeemed = 240,
+  SignalErrorCodeInvalidAvatarUploadCredentialPresentation = 241,
 } SignalErrorCode;
 static_assert_64bit(sizeof(SignalErrorCode) == 4);
 static_assert_64bit(alignof(SignalErrorCode) == 4);
@@ -7303,6 +7334,12 @@ SignalFfiError* signal_unauthenticated_chat_connection_disconnect(
   SignalCPromisebool* promise,
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerUnauthenticatedChatConnection chat
+);
+SignalFfiError* signal_unauthenticated_chat_connection_extend_avatar_ttl(
+  SignalCPromiseOptionalOfCStringPtr* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalBorrowedBuffer credential
 );
 SignalFfiError* signal_unauthenticated_chat_connection_get_pre_keys_access_key_auth(
   SignalCPromiseFfiPreKeysResponse* promise,

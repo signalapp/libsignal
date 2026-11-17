@@ -170,6 +170,7 @@ pub enum SignalErrorCode {
     ProfileNotFound = 239,
 
     ReceiptAlreadyRedeemed = 240,
+    InvalidAvatarUploadCredentialPresentation = 241,
 }
 
 pub trait UpcastAsAny {
@@ -1532,5 +1533,16 @@ where
             Self::Request(e) => SignalFfiError::from(e),
             Self::Argument(e) => SignalFfiError::from(e),
         }
+    }
+}
+
+impl IntoFfiError
+    for libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation
+{
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            SignalErrorCode::InvalidAvatarUploadCredentialPresentation,
+            self.to_string(),
+        )
     }
 }

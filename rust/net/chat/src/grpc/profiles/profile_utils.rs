@@ -472,10 +472,7 @@ pub(super) mod v1 {
             avatar: if profile_result.avatar.is_empty() {
                 None
             } else {
-                Some(
-                    CdnUrl::try_from(format!("{}{}", CdnUrl::CDN0, profile_result.avatar))
-                        .expect("this string has a valid prefix by construction"),
-                )
+                Some(CdnUrl::from_cdn0_path(&profile_result.avatar))
             },
             phone_number_sharing: decrypt_boolean(
                 &key,

@@ -12,7 +12,10 @@ import * as util from '../util.js';
 import { TokioAsyncContext, UnauthProfilesService } from '../../net.js';
 import { connectUnauth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { Aci, Pni } from '../../Address.js';
-import { ServerPublicParams } from '../../zkgroup/index.js';
+import {
+  AvatarUploadCredentialPresentation,
+  ServerPublicParams,
+} from '../../zkgroup/index.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
@@ -96,6 +99,34 @@ describe('UnauthProfilesService', () => {
         } else {
           resp satisfies never;
           throw new Error('Unreachable!');
+        }
+      }
+    );
+  });
+
+  describe('extendAvatarTtl', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_ExtendAvatarTtlTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        credential: AvatarUploadCredentialPresentation,
+        resp: NativeNice.ExtendAvatarTtlOut
+      ) => {
+        const out = chat.extendAvatarTtl({ credential });
+        if ('notFound' === resp) {
+          expect(await out).to.eq(null);
+        } else if ('invalidCredentials' === resp) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.InvalidAvatarUploadCredentialPresentation,
+            });
+        } else if ('found' in resp) {
+          expect(await out).to.deep.equal(resp.found);
+        } else {
+          resp satisfies never;
+          throw new Error('Unreachable');
         }
       }
     );

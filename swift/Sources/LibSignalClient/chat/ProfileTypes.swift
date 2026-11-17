@@ -4,7 +4,7 @@
 //
 
 /// A URL that points to a Signal CDN
-public struct CdnUrl {
+public struct CdnUrl: Sendable, Equatable {
     public let url: String
 
     internal init(withPreValidatedUrl url: String) {

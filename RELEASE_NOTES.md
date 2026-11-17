@@ -7,4 +7,5 @@ v0.108.1
   - AuthRemoteConfigurationService.getBadges()
   - Added `getProfile()` (unauth) (Not yet bridged to clients)
   - Added `AuthAccountsService.setZkCredentialKey()`
+  - Added `extendAvatarTtl()` (bridged to clients)
 

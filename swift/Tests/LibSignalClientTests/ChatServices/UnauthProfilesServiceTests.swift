@@ -75,6 +75,31 @@ class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesSe
         )
 
     }
+
+    func testExtendAvatarTtl() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_ExtendAvatarTtlTests(),
+            invoke: { api, args in
+                try await api.extendAvatarTtl(
+                    credential: args,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .found(let url):
+                    XCTAssertEqual(url, try actual.get())
+                case .notFound:
+                    XCTAssertEqual(nil, try actual.get())
+                case .invalidCredentials:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidAvatarUploadCredentialPresentation(_) {
+                    }
+                }
+            }
+        )
+    }
 }
 
 #endif
