@@ -625,6 +625,8 @@ public sealed class SetProfileError {
   ) : SetProfileError()
 
   public data object PaymentsForbiddenInRegion : SetProfileError()
+
+  public data object IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles : SetProfileError()
 }
 
 public sealed class SetProfileOut {
@@ -2593,6 +2595,13 @@ public object SetProfileError_PaymentsForbiddenInRegion_ReturnConverter {
   internal fun fromNative(): Any? = SetProfileError.PaymentsForbiddenInRegion
 }
 
+public object SetProfileError_IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = SetProfileError.IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles
+}
+
 public object SetProfileOut_Success_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -4340,6 +4349,26 @@ public object NativeTestingNice {
     val ffi_x = stringMapArgConverter<String, String>({ identity(it) })(x)
     val ffiOut =
       NativeTesting.TESTING_conversion_MapStringString_to_string(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionBool_identity(x: Boolean?): Boolean? {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionBool_identity(
+        ffi_x,
+      )
+
+    return identity(ffiOut)
+  }
+
+  public fun TESTING_conversion_OptionBool_to_string(x: Boolean?): String {
+    val ffi_x = identity(x)
+    val ffiOut =
+      NativeTesting.TESTING_conversion_OptionBool_to_string(
         ffi_x,
       )
 

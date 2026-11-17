@@ -1367,6 +1367,15 @@ impl SignalNodeError for SetProfileError {
                 operation_name,
                 no_extra_properties,
             ),
+            SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles => {
+                new_js_error(
+                    cx,
+                    Some("IoError"),
+                    &self.to_string(),
+                    operation_name,
+                    no_extra_properties,
+                )
+            }
         }
     }
 }

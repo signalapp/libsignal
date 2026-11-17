@@ -2332,6 +2332,33 @@ extension SignalOptionalOfc_uchar64: SignalOptionalOf {
 
 }
 
+extension SignalOptionalOfbool: SignalOptionalOf {
+
+    typealias Contents = CBool
+
+    init(
+        generic_present: CBool,
+        generic_value: CBool,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: CBool {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
 extension SignalOptionalOff32: SignalOptionalOf {
 
     typealias Contents = Float
@@ -4099,7 +4126,7 @@ internal struct Profile {
     var about: String
     var aboutEmoji: String
     var avatar: CdnUrl?
-    var phoneNumberSharing: Bool
+    var phoneNumberSharing: Bool?
     var paymentAddress: Data?
     var badgeIds: [String]
 
@@ -4968,7 +4995,9 @@ internal enum DerivedReturnConverterProfile: NiceReturnConverter {
             )
         }
         let phone_number_sharing = Result {
-            try IdentityResultConverter<Bool>.convertReturn(consuming: ffiValue.phone_number_sharing)
+            try OptionalReturnConverter<IdentityResultConverter<Bool>, SignalOptionalOfbool>.convertReturn(
+                consuming: ffiValue.phone_number_sharing
+            )
         }
         let payment_address = Result {
             try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
@@ -6135,7 +6164,7 @@ internal enum DerivedArgConverterProfile: NiceArgConverter {
     typealias KeepAlive = (
         StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?,
         OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.KeepAlive?,
-        IdentityArgConverter<Bool>.KeepAlive?,
+        OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.KeepAlive?,
         OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
         ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
     )
@@ -6176,9 +6205,9 @@ internal enum DerivedArgConverterProfile: NiceArgConverter {
             ) = OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertArg(avatar)
         let (phone_number_sharing_ffi, phone_number_sharing_keepalive):
             (
-                IdentityArgConverter<Bool>.FfiArg,
-                IdentityArgConverter<Bool>.KeepAlive?,
-            ) = IdentityArgConverter<Bool>.convertArg(phone_number_sharing)
+                OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.FfiArg,
+                OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.KeepAlive?,
+            ) = OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.convertArg(phone_number_sharing)
         let (payment_address_ffi, payment_address_keepalive):
             (
                 OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.FfiArg,
@@ -6205,7 +6234,7 @@ internal enum DerivedArgConverterProfile: NiceArgConverter {
                 StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?,
                 StringConverter.KeepAlive?,
                 OptionalArgConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.KeepAlive?,
-                IdentityArgConverter<Bool>.KeepAlive?,
+                OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.KeepAlive?,
                 OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
                 ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
             )? =
@@ -6245,13 +6274,15 @@ internal enum DerivedArgConverterProfile: NiceArgConverter {
                             avatar
                         ) {
                             ffi_avatar in
-                            return try IdentityArgConverter<Bool>.convertArgBorrowed(phone_number_sharing) {
-                                ffi_phone_number_sharing in
-                                return try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>
-                                    .convertArgBorrowed(payment_address) {
-                                        ffi_payment_address in
-                                        return try ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>
-                                            .convertArgBorrowed(badge_ids) {
+                            return try OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>
+                                .convertArgBorrowed(phone_number_sharing) {
+                                    ffi_phone_number_sharing in
+                                    return try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>
+                                        .convertArgBorrowed(payment_address) {
+                                            ffi_payment_address in
+                                            return try ArrayArgConverter<
+                                                StringConverter, SignalBorrowedSliceOfCStringPtr
+                                            >.convertArgBorrowed(badge_ids) {
                                                 ffi_badge_ids in
 
                                                 return try niceThunk(
@@ -6268,8 +6299,8 @@ internal enum DerivedArgConverterProfile: NiceArgConverter {
                                                 )
 
                                             }
-                                    }
-                            }
+                                        }
+                                }
                         }
                     }
                 }

@@ -1478,6 +1478,7 @@ mod remote_derives {
             current_profile_version: Option<ProfileKeyVersion>,
         },
         PaymentsForbiddenInRegion,
+        IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
     }
     #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs)]

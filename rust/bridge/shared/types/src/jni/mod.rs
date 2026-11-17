@@ -151,6 +151,8 @@ jni_custom_spellings! {
     pub struct JavaSimpleOwner<'a>(pub JObject<'a>);
     #[kt = "Float?"]
     pub struct JavaOptionalFloat<'a>(pub JObject<'a>);
+    #[kt = "Boolean?"]
+    pub struct JavaOptionalBoolean<'a>(pub JObject<'a>);
 }
 
 pub type JavaObject<'a> = JObject<'a>;
@@ -2254,6 +2256,13 @@ impl JniError for SetProfileError {
                 message,
                 ClassName("org.signal.libsignal.net.SetProfileException$PaymentsForbiddenInRegion"),
             ),
+            SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles => {
+                make_single_message_throwable(
+                    env,
+                    message,
+                    ClassName("java.lang.IllegalArgumentException"),
+                )
+            }
         }
     }
 }

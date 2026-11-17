@@ -665,6 +665,21 @@ describe('NativeTestingNice', () => {
       });
     }
   });
+  it('Option<boolean>', async () => {
+    for (const item of [null, true, false]) {
+      const toString = item === null ? '' : JSON.stringify(item);
+      await testConversion({
+        item,
+        toString,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionBool_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionBool_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionBool_identity_async,
+      });
+    }
+  });
   it('Floats', async () => {
     for (const item of [3.640625, 0.0, 1, -1, NaN, Infinity, -Infinity]) {
       const toString = `${item}`.replace('Infinity', 'inf');

@@ -14,6 +14,7 @@ import type {
   SetProfileInvalidProfile,
   ProfileCantBeDecoded,
   ProfileNotFound,
+  IoError,
 } from '../../Errors.js';
 import { Aci } from '../../Address.js';
 import type { S3UploadForm } from '../Chat.js';
@@ -111,6 +112,7 @@ export interface AuthProfilesService {
    * the account's region, based on its phone number or the caller's IP address
    * if the account does not have a phone number. The request should be retried
    * without paymentAddress.
+   * @throws {IoError} if profile.phoneNumberSharing is null
    * @throws {StandardNetworkError}
    */
   setProfile: (

@@ -111,6 +111,15 @@ describe('AuthProfilesService', () => {
             .and.deep.include({
               code: ErrorCode.SetProfilePaymentsForbiddenInRegion,
             });
+        } else if (
+          resp.failure ===
+          'indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles'
+        ) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.IoError,
+            });
         } else if ('invalidProfile' in resp.failure) {
           await expect(out)
             .to.eventually.be.rejectedWith(LibSignalErrorBase)

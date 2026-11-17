@@ -958,7 +958,7 @@ export type ReturnFfiProfile = {
   about: string;
   about_emoji: string;
   avatar: string | null;
-  phone_number_sharing: boolean;
+  phone_number_sharing: boolean | null;
   payment_address: Bytes | null;
   badge_ids: Array<string>;
 };
@@ -1170,6 +1170,9 @@ export type ReturnFfiSetProfileError =
     }
   | {
       __type: 3;
+    }
+  | {
+      __type: 4;
     };
 
 export type ReturnFfiSetProfileOut =
@@ -1484,7 +1487,7 @@ export type ArgFfiProfile = {
   about: string;
   about_emoji: string;
   avatar: string | null;
-  phone_number_sharing: boolean;
+  phone_number_sharing: boolean | null;
   payment_address: Bytes | null;
   badge_ids: Array<string>;
 };
@@ -4030,6 +4033,12 @@ type NativeFunctions = {
   TESTING_conversion_MapStringString_to_string: (
     x: StringMapFfiContents<string>
   ) => string;
+  TESTING_conversion_OptionBool_identity: (x: boolean | null) => boolean | null;
+  TESTING_conversion_OptionBool_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: boolean | null
+  ) => CancellablePromise<boolean | null>;
+  TESTING_conversion_OptionBool_to_string: (x: boolean | null) => string;
   TESTING_conversion_OptionCdnUrl_identity: (x: string | null) => string | null;
   TESTING_conversion_OptionCdnUrl_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
@@ -5216,6 +5225,9 @@ const {
   TESTING_conversion_MapStringString_identity,
   TESTING_conversion_MapStringString_identity_async,
   TESTING_conversion_MapStringString_to_string,
+  TESTING_conversion_OptionBool_identity,
+  TESTING_conversion_OptionBool_identity_async,
+  TESTING_conversion_OptionBool_to_string,
   TESTING_conversion_OptionCdnUrl_identity,
   TESTING_conversion_OptionCdnUrl_identity_async,
   TESTING_conversion_OptionCdnUrl_to_string,
@@ -6096,6 +6108,9 @@ export {
   TESTING_conversion_MapStringString_identity,
   TESTING_conversion_MapStringString_identity_async,
   TESTING_conversion_MapStringString_to_string,
+  TESTING_conversion_OptionBool_identity,
+  TESTING_conversion_OptionBool_identity_async,
+  TESTING_conversion_OptionBool_to_string,
   TESTING_conversion_OptionCdnUrl_identity,
   TESTING_conversion_OptionCdnUrl_identity_async,
   TESTING_conversion_OptionCdnUrl_to_string,

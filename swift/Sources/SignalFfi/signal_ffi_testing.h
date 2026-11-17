@@ -541,6 +541,9 @@ static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfCStringPtr) ==
 typedef SignalOptionalOfc_uchar32* SignalType_MutPointer_SignalOptionalOfc_uchar32;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfc_uchar32) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfc_uchar32) == 8);
+typedef SignalOptionalOfbool* SignalType_MutPointer_SignalOptionalOfbool;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOfbool) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOfbool) == 8);
 typedef SignalOptionalOff32* SignalType_MutPointer_SignalOptionalOff32;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalOptionalOff32) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalOptionalOff32) == 8);
@@ -1654,6 +1657,7 @@ typedef enum {
   SignalSetProfileErrorFfiResultExpectedDataWriteConflict,
   SignalSetProfileErrorFfiResultExpectedVersionWriteConflict,
   SignalSetProfileErrorFfiResultPaymentsForbiddenInRegion,
+  SignalSetProfileErrorFfiResultIndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
 } SignalSetProfileErrorFfiResult_Tag;
 typedef struct {
   SignalProfileValidationErrorInternalFfiResult _0;
@@ -2382,6 +2386,14 @@ SignalFfiError* signal_testing_conversion_map_string_string_identity(
 SignalFfiError* signal_testing_conversion_map_string_string_to_string(
   SignalCStringPtr* out,
   SignalBorrowedSliceOfPairOfCStringPtrCStringPtr x
+);
+SignalFfiError* signal_testing_conversion_option_bool_identity(
+  SignalOptionalOfbool* out,
+  SignalOptionalOfbool x
+);
+SignalFfiError* signal_testing_conversion_option_bool_to_string(
+  SignalCStringPtr* out,
+  SignalOptionalOfbool x
 );
 SignalFfiError* signal_testing_conversion_option_cdn_url_identity(
   SignalOptionalOfCStringPtr* out,

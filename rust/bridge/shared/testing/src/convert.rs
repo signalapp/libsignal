@@ -774,4 +774,17 @@ pub mod test_conversions {
     async fn TESTING_conversion_OptionCdnUrl_identity_async(x: Option<CdnUrl>) -> Option<CdnUrl> {
         x
     }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionBool_to_string(x: Option<bool>) -> String {
+        x.map(|x| x.to_string()).unwrap_or_default()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionBool_identity(x: Option<bool>) -> Option<bool> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionBool_identity_async(x: Option<bool>) -> Option<bool> {
+        x
+    }
 }

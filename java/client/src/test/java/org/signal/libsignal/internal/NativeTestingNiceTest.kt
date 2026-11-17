@@ -460,6 +460,15 @@ class NativeTestingNiceTest {
     )
   }
 
+  @Test
+  fun testOptionBool() =
+    testConversion(
+      sequenceOf(null, true, false),
+      toString = { it?.toString() ?: "" },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionBool_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionBool_identity,
+    )
+
   val floatsToTest: Sequence<Float> =
     sequenceOf(
       0.0f,

@@ -67,6 +67,7 @@ public data class FetchedProfile(
   }
 }
 
+@Suppress("ktlint:standard:no-consecutive-comments")
 public data class Profile(
   /**
    * Non-empty; max-length is 128 bytes
@@ -87,7 +88,12 @@ public data class Profile(
   public val avatar: CdnUrl?,
   // The following fields are conceptually part of the user's profile, but live outside of the
   // encrypted v2 PlaintextProfileData
-  public val phoneNumberSharing: Boolean,
+  /**
+   * phoneNumberSharing is allowed to be null on _incoming_ profiles for backwards compatibility
+   * (null indicates that phoneNumberSharing is in an indeterminate state for the account)
+   * setProfile() will raise an error on an attempt to set this to null on outgoing profiles
+   */
+  public val phoneNumberSharing: Boolean?,
   public val paymentAddress: PaymentAddress?,
   public val badgeIds: List<BadgeId>,
 ) {

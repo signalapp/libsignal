@@ -1349,7 +1349,7 @@ pub mod remote_derives {
         pub about: String,
         pub about_emoji: String,
         pub avatar: Option<CdnUrl>,
-        pub phone_number_sharing: bool,
+        pub phone_number_sharing: Option<bool>,
         pub payment_address: Option<PaymentAddress>,
         pub badge_ids: BridgeVec<BadgeId>,
     }

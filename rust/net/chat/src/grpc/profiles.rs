@@ -119,7 +119,7 @@ impl AsRef<str> for CdnUrl {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 #[cfg_attr(test, derive(PartialEq, Eq, Debug))]
 pub struct Profile {
     /// Non-empty; max-length is 128 bytes
@@ -134,9 +134,25 @@ pub struct Profile {
     pub avatar: Option<CdnUrl>,
     // The following fields are conceptually part of the user's profile, but live outside of the
     // encrypted v2 PlaintextProfileData
-    pub phone_number_sharing: bool,
+    /// The `None`-ness of this value is respected for _incoming_ profiles.
+    /// It is an error to pass `None` for outgoing profiles (i.e. when `set_profile()` is called)
+    pub phone_number_sharing: Option<bool>,
     pub payment_address: Option<PaymentAddress>,
     pub badge_ids: Vec<BadgeId>,
+}
+impl Default for Profile {
+    fn default() -> Self {
+        Self {
+            given_name: Default::default(),
+            family_name: Default::default(),
+            about: Default::default(),
+            about_emoji: Default::default(),
+            avatar: Default::default(),
+            phone_number_sharing: Some(false),
+            payment_address: Default::default(),
+            badge_ids: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, VariantArray)]
@@ -445,6 +461,9 @@ pub enum SetProfileError {
     /// number or the caller's IP address if the account does not have a phone
     /// number. The request should be retried without `payment_address`.
     PaymentsForbiddenInRegion,
+    /// `phone_number_sharing` being `None` is allowed for backwards compatiblity on _incoming_
+    /// profiles, but it's disallowed on _outgoing_ profiles.
+    IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
 }
 // We want to ensure that any current_profile_version doesn't get printed.
 impl_debug_from_display!(SetProfileError);
@@ -658,6 +677,11 @@ impl<T: GrpcServiceProvider> Auth<T> {
         profile
             .validate()
             .map_err(|e| RequestError::Other(SetProfileError::InvalidProfile(e)))?;
+        if profile.phone_number_sharing.is_none() {
+            return Err(RequestError::Other(
+                SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
+            ));
+        }
         let (request, data_hash) = profile_utils::build_set_profile_request(
             rng,
             aci,

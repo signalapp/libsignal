@@ -563,6 +563,17 @@ static_assert_64bit(offsetof(SignalOptionalOfc_uchar32, present) == 0);
 static_assert_64bit(offsetof(SignalOptionalOfc_uchar32, value) == 1);
 static_assert_64bit(sizeof(SignalOptionalOfc_uchar32) == 33);
 static_assert_64bit(alignof(SignalOptionalOfc_uchar32) == 1);
+typedef bool MaybeUninitOfbool;
+static_assert_64bit(sizeof(MaybeUninitOfbool) == 1);
+static_assert_64bit(alignof(MaybeUninitOfbool) == 1);
+typedef struct {
+  bool present;
+  MaybeUninitOfbool value;
+} SignalOptionalOfbool;
+static_assert_64bit(offsetof(SignalOptionalOfbool, present) == 0);
+static_assert_64bit(offsetof(SignalOptionalOfbool, value) == 1);
+static_assert_64bit(sizeof(SignalOptionalOfbool) == 2);
+static_assert_64bit(alignof(SignalOptionalOfbool) == 1);
 typedef SignalOwnedBuffer MaybeUninitOfOwnedBuffer;
 static_assert_64bit(sizeof(MaybeUninitOfOwnedBuffer) == 16);
 static_assert_64bit(alignof(MaybeUninitOfOwnedBuffer) == 8);
@@ -590,7 +601,7 @@ typedef struct {
   const int8_t* about;
   const int8_t* about_emoji;
   SignalOptionalOfCStringPtr avatar;
-  bool phone_number_sharing;
+  SignalOptionalOfbool phone_number_sharing;
   SignalOptionalOfOwnedBuffer payment_address;
   SignalOwnedBufferOfMaxAlignedCStringPtr badge_ids;
 } SignalProfileFfiResult;
@@ -4334,7 +4345,7 @@ typedef struct {
   const int8_t* about;
   const int8_t* about_emoji;
   SignalOptionalOfCStringPtr avatar;
-  bool phone_number_sharing;
+  SignalOptionalOfbool phone_number_sharing;
   SignalOptionalOfBorrowedBuffer payment_address;
   SignalBorrowedSliceOfCStringPtr badge_ids;
 } SignalProfileFfiArg;

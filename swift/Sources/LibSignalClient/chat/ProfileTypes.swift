@@ -70,7 +70,7 @@ public struct Profile: Sendable, Equatable {
         about: String,
         aboutEmoji: String,
         avatar: CdnUrl? = nil,
-        phoneNumberSharing: Bool,
+        phoneNumberSharing: Bool?,
         paymentAddress: PaymentAddress? = nil,
         badgeIds: [BadgeId]
     ) {
@@ -96,7 +96,10 @@ public struct Profile: Sendable, Equatable {
     public var avatar: CdnUrl?
     // The following fields are conceptually part of the user's profile, but live outside of the
     // encrypted v2 PlaintextProfileData
-    public var phoneNumberSharing: Bool
+    /// phoneNumberSharing is allowed to be `nil` on _incoming_ profiles for backwards compatibility
+    /// (`nil` indicates that phoneNumberSharing is in an indeterminate for the account)
+    /// `setProfile()` will raise an error on an attempt to set this to `nil` on outgoing profiles
+    public var phoneNumberSharing: Bool?
     public var paymentAddress: PaymentAddress?
     public var badgeIds: [BadgeId]
 }

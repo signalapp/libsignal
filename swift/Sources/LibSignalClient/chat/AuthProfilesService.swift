@@ -42,6 +42,7 @@ public protocol AuthProfilesService: Sendable {
     ///   - ``SignalError/setProfileErrorExpectedDataWriteConflict(_:)`` if the current data hash did not match the request's expectation, indicating  another device on the account may have written an update the caller does not know about.
     ///   - ``SignalError/setProfileErrorExpectedVersionWriteConflict(currentProfileVersion:message:)`` if the current version did not match the request's expectation, indicating another device on the account may have created a new version the caller does not know about.
     ///   - ``SignalError/setProfileErrorPaymentsForbiddenInRegion(_:)`` if payments  are not permitted in the account's region, based on its phone number or the caller's IP address if the account does not have a phone number. The request should be retried without paymentAddress.
+    ///   - ``SignalError/invalidArgument(_:)`` if `profile.phoneNumberSharing` is `nil`
     ///   - the standard Signal network errors
     func setProfile(
         aci: Aci,

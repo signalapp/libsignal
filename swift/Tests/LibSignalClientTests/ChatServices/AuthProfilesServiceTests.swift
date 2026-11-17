@@ -119,6 +119,12 @@ class AuthProfilesServiceImplTests: AuthChatServiceTestBase<AuthenticatedChatCon
                     XCTFail("Expected exception")
                 } catch SignalError.setProfilePaymentsForbiddenInRegion(_) {
                 }
+            case .indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles:
+                do {
+                    _ = try actual.get()
+                    XCTFail("Expected exception")
+                } catch SignalError.invalidArgument(_) {
+                }
             }
         }
     }

@@ -32,7 +32,14 @@ export type Profile = {
   avatar: CdnUrl | null;
   // The following fields are conceptually part of the user's profile, but live outside of the
   // encrypted v2 PlaintextProfileData
-  phoneNumberSharing: boolean;
+  /**
+   * phoneNumberSharing is allowed to be null on _incoming_ profiles for
+   * backwards compatibility. (null indicates that phoneNumberSharing is in an
+   * indeterminate state for the account).
+   * setProfile() will raise an error on an attempt to set this to null on
+   * outgoing profiles.
+   */
+  phoneNumberSharing: boolean | null;
   paymentAddress: PaymentAddress | null;
   badgeIds: Array<BadgeId>;
 };

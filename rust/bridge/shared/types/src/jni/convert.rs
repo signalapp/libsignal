@@ -3316,6 +3316,38 @@ impl<'a> ResultTypeInfo<'a> for f32 {
 }
 nice_identity_result_converter!(f32, "Float");
 
+impl<'a> SimpleArgTypeInfo<'a> for Option<bool> {
+    type ArgType = JavaOptionalBoolean<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        JavaOptionalBoolean(foreign): &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            return Ok(None);
+        }
+        Ok(Some(call_method_checked(
+            env,
+            foreign,
+            "booleanValue",
+            jni_args!(() -> bool),
+        )?))
+    }
+}
+nice_identity_arg_converter!(Option<bool>, "Boolean?");
+
+impl<'a> ResultTypeInfo<'a> for Option<bool> {
+    type ResultType = JavaOptionalBoolean<'a>;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        if let Some(x) = self {
+            box_primitive_if_needed(env, JValueOwned::from(x)).map(JavaOptionalBoolean)
+        } else {
+            Ok(Default::default())
+        }
+    }
+}
+nice_identity_result_converter!(Option<bool>, "Boolean?");
+
 impl<'a> ResultTypeInfo<'a> for &'_ [libsignal_net_chat::api::ChallengeOption] {
     type ResultType = JObjectArray<'a>;
 

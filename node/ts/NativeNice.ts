@@ -787,7 +787,7 @@ export type Profile = {
   about: string;
   aboutEmoji: string;
   avatar: CdnUrl | null;
-  phoneNumberSharing: boolean;
+  phoneNumberSharing: boolean | null;
   paymentAddress: Bytes | null;
   badgeIds: Array<string>;
 };
@@ -933,7 +933,8 @@ export type SetProfileError =
   | {
       expectedVersionWriteConflict: zkgroup.ProfileKeyVersion | null;
     }
-  | 'paymentsForbiddenInRegion';
+  | 'paymentsForbiddenInRegion'
+  | 'indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles';
 
 export type SetProfileOut =
   | {
@@ -2430,7 +2431,7 @@ export function returnConverterProfile(
     about: identity(ffiInput.about),
     aboutEmoji: identity(ffiInput.about_emoji),
     avatar: liftNull((cdnUrl: string) => cdnUrl as CdnUrl)(ffiInput.avatar),
-    phoneNumberSharing: identity(ffiInput.phone_number_sharing),
+    phoneNumberSharing: liftNull(identity)(ffiInput.phone_number_sharing),
     paymentAddress: liftNull(identity)(ffiInput.payment_address),
     badgeIds: ((arr: Array<string>) => arr.map(identity))(ffiInput.badge_ids),
   };
@@ -2812,6 +2813,8 @@ export function returnConverterSetProfileError(
       };
     case 3:
       return 'paymentsForbiddenInRegion';
+    case 4:
+      return 'indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles';
 
     default:
       ffiInput satisfies never;
@@ -3420,7 +3423,7 @@ export function argConverterProfile(niceInput: Profile): Native.ArgFfiProfile {
     about: identity(about),
     about_emoji: identity(about_emoji),
     avatar: liftNull((cdnUrl: CdnUrl) => cdnUrl)(avatar),
-    phone_number_sharing: identity(phone_number_sharing),
+    phone_number_sharing: liftNull(identity)(phone_number_sharing),
     payment_address: liftNull(identity)(payment_address),
     badge_ids: ((arr: Array<string>) => arr.map(identity))(badge_ids),
   };
@@ -5948,6 +5951,45 @@ export function TESTING_conversion_MapStringString_to_string({
     Native.TESTING_conversion_MapStringString_to_string(
       stringMapArgConverter<string, string>(identity)(x)
     )
+  );
+}
+
+export function TESTING_conversion_OptionBool_identity({
+  x: x,
+}: {
+  x: boolean | null;
+}): boolean | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionBool_identity(liftNull(identity)(x))
+  );
+}
+export async function TESTING_conversion_OptionBool_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: boolean | null;
+}): Promise<boolean | null> {
+  return liftNull(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_OptionBool_identity_async(
+        asyncContext,
+        liftNull(identity)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_OptionBool_to_string({
+  x: x,
+}: {
+  x: boolean | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionBool_to_string(liftNull(identity)(x))
   );
 }
 

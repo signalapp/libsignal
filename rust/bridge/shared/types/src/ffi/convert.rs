@@ -2591,6 +2591,7 @@ macro_rules! simple_optional {
 }
 simple_optional!(CdnUrl);
 simple_optional!(f32);
+simple_optional!(bool);
 simple_optional!(Vec<u8>);
 return_optional!(libsignal_protocol::Pni);
 return_optional!(uuid::Uuid);

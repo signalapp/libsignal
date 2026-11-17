@@ -198,7 +198,7 @@ pub(super) mod v2 {
             } else {
                 Some(CdnUrl::try_from(avatar_url).map_err(ProfileDecodeError::InvalidAvatarUrl)?)
             },
-            phone_number_sharing,
+            phone_number_sharing: Some(phone_number_sharing),
             payment_address,
             badge_ids: account_info.badge_ids.clone(),
         };
@@ -584,11 +584,14 @@ pub(super) mod v1 {
         key: &Aes256Gcm,
         field: Field,
         input: &[u8],
-    ) -> Result<bool, ProfileDecodeError> {
+    ) -> Result<Option<bool>, ProfileDecodeError> {
+        if input.is_empty() {
+            return Ok(None);
+        }
         let raw = decrypt_keeping_padding(key, field, input)?;
         match raw.as_slice() {
-            [0] => Ok(false),
-            [1] => Ok(true),
+            [0] => Ok(Some(false)),
+            [1] => Ok(Some(true)),
             _ => Err(ProfileDecodeError::ProfileV1FieldInvalidBoolean { field }),
         }
     }
@@ -654,6 +657,7 @@ pub(super) fn build_set_profile_request(
         payment_address,
         badge_ids,
     } = profile;
+    let phone_number_sharing = phone_number_sharing.unwrap_or_default();
     let plaintext = PlaintextProfileData {
         given_name,
         family_name,
@@ -752,7 +756,9 @@ pub(super) mod test_cases {
         assert!(V1_ABOUT_EMOJI_ALLOWED_SIZES.contains(&v1_request.about_emoji.len()));
         assert!(V1_ABOUT_ALLOWED_SIZES.contains(&v1_request.about.len()));
         assert!(
-            V1_PHONE_NUMBER_SHARING_ALLOWED_SIZES.contains(&v1_request.phone_number_sharing.len())
+            V1_PHONE_NUMBER_SHARING_ALLOWED_SIZES.contains(&v1_request.phone_number_sharing.len()),
+            "{}",
+            v1_request.phone_number_sharing.len()
         );
     }
 
@@ -967,6 +973,30 @@ pub(super) mod test_cases {
             test.correct_fetched_profile.v2_data_hash = None;
             cases.push(GrpcTestCase {
                 name: format!("Roundtrip Test case #{i}, v1 response"),
+                method: method.into(),
+                request: GetProfileArgs {
+                    aci: test.aci,
+                    profile_key: test.profile_key,
+                    etag: None,
+                },
+                request_grpc: GetProfileRequest {
+                    account_identifier: Some(test.aci.into()),
+                    version: version.clone(),
+                    etag: Vec::new(),
+                },
+                response_grpc: GetProfileResponse {
+                    response: Some(GetProfileResponseEnum::LegacyProfile(
+                        test.v1_result.clone(),
+                    )),
+                },
+                response: GetProfileOut::Success(Some(test.correct_fetched_profile.clone())),
+            });
+            test.v1_result.phone_number_sharing.clear();
+            test.correct_fetched_profile.profile.phone_number_sharing = None;
+            cases.push(GrpcTestCase {
+                name: format!(
+                    "Roundtrip Test case #{i}, v1 response, indeterminate phone number sharing"
+                ),
                 method: method.into(),
                 request: GetProfileArgs {
                     aci: test.aci,
@@ -1223,6 +1253,27 @@ pub(super) mod test_cases {
                 ProfileValidationError::GivenNameEmpty,
             )),
         });
+        cases.push(GrpcTestCase {
+            name: "indeterminate phone number sharing".into(),
+            method: method.into(),
+            request: SetProfileArgs {
+                rng_seed: 12,
+                aci,
+                profile_key,
+                profile: Profile {
+                    given_name: "x".into(),
+                    phone_number_sharing: None,
+                    ..Default::default()
+                },
+                expected_current_data_hash: None,
+                expected_current_profile_key_version: None,
+            },
+            request_grpc: Default::default(),
+            response_grpc: Default::default(),
+            response: SetProfileOut::Failure(
+                SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
+            ),
+        });
         for &field in ProfileFieldWithMaxLength::VARIANTS {
             let mut profile = Profile {
                 given_name: "x".into(),
@@ -1429,7 +1480,7 @@ pub(super) mod test_cases {
                             ))
                             .expect("valid url"),
                         ),
-                        phone_number_sharing: true,
+                        phone_number_sharing: Some(true),
                         payment_address: Some(vec![b'p'; PaymentAddress.max_length()]),
                         badge_ids: vec![
                             "honor".into(),
@@ -1457,7 +1508,7 @@ pub(super) mod test_cases {
                         about: String::new(),
                         about_emoji: String::new(),
                         avatar: None,
-                        phone_number_sharing: false,
+                        phone_number_sharing: Some(false),
                         payment_address: None,
                         badge_ids: Vec::new(),
                     },
@@ -1550,7 +1601,7 @@ pub(super) mod test_cases {
                     about: "About".into(),
                     about_emoji: "X".into(),
                     avatar: None,
-                    phone_number_sharing: true,
+                    phone_number_sharing: Some(true),
                     payment_address: Some(vec![0xff; 15]),
                     badge_ids: Vec::new(),
                 }
@@ -1601,7 +1652,7 @@ pub(super) mod test_cases {
                 about: "A bout".into(),
                 about_emoji: "Y".into(),
                 avatar: Some(CdnUrl(format!("{}abcd", CdnUrl::CDN0))),
-                phone_number_sharing: true,
+                phone_number_sharing: Some(true),
                 payment_address: Some(vec![0xec; 128]),
                 badge_ids,
             };
@@ -1633,7 +1684,7 @@ pub(super) mod test_cases {
                         avatar: Some(
                             CdnUrl::try_from(format!("{}abc", CdnUrl::CDN0)).expect("valid url"),
                         ),
-                        phone_number_sharing: true,
+                        phone_number_sharing: Some(true),
                         payment_address: Some(vec![4]),
                         badge_ids: Vec::new(),
                     },

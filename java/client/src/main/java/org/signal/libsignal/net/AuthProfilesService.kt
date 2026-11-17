@@ -187,7 +187,8 @@ public class AuthProfilesService(
    *
    * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
    * [RequestResult.ApplicationError]. This method can also result in a [SetProfileException].
-   * See the docs on its subclasses for more details.
+   * See the docs on its subclasses for more details. An [IllegalArgumentException] will result if
+   * profile.phoneNumberSharing is null.
    *
    * @param aci the ACI of the current account
    * @param profileKey the profile key to use when setting the profile. This can be the same, or

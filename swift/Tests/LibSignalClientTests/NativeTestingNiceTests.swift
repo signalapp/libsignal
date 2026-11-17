@@ -92,6 +92,22 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testOptionBool() throws {
+        try OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.testConversion(
+            items: [nil, true, false],
+            toString: {
+                if let x = $0 {
+                    return "\(x)"
+                } else {
+                    return ""
+                }
+            },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_OptionBool_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_option_bool_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionBool_identity(x: $0) }
+        )
+    }
+    @Test
     func testU8() throws {
         try IdentityArgConverter<UInt8>.testConversion(
             items: UInt8.min...UInt8.max,

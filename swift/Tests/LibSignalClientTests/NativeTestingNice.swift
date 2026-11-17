@@ -1601,6 +1601,7 @@ internal enum SetProfileError {
     case expectedDataWriteConflict
     case expectedVersionWriteConflict(currentProfileVersion: ProfileKeyVersion?)
     case paymentsForbiddenInRegion
+    case indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles
 }
 
 internal enum SetProfileOut {
@@ -3765,6 +3766,8 @@ internal enum DerivedReturnConverterSetProfileError: NiceReturnConverter {
             )
         case SignalSetProfileErrorFfiResultPaymentsForbiddenInRegion:
             return SetProfileError.paymentsForbiddenInRegion
+        case SignalSetProfileErrorFfiResultIndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles:
+            return SetProfileError.indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles
         default:
             throw SignalError.internalError("Unexpected enum tag for SetProfileError: \(ffiTag)")
         }
@@ -6579,6 +6582,39 @@ internal enum NativeTestingNice {
             var rawOutput = StringConverter.emptyFfiReturn()
             try checkError(
                 SignalFfi.signal_testing_conversion_map_string_string_to_string(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try StringConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func TESTING_conversion_OptionBool_identity(
+        x: Bool?,
+    ) throws -> Bool? {
+        try OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = OptionalReturnConverter<IdentityResultConverter<Bool>, SignalOptionalOfbool>
+                .emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_option_bool_identity(
+                    &rawOutput,
+                    xFfi,
+                )
+            )
+            return try OptionalReturnConverter<IdentityResultConverter<Bool>, SignalOptionalOfbool>.convertReturn(
+                consuming: rawOutput
+            )
+        }
+
+    }
+    internal static func TESTING_conversion_OptionBool_to_string(
+        x: Bool?,
+    ) throws -> String {
+        try OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.convertArgBorrowed(x) { xFfi in
+            var rawOutput = StringConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_conversion_option_bool_to_string(
                     &rawOutput,
                     xFfi,
                 )

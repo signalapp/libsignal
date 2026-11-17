@@ -1625,6 +1625,9 @@ impl FfiError for SetProfileError {
             SetProfileError::PaymentsForbiddenInRegion => {
                 SignalErrorCode::SetProfilePaymentsForbiddenInRegion
             }
+            SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles => {
+                SignalErrorCode::InvalidArgument
+            }
         }
     }
 

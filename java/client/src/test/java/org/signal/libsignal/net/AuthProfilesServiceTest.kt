@@ -25,6 +25,7 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.seconds
 
 class AuthProfilesServiceTest {
@@ -119,6 +120,12 @@ class AuthProfilesServiceTest {
             SetProfileError.PaymentsForbiddenInRegion ->
               actual
                 .assertNonSuccess<_, _, SetProfileException.PaymentsForbiddenInRegion>()
+
+            SetProfileError.IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles ->
+              assertIs<IllegalArgumentException>(
+                assertIs<RequestResult.ApplicationError>(actual, actual.toString()).cause,
+                actual.toString(),
+              )
           }
         }
 

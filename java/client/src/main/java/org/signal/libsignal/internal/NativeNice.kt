@@ -445,7 +445,7 @@ public data class Profile(
   public val about: String,
   public val aboutEmoji: String,
   public val avatar: org.signal.libsignal.net.CdnUrl?,
-  public val phoneNumberSharing: Boolean,
+  public val phoneNumberSharing: Boolean?,
   public val paymentAddress: ByteArray?,
   public val badgeIds: List<String>,
 )
@@ -1298,7 +1298,7 @@ public object Profile_ReturnConverter {
           }
         )(avatar as String?),
       phoneNumberSharing =
-        identity(phone_number_sharing as Boolean),
+        identity(phone_number_sharing as Boolean?),
       paymentAddress =
         ({ x: ByteArray? -> x?.let { identity(it) } })(payment_address as ByteArray?),
       badgeIds =
@@ -1913,7 +1913,7 @@ public class Profile_FfiArgType {
   internal val avatar: Any?
 
   @CalledFromNative
-  internal val phone_number_sharing: Boolean
+  internal val phone_number_sharing: Any?
 
   @CalledFromNative
   internal val payment_address: Any?
@@ -1926,7 +1926,7 @@ public class Profile_FfiArgType {
     about: Any?,
     about_emoji: Any?,
     avatar: Any?,
-    phone_number_sharing: Boolean,
+    phone_number_sharing: Any?,
     payment_address: Any?,
     badge_ids: Any?,
   ) {

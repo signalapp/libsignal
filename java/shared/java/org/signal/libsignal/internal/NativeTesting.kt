@@ -848,6 +848,12 @@ public object NativeTesting {
   public external fun TESTING_conversion_MapStringString_to_string(x: Array<*>): String
 
   @JvmStatic
+  public external fun TESTING_conversion_OptionBool_identity(x: Boolean?): Boolean?
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionBool_to_string(x: Boolean?): String
+
+  @JvmStatic
   public external fun TESTING_conversion_OptionCdnUrl_identity(x: String?): String?
 
   @JvmStatic
