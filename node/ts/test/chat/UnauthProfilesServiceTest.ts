@@ -131,4 +131,27 @@ describe('UnauthProfilesService', () => {
       }
     );
   });
+
+  describe('deleteAvatar', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_DeleteAvatarTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        credential: AvatarUploadCredentialPresentation,
+        resp: boolean
+      ) => {
+        const out = chat.deleteAvatar({ credential });
+        if (resp) {
+          await out;
+        } else {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.InvalidAvatarUploadCredentialPresentation,
+            });
+        }
+      }
+    );
+  });
 });

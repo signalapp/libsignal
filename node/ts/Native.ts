@@ -3282,6 +3282,7 @@ type NativeFunctions = {
   TESTING_CreateOTP: (username: string, secret: Bytes) => string;
   TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
   TESTING_DeleteAccountTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_DeleteAvatarTests: () => Array<GrpcTestCaseFfi<Bytes, boolean>>;
   TESTING_DeleteBackupMediaTests: () => Array<
     GrpcTestCaseFfi<
       Array<ReturnFfiBridgeDeleteBackupMediaItem>,
@@ -4004,6 +4005,11 @@ type NativeFunctions = {
     purchase_time: Timestamp,
     expected_level: ArgFfiLoginReceiptLevel
   ) => CancellablePromise<Bytes>;
+  UnauthenticatedChatConnection_delete_avatar: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Bytes
+  ) => CancellablePromise<void>;
   UnauthenticatedChatConnection_disconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>
@@ -4746,6 +4752,7 @@ const {
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteAccountTests,
+  TESTING_DeleteAvatarTests,
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
@@ -4987,6 +4994,7 @@ const {
   UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_create_login_receipt_credential,
+  UnauthenticatedChatConnection_delete_avatar,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_extend_avatar_ttl,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
@@ -5610,6 +5618,7 @@ export {
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteAccountTests,
+  TESTING_DeleteAvatarTests,
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
@@ -5851,6 +5860,7 @@ export {
   UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_create_login_receipt_credential,
+  UnauthenticatedChatConnection_delete_avatar,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_extend_avatar_ttl,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,

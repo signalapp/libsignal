@@ -129,4 +129,29 @@ class UnauthProfilesServiceTest {
       )
     }
   }
+
+  @Test
+  fun testDeleteAvatar() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_DeleteAvatarTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.deleteAvatar(
+            credential = req,
+          )
+        },
+        check = { expected, actual ->
+          if (expected) {
+            actual.assertSuccess()
+          } else {
+            actual.assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+          }
+        },
+      )
+    }
+  }
 }

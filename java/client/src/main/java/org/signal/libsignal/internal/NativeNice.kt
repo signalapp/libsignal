@@ -3185,6 +3185,28 @@ public object NativeNice {
       }
   }
 
+  public fun UnauthenticatedChatConnection_delete_avatar(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+    credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
+  ): CompletableFuture<Void?> {
+    val ffi_chat = identity(chat)
+    val ffi_credential =
+      (org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation::getInternalContentsForJNI)(
+        credential,
+      )
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_delete_avatar(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_credential,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+  }
+
   public fun UnauthenticatedChatConnection_extend_avatar_ttl(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.UnauthenticatedChatConnection,

@@ -7644,6 +7644,31 @@ internal enum NativeNice {
         return try ByteArrayConverter<ReceiptCredential>.convertReturn(consuming: rawOutput)
 
     }
+    internal static func UnauthenticatedChatConnection_delete_avatar(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: AvatarUploadCredentialPresentation,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<AvatarUploadCredentialPresentation>.convertArgBorrowed(credential) {
+                            credentialFfi in
+                            SignalFfi.signal_unauthenticated_chat_connection_delete_avatar(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                credentialFfi,
+                            )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
     internal static func UnauthenticatedChatConnection_extend_avatar_ttl(
         asyncContext: TokioAsyncContext,
         chat: UnauthenticatedChatConnection,

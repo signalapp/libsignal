@@ -100,6 +100,28 @@ class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesSe
             }
         )
     }
+
+    func testDeleteAvatar() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_DeleteAvatarTests(),
+            invoke: { api, args in
+                try await api.deleteAvatar(
+                    credential: args,
+                )
+            },
+            check: { expected, actual in
+                if expected {
+                    try actual.get()
+                } else {
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidAvatarUploadCredentialPresentation(_) {
+                    }
+                }
+            }
+        )
+    }
 }
 
 #endif

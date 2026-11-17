@@ -76,6 +76,22 @@ export interface UnauthProfilesService {
     },
     options?: RequestOptions
   ) => Promise<CdnUrl | null>;
+  /**
+   * Delete the account’s avatar from the CDN.
+   *
+   * Clients must also call setProfile() to remove the avatar URL from the
+   * profile data.
+   *
+   * @throws {StandardNetworkError}
+   * @throws {InvalidAvatarUploadCredentialPresentation} if the presented
+   * credential is invalid.
+   */
+  deleteAvatar: (
+    request: {
+      credential: zkgroup.AvatarUploadCredentialPresentation;
+    },
+    options?: RequestOptions
+  ) => Promise<void>;
 }
 
 UnauthenticatedChatConnection.prototype.accountExists = async function (
@@ -119,6 +135,22 @@ UnauthenticatedChatConnection.prototype.extendAvatarTtl = async function (
   options?: RequestOptions
 ): Promise<CdnUrl | null> {
   return await NativeNice.UnauthenticatedChatConnection_extend_avatar_ttl({
+    asyncContext: this._asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this._chatService,
+    credential,
+  });
+};
+
+UnauthenticatedChatConnection.prototype.deleteAvatar = async function (
+  {
+    credential,
+  }: {
+    credential: zkgroup.AvatarUploadCredentialPresentation;
+  },
+  options?: RequestOptions
+): Promise<void> {
+  return await NativeNice.UnauthenticatedChatConnection_delete_avatar({
     asyncContext: this._asyncContext,
     abortSignal: options?.abortSignal,
     chat: this._chatService,

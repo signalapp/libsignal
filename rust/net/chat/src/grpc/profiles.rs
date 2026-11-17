@@ -16,6 +16,7 @@ use libsignal_net_grpc::proto::chat::account::{
 use libsignal_net_grpc::proto::chat::errors::{
     self, FailedPrecondition, FailedZkAuthentication, NotFound,
 };
+use libsignal_net_grpc::proto::chat::profile::delete_avatar_response::Response as DeleteAvatarResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::extend_avatar_ttl_response::Response as ExtendAvatarResponseTtlEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_key_credential_response::Response as GetProfileKeyCredentialResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_response::Response as GetProfileResponseEnum;
@@ -23,10 +24,11 @@ use libsignal_net_grpc::proto::chat::profile::profile_anonymous_client::ProfileA
 use libsignal_net_grpc::proto::chat::profile::profile_client::ProfileClient;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as GrpcSetProfileResponse;
 use libsignal_net_grpc::proto::chat::profile::{
-    CredentialType, ExpectedVersionConflict, ExtendAvatarTtlRequest, GetProfileAnonymousRequest,
-    GetProfileKeyCredentialRequest, GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult,
-    GetProfileRequest, PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult,
-    SetProfileV1Request, get_profile_anonymous_request, get_profile_anonymous_response,
+    CredentialType, DeleteAvatarRequest, ExpectedVersionConflict, ExtendAvatarTtlRequest,
+    GetProfileAnonymousRequest, GetProfileKeyCredentialRequest, GetProfileKeyCredentialResponse,
+    GetProfileKeyCredentialResult, GetProfileRequest, PaymentsForbiddenInRegion, SetProfileRequest,
+    SetProfileResult, SetProfileV1Request, get_profile_anonymous_request,
+    get_profile_anonymous_response,
 };
 use libsignal_protocol::IdentityKey;
 use rand::CryptoRng;
@@ -642,6 +644,20 @@ impl std::fmt::Display for Redact<ExtendAvatarTtlRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<DeleteAvatarRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(DeleteAvatarRequest {
+            avatar_credential_presentation,
+        }) = self;
+        f.debug_struct("DeleteAvatarRequest")
+            .field(
+                "avatar_credential_presentation.len()",
+                &avatar_credential_presentation.len(),
+            )
+            .finish()
+    }
+}
+
 impl<T: GrpcServiceProvider> Unauth<T> {
     /// Extend the TTL of a v2 avatar
     ///
@@ -683,6 +699,36 @@ impl<T: GrpcServiceProvider> Unauth<T> {
                 ))
             }
             ExtendAvatarResponseTtlEnum::NotFound(NotFound {}) => Ok(None),
+        }
+    }
+
+    /// Delete the account's avatar from the CDN.
+    ///
+    /// Clients must also call `set_profile()` to remove the avatar URL from the profile data.
+    pub async fn delete_avatar(
+        &self,
+        credential: &AvatarUploadCredentialPresentation,
+    ) -> Result<(), RequestError<InvalidAvatarUploadCredentialPresentation>> {
+        let mut service = ProfileAnonymousClient::new(self.0.service());
+        let request = DeleteAvatarRequest {
+            avatar_credential_presentation: zkgroup::serialize(credential),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        match log_and_send(Self::LOG_TAG, &log_safe_description, || {
+            service.delete_avatar(request)
+        })
+        .await?
+        .into_inner()
+        .response
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Missing response".into(),
+        })? {
+            DeleteAvatarResponseEnum::Success(()) => Ok(()),
+            DeleteAvatarResponseEnum::InvalidCredentialPresentation(FailedZkAuthentication {
+                description: _,
+            }) => Err(RequestError::Other(
+                InvalidAvatarUploadCredentialPresentation,
+            )),
         }
     }
 
@@ -834,7 +880,7 @@ impl<T: GrpcServiceProvider> Unauth<T> {
 
 pub mod test_cases {
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
-    use libsignal_net_grpc::proto::chat::profile::ExtendAvatarTtlResponse;
+    use libsignal_net_grpc::proto::chat::profile::{DeleteAvatarResponse, ExtendAvatarTtlResponse};
     use uuid::{Uuid, uuid};
     use zkgroup::SECONDS_PER_DAY;
     use zkgroup::avatars::AvatarUploadCredentialRequestContext;
@@ -857,15 +903,11 @@ pub mod test_cases {
         InvalidCredentials,
     }
 
-    pub fn extend_avatar_ttl_test_cases() -> Vec<
-        GrpcTestCase<
-            ExtendAvatarTtlArgs,
-            ExtendAvatarTtlRequest,
-            ExtendAvatarTtlResponse,
-            ExtendAvatarTtlOut,
-        >,
-    > {
-        let method = "/org.signal.chat.profile.ProfileAnonymous/ExtendAvatarTTL";
+    pub type DeleteAvatarArgs = AvatarUploadCredentialPresentation;
+    /// `true` if success. `false` if the credentials were invalid
+    pub type DeleteAvatarOut = bool;
+
+    fn test_avatar_upload_credential_presentation() -> AvatarUploadCredentialPresentation {
         let server_params = GenericServerSecretParamsStandard::generate([0x0; _]);
         let aci = Aci::from_uuid_bytes([0x1; _]);
         let key_pair = ZkCredentialKeyPair::generate([0x2; _]);
@@ -875,7 +917,7 @@ pub mod test_cases {
         let current_time = zkgroup::Timestamp::from_epoch_seconds(SECONDS_PER_DAY * 100);
         let server_public_params = server_params.get_public_params().into();
         let cred_request = request_context.get_request();
-        let presentation = request_context
+        request_context
             .receive(
                 cred_request
                     .issue(
@@ -891,7 +933,54 @@ pub mod test_cases {
                 current_time,
             )
             .expect("can receive credential")
-            .present(&server_public_params, [0x7; _]);
+            .present(&server_public_params, [0x7; _])
+    }
+
+    pub fn delete_avatar_test_cases() -> Vec<
+        GrpcTestCase<DeleteAvatarArgs, DeleteAvatarRequest, DeleteAvatarResponse, DeleteAvatarOut>,
+    > {
+        let method = "/org.signal.chat.profile.ProfileAnonymous/DeleteAvatar";
+        let presentation = test_avatar_upload_credential_presentation();
+        vec![
+            GrpcTestCase {
+                name: "success".into(),
+                method: method.into(),
+                request: presentation.clone(),
+                request_grpc: DeleteAvatarRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                },
+                response_grpc: DeleteAvatarResponse {
+                    response: Some(DeleteAvatarResponseEnum::Success(())),
+                },
+                response: true,
+            },
+            GrpcTestCase {
+                name: "bad credential".into(),
+                method: method.into(),
+                request: presentation.clone(),
+                request_grpc: DeleteAvatarRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                },
+                response_grpc: DeleteAvatarResponse {
+                    response: Some(DeleteAvatarResponseEnum::InvalidCredentialPresentation(
+                        Default::default(),
+                    )),
+                },
+                response: false,
+            },
+        ]
+    }
+
+    pub fn extend_avatar_ttl_test_cases() -> Vec<
+        GrpcTestCase<
+            ExtendAvatarTtlArgs,
+            ExtendAvatarTtlRequest,
+            ExtendAvatarTtlResponse,
+            ExtendAvatarTtlOut,
+        >,
+    > {
+        let method = "/org.signal.chat.profile.ProfileAnonymous/ExtendAvatarTTL";
+        let presentation = test_avatar_upload_credential_presentation();
         vec![
             GrpcTestCase {
                 name: "found".into(),
@@ -1325,6 +1414,24 @@ mod test {
                     actual.expect_err("failure"),
                     RequestError::Other(InvalidAvatarUploadCredentialPresentation)
                 ),
+            },
+        )
+    }
+
+    #[test]
+    fn test_delete_avatar() {
+        run_tests(
+            delete_avatar_test_cases(),
+            |chat: Unauth<_>, pres| async move { chat.delete_avatar(&pres).await },
+            |expected, actual| {
+                if expected {
+                    actual.expect("success")
+                } else {
+                    assert_matches!(
+                        actual.expect_err("failure"),
+                        RequestError::Other(InvalidAvatarUploadCredentialPresentation)
+                    )
+                }
             },
         )
     }

@@ -194,6 +194,9 @@ public object NativeTesting {
   public external fun TESTING_DeleteAccountTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_DeleteAvatarTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_DeleteBackupMediaTests(): Array<Object>
 
   @JvmStatic

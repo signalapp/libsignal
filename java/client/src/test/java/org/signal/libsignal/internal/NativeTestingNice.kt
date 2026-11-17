@@ -2805,6 +2805,21 @@ public object NativeTestingNice {
     }, { identity(it) })(ffiOut)
   }
 
+  public fun TESTING_DeleteAvatarTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation, Boolean>> {
+    val ffiOut =
+      NativeTesting.TESTING_DeleteAvatarTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<ByteArray, Boolean, org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation, Boolean>({
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.avatars
+              .AvatarUploadCredentialPresentation(x)
+          }
+        )(it)
+      }, { identity(it) })(ffiOut)
+  }
+
   public fun TESTING_DeleteBackupMediaTests(): List<org.signal.libsignal.net.GrpcTestCase<List<org.signal.libsignal.net.DeleteBackupMediaItem>, List<org.signal.libsignal.internal.DeleteBackupMediaOut>>> {
     val ffiOut =
       NativeTesting.TESTING_DeleteBackupMediaTests()

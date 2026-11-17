@@ -6,6 +6,16 @@
 import Foundation
 
 public protocol UnauthProfilesService: Sendable {
+    /// Delete the account’s avatar from the CDN.
+    ///
+    /// Clients must also call setProfile() to remove the avatar URL from the profile data.
+    ///
+    /// - Throws:
+    ///   - ``SignalError/invalidAvatarUploadCredentialPresentation(_:)`` if the credential is invalid
+    ///   - the standard Signal network errors
+    func deleteAvatar(
+        credential: AvatarUploadCredentialPresentation,
+    ) async throws
     /// Extend the TTL of a v2 avatar
     ///
     /// The server doesn’t know which v2 avatars correspond to which Signal account. As a result,
@@ -45,6 +55,15 @@ public protocol UnauthProfilesService: Sendable {
 }
 
 extension UnauthenticatedChatConnection: UnauthProfilesService {
+
+    public func deleteAvatar(credential: AvatarUploadCredentialPresentation) async throws {
+        return try await NativeNice.UnauthenticatedChatConnection_delete_avatar(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            credential: credential,
+        )
+    }
+
     public func extendAvatarTtl(credential: AvatarUploadCredentialPresentation) async throws -> CdnUrl? {
         return try await NativeNice.UnauthenticatedChatConnection_extend_avatar_ttl(
             asyncContext: self.tokioAsyncContext,

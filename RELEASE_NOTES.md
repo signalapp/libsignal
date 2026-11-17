@@ -8,4 +8,5 @@ v0.108.1
   - Added `getProfile()` (unauth) (Not yet bridged to clients)
   - Added `AuthAccountsService.setZkCredentialKey()`
   - Added `extendAvatarTtl()` (bridged to clients)
+  - Added `deleteAvatar()` (bridged to clients)
 

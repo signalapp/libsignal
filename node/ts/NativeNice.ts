@@ -4142,6 +4142,15 @@ export function TESTING_DeleteAccountTests(): Array<GrpcTestCase<void, void>> {
   )(Native.TESTING_DeleteAccountTests());
 }
 
+export function TESTING_DeleteAvatarTests(): Array<
+  GrpcTestCase<zkgroup.AvatarUploadCredentialPresentation, boolean>
+> {
+  return grpcTestCaseConverter(
+    (x: Bytes) => new zkgroup.AvatarUploadCredentialPresentation(x),
+    identity
+  )(Native.TESTING_DeleteAvatarTests());
+}
+
 export function TESTING_DeleteBackupMediaTests(): Array<
   GrpcTestCase<Array<BridgeDeleteBackupMediaItem>, Array<DeleteBackupMediaOut>>
 > {
@@ -6168,6 +6177,28 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
         identity(server_params),
         identity(purchase_time),
         argConverterLoginReceiptLevel(expected_level)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_delete_avatar({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_delete_avatar(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential)
       )
     )
   );

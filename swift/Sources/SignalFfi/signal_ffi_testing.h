@@ -2289,6 +2289,9 @@ SignalFfiError* signal_testing_create_otp_from_base64(
 SignalFfiError* signal_testing_delete_account_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_delete_avatar_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_delete_backup_media_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );

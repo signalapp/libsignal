@@ -3499,6 +3499,13 @@ internal object Native {
   ): CompletableFuture<ByteArray>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_delete_avatar(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: ByteArray,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_disconnect(
     asyncRuntime: ObjectHandle,
     chat: ObjectHandle,

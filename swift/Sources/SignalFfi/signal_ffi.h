@@ -7327,6 +7327,12 @@ SignalFfiError* signal_unauthenticated_chat_connection_create_login_receipt_cred
   uint64_t purchase_time,
   SignalLoginReceiptLevelFfiArg expected_level
 );
+SignalFfiError* signal_unauthenticated_chat_connection_delete_avatar(
+  SignalCPromisebool* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalBorrowedBuffer credential
+);
 SignalFfiError* signal_unauthenticated_chat_connection_destroy(
   SignalMutPointerUnauthenticatedChatConnection p
 );

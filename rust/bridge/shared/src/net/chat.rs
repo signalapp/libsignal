@@ -1653,3 +1653,14 @@ async fn UnauthenticatedChatConnection_extend_avatar_ttl(
         .extend_avatar_ttl(&credential)
         .await
 }
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_delete_avatar(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: AvatarUploadCredentialPresentation,
+) -> Result<
+    (),
+    RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
+> {
+    chat.require_grpc().await.delete_avatar(&credential).await
+}

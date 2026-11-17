@@ -113,4 +113,28 @@ public class UnauthProfilesService(
     } catch (e: Throwable) {
       CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
     }
+
+  /**
+   * Delete the account’s avatar from the CDN.
+   *
+   * Clients must also call setProfile() to remove the avatar URL from the profile data.
+   */
+  public fun deleteAvatar(
+    credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
+  ): CompletableFuture<RequestResult<Unit, InvalidAvatarUploadCredentialPresentationException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_delete_avatar(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = credential,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(Unit) },
+          onError = { err ->
+            err.toRequestResult<InvalidAvatarUploadCredentialPresentationException>()
+          },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
 }

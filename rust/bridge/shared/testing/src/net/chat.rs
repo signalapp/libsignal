@@ -1744,3 +1744,10 @@ fn TESTING_ExtendAvatarTtlTests()
 -> GrpcTestCases<AvatarUploadCredentialPresentation, remote_derives::ExtendAvatarTtlOut> {
     libsignal_net_chat::grpc::profiles::test_cases::extend_avatar_ttl_test_cases().into()
 }
+#[bridge_fn(nice = true)]
+fn TESTING_DeleteAvatarTests() -> GrpcTestCases<
+    libsignal_net_chat::grpc::profiles::test_cases::DeleteAvatarArgs,
+    libsignal_net_chat::grpc::profiles::test_cases::DeleteAvatarOut,
+> {
+    libsignal_net_chat::grpc::profiles::test_cases::delete_avatar_test_cases().into()
+}
