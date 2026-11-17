@@ -17,6 +17,7 @@ import type {
   ProfileNotFound,
   InvalidAvatarUploadCredentialPresentation,
 } from '../../Errors.js';
+import type { S3UploadForm } from '../Chat.js';
 import type { CdnUrl } from './CdnUrl.js';
 import * as zkgroup from '../../zkgroup/index.js';
 
@@ -92,6 +93,33 @@ export interface UnauthProfilesService {
     },
     options?: RequestOptions
   ) => Promise<void>;
+  /**
+   * Returns a credential to upload a v2 avatar.
+   *
+   * After uploading the avatar, the client
+   * must call setProfile() with the new avatar URL in the encrypted data.
+   *
+   * Because avatars are uploaded anonymously, they have an expiration equal to the
+   * idle account expiration. Clients must periodically (recommended: every 90 days)
+   * call extendAvatarTtl() to extend the TTL.
+   *
+   * NOTE: any existing avatar associated with this credential will be deleted immediately
+   * Clients should not be uploading v2 avatars until after the v1->v2 avatar transition.
+   *
+   * Uploads will be limited to uploadLength bytes. It must be in the range [1, 10485760]
+   * (10 MiB), else the server will reject the upload.
+   *
+   * @throws {StandardNetworkError}
+   * @throws {InvalidAvatarUploadCredentialPresentation} if the presented
+   * credential is invalid.
+   */
+  getAvatarUploadForm: (
+    request: {
+      credential: zkgroup.AvatarUploadCredentialPresentation;
+      uploadLength: number;
+    },
+    options?: RequestOptions
+  ) => Promise<S3UploadForm>;
 }
 
 UnauthenticatedChatConnection.prototype.accountExists = async function (
@@ -155,5 +183,24 @@ UnauthenticatedChatConnection.prototype.deleteAvatar = async function (
     abortSignal: options?.abortSignal,
     chat: this._chatService,
     credential,
+  });
+};
+
+UnauthenticatedChatConnection.prototype.getAvatarUploadForm = async function (
+  {
+    credential,
+    uploadLength,
+  }: {
+    credential: zkgroup.AvatarUploadCredentialPresentation;
+    uploadLength: number;
+  },
+  options?: RequestOptions
+): Promise<S3UploadForm> {
+  return await NativeNice.UnauthenticatedChatConnection_get_avatar_upload_form({
+    asyncContext: this._asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this._chatService,
+    credential,
+    uploadLength,
   });
 };

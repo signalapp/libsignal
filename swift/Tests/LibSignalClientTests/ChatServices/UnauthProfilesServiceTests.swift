@@ -122,6 +122,30 @@ class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesSe
             }
         )
     }
+
+    func testGetAvatarUploadForm() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetAvatarUploadFormTests(),
+            invoke: { api, args in
+                try await api.getAvatarUploadForm(
+                    credential: args.credential,
+                    uploadLength: args.uploadLength,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .invalidCredential:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidAvatarUploadCredentialPresentation(_) {
+                    }
+                case .success(let form):
+                    XCTAssertEqual(form, try actual.get())
+                }
+            }
+        )
+    }
 }
 
 #endif

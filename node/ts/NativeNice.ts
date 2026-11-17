@@ -76,6 +76,8 @@ import type {
   ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetAccountIdentityOut,
+  ReturnFfiGetAvatarUploadFormArgs,
+  ReturnFfiGetAvatarUploadFormOut,
   ReturnFfiGetCapabilitiesOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
@@ -488,6 +490,17 @@ export type GetAccountIdentityOut =
       success: BridgeAccountIdentity;
     }
   | 'missingIdentifiers';
+
+export type GetAvatarUploadFormArgs = {
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+  uploadLength: number;
+};
+
+export type GetAvatarUploadFormOut =
+  | {
+      success: S3UploadFormInternal;
+    }
+  | 'invalidCredential';
 
 export type GetCapabilitiesOut =
   | {
@@ -1617,6 +1630,35 @@ export function returnConverterGetAccountIdentityOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for GetAccountIdentityOut');
+  }
+}
+
+export function returnConverterGetAvatarUploadFormArgs(
+  ffiInput: Native.ReturnFfiGetAvatarUploadFormArgs
+): GetAvatarUploadFormArgs {
+  return {
+    credential: ((x: Bytes) =>
+      new zkgroup.AvatarUploadCredentialPresentation(x))(ffiInput.credential),
+    uploadLength: identity(ffiInput.upload_length),
+  };
+}
+
+export function returnConverterGetAvatarUploadFormOut(
+  ffiInput: Native.ReturnFfiGetAvatarUploadFormOut
+): GetAvatarUploadFormOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterS3UploadFormInternal(ffiInput._0),
+      };
+    case 1:
+      return 'invalidCredential';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for GetAvatarUploadFormOut'
+      );
   }
 }
 
@@ -4225,6 +4267,15 @@ export function TESTING_GetAccountIdentityTests(): Array<
   )(Native.TESTING_GetAccountIdentityTests());
 }
 
+export function TESTING_GetAvatarUploadFormTests(): Array<
+  GrpcTestCase<GetAvatarUploadFormArgs, GetAvatarUploadFormOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetAvatarUploadFormArgs,
+    returnConverterGetAvatarUploadFormOut
+  )(Native.TESTING_GetAvatarUploadFormTests());
+}
+
 export function TESTING_GetBackupCdnCredentialsTests(): Array<
   GrpcTestCase<number, GetCdnCredentialsOut>
 > {
@@ -6221,6 +6272,31 @@ export async function UnauthenticatedChatConnection_extend_avatar_ttl({
         asyncContext,
         identity(chat),
         ByteArray.prototype.getContents.call(credential)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_get_avatar_upload_form({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  uploadLength: upload_length,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+  uploadLength: number;
+}): Promise<S3UploadFormInternal> {
+  return returnConverterS3UploadFormInternal(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_get_avatar_upload_form(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        identity(upload_length)
       )
     )
   );

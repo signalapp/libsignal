@@ -6,6 +6,27 @@
 import Foundation
 
 public protocol UnauthProfilesService: Sendable {
+    /// Returns a credential to upload a v2 avatar.
+    ///
+    /// After uploading the avatar, the client
+    /// must call SetProfile with the new avatar URL in the encrypted data.
+    ///
+    /// Because avatars are uploaded anonymously, they have an expiration equal to the
+    /// idle account expiration. Clients must periodically (recommended: every 90 days)
+    /// call extendAvatarTtl() to extend the TTL.
+    ///
+    /// NOTE: any existing avatar associated with this credential will be deleted immediately
+    /// Clients should not be uploading v2 avatars until after the v1->v2 avatar transition.
+    ///
+    /// - Parameters:
+    ///   - uploadLength: Uploads will be limited to uploadLength bytes. It must be in the range [1, 10485760] (10 MiB), else the server will reject the upload.
+    /// - Throws:
+    ///   - ``SignalError/invalidAvatarUploadCredentialPresentation(_:)`` if the credential is invalid
+    ///   - the standard Signal network errors
+    func getAvatarUploadForm(
+        credential: AvatarUploadCredentialPresentation,
+        uploadLength: Int32,
+    ) async throws -> S3UploadForm
     /// Delete the account’s avatar from the CDN.
     ///
     /// Clients must also call setProfile() to remove the avatar URL from the profile data.
@@ -55,6 +76,18 @@ public protocol UnauthProfilesService: Sendable {
 }
 
 extension UnauthenticatedChatConnection: UnauthProfilesService {
+
+    public func getAvatarUploadForm(
+        credential: AvatarUploadCredentialPresentation,
+        uploadLength: Int32,
+    ) async throws -> S3UploadForm {
+        return try await NativeNice.UnauthenticatedChatConnection_get_avatar_upload_form(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            credential: credential,
+            uploadLength: uploadLength,
+        )
+    }
 
     public func deleteAvatar(credential: AvatarUploadCredentialPresentation) async throws {
         return try await NativeNice.UnauthenticatedChatConnection_delete_avatar(

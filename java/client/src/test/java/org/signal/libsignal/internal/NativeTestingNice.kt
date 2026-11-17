@@ -183,6 +183,19 @@ public sealed class GetAccountIdentityOut {
   public data object MissingIdentifiers : GetAccountIdentityOut()
 }
 
+public data class GetAvatarUploadFormArgs(
+  public val credential: org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation,
+  public val uploadLength: Int,
+)
+
+public sealed class GetAvatarUploadFormOut {
+  public data class Success(
+    public val _0: org.signal.libsignal.net.S3UploadForm,
+  ) : GetAvatarUploadFormOut()
+
+  public data object InvalidCredential : GetAvatarUploadFormOut()
+}
+
 public sealed class GetCapabilitiesOut {
   public data class Success(
     public val _0: List<org.signal.libsignal.internal.DeviceCapabilityInternal>,
@@ -1224,6 +1237,45 @@ public object GetAccountIdentityOut_MissingIdentifiers_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = GetAccountIdentityOut.MissingIdentifiers
+}
+
+public object GetAvatarUploadFormArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    credential: Any?,
+    upload_length: Any?,
+  ): Any? =
+    GetAvatarUploadFormArgs(
+      credential =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.avatars
+              .AvatarUploadCredentialPresentation(x)
+          }
+        )(credential as ByteArray),
+      uploadLength =
+        identity(upload_length as Int),
+    )
+}
+
+public object GetAvatarUploadFormOut_Success_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(_0: Any?): Any? =
+    GetAvatarUploadFormOut.Success(
+      _0 =
+        downcastFromObject<org.signal.libsignal.net.S3UploadForm>(_0 as Object),
+    )
+}
+
+public object GetAvatarUploadFormOut_InvalidCredential_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = GetAvatarUploadFormOut.InvalidCredential
 }
 
 public object GetCapabilitiesOut_Success_ReturnConverter {
@@ -2907,6 +2959,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetAccountIdentityOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetAccountIdentityOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetAvatarUploadFormTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetAvatarUploadFormArgs, org.signal.libsignal.internal.GetAvatarUploadFormOut>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetAvatarUploadFormTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.GetAvatarUploadFormArgs, org.signal.libsignal.internal.GetAvatarUploadFormOut>({
+        downcastFromObject<org.signal.libsignal.internal.GetAvatarUploadFormArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.internal.GetAvatarUploadFormOut>(it) })(ffiOut)
   }
 
   public fun TESTING_GetBackupCdnCredentialsTests(): List<org.signal.libsignal.net.GrpcTestCase<Int, org.signal.libsignal.internal.GetCdnCredentialsOut>> {

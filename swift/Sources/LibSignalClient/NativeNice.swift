@@ -2059,6 +2059,43 @@ extension SignalCPromiseListMediaResponseFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseS3UploadFormInternalFfiResult: SignalCPromise {
+
+    typealias Result = SignalS3UploadFormInternalFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseStartMfaVerificationResponseFfiResult: SignalCPromise {
 
     typealias Result = SignalStartMfaVerificationResponseFfiResult
@@ -7694,6 +7731,35 @@ internal enum NativeNice {
         return try OptionalReturnConverter<CdnUrlConverter, SignalOptionalOfCStringPtr>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func UnauthenticatedChatConnection_get_avatar_upload_form(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: AvatarUploadCredentialPresentation,
+        uploadLength upload_length: Int32,
+    ) async throws -> S3UploadForm {
+        let rawOutput: DerivedReturnConverterS3UploadFormInternal.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<AvatarUploadCredentialPresentation>.convertArgBorrowed(credential) {
+                            credentialFfi in
+                            IdentityArgConverter<Int32>.convertArgBorrowed(upload_length) { upload_lengthFfi in
+                                SignalFfi.signal_unauthenticated_chat_connection_get_avatar_upload_form(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    credentialFfi,
+                                    upload_lengthFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterS3UploadFormInternal.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_get_profile_key_credential(

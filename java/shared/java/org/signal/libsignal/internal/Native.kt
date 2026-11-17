@@ -3519,6 +3519,14 @@ internal object Native {
   ): CompletableFuture<String?>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_avatar_upload_form(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: ByteArray,
+    uploadLength: Int,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
     asyncRuntime: ObjectHandle,
     chat: ObjectHandle,

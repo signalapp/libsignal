@@ -513,8 +513,8 @@ mod remote_derives {
         BridgeMfaMetadata, BridgePendingTotpKey, BridgeWebAuthnCreateParameters,
     };
     use libsignal_core::Aci;
-    use libsignal_net_chat::api::UserBasedAuthorization;
     use libsignal_net_chat::api::purchase::{ChargeFailure, PaymentProvider};
+    use libsignal_net_chat::api::{S3UploadForm, UserBasedAuthorization};
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::donations::BadgeVisibility;
     use libsignal_net_chat::grpc::keys::DeviceSpecifier;
@@ -525,6 +525,19 @@ mod remote_derives {
     use uuid::Uuid;
 
     use super::*;
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormArgs)]
+    pub struct GetAvatarUploadFormArgs {
+        pub credential: AvatarUploadCredentialPresentation,
+        pub upload_length: i32,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormOut)]
+    pub enum GetAvatarUploadFormOut {
+        Success(S3UploadForm),
+        InvalidCredential,
+    }
 
     #[derive(BridgedAsValue)]
     pub struct ServerPublicParamsSerialized {
@@ -1750,4 +1763,9 @@ fn TESTING_DeleteAvatarTests() -> GrpcTestCases<
     libsignal_net_chat::grpc::profiles::test_cases::DeleteAvatarOut,
 > {
     libsignal_net_chat::grpc::profiles::test_cases::delete_avatar_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetAvatarUploadFormTests()
+-> GrpcTestCases<remote_derives::GetAvatarUploadFormArgs, remote_derives::GetAvatarUploadFormOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_avatar_upload_form_test_cases().into()
 }

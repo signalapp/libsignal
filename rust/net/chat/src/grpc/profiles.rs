@@ -18,6 +18,7 @@ use libsignal_net_grpc::proto::chat::errors::{
 };
 use libsignal_net_grpc::proto::chat::profile::delete_avatar_response::Response as DeleteAvatarResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::extend_avatar_ttl_response::Response as ExtendAvatarResponseTtlEnum;
+use libsignal_net_grpc::proto::chat::profile::get_avatar_upload_form_response::Response as GetAvatarUploadFormResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_key_credential_response::Response as GetProfileKeyCredentialResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_response::Response as GetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::profile_anonymous_client::ProfileAnonymousClient;
@@ -25,10 +26,10 @@ use libsignal_net_grpc::proto::chat::profile::profile_client::ProfileClient;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as GrpcSetProfileResponse;
 use libsignal_net_grpc::proto::chat::profile::{
     CredentialType, DeleteAvatarRequest, ExpectedVersionConflict, ExtendAvatarTtlRequest,
-    GetProfileAnonymousRequest, GetProfileKeyCredentialRequest, GetProfileKeyCredentialResponse,
-    GetProfileKeyCredentialResult, GetProfileRequest, PaymentsForbiddenInRegion, SetProfileRequest,
-    SetProfileResult, SetProfileV1Request, get_profile_anonymous_request,
-    get_profile_anonymous_response,
+    GetAvatarUploadFormRequest, GetProfileAnonymousRequest, GetProfileKeyCredentialRequest,
+    GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult, GetProfileRequest,
+    PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult, SetProfileV1Request,
+    get_profile_anonymous_request, get_profile_anonymous_response,
 };
 use libsignal_protocol::IdentityKey;
 use rand::CryptoRng;
@@ -39,7 +40,7 @@ use zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
 use zkgroup::{PROFILE_KEY_VERSION_LEN, ProfileKeyBytes};
 
 use crate::api::profiles::ProfileKeyCredentialRequestError;
-use crate::api::{Auth, RequestError, Unauth};
+use crate::api::{Auth, RequestError, S3UploadForm, Unauth};
 use crate::grpc::{GrpcServiceProvider, OverGrpc, log_and_send};
 use crate::impl_debug_from_display;
 use crate::logging::Redact;
@@ -658,7 +659,68 @@ impl std::fmt::Display for Redact<DeleteAvatarRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<GetAvatarUploadFormRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(GetAvatarUploadFormRequest {
+            avatar_credential_presentation,
+            upload_length,
+        }) = self;
+        f.debug_struct("GetAvatarUploadFormRequest")
+            .field(
+                "avatar_credential_presentation.len()",
+                &avatar_credential_presentation.len(),
+            )
+            .field("upload_length", &upload_length)
+            .finish()
+    }
+}
 impl<T: GrpcServiceProvider> Unauth<T> {
+    /// Returns a credential to upload a v2 avatar. After uploading the avatar, the client
+    /// must call SetProfile with the new avatar URL in the encrypted `data`.
+    ///
+    /// Because avatars are uploaded anonymously, they have an expiration equal to the
+    /// idle account expiration. Clients must periodically (recommended: every 90 days)
+    /// call `extend_avatar_ttl()` to extend the TTl.
+    ///
+    /// NOTE: any existing avatar associated with this credential will be deleted immediately
+    ///
+    /// Clients should _not_ be uploading v2 avatars until after the v1->v2 avatar transition.
+    ///
+    /// Uploads will be limited to `upload_length` bytes. It must be in the range `[1, 10485760]`
+    /// (10 MiB), else the server will reject the upload.
+    pub async fn get_avatar_upload_form(
+        &self,
+        credential: &AvatarUploadCredentialPresentation,
+        upload_length: i32,
+    ) -> Result<S3UploadForm, RequestError<InvalidAvatarUploadCredentialPresentation>> {
+        let mut service = ProfileAnonymousClient::new(self.0.service());
+        let request = GetAvatarUploadFormRequest {
+            avatar_credential_presentation: zkgroup::serialize(credential),
+            upload_length: upload_length
+                .try_into()
+                .expect("upload_length is non-negative"),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        match log_and_send(Self::LOG_TAG, &log_safe_description, || {
+            service.get_avatar_upload_form(request)
+        })
+        .await?
+        .into_inner()
+        .response
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Missing response".into(),
+        })? {
+            GetAvatarUploadFormResponseEnum::AvatarUploadForm(s3_upload_form) => s3_upload_form
+                .try_into()
+                .map_err(|e: RequestError<Infallible>| e.with_other()),
+            GetAvatarUploadFormResponseEnum::InvalidCredentialPresentation(
+                FailedZkAuthentication { description: _ },
+            ) => Err(RequestError::Other(
+                InvalidAvatarUploadCredentialPresentation,
+            )),
+        }
+    }
+
     /// Extend the TTL of a v2 avatar
     ///
     /// The server doesn't know which v2 avatars correspond to which Signal account. As a result,
@@ -880,7 +942,9 @@ impl<T: GrpcServiceProvider> Unauth<T> {
 
 pub mod test_cases {
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
-    use libsignal_net_grpc::proto::chat::profile::{DeleteAvatarResponse, ExtendAvatarTtlResponse};
+    use libsignal_net_grpc::proto::chat::profile::{
+        DeleteAvatarResponse, ExtendAvatarTtlResponse, GetAvatarUploadFormResponse,
+    };
     use uuid::{Uuid, uuid};
     use zkgroup::SECONDS_PER_DAY;
     use zkgroup::avatars::AvatarUploadCredentialRequestContext;
@@ -894,6 +958,85 @@ pub mod test_cases {
     pub(crate) const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
     #[cfg(test)]
     pub(crate) const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
+
+    #[derive(Clone)]
+    pub struct GetAvatarUploadFormArgs {
+        pub credential: AvatarUploadCredentialPresentation,
+        pub upload_length: i32,
+    }
+    #[derive(Clone, Debug)]
+    pub enum GetAvatarUploadFormOut {
+        Success(S3UploadForm),
+        InvalidCredential,
+    }
+
+    pub fn get_avatar_upload_form_test_cases() -> Vec<
+        GrpcTestCase<
+            GetAvatarUploadFormArgs,
+            GetAvatarUploadFormRequest,
+            GetAvatarUploadFormResponse,
+            GetAvatarUploadFormOut,
+        >,
+    > {
+        let method = "/org.signal.chat.profile.ProfileAnonymous/GetAvatarUploadForm";
+        let presentation = test_avatar_upload_credential_presentation();
+        vec![
+            GrpcTestCase {
+                name: "success".into(),
+                method: method.into(),
+                request: GetAvatarUploadFormArgs {
+                    credential: presentation.clone(),
+                    upload_length: 1234,
+                },
+                request_grpc: GetAvatarUploadFormRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                    upload_length: 1234,
+                },
+                response_grpc: GetAvatarUploadFormResponse {
+                    response: Some(GetAvatarUploadFormResponseEnum::AvatarUploadForm(
+                        libsignal_net_grpc::proto::chat::common::S3UploadForm {
+                            key: "key".into(),
+                            credential: "credential".into(),
+                            acl: "acl".into(),
+                            algorithm: "Floyd–Warshall".into(),
+                            date: "today".into(),
+                            policy: "policy".into(),
+                            signature: "abcd".into(),
+                        },
+                    )),
+                },
+                response: GetAvatarUploadFormOut::Success(S3UploadForm {
+                    key: "key".into(),
+                    credential: "credential".into(),
+                    acl: "acl".into(),
+                    algorithm: "Floyd–Warshall".into(),
+                    date: "today".into(),
+                    policy: "policy".into(),
+                    signature: "abcd".into(),
+                }),
+            },
+            GrpcTestCase {
+                name: "zk failure".into(),
+                method: method.into(),
+                request: GetAvatarUploadFormArgs {
+                    credential: presentation.clone(),
+                    upload_length: 1234,
+                },
+                request_grpc: GetAvatarUploadFormRequest {
+                    avatar_credential_presentation: zkgroup::serialize(&presentation),
+                    upload_length: 1234,
+                },
+                response_grpc: GetAvatarUploadFormResponse {
+                    response: Some(
+                        GetAvatarUploadFormResponseEnum::InvalidCredentialPresentation(
+                            Default::default(),
+                        ),
+                    ),
+                },
+                response: GetAvatarUploadFormOut::InvalidCredential,
+            },
+        ]
+    }
 
     pub type ExtendAvatarTtlArgs = AvatarUploadCredentialPresentation;
     #[derive(Clone, Debug)]
@@ -1434,5 +1577,29 @@ mod test {
                 }
             },
         )
+    }
+
+    #[test]
+    fn test_get_avatar_upload_form() {
+        run_tests(
+            get_avatar_upload_form_test_cases(),
+            |chat: Unauth<_>,
+             GetAvatarUploadFormArgs {
+                 credential,
+                 upload_length,
+             }| async move {
+                chat.get_avatar_upload_form(&credential, upload_length)
+                    .await
+            },
+            |expected, actual| match expected {
+                GetAvatarUploadFormOut::Success(s3_upload_form) => {
+                    assert_eq!(actual.expect("success"), s3_upload_form)
+                }
+                GetAvatarUploadFormOut::InvalidCredential => assert_matches!(
+                    actual.expect_err("failure"),
+                    RequestError::Other(InvalidAvatarUploadCredentialPresentation)
+                ),
+            },
+        );
     }
 }

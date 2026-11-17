@@ -12,6 +12,7 @@ import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.zkgroup.ServerPublicParams
+import org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation
 import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredential
 import org.signal.libsignal.zkgroup.profiles.ProfileKeyCredentialRequestContext
 import java.io.IOException
@@ -130,6 +131,43 @@ public class UnauthProfilesService(
           credential = credential,
         ).mapWithCancellation(
           onSuccess = { RequestResult.Success(Unit) },
+          onError = { err ->
+            err.toRequestResult<InvalidAvatarUploadCredentialPresentationException>()
+          },
+        )
+    } catch (e: Throwable) {
+      CompletableFuture.completedFuture(RequestResult.ApplicationError(e))
+    }
+
+  /**
+   * Returns a credential to upload a v2 avatar.
+   *
+   * After uploading the avatar, the client
+   * must call setProfile() with the new avatar URL in the encrypted data.
+   *
+   * Because avatars are uploaded anonymously, they have an expiration equal to the
+   * idle account expiration. Clients must periodically (recommended: every 90 days)
+   * call [extendAvatarTtl] to extend the TTL.
+   *
+   * NOTE: any existing avatar associated with this credential will be deleted immediately
+   * Clients should not be uploading v2 avatars until after the v1->v2 avatar transition.
+   *
+   * @param uploadLength Uploads will be limited to uploadLength bytes. It must be in the range [1, 10485760] (10 MiB),
+   * else the server will reject the upload.
+   */
+  public fun getAvatarUploadForm(
+    credential: AvatarUploadCredentialPresentation,
+    uploadLength: Int,
+  ): CompletableFuture<RequestResult<S3UploadForm, InvalidAvatarUploadCredentialPresentationException>> =
+    try {
+      NativeNice
+        .UnauthenticatedChatConnection_get_avatar_upload_form(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          credential = credential,
+          uploadLength = uploadLength,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
           onError = { err ->
             err.toRequestResult<InvalidAvatarUploadCredentialPresentationException>()
           },

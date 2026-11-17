@@ -33,6 +33,8 @@ use libsignal_core::curve::{PrivateKey, PublicKey};
 use libsignal_core::{Aci, DeviceId, ServiceId, ServiceIdKind};
 use libsignal_net::chat::{self, ConnectError, LanguageList, Response as ChatResponse, SendError};
 use libsignal_net_chat::api;
+#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
+use libsignal_net_chat::api::S3UploadForm;
 use libsignal_net_chat::api::backups::{
     BackupAuth, BackupAuthCredentialRejected, CdnCredentials, GetUploadFormFailure,
 };
@@ -1663,4 +1665,19 @@ async fn UnauthenticatedChatConnection_delete_avatar(
     RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
 > {
     chat.require_grpc().await.delete_avatar(&credential).await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_get_avatar_upload_form(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: AvatarUploadCredentialPresentation,
+    upload_length: i32,
+) -> Result<
+    S3UploadForm,
+    RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
+> {
+    chat.require_grpc()
+        .await
+        .get_avatar_upload_form(&credential, upload_length)
+        .await
 }

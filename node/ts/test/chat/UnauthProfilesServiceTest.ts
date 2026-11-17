@@ -154,4 +154,30 @@ describe('UnauthProfilesService', () => {
       }
     );
   });
+
+  describe('getAvatarUploadForm', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetAvatarUploadFormTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        { credential, uploadLength }: NativeNice.GetAvatarUploadFormArgs,
+        resp: NativeNice.GetAvatarUploadFormOut
+      ) => {
+        const out = chat.getAvatarUploadForm({ credential, uploadLength });
+        if (resp === 'invalidCredential') {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.InvalidAvatarUploadCredentialPresentation,
+            });
+        } else if ('success' in resp) {
+          expect(await out).to.deep.equal(resp.success);
+        } else {
+          resp satisfies never;
+          throw new Error('unreachable');
+        }
+      }
+    );
+  });
 });

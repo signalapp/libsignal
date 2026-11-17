@@ -1464,6 +1464,9 @@ static_assert_64bit(alignof(SignalListMediaResponseFfiResult) == 8);
 typedef const SignalListMediaResponseFfiResult* SignalType_ConstPointer_SignalListMediaResponseFfiResult;
 static_assert_64bit(sizeof(SignalType_ConstPointer_SignalListMediaResponseFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_ConstPointer_SignalListMediaResponseFfiResult) == 8);
+typedef const SignalS3UploadFormInternalFfiResult* SignalType_ConstPointer_SignalS3UploadFormInternalFfiResult;
+static_assert_64bit(sizeof(SignalType_ConstPointer_SignalS3UploadFormInternalFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_ConstPointer_SignalS3UploadFormInternalFfiResult) == 8);
 typedef struct {
   SignalOwnedBuffer challenge;
   int32_t timeout_seconds;
@@ -3339,6 +3342,22 @@ static_assert_64bit(alignof(SignalCPromiseListMediaResponseFfiResult) == 8);
 typedef SignalCPromiseListMediaResponseFfiResult* SignalType_MutPointer_SignalCPromiseListMediaResponseFfiResult;
 static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseListMediaResponseFfiResult) == 8);
 static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseListMediaResponseFfiResult) == 8);
+typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalS3UploadFormInternalFfiResult, SignalType_ConstPointer_void);
+static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void) == 8);
+static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void) == 8);
+typedef struct {
+  SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void complete;
+  const void* context;
+  uint64_t cancellation_id;
+} SignalCPromiseS3UploadFormInternalFfiResult;
+static_assert_64bit(offsetof(SignalCPromiseS3UploadFormInternalFfiResult, complete) == 0);
+static_assert_64bit(offsetof(SignalCPromiseS3UploadFormInternalFfiResult, context) == 8);
+static_assert_64bit(offsetof(SignalCPromiseS3UploadFormInternalFfiResult, cancellation_id) == 16);
+static_assert_64bit(sizeof(SignalCPromiseS3UploadFormInternalFfiResult) == 24);
+static_assert_64bit(alignof(SignalCPromiseS3UploadFormInternalFfiResult) == 8);
+typedef SignalCPromiseS3UploadFormInternalFfiResult* SignalType_MutPointer_SignalCPromiseS3UploadFormInternalFfiResult;
+static_assert_64bit(sizeof(SignalType_MutPointer_SignalCPromiseS3UploadFormInternalFfiResult) == 8);
+static_assert_64bit(alignof(SignalType_MutPointer_SignalCPromiseS3UploadFormInternalFfiResult) == 8);
 typedef void (*SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalStartMfaVerificationResponseFfiResult_ConstPointer_void)(SignalType_MutPointer_SignalFfiError, SignalType_ConstPointer_SignalStartMfaVerificationResponseFfiResult, SignalType_ConstPointer_void);
 static_assert_64bit(sizeof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalStartMfaVerificationResponseFfiResult_ConstPointer_void) == 8);
 static_assert_64bit(alignof(SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalStartMfaVerificationResponseFfiResult_ConstPointer_void) == 8);
@@ -7346,6 +7365,13 @@ SignalFfiError* signal_unauthenticated_chat_connection_extend_avatar_ttl(
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerUnauthenticatedChatConnection chat,
   SignalBorrowedBuffer credential
+);
+SignalFfiError* signal_unauthenticated_chat_connection_get_avatar_upload_form(
+  SignalCPromiseS3UploadFormInternalFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerUnauthenticatedChatConnection chat,
+  SignalBorrowedBuffer credential,
+  int32_t upload_length
 );
 SignalFfiError* signal_unauthenticated_chat_connection_get_pre_keys_access_key_auth(
   SignalCPromiseFfiPreKeysResponse* promise,

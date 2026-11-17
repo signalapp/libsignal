@@ -1169,6 +1169,17 @@ internal enum GetAccountIdentityOut {
     case missingIdentifiers
 }
 
+internal struct GetAvatarUploadFormArgs {
+    var credential: AvatarUploadCredentialPresentation
+    var uploadLength: Int32
+
+}
+
+internal enum GetAvatarUploadFormOut {
+    case success(S3UploadForm)
+    case invalidCredential
+}
+
 internal enum GetCapabilitiesOut {
     case success([DeviceCapability])
     case malformed
@@ -2224,6 +2235,49 @@ internal enum DerivedReturnConverterGetAccountIdentityOut: NiceReturnConverter {
             return GetAccountIdentityOut.missingIdentifiers
         default:
             throw SignalError.internalError("Unexpected enum tag for GetAccountIdentityOut: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterGetAvatarUploadFormArgs: NiceReturnConverter {
+    typealias NiceReturn = GetAvatarUploadFormArgs
+    typealias FfiReturn = SignalGetAvatarUploadFormArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetAvatarUploadFormArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let credential = Result {
+            try ByteArrayConverter<AvatarUploadCredentialPresentation>.convertReturn(consuming: ffiValue.credential)
+        }
+        let upload_length = Result {
+            try IdentityResultConverter<Int32>.convertReturn(consuming: ffiValue.upload_length)
+        }
+
+        return GetAvatarUploadFormArgs(credential: try credential.get(), uploadLength: try upload_length.get())
+    }
+}
+
+internal enum DerivedReturnConverterGetAvatarUploadFormOut: NiceReturnConverter {
+    typealias NiceReturn = GetAvatarUploadFormOut
+    typealias FfiReturn = SignalGetAvatarUploadFormOutFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetAvatarUploadFormOutFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalGetAvatarUploadFormOutFfiResultSuccess:
+            let _0 = Result {
+                try DerivedReturnConverterS3UploadFormInternal.convertReturn(
+                    consuming: ffiValue.success._0
+                )
+            }
+            return GetAvatarUploadFormOut.success(try _0.get())
+        case SignalGetAvatarUploadFormOutFfiResultInvalidCredential:
+            return GetAvatarUploadFormOut.invalidCredential
+        default:
+            throw SignalError.internalError("Unexpected enum tag for GetAvatarUploadFormOut: \(ffiTag)")
         }
     }
 }
@@ -4745,6 +4799,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_GetAvatarUploadFormTests() throws -> [GrpcTestCase<
+        GetAvatarUploadFormArgs, GetAvatarUploadFormOut
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetAvatarUploadFormArgs, DerivedReturnConverterGetAvatarUploadFormOut
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_avatar_upload_form_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetAvatarUploadFormArgs, DerivedReturnConverterGetAvatarUploadFormOut
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_GetBackupCdnCredentialsTests() throws -> [GrpcTestCase<Int32, GetCdnCredentialsOut>] {

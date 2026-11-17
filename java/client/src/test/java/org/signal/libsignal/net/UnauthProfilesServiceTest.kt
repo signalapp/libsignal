@@ -8,6 +8,7 @@ package org.signal.libsignal.net
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.signal.libsignal.internal.ExtendAvatarTtlOut
+import org.signal.libsignal.internal.GetAvatarUploadFormOut
 import org.signal.libsignal.internal.GetProfileKeyCredentialOut
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.ProfileKeyCredentialRequestError
@@ -149,6 +150,33 @@ class UnauthProfilesServiceTest {
             actual.assertSuccess()
           } else {
             actual.assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+          }
+        },
+      )
+    }
+  }
+
+  @Test
+  fun testGetAvatarUploadForm() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetAvatarUploadFormTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.getAvatarUploadForm(
+            credential = req.credential,
+            uploadLength = req.uploadLength,
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            GetAvatarUploadFormOut.InvalidCredential ->
+              actual
+                .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+            is GetAvatarUploadFormOut.Success -> assertEquals(expected._0, actual.assertSuccess())
           }
         },
       )

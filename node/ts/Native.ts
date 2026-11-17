@@ -589,6 +589,20 @@ export type ReturnFfiGetAccountIdentityOut =
       __type: 1;
     };
 
+export type ReturnFfiGetAvatarUploadFormArgs = {
+  credential: Bytes;
+  upload_length: number;
+};
+
+export type ReturnFfiGetAvatarUploadFormOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiS3UploadFormInternal;
+    }
+  | {
+      __type: 1;
+    };
+
 export type ReturnFfiGetCapabilitiesOut =
   | {
       __type: 0;
@@ -3432,6 +3446,12 @@ type NativeFunctions = {
   TESTING_GetAccountIdentityTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetAccountIdentityOut>
   >;
+  TESTING_GetAvatarUploadFormTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiGetAvatarUploadFormArgs,
+      ReturnFfiGetAvatarUploadFormOut
+    >
+  >;
   TESTING_GetBackupCdnCredentialsTests: () => Array<
     GrpcTestCaseFfi<number, ReturnFfiGetCdnCredentialsOut>
   >;
@@ -4019,6 +4039,12 @@ type NativeFunctions = {
     chat: Wrapper<UnauthenticatedChatConnection>,
     credential: Bytes
   ) => CancellablePromise<string | null>;
+  UnauthenticatedChatConnection_get_avatar_upload_form: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Bytes,
+    upload_length: number
+  ) => CancellablePromise<ReturnFfiS3UploadFormInternal>;
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -4796,6 +4822,7 @@ const {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetBadgesTests,
@@ -4997,6 +5024,7 @@ const {
   UnauthenticatedChatConnection_delete_avatar,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_extend_avatar_ttl,
+  UnauthenticatedChatConnection_get_avatar_upload_form,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
@@ -5662,6 +5690,7 @@ export {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
   TESTING_GetBadgesTests,
@@ -5863,6 +5892,7 @@ export {
   UnauthenticatedChatConnection_delete_avatar,
   UnauthenticatedChatConnection_disconnect,
   UnauthenticatedChatConnection_extend_avatar_ttl,
+  UnauthenticatedChatConnection_get_avatar_upload_form,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
