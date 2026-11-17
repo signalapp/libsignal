@@ -11,6 +11,8 @@ use ::zkgroup::ServerPublicParams;
 #[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
 use ::zkgroup::avatars::AvatarUploadCredentialPresentation;
 use ::zkgroup::groups::GroupSendFullToken;
+#[cfg(any(feature = "ffi", feature = "jni", feature = "node",))]
+use ::zkgroup::profiles::ProfileKey;
 use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
 use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use futures_util::TryStreamExt;
@@ -1679,5 +1681,17 @@ async fn UnauthenticatedChatConnection_get_avatar_upload_form(
     chat.require_grpc()
         .await
         .get_avatar_upload_form(&credential, upload_length)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    aci: Aci,
+    profile_key: ProfileKey,
+) -> Result<S3UploadForm, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_avatar_upload_form_legacy(aci, &profile_key)
         .await
 }

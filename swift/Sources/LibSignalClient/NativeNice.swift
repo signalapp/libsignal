@@ -6069,6 +6069,34 @@ internal enum NativeNice {
         return try DerivedReturnConverterBridgeAccountIdentity.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+    ) async throws -> S3UploadForm {
+        let rawOutput: DerivedReturnConverterS3UploadFormInternal.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        AciConverter.convertArgBorrowed(aci) { aciFfi in
+                            ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                SignalFfi.signal_authenticated_chat_connection_get_avatar_upload_form_legacy(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    aciFfi,
+                                    profile_keyFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterS3UploadFormInternal.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_get_badges(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,

@@ -77,6 +77,7 @@ import type {
   ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetAccountIdentityOut,
   ReturnFfiGetAvatarUploadFormArgs,
+  ReturnFfiGetAvatarUploadFormLegacyArgs,
   ReturnFfiGetAvatarUploadFormOut,
   ReturnFfiGetCapabilitiesOut,
   ReturnFfiGetCdnCredentialsOut,
@@ -494,6 +495,11 @@ export type GetAccountIdentityOut =
 export type GetAvatarUploadFormArgs = {
   credential: zkgroup.AvatarUploadCredentialPresentation;
   uploadLength: number;
+};
+
+export type GetAvatarUploadFormLegacyArgs = {
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
 };
 
 export type GetAvatarUploadFormOut =
@@ -1640,6 +1646,17 @@ export function returnConverterGetAvatarUploadFormArgs(
     credential: ((x: Bytes) =>
       new zkgroup.AvatarUploadCredentialPresentation(x))(ffiInput.credential),
     uploadLength: identity(ffiInput.upload_length),
+  };
+}
+
+export function returnConverterGetAvatarUploadFormLegacyArgs(
+  ffiInput: Native.ReturnFfiGetAvatarUploadFormLegacyArgs
+): GetAvatarUploadFormLegacyArgs {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
   };
 }
 
@@ -3277,6 +3294,31 @@ export async function AuthenticatedChatConnection_get_account_identity({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_avatar_upload_form_legacy({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  profileKey: profile_key,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+}): Promise<S3UploadFormInternal> {
+  return returnConverterS3UploadFormInternal(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_badges({
   asyncContext,
   abortSignal,
@@ -4265,6 +4307,15 @@ export function TESTING_GetAccountIdentityTests(): Array<
     identity,
     returnConverterGetAccountIdentityOut
   )(Native.TESTING_GetAccountIdentityTests());
+}
+
+export function TESTING_GetAvatarUploadFormLegacyTests(): Array<
+  GrpcTestCase<GetAvatarUploadFormLegacyArgs, S3UploadFormInternal>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetAvatarUploadFormLegacyArgs,
+    returnConverterS3UploadFormInternal
+  )(Native.TESTING_GetAvatarUploadFormLegacyTests());
 }
 
 export function TESTING_GetAvatarUploadFormTests(): Array<

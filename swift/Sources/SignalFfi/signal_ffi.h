@@ -4438,6 +4438,13 @@ SignalFfiError* signal_authenticated_chat_connection_get_account_identity(
   SignalConstPointerTokioAsyncContext async_runtime,
   SignalConstPointerAuthenticatedChatConnection chat
 );
+SignalFfiError* signal_authenticated_chat_connection_get_avatar_upload_form_legacy(
+  SignalCPromiseS3UploadFormInternalFfiResult* promise,
+  SignalConstPointerTokioAsyncContext async_runtime,
+  SignalConstPointerAuthenticatedChatConnection chat,
+  const SignalType_FixedArray17_uint8_t* aci,
+  SignalBorrowedBuffer profile_key
+);
 SignalFfiError* signal_authenticated_chat_connection_get_badges(
   SignalCPromiseOptionalOfTaggedBadgesFfiResult* promise,
   SignalConstPointerTokioAsyncContext async_runtime,

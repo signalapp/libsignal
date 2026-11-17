@@ -10,4 +10,5 @@ v0.108.1
   - Added `extendAvatarTtl()` (bridged to clients)
   - Added `deleteAvatar()` (bridged to clients)
   - Added `getAvatarUploadForm()` (bridged to clients)
+  - Added `getAvatarUploadFormLegacy()` (bridged to clients)
 

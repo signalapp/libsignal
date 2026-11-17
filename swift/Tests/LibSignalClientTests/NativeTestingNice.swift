@@ -1175,6 +1175,12 @@ internal struct GetAvatarUploadFormArgs {
 
 }
 
+internal struct GetAvatarUploadFormLegacyArgs {
+    var aci: Aci
+    var profileKey: ProfileKey
+
+}
+
 internal enum GetAvatarUploadFormOut {
     case success(S3UploadForm)
     case invalidCredential
@@ -2255,6 +2261,21 @@ internal enum DerivedReturnConverterGetAvatarUploadFormArgs: NiceReturnConverter
         }
 
         return GetAvatarUploadFormArgs(credential: try credential.get(), uploadLength: try upload_length.get())
+    }
+}
+
+internal enum DerivedReturnConverterGetAvatarUploadFormLegacyArgs: NiceReturnConverter {
+    typealias NiceReturn = GetAvatarUploadFormLegacyArgs
+    typealias FfiReturn = SignalGetAvatarUploadFormLegacyArgsFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalGetAvatarUploadFormLegacyArgsFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let aci = Result { try AciConverter.convertReturn(consuming: ffiValue.aci) }
+        let profile_key = Result { try ByteArrayConverter<ProfileKey>.convertReturn(consuming: ffiValue.profile_key) }
+
+        return GetAvatarUploadFormLegacyArgs(aci: try aci.get(), profileKey: try profile_key.get())
     }
 }
 
@@ -4799,6 +4820,22 @@ internal enum NativeTestingNice {
         return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterGetAccountIdentityOut>.convertReturn(
             consuming: rawOutput
         )
+
+    }
+    internal static func TESTING_GetAvatarUploadFormLegacyTests() throws -> [GrpcTestCase<
+        GetAvatarUploadFormLegacyArgs, S3UploadForm
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetAvatarUploadFormLegacyArgs, DerivedReturnConverterS3UploadFormInternal
+        >.emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_avatar_upload_form_legacy_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<
+            DerivedReturnConverterGetAvatarUploadFormLegacyArgs, DerivedReturnConverterS3UploadFormInternal
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func TESTING_GetAvatarUploadFormTests() throws -> [GrpcTestCase<

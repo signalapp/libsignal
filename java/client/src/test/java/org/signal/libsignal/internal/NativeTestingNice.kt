@@ -188,6 +188,11 @@ public data class GetAvatarUploadFormArgs(
   public val uploadLength: Int,
 )
 
+public data class GetAvatarUploadFormLegacyArgs(
+  public val aci: org.signal.libsignal.protocol.ServiceId.Aci,
+  public val profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+)
+
 public sealed class GetAvatarUploadFormOut {
   public data class Success(
     public val _0: org.signal.libsignal.net.S3UploadForm,
@@ -1257,6 +1262,28 @@ public object GetAvatarUploadFormArgs_ReturnConverter {
         )(credential as ByteArray),
       uploadLength =
         identity(upload_length as Int),
+    )
+}
+
+public object GetAvatarUploadFormLegacyArgs_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    aci: Any?,
+    profile_key: Any?,
+  ): Any? =
+    GetAvatarUploadFormLegacyArgs(
+      aci =
+        org.signal.libsignal.protocol.ServiceId.Aci
+          .parseFromFixedWidthBinary(aci as ByteArray),
+      profileKey =
+        (
+          { x: ByteArray ->
+            org.signal.libsignal.zkgroup.profiles
+              .ProfileKey(x)
+          }
+        )(profile_key as ByteArray),
     )
 }
 
@@ -2959,6 +2986,16 @@ public object NativeTestingNice {
       .resultConverter<Void?, Object, Void?, org.signal.libsignal.internal.GetAccountIdentityOut>({
         identity(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetAccountIdentityOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetAvatarUploadFormLegacyTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetAvatarUploadFormLegacyArgs, org.signal.libsignal.net.S3UploadForm>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetAvatarUploadFormLegacyTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Object, Object, org.signal.libsignal.internal.GetAvatarUploadFormLegacyArgs, org.signal.libsignal.net.S3UploadForm>({
+        downcastFromObject<org.signal.libsignal.internal.GetAvatarUploadFormLegacyArgs>(it)
+      }, { downcastFromObject<org.signal.libsignal.net.S3UploadForm>(it) })(ffiOut)
   }
 
   public fun TESTING_GetAvatarUploadFormTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetAvatarUploadFormArgs, org.signal.libsignal.internal.GetAvatarUploadFormOut>> {

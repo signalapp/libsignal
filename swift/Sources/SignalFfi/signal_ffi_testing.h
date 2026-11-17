@@ -1058,6 +1058,14 @@ static_assert_64bit(offsetof(SignalGetAvatarUploadFormArgsFfiResult, credential)
 static_assert_64bit(offsetof(SignalGetAvatarUploadFormArgsFfiResult, upload_length) == 16);
 static_assert_64bit(sizeof(SignalGetAvatarUploadFormArgsFfiResult) == 24);
 static_assert_64bit(alignof(SignalGetAvatarUploadFormArgsFfiResult) == 8);
+typedef struct {
+  SignalType_FixedArray17_uint8_t aci;
+  SignalOwnedBuffer profile_key;
+} SignalGetAvatarUploadFormLegacyArgsFfiResult;
+static_assert_64bit(offsetof(SignalGetAvatarUploadFormLegacyArgsFfiResult, aci) == 0);
+static_assert_64bit(offsetof(SignalGetAvatarUploadFormLegacyArgsFfiResult, profile_key) == 24);
+static_assert_64bit(sizeof(SignalGetAvatarUploadFormLegacyArgsFfiResult) == 40);
+static_assert_64bit(alignof(SignalGetAvatarUploadFormLegacyArgsFfiResult) == 8);
 typedef enum {
   SignalGetAvatarUploadFormOutFfiResultSuccess,
   SignalGetAvatarUploadFormOutFfiResultInvalidCredential,
@@ -2505,6 +2513,9 @@ SignalFfiError* signal_testing_generate_totp_key_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_account_identity_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
+SignalFfiError* signal_testing_get_avatar_upload_form_legacy_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
 SignalFfiError* signal_testing_get_avatar_upload_form_tests(

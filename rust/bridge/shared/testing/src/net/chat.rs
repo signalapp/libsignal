@@ -22,6 +22,7 @@ use libsignal_net::chat::{
     ConnectError, RequestProto, Response as ChatResponse, ResponseProto, SendError,
 };
 use libsignal_net::infra::errors::RetryLater;
+use libsignal_net_chat::api::S3UploadForm;
 use libsignal_net_chat::grpc::accounts::ZkCredentialKeyRotationId;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
 
@@ -501,6 +502,7 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use ::zkgroup::ServerPublicParams;
+    use ::zkgroup::profiles::ProfileKey;
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::{
@@ -525,6 +527,15 @@ mod remote_derives {
     use uuid::Uuid;
 
     use super::*;
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(
+        libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormLegacyArgs
+    )]
+    pub struct GetAvatarUploadFormLegacyArgs {
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+    }
 
     #[derive(BridgedAsValue, StructuralFrom)]
     #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormArgs)]
@@ -1768,4 +1779,10 @@ fn TESTING_DeleteAvatarTests() -> GrpcTestCases<
 fn TESTING_GetAvatarUploadFormTests()
 -> GrpcTestCases<remote_derives::GetAvatarUploadFormArgs, remote_derives::GetAvatarUploadFormOut> {
     libsignal_net_chat::grpc::profiles::test_cases::get_avatar_upload_form_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetAvatarUploadFormLegacyTests()
+-> GrpcTestCases<remote_derives::GetAvatarUploadFormLegacyArgs, S3UploadForm> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_avatar_upload_form_legacy_test_cases()
+        .into()
 }

@@ -827,6 +827,7 @@ zkgroup_serialize_type!(
     zkgroup::avatars::AvatarUploadCredentialPresentation,
     "AvatarUploadCredentialPresentation"
 );
+zkgroup_serialize_type!(zkgroup::profiles::ProfileKey, "ProfileKey");
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;

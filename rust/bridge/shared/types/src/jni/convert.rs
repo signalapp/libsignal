@@ -825,6 +825,10 @@ zkgroup_serialize_type!(
     zkgroup::avatars::AvatarUploadCredentialPresentation,
     "org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation"
 );
+zkgroup_serialize_type!(
+    zkgroup::profiles::ProfileKey,
+    "org.signal.libsignal.zkgroup.profiles.ProfileKey"
+);
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;

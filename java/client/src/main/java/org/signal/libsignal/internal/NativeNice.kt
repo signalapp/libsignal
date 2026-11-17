@@ -1961,6 +1961,30 @@ public object NativeNice {
       .thenApply { downcastFromObject<org.signal.libsignal.internal.BridgeAccountIdentity>(it) }
   }
 
+  public fun AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.AuthenticatedChatConnection,
+    aci: org.signal.libsignal.protocol.ServiceId.Aci,
+    profileKey: org.signal.libsignal.zkgroup.profiles.ProfileKey,
+  ): CompletableFuture<org.signal.libsignal.net.S3UploadForm> {
+    val ffi_chat = identity(chat)
+    val ffi_aci = (org.signal.libsignal.protocol.ServiceId.Aci::toServiceIdFixedWidthBinary)(aci)
+    val ffi_profile_key =
+      (org.signal.libsignal.zkgroup.profiles.ProfileKey::getInternalContentsForJNI)(profileKey)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+          ffi_aci,
+          ffi_profile_key,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.net.S3UploadForm>(it) }
+  }
+
   public fun AuthenticatedChatConnection_get_badges(
     asyncCtx: TokioAsyncContext,
     chat: org.signal.libsignal.net.AuthenticatedChatConnection,

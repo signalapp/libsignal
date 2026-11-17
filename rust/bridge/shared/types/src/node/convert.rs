@@ -947,6 +947,7 @@ zkgroup_serialize_type!(
     zkgroup::avatars::AvatarUploadCredentialPresentation,
     "AvatarUploadCredentialPresentation"
 );
+zkgroup_serialize_type!(zkgroup::profiles::ProfileKey, "ProfileKey");
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {

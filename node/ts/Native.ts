@@ -594,6 +594,11 @@ export type ReturnFfiGetAvatarUploadFormArgs = {
   upload_length: number;
 };
 
+export type ReturnFfiGetAvatarUploadFormLegacyArgs = {
+  aci: Bytes;
+  profile_key: Bytes;
+};
+
 export type ReturnFfiGetAvatarUploadFormOut =
   | {
       __type: 0;
@@ -1463,6 +1468,12 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgeAccountIdentity>;
+  AuthenticatedChatConnection_get_avatar_upload_form_legacy: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    aci: Bytes,
+    profile_key: Bytes
+  ) => CancellablePromise<ReturnFfiS3UploadFormInternal>;
   AuthenticatedChatConnection_get_badges: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -3446,6 +3457,12 @@ type NativeFunctions = {
   TESTING_GetAccountIdentityTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetAccountIdentityOut>
   >;
+  TESTING_GetAvatarUploadFormLegacyTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiGetAvatarUploadFormLegacyArgs,
+      ReturnFfiS3UploadFormInternal
+    >
+  >;
   TESTING_GetAvatarUploadFormTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiGetAvatarUploadFormArgs,
@@ -4231,6 +4248,7 @@ const {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_avatar_upload_form_legacy,
   AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
@@ -4822,6 +4840,7 @@ const {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarUploadFormLegacyTests,
   TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
@@ -5099,6 +5118,7 @@ export {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_avatar_upload_form_legacy,
   AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
@@ -5690,6 +5710,7 @@ export {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarUploadFormLegacyTests,
   TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,

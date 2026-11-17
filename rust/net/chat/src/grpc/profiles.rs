@@ -29,7 +29,7 @@ use libsignal_net_grpc::proto::chat::profile::{
     GetAvatarUploadFormRequest, GetProfileAnonymousRequest, GetProfileKeyCredentialRequest,
     GetProfileKeyCredentialResponse, GetProfileKeyCredentialResult, GetProfileRequest,
     PaymentsForbiddenInRegion, SetProfileRequest, SetProfileResult, SetProfileV1Request,
-    get_profile_anonymous_request, get_profile_anonymous_response,
+    SetV1AvatarRequest, get_profile_anonymous_request, get_profile_anonymous_response,
 };
 use libsignal_protocol::IdentityKey;
 use rand::CryptoRng;
@@ -440,7 +440,45 @@ pub enum SetProfileError {
 // We want to ensure that any current_profile_version doesn't get printed.
 impl_debug_from_display!(SetProfileError);
 
+impl std::fmt::Display for Redact<SetV1AvatarRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(SetV1AvatarRequest {
+            version,
+            commitment,
+        }) = self;
+        f.debug_struct("SetV1AvatarRequest")
+            .field("version.len()", &version.len())
+            .field("commitment.len()", &commitment.len())
+            .finish()
+    }
+}
+
 impl<T: GrpcServiceProvider> Auth<T> {
+    /// Returns a form to upload a legacy (v1) avatar.
+    pub async fn get_avatar_upload_form_legacy(
+        &self,
+        aci: Aci,
+        profile_key: &ProfileKey,
+    ) -> Result<S3UploadForm, RequestError<Infallible>> {
+        let version = profile_key.get_profile_key_version(aci);
+        let commitment = profile_key.get_commitment(aci);
+        let request = SetV1AvatarRequest {
+            version: hex::encode(version.bytes),
+            commitment: zkgroup::serialize(&commitment),
+        };
+        let log_safe_description = Redact(&request).to_string();
+        let mut profiles_service = ProfileClient::new(self.0.service());
+        log_and_send(Self::LOG_TAG, &log_safe_description, || {
+            profiles_service.set_v1_avatar(request)
+        })
+        .await?
+        .into_inner()
+        .form
+        .ok_or_else(|| RequestError::Unexpected {
+            log_safe: "Missing S3 form".into(),
+        })?
+        .try_into()
+    }
     /// Retrieves profile data.
     ///
     /// Callers with an unidentified access key for the account should use the unauth version,
@@ -944,6 +982,7 @@ pub mod test_cases {
     use libsignal_net_grpc::proto::chat::common::{IdentityType, ServiceIdentifier};
     use libsignal_net_grpc::proto::chat::profile::{
         DeleteAvatarResponse, ExtendAvatarTtlResponse, GetAvatarUploadFormResponse,
+        SetV1AvatarResponse,
     };
     use uuid::{Uuid, uuid};
     use zkgroup::SECONDS_PER_DAY;
@@ -958,6 +997,58 @@ pub mod test_cases {
     pub(crate) const ACI_UUID: Uuid = uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f");
     #[cfg(test)]
     pub(crate) const PNI_UUID: Uuid = uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f");
+
+    #[derive(Clone)]
+    pub struct GetAvatarUploadFormLegacyArgs {
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+    }
+    pub type GetAvatarUploadFormLegacyOut = S3UploadForm;
+
+    pub fn get_avatar_upload_form_legacy_test_cases() -> Vec<
+        GrpcTestCase<
+            GetAvatarUploadFormLegacyArgs,
+            SetV1AvatarRequest,
+            SetV1AvatarResponse,
+            GetAvatarUploadFormLegacyOut,
+        >,
+    > {
+        let method = "/org.signal.chat.profile.Profile/SetV1Avatar";
+        let aci = Aci::from_uuid_bytes([0x1; 16]);
+        let profile_key = ProfileKey { bytes: [0x2; _] };
+        vec![GrpcTestCase {
+            name: "success".into(),
+            method: method.into(),
+            request: GetAvatarUploadFormLegacyArgs { aci, profile_key },
+            request_grpc: SetV1AvatarRequest {
+                version: String::from_utf8(zkgroup::serialize(
+                    &profile_key.get_profile_key_version(aci),
+                ))
+                .expect("valid utf-8"),
+                commitment: zkgroup::serialize(&profile_key.get_commitment(aci)),
+            },
+            response_grpc: SetV1AvatarResponse {
+                form: Some(libsignal_net_grpc::proto::chat::common::S3UploadForm {
+                    key: "key".into(),
+                    credential: "credential".into(),
+                    acl: "acl".into(),
+                    algorithm: "Floyd–Warshall".into(),
+                    date: "today".into(),
+                    policy: "policy".into(),
+                    signature: "abcd".into(),
+                }),
+            },
+            response: S3UploadForm {
+                key: "key".into(),
+                credential: "credential".into(),
+                acl: "acl".into(),
+                algorithm: "Floyd–Warshall".into(),
+                date: "today".into(),
+                policy: "policy".into(),
+                signature: "abcd".into(),
+            },
+        }]
+    }
 
     #[derive(Clone)]
     pub struct GetAvatarUploadFormArgs {
