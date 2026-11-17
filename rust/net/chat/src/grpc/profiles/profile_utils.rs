@@ -6,7 +6,7 @@
 use aes_gcm::aead::Aead;
 use aes_gcm::aes::cipher::Array;
 use aes_gcm::{AeadInOut, Aes256Gcm, KeyInit, aead};
-use libsignal_core::Aci;
+use libsignal_core::{Aci, LogSafeDisplay};
 use libsignal_net_grpc::proto::chat::profile::get_profile_anonymous_response::Response as UnauthGetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::get_profile_response::Response as GetProfileResponseEnum;
 use libsignal_net_grpc::proto::chat::profile::set_profile_response::Response as SetProfileResponseEnum;
@@ -74,12 +74,14 @@ impl FetchedProfile {
     fn new(
         account_info: &AccountInfo,
         etag: Option<ProfileEtag>,
-        profile: Profile,
+        mut profile: Profile,
         v2_data_hash: Option<ProfileDataHash>,
         avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<FetchedProfile, Error> {
-        if let Err(e) = profile.validate(avatar_cdn_config) {
-            return Err(ProfileDecodeError::IncomingProfileValidationFailed(e).into());
+        let mut validation_errors = Vec::new();
+        profile.sanitize(avatar_cdn_config, &mut validation_errors);
+        for e in validation_errors {
+            log::warn!("Incoming profile was invalid: {}", e.log_safe_display());
         }
         Ok(FetchedProfile {
             profile,
@@ -738,7 +740,7 @@ pub(super) mod test_cases {
         SetProfileError, UnauthGetProfileError, UnauthProfileAuthorization,
     };
 
-    fn cdn0_config() -> AvatarCdnUrlValidationConfig {
+    pub(crate) fn cdn0_config() -> AvatarCdnUrlValidationConfig {
         AvatarCdnUrlValidationConfig::new(vec!["https://cdn.signal.org/".into()]).expect("Valid")
     }
 
@@ -968,7 +970,8 @@ pub(super) mod test_cases {
                     etag: None,
                     ..test.correct_fetched_profile.clone()
                 })),
-            }); // For the v1 test, clear out the v2-specific fields.
+            });
+            // For the v1 test, clear out the v2-specific fields.
             test.correct_fetched_profile.etag = None;
             test.correct_fetched_profile.v2_data_hash = None;
             cases.push(GrpcTestCase {
@@ -1088,6 +1091,81 @@ pub(super) mod test_cases {
             },
             response: GetProfileOut::Failure(AuthGetProfileError::ProfileNotFound),
         });
+        {
+            // Test that we're sanitizing/validating incoming profiles.
+            let mut test = ProfileEncryptionRoundtripTest::new(
+                1,
+                Aci::from_uuid_bytes([2; 16]),
+                ProfileKey { bytes: [3; 32] },
+                FetchedProfile {
+                    profile: Profile {
+                        given_name: "x".into(),
+                        family_name: String::new(),
+                        about: String::new(),
+                        about_emoji: String::new(),
+                        avatar: Some("https://not-a-signal-cdn.example.com/asdf".into()),
+                        phone_number_sharing: Some(false),
+                        payment_address: None,
+                        badge_ids: Vec::new(),
+                    },
+                    etag: None,         // Set by new()
+                    v2_data_hash: None, // set by new()
+                    identity_key: identity_key_from_seed(5),
+                    unidentified_access_key_fingerprint: Some([4; 32]),
+                    unrestricted_unidentified_access: false,
+                },
+                cdn0_config(),
+            );
+            let version = test
+                .profile_key
+                .get_profile_key_version(test.aci)
+                .bytes
+                .to_vec();
+            test.correct_fetched_profile.profile.avatar = None;
+            cases.push(GrpcTestCase {
+                name: "avatar url sanitization, v2".into(),
+                method: method.into(),
+                request: GetProfileArgs {
+                    aci: test.aci,
+                    profile_key: test.profile_key,
+                    etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
+                },
+                request_grpc: GetProfileRequest {
+                    account_identifier: Some(test.aci.into()),
+                    version: version.clone(),
+                    etag: Vec::new(),
+                },
+                response_grpc: GetProfileResponse {
+                    response: Some(GetProfileResponseEnum::Profile(test.v2_result.clone())),
+                },
+                response: GetProfileOut::Success(Some(test.correct_fetched_profile.clone())),
+            });
+            // For the v1 test, clear out the v2-specific fields.
+            test.correct_fetched_profile.etag = None;
+            test.correct_fetched_profile.v2_data_hash = None;
+            cases.push(GrpcTestCase {
+                name: "avatar url sanitization, v1".into(),
+                method: method.into(),
+                request: GetProfileArgs {
+                    aci: test.aci,
+                    profile_key: test.profile_key,
+                    etag: None,
+                    avatar_cdn_config: test.avatar_cdn_config.clone(),
+                },
+                request_grpc: GetProfileRequest {
+                    account_identifier: Some(test.aci.into()),
+                    version: version.clone(),
+                    etag: Vec::new(),
+                },
+                response_grpc: GetProfileResponse {
+                    response: Some(GetProfileResponseEnum::LegacyProfile(
+                        test.v1_result.clone(),
+                    )),
+                },
+                response: GetProfileOut::Success(Some(test.correct_fetched_profile.clone())),
+            });
+        }
         cases
     }
     pub fn get_profile_unauth_test_cases() -> UnauthGetProfileTestCases {
@@ -1278,7 +1356,7 @@ pub(super) mod test_cases {
                 ProfileFieldWithMaxLength::About => profile.about = body,
                 ProfileFieldWithMaxLength::AboutEmoji => profile.about_emoji = body,
                 ProfileFieldWithMaxLength::Avatar => {
-                    body = format!("https://cdn0.signal.org/{body}");
+                    body = format!("https://cdn.signal.org/{body}");
                     body.truncate(len);
                     profile.avatar = Some(CdnUrl::try_from(body).expect("valid"))
                 }
@@ -1474,8 +1552,36 @@ pub(super) mod test_cases {
         cases
     }
 
-    fn roundtrip_test_cases() -> Vec<ProfileEncryptionRoundtripTest> {
+    /// A profile where all the fields are at max-length
+    pub(crate) fn max_length_profile() -> Profile {
         use crate::grpc::profiles::ProfileFieldWithMaxLength::*;
+        Profile {
+            given_name: "n".repeat(GivenName.max_length()),
+            family_name: "N".repeat(FamilyName.max_length()),
+            about: "a".repeat(About.max_length()),
+            about_emoji: "A".repeat(AboutEmoji.max_length()),
+            avatar: {
+                let cdn0 = "https://cdn.signal.org/";
+                Some(
+                    CdnUrl::try_from(format!(
+                        "{cdn0}{}",
+                        "U".repeat(Avatar.max_length() - cdn0.len())
+                    ))
+                    .expect("valid url"),
+                )
+            },
+            phone_number_sharing: Some(true),
+            payment_address: Some(vec![b'p'; PaymentAddress.max_length()]),
+            badge_ids: vec![
+                "honor".into(),
+                "shame".into(),
+                "badger".into(),
+                "verisimilitude".into(),
+            ],
+        }
+    }
+
+    fn roundtrip_test_cases() -> Vec<ProfileEncryptionRoundtripTest> {
         vec![
             // All fields at max length
             ProfileEncryptionRoundtripTest::new(
@@ -1483,30 +1589,7 @@ pub(super) mod test_cases {
                 Aci::from_uuid_bytes([2; 16]),
                 ProfileKey { bytes: [3; 32] },
                 FetchedProfile {
-                    profile: Profile {
-                        given_name: "n".repeat(GivenName.max_length()),
-                        family_name: "N".repeat(FamilyName.max_length()),
-                        about: "a".repeat(About.max_length()),
-                        about_emoji: "A".repeat(AboutEmoji.max_length()),
-                        avatar: {
-                            let cdn0 = "https://cdn.signal.org/";
-                            Some(
-                                CdnUrl::try_from(format!(
-                                    "{cdn0}{}",
-                                    "U".repeat(Avatar.max_length() - cdn0.len())
-                                ))
-                                .expect("valid url"),
-                            )
-                        },
-                        phone_number_sharing: Some(true),
-                        payment_address: Some(vec![b'p'; PaymentAddress.max_length()]),
-                        badge_ids: vec![
-                            "honor".into(),
-                            "shame".into(),
-                            "badger".into(),
-                            "verisimilitude".into(),
-                        ],
-                    },
+                    profile: max_length_profile(),
                     etag: None,         // Set by new()
                     v2_data_hash: None, // set by new()
                     identity_key: identity_key_from_seed(5),

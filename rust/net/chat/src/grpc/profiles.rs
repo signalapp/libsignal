@@ -209,45 +209,55 @@ impl LogSafeDisplay for ProfileValidationError {}
 
 impl Profile {
     /// Validate that a profile meets the validation rules.
-    fn validate(
-        &self,
+    ///
+    /// If there are any validation errors, they will be added to `validation_errors`.
+    /// Any invalid fields will be blanked.
+    fn sanitize(
+        &mut self,
         cdn_config: &AvatarCdnUrlValidationConfig,
-    ) -> Result<(), ProfileValidationError> {
+        validation_errors: &mut Vec<ProfileValidationError>,
+    ) {
         use ProfileFieldWithMaxLength::*;
-        for (field, len) in [
-            (GivenName, self.given_name.len()),
-            (FamilyName, self.family_name.len()),
-            (About, self.about.len()),
-            (AboutEmoji, self.about_emoji.len()),
-            (
-                Avatar,
-                self.avatar
-                    .as_ref()
-                    .map(|url| url.len())
-                    .unwrap_or_default(),
-            ),
-            (
-                PaymentAddress,
-                self.payment_address
-                    .as_ref()
-                    .map(|addr| addr.len())
-                    .unwrap_or_default(),
-            ),
+        for (field, string) in [
+            (GivenName, &mut self.given_name),
+            (FamilyName, &mut self.family_name),
+            (About, &mut self.about),
+            (AboutEmoji, &mut self.about_emoji),
         ] {
-            if len > field.max_length() {
-                return Err(ProfileValidationError::FieldTooLong {
+            if string.len() > field.max_length() {
+                validation_errors.push(ProfileValidationError::FieldTooLong {
                     field,
-                    len,
+                    len: string.len(),
                     max_len: field.max_length(),
                 });
+                string.clear();
             }
         }
-        if let Some(avatar) = self.avatar.as_ref()
-            && !cdn_config.validate_url(avatar)
+        if let Some(payment_address) = self.payment_address.as_ref()
+            && payment_address.len() > PaymentAddress.max_length()
         {
-            return Err(ProfileValidationError::AvatarUrlInvalid);
+            validation_errors.push(ProfileValidationError::FieldTooLong {
+                field: PaymentAddress,
+                len: payment_address.len(),
+                max_len: PaymentAddress.max_length(),
+            });
+            self.payment_address = None;
         }
-        Ok(())
+        if let Some(avatar) = self.avatar.as_ref() {
+            let avatar_len = avatar.len();
+            if !cdn_config.validate_url(avatar) {
+                validation_errors.push(ProfileValidationError::AvatarUrlInvalid);
+                self.avatar = None;
+            }
+            if avatar_len > Avatar.max_length() {
+                validation_errors.push(ProfileValidationError::FieldTooLong {
+                    field: Avatar,
+                    len: avatar_len,
+                    max_len: Avatar.max_length(),
+                });
+                self.avatar = None;
+            }
+        }
     }
 }
 
@@ -325,8 +335,6 @@ impl<T: GrpcServiceProvider> crate::api::profiles::UnauthenticatedAccountExisten
 /// This is an enum only for testing purposes. For security purposes, we don't want to allow
 /// programatic introspection on the exact decode error.
 enum ProfileDecodeError {
-    /// The incoming profile was invalid due to {0}
-    IncomingProfileValidationFailed(ProfileValidationError),
     /// Failed to protobuf decode the plaintext profile v2 data
     ProfileV2InvalidProtobuf,
     /// A profile v2 data buffer couldn't be un-padded because it was empty
@@ -688,14 +696,16 @@ impl<T: GrpcServiceProvider> Auth<T> {
         rng: &mut (dyn CryptoRng + Send),
         aci: Aci,
         profile_key: &ProfileKey,
-        profile: Profile,
+        mut profile: Profile,
         expected_current_data_hash: Option<ProfileDataHash>,
         expected_current_profile_key_version: Option<&ProfileKeyVersion>,
         avatar_cdn_config: &AvatarCdnUrlValidationConfig,
     ) -> Result<ProfileDataHash, RequestError<SetProfileError>> {
-        profile
-            .validate(avatar_cdn_config)
-            .map_err(|e| RequestError::Other(SetProfileError::InvalidProfile(e)))?;
+        let mut validation_errors = Vec::new();
+        profile.sanitize(avatar_cdn_config, &mut validation_errors);
+        if let Some(e) = validation_errors.first() {
+            return Err(RequestError::Other(SetProfileError::InvalidProfile(*e)));
+        }
         if profile.phone_number_sharing.is_none() {
             return Err(RequestError::Other(
                 SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
@@ -1986,5 +1996,83 @@ mod test {
         ] {
             assert_eq!(config.validate_url(url), valid);
         }
+    }
+
+    fn increase_field_len(profile: &mut Profile, field: ProfileFieldWithMaxLength) {
+        match field {
+            ProfileFieldWithMaxLength::GivenName => profile.given_name.push('C'),
+            ProfileFieldWithMaxLength::FamilyName => profile.family_name.push('C'),
+            ProfileFieldWithMaxLength::About => profile.about.push('C'),
+            ProfileFieldWithMaxLength::AboutEmoji => profile.about_emoji.push('C'),
+            ProfileFieldWithMaxLength::Avatar => {
+                if let Some(x) = profile.avatar.as_mut() {
+                    x.push('C');
+                }
+            }
+            ProfileFieldWithMaxLength::PaymentAddress => {
+                if let Some(x) = profile.payment_address.as_mut() {
+                    x.push(b'C');
+                }
+            }
+        }
+    }
+
+    fn field_is_empty(profile: &Profile, field: ProfileFieldWithMaxLength) -> bool {
+        match field {
+            ProfileFieldWithMaxLength::GivenName => profile.given_name.is_empty(),
+            ProfileFieldWithMaxLength::FamilyName => profile.family_name.is_empty(),
+            ProfileFieldWithMaxLength::About => profile.about.is_empty(),
+            ProfileFieldWithMaxLength::AboutEmoji => profile.about_emoji.is_empty(),
+            ProfileFieldWithMaxLength::Avatar => profile.avatar.is_none(),
+            ProfileFieldWithMaxLength::PaymentAddress => profile.payment_address.is_none(),
+        }
+    }
+
+    #[test]
+    fn test_sanitize_single_field_long() {
+        for &field in ProfileFieldWithMaxLength::VARIANTS {
+            let mut profile = max_length_profile();
+            increase_field_len(&mut profile, field);
+            let mut errs = Vec::new();
+            profile.sanitize(&profile_utils::test_cases::cdn0_config(), &mut errs);
+            assert_eq!(errs.len(), 1, "{errs:?}");
+            assert_matches!(
+                &errs[0],
+                ProfileValidationError::FieldTooLong { field: field2, .. } if *field2 == field
+            );
+            assert!(field_is_empty(&profile, field));
+        }
+    }
+
+    #[test]
+    fn test_sanitize_all_fields_long() {
+        let mut profile = max_length_profile();
+        for &field in ProfileFieldWithMaxLength::VARIANTS {
+            increase_field_len(&mut profile, field);
+        }
+        let mut errs = Vec::new();
+        profile.sanitize(&profile_utils::test_cases::cdn0_config(), &mut errs);
+        assert_eq!(
+            errs.len(),
+            ProfileFieldWithMaxLength::VARIANTS.len(),
+            "{errs:?}"
+        );
+        for &field in ProfileFieldWithMaxLength::VARIANTS {
+            assert!(errs.iter().any(|e| matches!(e,
+                ProfileValidationError::FieldTooLong { field: field2, .. } if *field2 == field
+            )));
+            assert!(field_is_empty(&profile, field));
+        }
+    }
+
+    #[test]
+    fn test_sanitize_avatar_url() {
+        let mut profile = max_length_profile();
+        profile.avatar = Some("http://www.example.com/img.png".into());
+        let mut errs = Vec::new();
+        profile.sanitize(&profile_utils::test_cases::cdn0_config(), &mut errs);
+        assert_eq!(errs.len(), 1, "{errs:?}");
+        assert_matches!(&errs[0], ProfileValidationError::AvatarUrlInvalid);
+        assert_eq!(profile.avatar, None);
     }
 }
