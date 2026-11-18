@@ -175,7 +175,6 @@ const config = defineConfig(
     // Ignores in their own config object are treated as global.
     {
       ignores: [
-        'build/**/*',
         'dist/**/*',
         '**/eslint.config.js',
         '**/Native.js',

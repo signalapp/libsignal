@@ -370,7 +370,7 @@ jobs:
     - name: Build for arm64
       # Use plain old npm to run this script to avoid having to install pnpm.
       # (But we still want to run through npm to set env vars appropriately instead of calling build_node_bridge.py directly.)
-      run: npm run build -- --arch arm64 --copy-to-prebuilds
+      run: npm run build -- --arch arm64
       working-directory: node
 
   swift-ios:

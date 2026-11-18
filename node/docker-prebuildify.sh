@@ -31,8 +31,7 @@ docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_
         CC=aarch64-linux-gnu-gcc \
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
-        npm run build -- --arch arm64 --copy-to-prebuilds &&
-    mv build/Release/*-debuginfo.* . &&
-    npm run build -- --arch x64 --copy-to-prebuilds &&
-    mv build/Release/*-debuginfo.* .
+        npm run build -- --arch arm64 &&
+    npm run build -- --arch x64 &&
+    mv prebuilds/*-debuginfo.* .
 '
