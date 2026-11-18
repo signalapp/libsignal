@@ -324,25 +324,34 @@ class NativeTestingNiceTest {
       ).asSequence(),
       toString = { e ->
         when (e) {
-          is MyTestEnum.Unit -> "\"unit\""
-          is MyTestEnum.Single ->
+          is MyTestEnum.Unit -> {
+            "\"unit\""
+          }
+
+          is MyTestEnum.Single -> {
             buildJsonObject {
               put("single", e._0)
             }
-          is MyTestEnum.Double ->
+          }
+
+          is MyTestEnum.Double -> {
             buildJsonObject {
               putJsonArray("double") {
                 add(e._0)
                 add(e._1)
               }
             }
-          is MyTestEnum.SingleNamed ->
+          }
+
+          is MyTestEnum.SingleNamed -> {
             buildJsonObject {
               putJsonObject("singleNamed") {
                 put("x", e.x)
               }
             }
-          is MyTestEnum.Record ->
+          }
+
+          is MyTestEnum.Record -> {
             buildJsonObject {
               putJsonObject("record") {
                 put("personName", e.personName)
@@ -357,6 +366,7 @@ class NativeTestingNiceTest {
                 }
               }
             }
+          }
         }.toString()
       },
       nativeToString = NativeTestingNice::TESTING_MyTestEnum_to_string,
@@ -410,11 +420,15 @@ class NativeTestingNiceTest {
       nativeIdentity = NativeTestingNice::TESTING_MyNiceTypeEnum_identity,
       toString = {
         when (it) {
-          MyNiceTypeEnum.Unit -> "\"Unit\""
-          is MyNiceTypeEnum.Single ->
+          MyNiceTypeEnum.Unit -> {
+            "\"Unit\""
+          }
+
+          is MyNiceTypeEnum.Single -> {
             buildJsonObject {
               put("Single", it._0)
             }.toString()
+          }
         }
       },
     )

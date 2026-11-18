@@ -34,10 +34,17 @@ class UnauthKeysServiceTest {
         invoke = { service, request ->
           val auth =
             when (val auth = request.auth) {
-              is TestingUserBasedAuthorization.AccessKey -> UserBasedAuthorization.AccessKey(auth.key)
-              is TestingUserBasedAuthorization.GroupSendToken ->
+              is TestingUserBasedAuthorization.AccessKey -> {
+                UserBasedAuthorization.AccessKey(auth.key)
+              }
+
+              is TestingUserBasedAuthorization.GroupSendToken -> {
                 UserBasedAuthorization.GroupSend(GroupSendFullToken(auth.token))
-              TestingUserBasedAuthorization.Unrestricted -> UserBasedAuthorization.UnrestrictedUnauthenticatedAccess
+              }
+
+              TestingUserBasedAuthorization.Unrestricted -> {
+                UserBasedAuthorization.UnrestrictedUnauthenticatedAccess
+              }
             }
           service.getPreKeys(
             request.target,
@@ -53,11 +60,18 @@ class UnauthKeysServiceTest {
               assertContentEquals(expected.identityKey, identityKey.serialize())
               assertEquals(expected.bundleCount, bundles.size)
             }
-            GetPreKeysOut.NotFound ->
+
+            GetPreKeysOut.NotFound -> {
               assertIs<ServiceIdNotFoundException>(assertIs<RequestResult.NonSuccess<GetPreKeysError>>(actual).error)
-            GetPreKeysOut.Unauthorized ->
+            }
+
+            GetPreKeysOut.Unauthorized -> {
               assertIs<RequestUnauthorizedException>(assertIs<RequestResult.NonSuccess<GetPreKeysError>>(actual).error)
-            GetPreKeysOut.Unexpected -> assertIs<RequestResult.ApplicationError>(actual)
+            }
+
+            GetPreKeysOut.Unexpected -> {
+              assertIs<RequestResult.ApplicationError>(actual)
+            }
           }
         },
       )

@@ -38,14 +38,21 @@ public class KEMPublicKey :
 
   public override fun equals(other: Any?): Boolean =
     when (other) {
-      null -> false
-      is KEMPublicKey ->
+      null -> {
+        false
+      }
+
+      is KEMPublicKey -> {
         guardedMap { thisNativeHandle ->
           other.guardedMap { otherNativeHandle ->
             Native.KyberPublicKey_Equals(thisNativeHandle, otherNativeHandle)
           }
         }
-      else -> false
+      }
+
+      else -> {
+        false
+      }
     }
 
   public override fun hashCode(): Int = Arrays.hashCode(this.serialize())

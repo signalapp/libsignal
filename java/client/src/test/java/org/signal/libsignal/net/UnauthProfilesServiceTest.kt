@@ -88,20 +88,28 @@ class UnauthProfilesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetProfileKeyCredentialOut.Success ->
+            is GetProfileKeyCredentialOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<ExpiringProfileKeyCredential>>(actual).result,
               )
-            is GetProfileKeyCredentialOut.ExplicitError ->
+            }
+
+            is GetProfileKeyCredentialOut.ExplicitError -> {
               when (expected._0) {
-                ProfileKeyCredentialRequestError.AuthFailed ->
+                ProfileKeyCredentialRequestError.AuthFailed -> {
                   actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-                ProfileKeyCredentialRequestError.ProfileNotFound ->
+                }
+
+                ProfileKeyCredentialRequestError.ProfileNotFound -> {
                   actual.assertNonSuccess<_, _, ProfileNotFoundException>()
+                }
               }
-            is GetProfileKeyCredentialOut.UnexpectedError ->
+            }
+
+            is GetProfileKeyCredentialOut.UnexpectedError -> {
               assertContains(assertIs<RequestResult.ApplicationError>(actual).toString(), expected.contains)
+            }
           }
         },
       )
@@ -123,11 +131,18 @@ class UnauthProfilesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is ExtendAvatarTtlOut.Found -> assertEquals(actual.assertSuccess(), expected._0)
-            ExtendAvatarTtlOut.InvalidCredentials ->
+            is ExtendAvatarTtlOut.Found -> {
+              assertEquals(actual.assertSuccess(), expected._0)
+            }
+
+            ExtendAvatarTtlOut.InvalidCredentials -> {
               actual
                 .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
-            ExtendAvatarTtlOut.NotFound -> assertEquals(null, actual.assertSuccess())
+            }
+
+            ExtendAvatarTtlOut.NotFound -> {
+              assertEquals(null, actual.assertSuccess())
+            }
           }
         },
       )
@@ -176,10 +191,14 @@ class UnauthProfilesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            GetAvatarUploadFormOut.InvalidCredential ->
+            GetAvatarUploadFormOut.InvalidCredential -> {
               actual
                 .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
-            is GetAvatarUploadFormOut.Success -> assertEquals(expected._0, actual.assertSuccess())
+            }
+
+            is GetAvatarUploadFormOut.Success -> {
+              assertEquals(expected._0, actual.assertSuccess())
+            }
           }
         },
       )
@@ -201,16 +220,19 @@ class UnauthProfilesServiceTest {
             profileKey = req.inner.profileKey,
             auth =
               when (req.auth) {
-                is UnauthProfileAuthorizationInternal.GroupSend ->
+                is UnauthProfileAuthorizationInternal.GroupSend -> {
                   UnauthProfileAuthorization
                     .GroupSend(
                       req.auth._0,
                     )
-                is UnauthProfileAuthorizationInternal.AccessKey ->
+                }
+
+                is UnauthProfileAuthorizationInternal.AccessKey -> {
                   UnauthProfileAuthorization
                     .AccessKey(
                       req.auth._0,
                     )
+                }
               },
             etag = req.inner.etag,
             avatarCdnUrlValidationConfig =
@@ -221,18 +243,26 @@ class UnauthProfilesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is UnauthGetProfileOut.Failure ->
+            is UnauthGetProfileOut.Failure -> {
               when (expected._0) {
-                is UnauthGetProfileError.ProfileDecodeError ->
+                is UnauthGetProfileError.ProfileDecodeError -> {
                   actual.assertNonSuccess<_, _, ProfileCantBeDecodedException>()
-                UnauthGetProfileError.ProfileNotFound ->
+                }
+
+                UnauthGetProfileError.ProfileNotFound -> {
                   actual.assertNonSuccess<_, _, ProfileNotFoundException>()
-                UnauthGetProfileError.FailedUnidentifiedAuthorization ->
+                }
+
+                UnauthGetProfileError.FailedUnidentifiedAuthorization -> {
                   actual
                     .assertNonSuccess<_, _, RequestUnauthorizedException>()
+                }
               }
-            is UnauthGetProfileOut.Success ->
+            }
+
+            is UnauthGetProfileOut.Success -> {
               assertEquals(expected._0, actual.assertSuccess())
+            }
           }
         },
       )

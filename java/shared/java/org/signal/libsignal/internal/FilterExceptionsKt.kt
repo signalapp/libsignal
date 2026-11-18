@@ -9,9 +9,13 @@ internal inline fun <U> filterAllExceptions(crossinline thunk: () -> U): U =
     throw e
   } catch (e: Exception) {
     when (e) {
-      is RuntimeException -> throw e
-      else ->
+      is RuntimeException -> {
+        throw e
+      }
+
+      else -> {
         throw reportUnexpectedException(e)
+      }
     }
   }
 
@@ -22,8 +26,12 @@ internal inline fun <reified T, U> filterExceptions(crossinline thunk: () -> U):
     throw e
   } catch (e: Exception) {
     when (e) {
-      is T, is RuntimeException -> throw e
-      else ->
+      is T, is RuntimeException -> {
+        throw e
+      }
+
+      else -> {
         throw reportUnexpectedException(e)
+      }
     }
   }

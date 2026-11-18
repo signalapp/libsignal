@@ -36,32 +36,44 @@ class UnauthSubscriptionsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetSubscriptionReceiptCredentialOut.ExplicitError ->
+            is GetSubscriptionReceiptCredentialOut.ExplicitError -> {
               when (expected._0) {
-                ReceiptCredentialError.PaymentNotFound ->
+                ReceiptCredentialError.PaymentNotFound -> {
                   actual
                     .assertNonSuccess<_, _, ReceiptCredentialException.PaymentNotFound>()
-                is ReceiptCredentialError.PaymentRequired ->
+                }
+
+                is ReceiptCredentialError.PaymentRequired -> {
                   assertEquals(
                     expected._0.chargeFailure.firstOrNull(),
                     actual
                       .assertNonSuccess<_, _, ReceiptCredentialException.PaymentRequired>()
                       .chargeFailure,
                   )
-                ReceiptCredentialError.PaymentStillProcessing ->
+                }
+
+                ReceiptCredentialError.PaymentStillProcessing -> {
                   actual
                     .assertNonSuccess<_, _, ReceiptCredentialException.PaymentStillProcessing>()
-                ReceiptCredentialError.ReceiptAlreadyIssued ->
+                }
+
+                ReceiptCredentialError.ReceiptAlreadyIssued -> {
                   actual
                     .assertNonSuccess<_, _, ReceiptCredentialException.ReceiptAlreadyIssued>()
+                }
               }
-            is GetSubscriptionReceiptCredentialOut.Success ->
+            }
+
+            is GetSubscriptionReceiptCredentialOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<ReceiptCredential>>(actual).result,
               )
-            is GetSubscriptionReceiptCredentialOut.UnexpectedError ->
+            }
+
+            is GetSubscriptionReceiptCredentialOut.UnexpectedError -> {
               assertContains(assertIs<RequestResult.ApplicationError>(actual).toString(), expected.contains)
+            }
           }
         },
       )

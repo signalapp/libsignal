@@ -243,10 +243,13 @@ public class UnauthProfilesService(
           // quicker
           auth =
             when (auth) {
-              is UnauthProfileAuthorization.GroupSend ->
+              is UnauthProfileAuthorization.GroupSend -> {
                 UnauthProfileAuthorizationInternal.GroupSend(auth.token)
-              is UnauthProfileAuthorization.AccessKey ->
+              }
+
+              is UnauthProfileAuthorization.AccessKey -> {
                 UnauthProfileAuthorizationInternal.AccessKey(auth.unidentifiedAccessKey)
+              }
             },
           etag = etag,
           avatarCdnConfig = avatarCdnUrlValidationConfig,
