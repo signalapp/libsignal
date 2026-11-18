@@ -276,13 +276,19 @@ def main(args: Optional[List[str]] = None) -> int:
                            cargo_target,
                            configuration_name.lower())
 
+    # If we have a dedicated platform package, put the build there.
+    prebuild_dir = 'prebuilds'
+    platform_package_dir = os.path.join('platform', node_os_name)
+    if os.path.exists(platform_package_dir):
+        prebuild_dir = os.path.join(platform_package_dir, prebuild_dir)
+
     copy_to_prebuild_dir(
         libs_in=libs_in,
         lib_basename='signal_node',
         lib_format=lib_format,
         debug_format=debug_format,
         debug_format_for_checksum=debug_format_for_checksum,
-        prebuild_dir='prebuilds',
+        prebuild_dir=prebuild_dir,
         is_debug=(configuration_name == 'Debug'),
         allow_debug_level_logs=allow_debug_level_logs,
         node_os_name=node_os_name,

@@ -126,6 +126,34 @@ importers:
       typescript-eslint:
         specifier: ^8.59.3
         version: 8.67.0(eslint@9.35.0(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+    optionalDependencies:
+      '@signalapp/libsignal-client-darwin':
+        specifier: workspace:*
+        version: link:platform/darwin
+      '@signalapp/libsignal-client-linux':
+        specifier: workspace:*
+        version: link:platform/linux
+      '@signalapp/libsignal-client-win32':
+        specifier: workspace:*
+        version: link:platform/win32
+
+  platform/darwin:
+    dependencies:
+      node-gyp-build:
+        specifier: ^4.8.0
+        version: 4.8.4
+
+  platform/linux:
+    dependencies:
+      node-gyp-build:
+        specifier: ^4.8.0
+        version: 4.8.4
+
+  platform/win32:
+    dependencies:
+      node-gyp-build:
+        specifier: ^4.8.0
+        version: 4.8.4
 
 packages:
 

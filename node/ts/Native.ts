@@ -1518,7 +1518,7 @@ export const NetRemoteConfigKeys = [
   'grpc.KeyTransparencyQueryServiceSearchV2',
 ] as const;
 
-import load from 'node-gyp-build';
+import nativeModule from './NativeLoad.js';
 
 type NativeFunctions = {
   registerErrors: (errorsModule: Record<string, unknown>) => void;
@@ -5326,7 +5326,7 @@ const {
   uuid_from_string,
   uuid_new_v4,
   uuid_to_string,
-} = load(`${import.meta.dirname}/../`) as NativeFunctions;
+} = nativeModule as NativeFunctions;
 
 export {
   registerErrors,

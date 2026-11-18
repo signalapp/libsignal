@@ -1,3 +1,6 @@
+packages:
+  - 'platform/*'
+includeWorkspaceRoot: true
 allowBuilds:
   # an older version of libsignal-client, via mock-server
   # the "build" just prints a message, so it's fine to skip it

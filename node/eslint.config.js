@@ -176,6 +176,7 @@ const config = defineConfig(
     {
       ignores: [
         'dist/**/*',
+        'platform/**/*',
         '**/eslint.config.js',
         '**/Native.js',
         '**/zkgroup.js',

@@ -46,6 +46,9 @@ VERSION_FILES = [
     ('RELEASE_NOTES.md', RELEASE_NOTES_PATTERN),
     (os.path.join('java', 'build.gradle'), GRADLE_PATTERN),
     (os.path.join('node', 'package.json'), NODE_PATTERN),
+    (os.path.join('node', 'platform', 'darwin', 'package.json'), NODE_PATTERN),
+    (os.path.join('node', 'platform', 'linux', 'package.json'), NODE_PATTERN),
+    (os.path.join('node', 'platform', 'win32', 'package.json'), NODE_PATTERN),
     (os.path.join('rust', 'core', 'src', 'version.rs'), RUST_PATTERN),
     ('Cargo.toml', CARGO_PATTERN),
 ]

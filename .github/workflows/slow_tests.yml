@@ -302,7 +302,7 @@ jobs:
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: node-prebuilds
-        path: node/prebuilds
+        path: node/platform/linux/prebuilds
         retention-days: 2
 
   node-docker-secondary:
@@ -320,7 +320,7 @@ jobs:
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: node-prebuilds-secondary
-        path: node/prebuilds
+        path: node/platform/linux/prebuilds
         retention-days: 2
 
   node-reproducibility:
