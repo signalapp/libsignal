@@ -47,7 +47,7 @@ pub struct FakeChatResponse(ResponseProto);
 
 bridge_as_handle!(FakeChatConnection);
 bridge_handle_fns!(FakeChatConnection, clone = false);
-bridge_as_handle!(FakeChatRemoteEnd);
+bridge_as_handle!(FakeChatRemoteEnd, swift_type = "FakeChatRemote");
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
 bridge_as_handle!(FakeChatServer);
 bridge_handle_fns!(FakeChatServer, clone = false);
@@ -236,7 +236,7 @@ fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEn
         .expect("chat task finished")
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     chat: &FakeChatRemoteEnd,
 ) -> Option<(HttpRequest, u64)> {
@@ -273,7 +273,7 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     Some((http_request, id.unwrap()))
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
     chat: &FakeChatRemoteEnd,
 ) -> Option<(HttpRequest, u64)> {

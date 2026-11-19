@@ -186,7 +186,7 @@ fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> C
     chat.info()
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn UnauthenticatedChatConnection_look_up_username_hash(
     chat: &UnauthenticatedChatConnection,
     hash: Box<[u8]>,
@@ -197,7 +197,7 @@ async fn UnauthenticatedChatConnection_look_up_username_hash(
         .map(|aci| aci.into()))
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn UnauthenticatedChatConnection_look_up_username_link(
     chat: &UnauthenticatedChatConnection,
     uuid: Uuid,

@@ -7969,6 +7969,42 @@ internal enum NativeNice {
             }
 
     }
+    internal static func RegisterAccountResponse_GetPni(
+        response: RegisterAccountResponse,
+    ) throws -> UUID? {
+        try BridgeHandleRefConverter<SignalMutPointerRegisterAccountResponse, RegisterAccountResponse>
+            .convertArgBorrowed(response) { responseFfi in
+                var rawOutput = OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.emptyFfiReturn()
+                try checkError(
+                    SignalFfi.signal_register_account_response_get_pni(
+                        &rawOutput,
+                        responseFfi,
+                    )
+                )
+                return try OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.convertReturn(
+                    consuming: rawOutput
+                )
+            }
+
+    }
+    internal static func RegisterAccountResponse_GetUsernameLinkHandle(
+        response: RegisterAccountResponse,
+    ) throws -> UUID? {
+        try BridgeHandleRefConverter<SignalMutPointerRegisterAccountResponse, RegisterAccountResponse>
+            .convertArgBorrowed(response) { responseFfi in
+                var rawOutput = OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.emptyFfiReturn()
+                try checkError(
+                    SignalFfi.signal_register_account_response_get_username_link_handle(
+                        &rawOutput,
+                        responseFfi,
+                    )
+                )
+                return try OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.convertReturn(
+                    consuming: rawOutput
+                )
+            }
+
+    }
     internal static func SvrKey_DeriveLoggingKey(
         svrKey svr_key: Data,
     ) throws -> Data {
@@ -8757,6 +8793,68 @@ internal enum NativeNice {
                     }
             }
         return try ByteArrayConverter<ReceiptCredential>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_look_up_username_hash(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        hash: Data,
+    ) async throws -> UUID? {
+        let rawOutput: OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        DataConverter.convertArgBorrowed(hash) { hashFfi in
+                            SignalFfi.signal_unauthenticated_chat_connection_look_up_username_hash(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                hashFfi,
+                            )
+                        }
+                    }
+            }
+        return try OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_look_up_username_link(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        uuid: UUID,
+        entropy: Data,
+    ) async throws -> (String, Data)? {
+        let rawOutput:
+            OptionalReturnConverter<
+                PairOfResultConverter<
+                    StringConverter, FixedByteArrayConverter<FixedByteArrayHelper32>, SignalPairOfCStringPtrc_uchar32
+                >, SignalOptionalOfPairOfCStringPtrc_uchar32
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<
+                        SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection
+                    >.convertArgBorrowed(chat) { chatFfi in
+                        UuidNiceConverter.convertArgBorrowed(uuid) { uuidFfi in
+                            DataConverter.convertArgBorrowed(entropy) { entropyFfi in
+                                SignalFfi.signal_unauthenticated_chat_connection_look_up_username_link(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    uuidFfi,
+                                    entropyFfi,
+                                )
+                            }
+                        }
+                    }
+                }
+        return try OptionalReturnConverter<
+            PairOfResultConverter<
+                StringConverter, FixedByteArrayConverter<FixedByteArrayHelper32>, SignalPairOfCStringPtrc_uchar32
+            >, SignalOptionalOfPairOfCStringPtrc_uchar32
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_submit_call_quality_survey(

@@ -694,7 +694,7 @@ pub struct ResponseAndDebugInfo {
     pub debug_info: ChatServiceDebugInfo,
 }
 
-bridge_as_handle!(HttpRequest);
+bridge_as_handle!(HttpRequest, swift_type = "ChatRequest.InternalRequest");
 
 /// Newtype wrapper for implementing [`TryFrom`]`
 pub struct HttpMethod(http::Method);

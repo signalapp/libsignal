@@ -245,23 +245,13 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
 
     func getNextIncomingRequest() async throws -> (ChatRequest.InternalRequest, UInt64) {
         while true {
-            let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-                withNativeHandle { handle in
-                    signal_testing_fake_chat_remote_end_receive_incoming_request(
-                        promise,
-                        asyncContext.const(),
-                        handle.const()
-                    )
-                }
+            let request = try await NativeTestingNice.TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+                asyncContext: self.tokioAsyncContext,
+                chat: self
+            )
+            if let request {
+                return request
             }
-            guard request.present else {
-                continue
-            }
-
-            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.value.first)!)
-            let requestId = request.value.second
-
-            return (httpRequest, requestId)
         }
     }
 
@@ -278,23 +268,13 @@ internal class FakeChatRemote: NativeHandleOwner<SignalMutPointerFakeChatRemoteE
 
     func getNextIncomingGrpcRequest() async throws -> (ChatRequest.InternalRequest, UInt64) {
         while true {
-            let request = try await self.tokioAsyncContext.invokeAsyncFunction { promise, asyncContext in
-                withNativeHandle { handle in
-                    signal_testing_fake_chat_remote_end_receive_incoming_grpc_request(
-                        promise,
-                        asyncContext.const(),
-                        handle.const()
-                    )
-                }
+            let request = try await NativeTestingNice.TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
+                asyncContext: self.tokioAsyncContext,
+                chat: self
+            )
+            if let request {
+                return request
             }
-            guard request.present else {
-                continue
-            }
-
-            let httpRequest = ChatRequest.InternalRequest(owned: NonNull(request.value.first)!)
-            let requestId = request.value.second
-
-            return (httpRequest, requestId)
         }
     }
 

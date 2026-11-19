@@ -291,13 +291,9 @@ final class BridgingTests: TestCaseBase {
     }
 
     func testReturnOptionalUuid() throws {
-        let shouldBeNil = try invokeFnReturningOptionalUuid {
-            signal_testing_convert_optional_uuid($0, false)
-        }
+        let shouldBeNil = try NativeTestingNice.TESTING_ConvertOptionalUuid(present: false)
         XCTAssertEqual(nil, shouldBeNil)
-        let shouldBePresent = try invokeFnReturningOptionalUuid {
-            signal_testing_convert_optional_uuid($0, true)
-        }
+        let shouldBePresent = try NativeTestingNice.TESTING_ConvertOptionalUuid(present: true)
         XCTAssertEqual(UUID(uuidString: "abababab-1212-8989-baba-565656565656"), shouldBePresent)
     }
 

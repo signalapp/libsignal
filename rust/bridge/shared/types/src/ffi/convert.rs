@@ -879,6 +879,12 @@ impl SimpleArgTypeInfo for Box<[u8]> {
         Ok(slice.into())
     }
 }
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for Box<[u8]> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        <&[u8]>::register_swift_arg_converter(ctx)
+    }
+}
 
 impl SimpleArgTypeInfo for Box<[u32]> {
     type ArgType = BorrowedSliceOf<u32>;
