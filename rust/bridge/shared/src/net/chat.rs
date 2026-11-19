@@ -24,7 +24,7 @@ use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
     AccountEntitlements, BridgeMfaVerificationCredential, CallQualitySurveyInternal,
     CurrencyConversionsInternal, GetStickerUploadFormsResponse, ListMediaResponse,
-    StartMfaVerificationResponse,
+    PurchaseProductConfiguration, StartMfaVerificationResponse,
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -1575,6 +1575,17 @@ async fn AuthenticatedChatConnection_answer_challenge(
         .await
         .answer_challenge(token, answer)
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true, ffi = false, node = false)]
+async fn UnauthenticatedChatConnection_get_product_configuration(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+) -> Result<PurchaseProductConfiguration, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_purchase_product_configuration()
+        .await
+        .map(Into::into)
 }
 
 #[cfg(test)]

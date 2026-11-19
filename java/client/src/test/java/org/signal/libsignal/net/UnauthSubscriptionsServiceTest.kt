@@ -79,4 +79,23 @@ class UnauthSubscriptionsServiceTest {
       )
     }
   }
+
+  @Test
+  fun testGetPurchaseProductConfiguration() =
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetProductConfigurationTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthSubscriptionsService,
+        invoke = { chat, req -> chat.getPurchaseProductConfiguration() },
+        check = { expected, actual ->
+          assertEquals(
+            expected,
+            assertIs<RequestResult.Success<PurchaseProductConfiguration>>(actual).result,
+          )
+        },
+      )
+    }
 }

@@ -3604,6 +3604,12 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_product_configuration(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_get_profile(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,

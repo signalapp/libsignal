@@ -11,6 +11,7 @@ use itertools::Itertools;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::chat::remote_derives::{
     BridgeMfaVerificationCredential, CallQualitySurveyInternal, CurrencyConversionsInternal,
+    PurchaseProductConfiguration,
 };
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, BridgeCopyBackupMediaItem, BridgeDeleteBackupMediaItem,
@@ -2021,4 +2022,10 @@ fn TESTING_GetProfileTests()
 fn TESTING_UnauthGetProfileTests()
 -> GrpcTestCases<remote_derives::UnauthGetProfileArgs, remote_derives::UnauthGetProfileOut> {
     libsignal_net_chat::grpc::profiles::test_cases::get_profile_unauth_test_cases().into()
+}
+
+#[bridge_fn(nice = true, ffi = false, node = false)]
+fn TESTING_GetProductConfigurationTests() -> GrpcTestCases<(), PurchaseProductConfiguration> {
+    libsignal_net_chat::grpc::subscriptions::test_cases::get_product_configuration_test_cases()
+        .into()
 }

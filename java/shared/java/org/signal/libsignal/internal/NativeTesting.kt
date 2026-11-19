@@ -464,6 +464,9 @@ public object NativeTesting {
   public external fun TESTING_GetPreKeysTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetProductConfigurationTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetProfileKeyCredentialTests(): Array<Object>
 
   @JvmStatic

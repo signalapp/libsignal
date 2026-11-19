@@ -1259,6 +1259,24 @@ bridge_as_handle!(
     jni_class = "org.signal.libsignal.net.internal.DeleteBackupMediaStream",
 );
 
+#[derive(PartialEq, Eq, derive_more::Deref, derive_more::From, derive_more::Into)]
+pub struct ReceiptLevelHashMap<T>(HashMap<::zkgroup::ReceiptLevel, T>);
+
+impl<T> FromIterator<(::zkgroup::ReceiptLevel, T)> for ReceiptLevelHashMap<T> {
+    fn from_iter<I: IntoIterator<Item = (::zkgroup::ReceiptLevel, T)>>(iter: I) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl<T> IntoIterator for ReceiptLevelHashMap<T> {
+    type Item = (::zkgroup::ReceiptLevel, T);
+    type IntoIter = <HashMap<::zkgroup::ReceiptLevel, T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 pub mod remote_derives {
     use libsignal_bridge_macros::StructuralFrom;
     use libsignal_core::DeviceId;
@@ -1269,6 +1287,7 @@ pub mod remote_derives {
     };
 
     use super::*;
+    use crate::support::{U31, U53};
 
     #[derive(BridgedAsValue)]
     #[bridge(
@@ -1498,6 +1517,22 @@ pub mod remote_derives {
         AppleAppStore,
         Stripe,
         Braintree,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::api::purchase::PaymentMethod,
+        ffi_nice_type = "PaymentMethod",
+        jni_nice_type = "org.signal.libsignal.net.PaymentMethod",
+    )]
+    #[allow(unused)]
+    pub enum PaymentMethodInternal {
+        Card,
+        SepaDebit,
+        Ideal,
+        PayPal,
+        GooglePlayBilling,
+        AppleAppStore,
     }
 
     #[derive(BridgedAsValue)]
@@ -1901,6 +1936,262 @@ pub mod remote_derives {
     enum BridgeChallengeAnswer {
         Push(String),
         Captcha(String),
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi = false,
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration",
+        node = false
+    )]
+    pub struct PurchaseProductConfiguration {
+        /// Map of lower-cased ISO 3-letter currency codes to currency-specific configuration
+        pub currencies: HashMap<String, CurrencyConfiguration>,
+        /// Map of numeric donation level IDs to level-specific badge configuration
+        pub badge_levels: ReceiptLevelHashMap<BadgeLevelConfiguration>,
+        /// Configuration for backup subscription options
+        pub backup: BackupConfiguration,
+        /// Maximum value of a one-time SEPA donation, in EUR [minor units](https://docs.stripe.com/currencies#minor-units)
+        pub sepa_maximum_euros: U53,
+        /// Configuration for one-time Signal Login purchases
+        pub login: LoginConfiguration,
+    }
+
+    impl From<libsignal_net_chat::grpc::subscriptions::PurchaseProductConfiguration>
+        for PurchaseProductConfiguration
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::subscriptions::PurchaseProductConfiguration,
+        ) -> Self {
+            let libsignal_net_chat::grpc::subscriptions::PurchaseProductConfiguration {
+                currencies,
+                badge_levels,
+                backup,
+                sepa_maximum_euros,
+                login,
+            } = value;
+            Self {
+                currencies: currencies.into_iter().map(|(k, v)| (k, v.into())).collect(),
+                badge_levels: badge_levels
+                    .into_iter()
+                    .map(|(level, config)| (level, config.into()))
+                    .collect(),
+                backup: backup.into(),
+                sepa_maximum_euros: sepa_maximum_euros
+                    .try_into()
+                    .expect("currency amounts fit in U53"),
+                login: login.into(),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi = false,
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration",
+        node = false
+    )]
+    pub struct CurrencyConfiguration {
+        /// Minimum one-time donation in the currency's minor unit
+        pub minimum: U53,
+        /// Map of one-time donation level IDs to suggested amounts
+        pub one_time_donation_amounts: ReceiptLevelHashMap<Vec<U53>>,
+        /// Map of subscription level IDs to the amount charged in the currency's minor unit
+        pub subscription_amounts: ReceiptLevelHashMap<U53>,
+        /// Map of backup subscription level IDs to the amount charged in the currency's minor unit
+        pub backup_subscription_amounts: ReceiptLevelHashMap<U53>,
+        pub supported_payment_methods: BridgeVec<libsignal_net_chat::api::purchase::PaymentMethod>,
+    }
+
+    impl From<libsignal_net_chat::grpc::subscriptions::CurrencyConfiguration>
+        for CurrencyConfiguration
+    {
+        fn from(value: libsignal_net_chat::grpc::subscriptions::CurrencyConfiguration) -> Self {
+            let libsignal_net_chat::grpc::subscriptions::CurrencyConfiguration {
+                minimum,
+                one_time_donation_amounts,
+                subscription_amounts,
+                backup_subscription_amounts,
+                supported_payment_methods,
+            } = value;
+            Self {
+                minimum: minimum.try_into().expect("currency amounts fit in U53"),
+                one_time_donation_amounts: one_time_donation_amounts
+                    .into_iter()
+                    .map(|(level, amounts)| {
+                        (
+                            level,
+                            amounts
+                                .into_iter()
+                                .map(|amt| amt.try_into().expect("currency amounts fit in U53"))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+                subscription_amounts: subscription_amounts
+                    .into_iter()
+                    .map(|(level, amount)| {
+                        (
+                            level,
+                            amount.try_into().expect("currency amounts fit in U53"),
+                        )
+                    })
+                    .collect(),
+                backup_subscription_amounts: backup_subscription_amounts
+                    .into_iter()
+                    .map(|(level, amount)| {
+                        (
+                            level,
+                            amount.try_into().expect("currency amounts fit in U53"),
+                        )
+                    })
+                    .collect(),
+                supported_payment_methods: supported_payment_methods.into(),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi = false,
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration",
+        node = false
+    )]
+    pub struct BadgeLevelConfiguration {
+        /// The ID of the badge awarded at this level. Resolve to full badge details
+        /// via RemoteConfiguration.GetBadges.
+        pub badge_id: String,
+
+        /// The duration for which a badge is valid. Present only for
+        /// one-time (boost, gift) badges
+        pub badge_duration_seconds: Option<U31>,
+    }
+
+    impl From<libsignal_net_chat::grpc::subscriptions::BadgeLevelConfiguration>
+        for BadgeLevelConfiguration
+    {
+        fn from(value: libsignal_net_chat::grpc::subscriptions::BadgeLevelConfiguration) -> Self {
+            let libsignal_net_chat::grpc::subscriptions::BadgeLevelConfiguration {
+                badge_id,
+                badge_duration,
+            } = value;
+            Self {
+                badge_id,
+                badge_duration_seconds: badge_duration.map(|duration| {
+                    duration
+                        .as_secs()
+                        .try_into()
+                        .expect("no one-time badge duration is multiple decades")
+                }),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi = false,
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration",
+        node = false
+    )]
+    pub struct BackupConfiguration {
+        /// A map of numeric backup level IDs to level-specific backup configuration
+        pub levels: ReceiptLevelHashMap<BackupLevelConfiguration>,
+        /// The number of days of media a free tier backup user gets
+        pub free_tier_media_days: U31,
+    }
+
+    impl From<libsignal_net_chat::grpc::subscriptions::BackupConfiguration> for BackupConfiguration {
+        fn from(value: libsignal_net_chat::grpc::subscriptions::BackupConfiguration) -> Self {
+            let libsignal_net_chat::grpc::subscriptions::BackupConfiguration {
+                levels,
+                free_tier_media_days,
+            } = value;
+            Self {
+                levels: levels
+                    .into_iter()
+                    .map(|(level, config)| (level, config.into()))
+                    .collect(),
+                free_tier_media_days: free_tier_media_days
+                    .try_into()
+                    .expect("durations in days fit in U31"),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "PurchaseProductConfiguration.BackupLevelConfiguration",
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BackupLevelConfiguration"
+    )]
+    pub struct BackupLevelConfiguration {
+        /// The amount of media storage in bytes that a paying subscriber may store
+        pub storage_allowance_bytes: U53,
+        /// The play billing productID associated with this backup level
+        pub play_product_id: String,
+        /// The duration, in days, for which your backed up media is retained on the server after
+        /// you stop refreshing with a paid credential
+        pub media_ttl_days: U31,
+    }
+
+    impl From<libsignal_net_chat::grpc::subscriptions::BackupLevelConfiguration>
+        for BackupLevelConfiguration
+    {
+        fn from(value: libsignal_net_chat::grpc::subscriptions::BackupLevelConfiguration) -> Self {
+            let libsignal_net_chat::grpc::subscriptions::BackupLevelConfiguration {
+                storage_allowance_bytes,
+                play_product_id,
+                media_ttl_days,
+            } = value;
+            Self {
+                storage_allowance_bytes: storage_allowance_bytes
+                    .try_into()
+                    .expect("storage sizes fit in i64"),
+                play_product_id,
+                media_ttl_days: media_ttl_days
+                    .try_into()
+                    .expect("durations in days fit in i64"),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "PurchaseProductConfiguration.LoginConfiguration",
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.LoginConfiguration"
+    )]
+    pub struct LoginConfiguration {
+        /// The receipt level associated with a Signal Login purchase
+        pub level: i64,
+        /// The play billing productID associated with a Signal Login purchase
+        pub play_product_id: String,
+        /// The play billing optionID to use to purchase a Signal Login
+        pub play_option_id: String,
+        /// The App Store productID associated with a Signal Login purchase
+        pub app_store_product_id: String,
+    }
+
+    impl From<libsignal_net_chat::grpc::subscriptions::LoginConfiguration> for LoginConfiguration {
+        fn from(value: libsignal_net_chat::grpc::subscriptions::LoginConfiguration) -> Self {
+            let libsignal_net_chat::grpc::subscriptions::LoginConfiguration {
+                level,
+                play_product_id,
+                play_option_id,
+                app_store_product_id,
+            } = value;
+            Self {
+                // Preserve all bits
+                level: level as i64,
+                play_product_id,
+                play_option_id,
+                app_store_product_id,
+            }
+        }
     }
 }
 

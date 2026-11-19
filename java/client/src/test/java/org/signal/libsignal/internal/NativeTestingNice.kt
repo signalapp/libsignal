@@ -21,6 +21,7 @@ import org.signal.libsignal.internal.NativeNiceHelpers.argPairConverter
 import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
 import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
+import org.signal.libsignal.internal.NativeNiceHelpers.longMapReturnConverter
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
@@ -3579,6 +3580,16 @@ public object NativeTestingNice {
       .resultConverter<Object, Object, org.signal.libsignal.internal.GetPreKeysArgs, org.signal.libsignal.internal.GetPreKeysOut>({
         downcastFromObject<org.signal.libsignal.internal.GetPreKeysArgs>(it)
       }, { downcastFromObject<org.signal.libsignal.internal.GetPreKeysOut>(it) })(ffiOut)
+  }
+
+  public fun TESTING_GetProductConfigurationTests(): List<org.signal.libsignal.net.GrpcTestCase<Void?, org.signal.libsignal.net.PurchaseProductConfiguration>> {
+    val ffiOut =
+      NativeTesting.TESTING_GetProductConfigurationTests()
+
+    return org.signal.libsignal.net.GrpcTestCase
+      .resultConverter<Void?, Object, Void?, org.signal.libsignal.net.PurchaseProductConfiguration>({
+        identity(it)
+      }, { downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration>(it) })(ffiOut)
   }
 
   public fun TESTING_GetProfileKeyCredentialTests(): List<org.signal.libsignal.net.GrpcTestCase<org.signal.libsignal.internal.GetProfileKeyCredentialArgs, org.signal.libsignal.internal.GetProfileKeyCredentialOut>> {

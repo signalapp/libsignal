@@ -55,18 +55,26 @@ public object NativeNiceHelpers {
       out
     }
 
-  public inline fun <reified FfiValue, NiceValue> stringMapReturnConverter(
+  public inline fun <reified VerbatimKey, reified FfiValue, NiceValue> mapReturnConverter(
     crossinline transformValue: (FfiValue) -> NiceValue,
-  ): (Array<*>) -> Map<String, NiceValue> =
+  ): (Array<*>) -> Map<VerbatimKey, NiceValue> =
     { arr ->
       require(arr.size % 2 == 0)
       buildMap(arr.size / 2) {
         val iter = arr.iterator()
         while (iter.hasNext()) {
-          val k = iter.next() as String
+          val k = iter.next() as VerbatimKey
           val v = iter.next() as FfiValue
           put(k, transformValue(v))
         }
       }
     }
+
+  public inline fun <reified FfiValue, NiceValue> stringMapReturnConverter(
+    crossinline transformValue: (FfiValue) -> NiceValue,
+  ): (Array<*>) -> Map<String, NiceValue> = mapReturnConverter<String, FfiValue, NiceValue>(transformValue)
+
+  public inline fun <reified FfiValue, NiceValue> longMapReturnConverter(
+    crossinline transformValue: (FfiValue) -> NiceValue,
+  ): (Array<*>) -> Map<Long, NiceValue> = mapReturnConverter<Long, FfiValue, NiceValue>(transformValue)
 }
