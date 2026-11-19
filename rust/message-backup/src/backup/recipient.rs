@@ -61,6 +61,8 @@ pub enum RecipientError {
     ContactHasNoIdentifiers,
     /// contact has a blockedAtTimestamp but is not blocked
     BlockedAtWithoutBlocked,
+    /// contact has a hiddenAtTimestamp but is visible
+    HiddenAtWithoutHidden,
     /// contact has a PNI but no e164
     #[allow(dead_code)] // See the commented-out use site in this file.
     PniWithoutE164,
@@ -306,6 +308,8 @@ pub struct ContactData {
     pub blocked_at: Option<Timestamp>,
     #[serde_as(as = "serialize::EnumAsString")]
     pub visibility: proto::contact::Visibility,
+    // `None` when visible, or when the hide time is unknown.
+    pub hidden_at: Option<Timestamp>,
     pub profile_sharing: bool,
     pub profile_given_name: Option<String>,
     pub profile_family_name: Option<String>,
@@ -554,6 +558,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
             blocked,
             blockedAtTimestamp,
             visibility,
+            hiddenAtTimestamp,
             keyTransparencyData,
             registration,
             profileSharing,
@@ -629,6 +634,15 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
             | proto::contact::Visibility::HIDDEN_MESSAGE_REQUEST) => v,
         };
 
+        // A zero value means the hide time is unknown (or the contact is visible).
+        let hidden_at = NonZeroU64::new(hiddenAtTimestamp);
+        if hidden_at.is_some_and(|_| visibility == proto::contact::Visibility::VISIBLE) {
+            return Err(RecipientError::HiddenAtWithoutHidden);
+        }
+        let hidden_at = hidden_at
+            .map(|u| Timestamp::from_millis(u.get(), "Contact.hiddenAtTimestamp", context))
+            .transpose()?;
+
         let e164 = e164
             .map(E164::try_from)
             .transpose()
@@ -693,6 +707,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<ContactData, C> for proto::Contact {
             blocked,
             blocked_at,
             visibility,
+            hidden_at,
             profile_sharing: profileSharing,
             profile_given_name: profileGivenName,
             profile_family_name: profileFamilyName,
@@ -940,6 +955,7 @@ mod test {
                 blocked: false,
                 blocked_at: None,
                 visibility: proto::contact::Visibility::VISIBLE,
+                hidden_at: None,
                 profile_sharing: false,
                 profile_given_name: Some("GivenName".to_owned()),
                 profile_family_name: Some("FamilyName".to_owned()),
@@ -1056,6 +1072,17 @@ mod test {
     #[test_case(|x| x.blockedAtTimestamp = 1000 => Err(RecipientError::BlockedAtWithoutBlocked); "blockedAtTimestamp without blocked")]
     // The blocked/blockedAtTimestamp consistency check runs before the timestamp is validated.
     #[test_case(|x| x.blockedAtTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 => Err(RecipientError::BlockedAtWithoutBlocked); "invalid blockedAtTimestamp without blocked")]
+    #[test_case(|x| {x.visibility = proto::contact::Visibility::HIDDEN.into(); x.hiddenAtTimestamp = 1000} => Ok(()); "hidden with hiddenAtTimestamp")]
+    #[test_case(|x| {x.visibility = proto::contact::Visibility::HIDDEN_MESSAGE_REQUEST.into(); x.hiddenAtTimestamp = 1000} => Ok(()); "hidden message request with hiddenAtTimestamp")]
+    #[test_case(|x| x.visibility = proto::contact::Visibility::HIDDEN.into() => Ok(()); "hidden without hiddenAtTimestamp")]
+    #[test_case(|x| x.hiddenAtTimestamp = 1000 => Err(RecipientError::HiddenAtWithoutHidden); "hiddenAtTimestamp without hidden")]
+    // An unrecognized visibility is treated the same as the default (VISIBLE).
+    #[test_case(|x| {x.visibility = EnumOrUnknown::default(); x.hiddenAtTimestamp = 1000} => Err(RecipientError::HiddenAtWithoutHidden); "default (or unrecognized) visibility with hiddenAtTimestamp")]
+    #[test_case(|x| {x.visibility = EnumOrUnknown::from_i32(99); x.hiddenAtTimestamp = 1000} => Err(RecipientError::HiddenAtWithoutHidden); "unrecognized visibility with hiddenAtTimestamp")]
+    #[test_case(|x| x.visibility = EnumOrUnknown::from_i32(99) => Ok(()); "unrecognized visibility without hiddenAtTimestamp")]
+    #[test_case(|x| {x.visibility = proto::contact::Visibility::HIDDEN.into(); x.hiddenAtTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0} => Err(RecipientError::InvalidTimestamp(TimestampError("Contact.hiddenAtTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0))); "invalid hiddenAtTimestamp")]
+    // The visibility/hiddenAtTimestamp consistency check runs before the timestamp is validated.
+    #[test_case(|x| x.hiddenAtTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 => Err(RecipientError::HiddenAtWithoutHidden); "invalid hiddenAtTimestamp without hidden")]
     fn destination_contact(modifier: fn(&mut proto::Contact)) -> Result<(), RecipientError> {
         let mut contact = proto::Contact::test_data();
         modifier(&mut contact);

@@ -296,6 +296,7 @@ message Contact {
   optional bytes keyTransparencyData = 22;
   uint64 blockedAtTimestamp = 23; // if `blocked` is true, 0 means unknown block time
   Name sharedName = 24; // absent iff both `given` and `family` are empty, name provided by third party
+  uint64 hiddenAtTimestamp = 25; // if `visibility` is not VISIBLE, 0 means unknown hide time
 }
 
 message Group {

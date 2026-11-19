@@ -463,6 +463,7 @@ impl Visit<Scrambler> for proto::Contact {
             blocked: _,
             blockedAtTimestamp: _,
             visibility: _,
+            hiddenAtTimestamp: _,
             profileKey,
             profileSharing: _,
             profileGivenName,

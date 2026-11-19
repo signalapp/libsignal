@@ -268,6 +268,7 @@ impl Visit<Sanitizer> for proto::Contact {
             avatarColor: _,
             keyTransparencyData: _,
             blockedAtTimestamp: _,
+            hiddenAtTimestamp: _,
             sharedName,
             special_fields: _,
         } = self;
