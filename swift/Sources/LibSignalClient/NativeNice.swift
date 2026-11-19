@@ -17,7 +17,7 @@
 import Foundation
 import SignalFfi
 
-extension SignalBorrowedSliceOfc_uchar32: SignalBorrowedSliceOf {
+extension SignalBorrowedSliceOfPtrToc_uchar32: SignalBorrowedSliceOf {
 
     typealias Element = SignalType_ConstPointer_FixedArray32_uint8_t?
 
@@ -391,6 +391,43 @@ extension SignalBorrowedSliceOfusize: SignalBorrowedSliceOf {
     var generic_length: size_t {
         get { self.length }
         set { length = newValue }
+    }
+
+}
+
+extension SignalCPromiseCStringPtr: SignalCPromise {
+
+    typealias Result = SignalCStringPtr?
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalCStringPtr_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
     }
 
 }
@@ -1023,13 +1060,13 @@ extension SignalCPromiseMutPointerRegisterAccountResponse: SignalCPromise {
 
 }
 
-extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
+extension SignalCPromiseOptionalOfPairOfCStringPtrc_uchar32: SignalCPromise {
 
-    typealias Result = SignalOptionalPairOfCStringPtrc_uchar32
+    typealias Result = SignalOptionalOfPairOfCStringPtrc_uchar32
 
     init(
         generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?,
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void?,
         generic_context: SignalType_ConstPointer_void?,
         generic_cancellation_id: UInt64,
     ) {
@@ -1042,7 +1079,7 @@ extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
     }
 
     var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalPairOfCStringPtrc_uchar32_ConstPointer_void?
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfPairOfCStringPtrc_uchar32_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1060,13 +1097,13 @@ extension SignalCPromiseOptionalPairOfCStringPtrc_uchar32: SignalCPromise {
 
 }
 
-extension SignalCPromiseOptionalUuid: SignalCPromise {
+extension SignalCPromiseOptionalOfUuid: SignalCPromise {
 
-    typealias Result = SignalOptionalUuid
+    typealias Result = SignalOptionalOfUuid
 
     init(
         generic_complete:
-            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalUuid_ConstPointer_void?,
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?,
         generic_context: SignalType_ConstPointer_void?,
         generic_cancellation_id: UInt64,
     ) {
@@ -1079,7 +1116,81 @@ extension SignalCPromiseOptionalUuid: SignalCPromise {
     }
 
     var generic_complete:
-        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalUuid_ConstPointer_void?
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfUuid_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOptionalOfFetchedProfileFfiResult: SignalCPromise {
+
+    typealias Result = SignalOptionalOfFetchedProfileFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfFetchedProfileFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfFetchedProfileFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseOptionalOfTaggedBadgesFfiResult: SignalCPromise {
+
+    typealias Result = SignalOptionalOfTaggedBadgesFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfTaggedBadgesFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalOptionalOfTaggedBadgesFfiResult_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1430,6 +1541,43 @@ extension SignalCPromisePairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: Si
 
 }
 
+extension SignalCPromisePairOfOwnedBufferi64: SignalCPromise {
+
+    typealias Result = SignalPairOfOwnedBufferi64
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalPairOfOwnedBufferi64_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalPairOfOwnedBufferi64_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromisePairOfOwnedBufferOwnedBuffer: SignalCPromise {
 
     typealias Result = SignalPairOfOwnedBufferOwnedBuffer
@@ -1487,6 +1635,43 @@ extension SignalCPromiseUuid: SignalCPromise {
 
     var generic_complete:
         SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalUuid_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
+extension SignalCPromiseBridgeAccountIdentityFfiResult: SignalCPromise {
+
+    typealias Result = SignalBridgeAccountIdentityFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalBridgeAccountIdentityFfiResult_ConstPointer_void?
     {
         get { self.complete }
         set { complete = newValue }
@@ -1911,6 +2096,43 @@ extension SignalCPromiseListMediaResponseFfiResult: SignalCPromise {
 
 }
 
+extension SignalCPromiseS3UploadFormInternalFfiResult: SignalCPromise {
+
+    typealias Result = SignalS3UploadFormInternalFfiResult
+
+    init(
+        generic_complete:
+            SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void?,
+        generic_context: SignalType_ConstPointer_void?,
+        generic_cancellation_id: UInt64,
+    ) {
+        self.init(
+            complete: generic_complete,
+            context: generic_context,
+            cancellation_id: generic_cancellation_id,
+
+        )
+    }
+
+    var generic_complete:
+        SignalType_FunctionPointer_void_MutPointer_SignalFfiError_ConstPointer_SignalS3UploadFormInternalFfiResult_ConstPointer_void?
+    {
+        get { self.complete }
+        set { complete = newValue }
+    }
+
+    var generic_context: SignalType_ConstPointer_void? {
+        get { self.context }
+        set { context = newValue }
+    }
+
+    var generic_cancellation_id: UInt64 {
+        get { self.cancellation_id }
+        set { cancellation_id = newValue }
+    }
+
+}
+
 extension SignalCPromiseStartMfaVerificationResponseFfiResult: SignalCPromise {
 
     typealias Result = SignalStartMfaVerificationResponseFfiResult
@@ -1948,13 +2170,13 @@ extension SignalCPromiseStartMfaVerificationResponseFfiResult: SignalCPromise {
 
 }
 
-extension SignalOptionalOff32: SignalOptionalOf {
+extension SignalOptionalOfPtrToc_uchar64: SignalOptionalOf {
 
-    typealias Contents = Float
+    typealias Contents = SignalType_ConstPointer_FixedArray64_uint8_t?
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOff32,
+        generic_value: SignalType_ConstPointer_FixedArray64_uint8_t?,
     ) {
         self.init(
             present: generic_present,
@@ -1968,7 +2190,169 @@ extension SignalOptionalOff32: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOff32 {
+    var generic_value: SignalType_ConstPointer_FixedArray64_uint8_t? {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar10: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray10_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray10_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray10_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar17: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray17_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray17_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray17_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar32: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray32_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray32_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray32_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfc_uchar64: SignalOptionalOf {
+
+    typealias Contents = SignalType_FixedArray64_uint8_t
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalType_FixedArray64_uint8_t,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalType_FixedArray64_uint8_t {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfbool: SignalOptionalOf {
+
+    typealias Contents = CBool
+
+    init(
+        generic_present: CBool,
+        generic_value: CBool,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: CBool {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOff32: SignalOptionalOf {
+
+    typealias Contents = Float
+
+    init(
+        generic_present: CBool,
+        generic_value: Float,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: Float {
         get { self.value }
         set { value = newValue }
     }
@@ -1981,7 +2365,7 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfBorrowedBuffer,
+        generic_value: SignalBorrowedBuffer,
     ) {
         self.init(
             present: generic_present,
@@ -1995,7 +2379,88 @@ extension SignalOptionalOfBorrowedBuffer: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfBorrowedBuffer {
+    var generic_value: SignalBorrowedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfOwnedBuffer: SignalOptionalOf {
+
+    typealias Contents = SignalOwnedBuffer
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalOwnedBuffer,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalOwnedBuffer {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfPairOfCStringPtrc_uchar32: SignalOptionalOf {
+
+    typealias Contents = SignalPairOfCStringPtrc_uchar32
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalPairOfCStringPtrc_uchar32,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalPairOfCStringPtrc_uchar32 {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfUuid: SignalOptionalOf {
+
+    typealias Contents = SignalUuid
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalUuid,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalUuid {
         get { self.value }
         set { value = newValue }
     }
@@ -2008,7 +2473,7 @@ extension SignalOptionalOfBackupEntitlementFfiResult: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfBackupEntitlementFfiResult,
+        generic_value: SignalBackupEntitlementFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2022,7 +2487,7 @@ extension SignalOptionalOfBackupEntitlementFfiResult: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfBackupEntitlementFfiResult {
+    var generic_value: SignalBackupEntitlementFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -2035,7 +2500,7 @@ extension SignalOptionalOfBridgeWebAuthnAuthenticationParametersFfiResult: Signa
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfBridgeWebAuthnAuthenticationParametersFfiResult,
+        generic_value: SignalBridgeWebAuthnAuthenticationParametersFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2049,7 +2514,7 @@ extension SignalOptionalOfBridgeWebAuthnAuthenticationParametersFfiResult: Signa
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfBridgeWebAuthnAuthenticationParametersFfiResult {
+    var generic_value: SignalBridgeWebAuthnAuthenticationParametersFfiResult {
         get { self.value }
         set { value = newValue }
     }
@@ -2062,7 +2527,7 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
 
     init(
         generic_present: CBool,
-        generic_value: MaybeUninitOfChargeFailureFfiResult,
+        generic_value: SignalChargeFailureFfiResult,
     ) {
         self.init(
             present: generic_present,
@@ -2076,9 +2541,97 @@ extension SignalOptionalOfChargeFailureFfiResult: SignalOptionalOf {
         set { present = newValue }
     }
 
-    var generic_value: MaybeUninitOfChargeFailureFfiResult {
+    var generic_value: SignalChargeFailureFfiResult {
         get { self.value }
         set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfFetchedProfileFfiResult: SignalOptionalOf {
+
+    typealias Contents = SignalFetchedProfileFfiResult
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalFetchedProfileFfiResult,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalFetchedProfileFfiResult {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOptionalOfTaggedBadgesFfiResult: SignalOptionalOf {
+
+    typealias Contents = SignalTaggedBadgesFfiResult
+
+    init(
+        generic_present: CBool,
+        generic_value: SignalTaggedBadgesFfiResult,
+    ) {
+        self.init(
+            present: generic_present,
+            value: generic_value,
+
+        )
+    }
+
+    var generic_present: CBool {
+        get { self.present }
+        set { present = newValue }
+    }
+
+    var generic_value: SignalTaggedBadgesFfiResult {
+        get { self.value }
+        set { value = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedCStringPtr: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalCStringPtr?
+
+    init(
+        generic_base: SignalType_MutPointer_SignalCStringPtr?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalCStringPtr? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
     }
 
 }
@@ -2219,6 +2772,40 @@ extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrAuthCheckResultFfiResult:
 
 }
 
+extension SignalOwnedBufferOfMaxAlignedPairOfCStringPtrBadgeFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalPairOfCStringPtrBadgeFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalPairOfCStringPtrBadgeFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalPairOfCStringPtrBadgeFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
 extension SignalOwnedBufferOfMaxAlignedBridgeConfirmedMfaKeyFfiResult: SignalOwnedBufferOfMaxAligned {
 
     typealias Element = SignalBridgeConfirmedMfaKeyFfiResult
@@ -2339,6 +2926,40 @@ extension SignalOwnedBufferOfMaxAlignedBadgeEntitlementFfiResult: SignalOwnedBuf
     }
 
     var generic_base: SignalType_MutPointer_SignalBadgeEntitlementFfiResult? {
+        get { self.base }
+        set { base = newValue }
+    }
+
+    var generic_length: size_t {
+        get { self.length }
+        set { length = newValue }
+    }
+
+    var generic_size_bytes: size_t {
+        get { self.size_bytes }
+        set { size_bytes = newValue }
+    }
+
+}
+
+extension SignalOwnedBufferOfMaxAlignedBadgeSvgFfiResult: SignalOwnedBufferOfMaxAligned {
+
+    typealias Element = SignalBadgeSvgFfiResult
+
+    init(
+        generic_base: SignalType_MutPointer_SignalBadgeSvgFfiResult?,
+        generic_length: size_t,
+        generic_size_bytes: size_t,
+    ) {
+        self.init(
+            base: generic_base,
+            length: generic_length,
+            size_bytes: generic_size_bytes,
+
+        )
+    }
+
+    var generic_base: SignalType_MutPointer_SignalBadgeSvgFfiResult? {
         get { self.base }
         set { base = newValue }
     }
@@ -2554,6 +3175,35 @@ extension SignalPairOfCStringPtrCStringPtr: SignalPairOf {
 
 }
 
+extension SignalPairOfCStringPtrc_uchar32: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalType_FixedArray32_uint8_t
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalType_FixedArray32_uint8_t,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalType_FixedArray32_uint8_t {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
 extension SignalPairOfCStringPtrbool: SignalPairOf {
 
     typealias First = SignalCStringPtr?
@@ -2635,6 +3285,35 @@ extension SignalPairOfCStringPtrAuthCheckResultFfiResult: SignalPairOf {
     }
 
     var generic_second: SignalAuthCheckResultFfiResult {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
+extension SignalPairOfCStringPtrBadgeFfiResult: SignalPairOf {
+
+    typealias First = SignalCStringPtr?
+
+    typealias Second = SignalBadgeFfiResult
+
+    init(
+        generic_first: SignalCStringPtr?,
+        generic_second: SignalBadgeFfiResult,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalCStringPtr? {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: SignalBadgeFfiResult {
         get { self.second }
         set { second = newValue }
     }
@@ -2757,6 +3436,35 @@ extension SignalPairOfOwnedBufferOfCStringPtrOwnedBufferOfCStringPtr: SignalPair
 
 }
 
+extension SignalPairOfOwnedBufferi64: SignalPairOf {
+
+    typealias First = SignalOwnedBuffer
+
+    typealias Second = Int64
+
+    init(
+        generic_first: SignalOwnedBuffer,
+        generic_second: Int64,
+    ) {
+        self.init(
+            first: generic_first,
+            second: generic_second,
+
+        )
+    }
+
+    var generic_first: SignalOwnedBuffer {
+        get { self.first }
+        set { first = newValue }
+    }
+
+    var generic_second: Int64 {
+        get { self.second }
+        set { second = newValue }
+    }
+
+}
+
 extension SignalPairOfOwnedBufferOwnedBuffer: SignalPairOf {
 
     typealias First = SignalOwnedBuffer
@@ -2815,6 +3523,16 @@ extension SignalPairOfPairOfCStringPtrOwnedBufferi64: SignalPairOf {
 
 }
 
+internal enum FixedByteArrayHelper10: FixedByteArrayHelper {
+    typealias Ffi = (UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8)
+    static func count() -> Int {
+        10
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
 internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
     typealias Ffi = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
@@ -2824,6 +3542,18 @@ internal enum FixedByteArrayHelper15: FixedByteArrayHelper {
     }
     static func emptyFfi() -> Ffi {
         (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+    }
+}
+
+internal enum FixedByteArrayHelper16: FixedByteArrayHelper {
+    typealias Ffi = (
+        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
+    )
+    static func count() -> Int {
+        16
+    }
+    static func emptyFfi() -> Ffi {
+        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
 
@@ -2837,20 +3567,6 @@ internal enum FixedByteArrayHelper32: FixedByteArrayHelper {
     }
     static func emptyFfi() -> Ffi {
         (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-    }
-}
-
-internal enum FixedByteArrayHelper33: FixedByteArrayHelper {
-    typealias Ffi = (
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
-        UInt8
-    )
-    static func count() -> Int {
-        33
-    }
-    static func emptyFfi() -> Ffi {
-        (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     }
 }
 
@@ -3032,12 +3748,39 @@ internal struct BackupEntitlement {
 */
 
 /*
+// Badge
+
+internal struct Badge {
+    var id: String
+    var category: String
+    var name: String
+    var description: String
+    var sprites6: [String]
+    var svg: String
+    var svgs: [BadgeSvg]
+
+}
+
+*/
+
+/*
 // BadgeEntitlement
 
 internal struct BadgeEntitlement {
     var badgeId: String
     var expiration: Date
     var visible: Bool
+
+}
+
+*/
+
+/*
+// BadgeSvg
+
+internal struct BadgeSvg {
+    var light: String
+    var dark: String
 
 }
 
@@ -3053,6 +3796,15 @@ internal enum BadgeVisibility {
 }
 
 */
+
+internal struct BridgeAccountIdentity {
+    var aci: Aci
+    var pni: Pni?
+    var e164: String?
+    var usernameHash: Data?
+    var usernameLinkHandle: UUID?
+
+}
 
 /*
 // ChallengeAnswer
@@ -3261,6 +4013,21 @@ internal enum DeviceCapabilityInternal {
 */
 
 /*
+// FetchedProfile
+
+internal struct FetchedProfile {
+    var profile: Profile
+    var etag: Data?
+    var v2DataHash: Data?
+    var identityKey: IdentityKey
+    var unidentifiedAccessKeyFingerprint: Data?
+    var unrestrictedUnidentifiedAccess: Bool
+
+}
+
+*/
+
+/*
 // GetStickerUploadFormsResponse
 
 internal struct GetStickerUploadFormsResponse {
@@ -3324,6 +4091,42 @@ internal enum PaymentProviderInternal {
 */
 
 /*
+// Profile
+
+internal struct Profile {
+    var givenName: String
+    var familyName: String
+    var about: String
+    var aboutEmoji: String
+    var avatar: String?
+    var phoneNumberSharing: Bool?
+    var paymentAddress: Data?
+    var badgeIds: [String]
+
+}
+
+*/
+
+/*
+// ProfileFieldWithMaxLength
+
+internal enum ProfileFieldWithMaxLength {
+    case givenName
+    case familyName
+    case about
+    case aboutEmoji
+    case avatar
+    case paymentAddress
+}
+
+*/
+
+internal enum ProfileValidationErrorInternal {
+    case fieldTooLong(field: ProfileFieldWithMaxLength, len: Int32, maxLen: Int32)
+    case avatarUrlInvalid
+}
+
+/*
 // S3UploadForm
 
 internal struct S3UploadFormInternal {
@@ -3346,6 +4149,27 @@ internal struct StartMfaVerificationResponse {
     var hasTotp: Bool
     var webauthnParams: WebAuthnAuthenticationParameters?
 
+}
+
+*/
+
+/*
+// TaggedBadges
+
+internal struct TaggedBadges {
+    var badges: [String: Badge]
+    var etag: Data
+
+}
+
+*/
+
+/*
+// UnauthProfileAuthorization
+
+internal enum UnauthProfileAuthorization {
+    case accessKey(Data)
+    case groupSend(GroupSendFullToken)
 }
 
 */
@@ -3409,6 +4233,41 @@ internal enum DerivedReturnConverterBackupEntitlement: NiceReturnConverter {
     }
 }
 
+internal enum DerivedReturnConverterBadge: NiceReturnConverter {
+    typealias NiceReturn = Badge
+    typealias FfiReturn = SignalBadgeFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let id = Result { try StringConverter.convertReturn(consuming: ffiValue.id) }
+        let category = Result { try StringConverter.convertReturn(consuming: ffiValue.category) }
+        let name = Result { try StringConverter.convertReturn(consuming: ffiValue.name) }
+        let description = Result { try StringConverter.convertReturn(consuming: ffiValue.description) }
+        let sprites6 = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.sprites6
+            )
+        }
+        let svg = Result { try StringConverter.convertReturn(consuming: ffiValue.svg) }
+        let svgs = Result {
+            try ArrayReturnConverter<DerivedReturnConverterBadgeSvg, SignalOwnedBufferOfMaxAlignedBadgeSvgFfiResult>
+                .convertReturn(consuming: ffiValue.svgs)
+        }
+
+        return Badge(
+            id: try id.get(),
+            category: try category.get(),
+            name: try name.get(),
+            description: try description.get(),
+            sprites6: try sprites6.get(),
+            svg: try svg.get(),
+            svgs: try svgs.get()
+        )
+    }
+}
+
 internal enum DerivedReturnConverterBadgeEntitlement: NiceReturnConverter {
     typealias NiceReturn = BadgeEntitlement
     typealias FfiReturn = SignalBadgeEntitlementFfiResult
@@ -3425,6 +4284,55 @@ internal enum DerivedReturnConverterBadgeEntitlement: NiceReturnConverter {
             badgeId: try badge_id.get(),
             expiration: try expiration.get(),
             visible: try visible.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterBadgeSvg: NiceReturnConverter {
+    typealias NiceReturn = BadgeSvg
+    typealias FfiReturn = SignalBadgeSvgFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBadgeSvgFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let light = Result { try StringConverter.convertReturn(consuming: ffiValue.light) }
+        let dark = Result { try StringConverter.convertReturn(consuming: ffiValue.dark) }
+
+        return BadgeSvg(light: try light.get(), dark: try dark.get())
+    }
+}
+
+internal enum DerivedReturnConverterBridgeAccountIdentity: NiceReturnConverter {
+    typealias NiceReturn = BridgeAccountIdentity
+    typealias FfiReturn = SignalBridgeAccountIdentityFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalBridgeAccountIdentityFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let aci = Result { try AciConverter.convertReturn(consuming: ffiValue.aci) }
+        let pni = Result {
+            try OptionalReturnConverter<PniConverter, SignalOptionalOfc_uchar17>.convertReturn(consuming: ffiValue.pni)
+        }
+        let e164 = Result { try OptionalStringConverter.convertReturn(consuming: ffiValue.e164) }
+        let username_hash = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.username_hash
+            )
+        }
+        let username_link_handle = Result {
+            try OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.convertReturn(
+                consuming: ffiValue.username_link_handle
+            )
+        }
+
+        return BridgeAccountIdentity(
+            aci: try aci.get(),
+            pni: try pni.get(),
+            e164: try e164.get(),
+            usernameHash: try username_hash.get(),
+            usernameLinkHandle: try username_link_handle.get()
         )
     }
 }
@@ -3878,6 +4786,47 @@ internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverte
     }
 }
 
+internal enum DerivedReturnConverterFetchedProfile: NiceReturnConverter {
+    typealias NiceReturn = FetchedProfile
+    typealias FfiReturn = SignalFetchedProfileFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalFetchedProfileFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let profile = Result { try DerivedReturnConverterProfile.convertReturn(consuming: ffiValue.profile) }
+        let etag = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper10>, SignalOptionalOfc_uchar10>
+                .convertReturn(consuming: ffiValue.etag)
+        }
+        let v2_data_hash = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOptionalOfc_uchar32>
+                .convertReturn(consuming: ffiValue.v2_data_hash)
+        }
+        let identity_key = Result {
+            try IdentityKeyResultConverter<BridgeHandleConverter<SignalMutPointerPublicKey, PublicKey>>.convertReturn(
+                consuming: ffiValue.identity_key
+            )
+        }
+        let unidentified_access_key_fingerprint = Result {
+            try OptionalReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper32>, SignalOptionalOfc_uchar32>
+                .convertReturn(consuming: ffiValue.unidentified_access_key_fingerprint)
+        }
+        let unrestricted_unidentified_access = Result {
+            try IdentityResultConverter<Bool>.convertReturn(consuming: ffiValue.unrestricted_unidentified_access)
+        }
+
+        return FetchedProfile(
+            profile: try profile.get(),
+            etag: try etag.get(),
+            v2DataHash: try v2_data_hash.get(),
+            identityKey: try identity_key.get(),
+            unidentifiedAccessKeyFingerprint: try unidentified_access_key_fingerprint.get(),
+            unrestrictedUnidentifiedAccess: try unrestricted_unidentified_access.get()
+        )
+    }
+}
+
 internal enum DerivedReturnConverterGetStickerUploadFormsResponse: NiceReturnConverter {
     typealias NiceReturn = GetStickerUploadFormsResponse
     typealias FfiReturn = SignalGetStickerUploadFormsResponseFfiResult
@@ -4001,6 +4950,113 @@ internal enum DerivedReturnConverterPaymentProviderInternal: NiceReturnConverter
     }
 }
 
+internal enum DerivedReturnConverterProfile: NiceReturnConverter {
+    typealias NiceReturn = Profile
+    typealias FfiReturn = SignalProfileFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let given_name = Result { try StringConverter.convertReturn(consuming: ffiValue.given_name) }
+        let family_name = Result { try StringConverter.convertReturn(consuming: ffiValue.family_name) }
+        let about = Result { try StringConverter.convertReturn(consuming: ffiValue.about) }
+        let about_emoji = Result { try StringConverter.convertReturn(consuming: ffiValue.about_emoji) }
+        let avatar = Result { try OptionalStringConverter.convertReturn(consuming: ffiValue.avatar) }
+        let phone_number_sharing = Result {
+            try OptionalReturnConverter<IdentityResultConverter<Bool>, SignalOptionalOfbool>.convertReturn(
+                consuming: ffiValue.phone_number_sharing
+            )
+        }
+        let payment_address = Result {
+            try OptionalReturnConverter<DataConverter, SignalOptionalOfOwnedBuffer>.convertReturn(
+                consuming: ffiValue.payment_address
+            )
+        }
+        let badge_ids = Result {
+            try ArrayReturnConverter<StringConverter, SignalOwnedBufferOfMaxAlignedCStringPtr>.convertReturn(
+                consuming: ffiValue.badge_ids
+            )
+        }
+
+        return Profile(
+            givenName: try given_name.get(),
+            familyName: try family_name.get(),
+            about: try about.get(),
+            aboutEmoji: try about_emoji.get(),
+            avatar: try avatar.get(),
+            phoneNumberSharing: try phone_number_sharing.get(),
+            paymentAddress: try payment_address.get(),
+            badgeIds: try badge_ids.get()
+        )
+    }
+}
+
+internal enum DerivedReturnConverterProfileFieldWithMaxLength: NiceReturnConverter {
+    typealias NiceReturn = ProfileFieldWithMaxLength
+    typealias FfiReturn = SignalProfileFieldWithMaxLengthFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileFieldWithMaxLengthFfiResult(0)
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue
+        switch ffiTag {
+        case SignalProfileFieldWithMaxLengthFfiResultGivenName:
+            return ProfileFieldWithMaxLength.givenName
+        case SignalProfileFieldWithMaxLengthFfiResultFamilyName:
+            return ProfileFieldWithMaxLength.familyName
+        case SignalProfileFieldWithMaxLengthFfiResultAbout:
+            return ProfileFieldWithMaxLength.about
+        case SignalProfileFieldWithMaxLengthFfiResultAboutEmoji:
+            return ProfileFieldWithMaxLength.aboutEmoji
+        case SignalProfileFieldWithMaxLengthFfiResultAvatar:
+            return ProfileFieldWithMaxLength.avatar
+        case SignalProfileFieldWithMaxLengthFfiResultPaymentAddress:
+            return ProfileFieldWithMaxLength.paymentAddress
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ProfileFieldWithMaxLength: \(ffiTag)")
+        }
+    }
+}
+
+internal enum DerivedReturnConverterProfileValidationErrorInternal: NiceReturnConverter {
+    typealias NiceReturn = ProfileValidationErrorInternal
+    typealias FfiReturn = SignalProfileValidationErrorInternalFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalProfileValidationErrorInternalFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+        let ffiTag = ffiValue.tag
+        switch ffiTag {
+        case SignalProfileValidationErrorInternalFfiResultFieldTooLong:
+            let field = Result {
+                try DerivedReturnConverterProfileFieldWithMaxLength.convertReturn(
+                    consuming: ffiValue.field_too_long.field
+                )
+            }
+            let len = Result {
+                try IdentityResultConverter<Int32>.convertReturn(
+                    consuming: ffiValue.field_too_long.len
+                )
+            }
+            let max_len = Result {
+                try IdentityResultConverter<Int32>.convertReturn(
+                    consuming: ffiValue.field_too_long.max_len
+                )
+            }
+            return ProfileValidationErrorInternal.fieldTooLong(
+                field: try field.get(),
+                len: try len.get(),
+                maxLen: try max_len.get()
+            )
+        case SignalProfileValidationErrorInternalFfiResultAvatarUrlInvalid:
+            return ProfileValidationErrorInternal.avatarUrlInvalid
+        default:
+            throw SignalError.internalError("Unexpected enum tag for ProfileValidationErrorInternal: \(ffiTag)")
+        }
+    }
+}
+
 internal enum DerivedReturnConverterS3UploadFormInternal: NiceReturnConverter {
     typealias NiceReturn = S3UploadForm
     typealias FfiReturn = SignalS3UploadFormInternalFfiResult
@@ -4046,6 +5102,26 @@ internal enum DerivedReturnConverterStartMfaVerificationResponse: NiceReturnConv
         }
 
         return StartMfaVerificationResponse(hasTotp: try has_totp.get(), webauthnParams: try webauthn_params.get())
+    }
+}
+
+internal enum DerivedReturnConverterTaggedBadges: NiceReturnConverter {
+    typealias NiceReturn = TaggedBadges
+    typealias FfiReturn = SignalTaggedBadgesFfiResult
+    static func emptyFfiReturn() -> FfiReturn {
+        SignalTaggedBadgesFfiResult()
+    }
+    static func convertReturn(consuming ffiValue: FfiReturn) throws -> NiceReturn {
+
+        let badges = Result {
+            try StringMapReturnConverter<
+                DerivedReturnConverterBadge, SignalOwnedBufferOfMaxAlignedPairOfCStringPtrBadgeFfiResult,
+                SignalPairOfCStringPtrBadgeFfiResult
+            >.convertReturn(consuming: ffiValue.badges)
+        }
+        let etag = Result { try DataConverter.convertReturn(consuming: ffiValue.etag) }
+
+        return TaggedBadges(badges: try badges.get(), etag: try etag.get())
     }
 }
 
@@ -5050,6 +6126,269 @@ internal enum DerivedArgConverterPaymentProviderInternal: NiceArgConverter {
     }
 }
 
+internal enum DerivedArgConverterProfile: NiceArgConverter {
+    typealias NiceArg = Profile
+    typealias FfiArg = SignalProfileFfiArg
+
+    typealias KeepAlive = (
+        StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?,
+        OptionalStringConverter.KeepAlive?,
+        OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.KeepAlive?,
+        OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
+        ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+    )
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        let given_name = niceArg.givenName
+        let family_name = niceArg.familyName
+        let about = niceArg.about
+        let about_emoji = niceArg.aboutEmoji
+        let avatar = niceArg.avatar
+        let phone_number_sharing = niceArg.phoneNumberSharing
+        let payment_address = niceArg.paymentAddress
+        let badge_ids = niceArg.badgeIds
+
+        let (given_name_ffi, given_name_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(given_name)
+        let (family_name_ffi, family_name_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(family_name)
+        let (about_ffi, about_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(about)
+        let (about_emoji_ffi, about_emoji_keepalive):
+            (
+                StringConverter.FfiArg,
+                StringConverter.KeepAlive?,
+            ) = StringConverter.convertArg(about_emoji)
+        let (avatar_ffi, avatar_keepalive):
+            (
+                OptionalStringConverter.FfiArg,
+                OptionalStringConverter.KeepAlive?,
+            ) = OptionalStringConverter.convertArg(avatar)
+        let (phone_number_sharing_ffi, phone_number_sharing_keepalive):
+            (
+                OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.FfiArg,
+                OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.KeepAlive?,
+            ) = OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.convertArg(phone_number_sharing)
+        let (payment_address_ffi, payment_address_keepalive):
+            (
+                OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.FfiArg,
+                OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
+            ) = OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.convertArg(payment_address)
+        let (badge_ids_ffi, badge_ids_keepalive):
+            (
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.FfiArg,
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+            ) = ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.convertArg(badge_ids)
+
+        let ffiStructArg = FfiArg(
+            given_name: given_name_ffi,
+            family_name: family_name_ffi,
+            about: about_ffi,
+            about_emoji: about_emoji_ffi,
+            avatar: avatar_ffi,
+            phone_number_sharing: phone_number_sharing_ffi,
+            payment_address: payment_address_ffi,
+            badge_ids: badge_ids_ffi,
+        )
+        let ffiStructKeepAlive:
+            (
+                StringConverter.KeepAlive?, StringConverter.KeepAlive?, StringConverter.KeepAlive?,
+                StringConverter.KeepAlive?, OptionalStringConverter.KeepAlive?,
+                OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.KeepAlive?,
+                OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.KeepAlive?,
+                ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.KeepAlive?,
+            )? =
+                (given_name_keepalive != nil || family_name_keepalive != nil || about_keepalive != nil
+                    || about_emoji_keepalive != nil || avatar_keepalive != nil || phone_number_sharing_keepalive != nil
+                    || payment_address_keepalive != nil || badge_ids_keepalive != nil || false)
+                ? (
+                    given_name_keepalive, family_name_keepalive, about_keepalive, about_emoji_keepalive,
+                    avatar_keepalive, phone_number_sharing_keepalive, payment_address_keepalive, badge_ids_keepalive,
+                )
+                : nil
+
+        return (ffiStructArg, ffiStructKeepAlive)
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        let given_name = niceArg.givenName
+        let family_name = niceArg.familyName
+        let about = niceArg.about
+        let about_emoji = niceArg.aboutEmoji
+        let avatar = niceArg.avatar
+        let phone_number_sharing = niceArg.phoneNumberSharing
+        let payment_address = niceArg.paymentAddress
+        let badge_ids = niceArg.badgeIds
+
+        return try StringConverter.convertArgBorrowed(given_name) {
+            ffi_given_name in
+            return try StringConverter.convertArgBorrowed(family_name) {
+                ffi_family_name in
+                return try StringConverter.convertArgBorrowed(about) {
+                    ffi_about in
+                    return try StringConverter.convertArgBorrowed(about_emoji) {
+                        ffi_about_emoji in
+                        return try OptionalStringConverter.convertArgBorrowed(avatar) {
+                            ffi_avatar in
+                            return try OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>
+                                .convertArgBorrowed(phone_number_sharing) {
+                                    ffi_phone_number_sharing in
+                                    return try OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>
+                                        .convertArgBorrowed(payment_address) {
+                                            ffi_payment_address in
+                                            return try ArrayArgConverter<
+                                                StringConverter, SignalBorrowedSliceOfCStringPtr
+                                            >.convertArgBorrowed(badge_ids) {
+                                                ffi_badge_ids in
+
+                                                return try niceThunk(
+                                                    FfiArg(
+                                                        given_name: ffi_given_name,
+                                                        family_name: ffi_family_name,
+                                                        about: ffi_about,
+                                                        about_emoji: ffi_about_emoji,
+                                                        avatar: ffi_avatar,
+                                                        phone_number_sharing: ffi_phone_number_sharing,
+                                                        payment_address: ffi_payment_address,
+                                                        badge_ids: ffi_badge_ids,
+                                                    )
+                                                )
+
+                                            }
+                                        }
+                                }
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+}
+
+internal enum UnauthProfileAuthorizationArgConverterKeepAlive {
+    case accessKey((FixedByteArrayConverter<FixedByteArrayHelper16>.KeepAlive?))
+    case groupSend((ByteArrayConverter<GroupSendFullToken>.KeepAlive?))
+}
+
+internal enum DerivedArgConverterUnauthProfileAuthorization: NiceArgConverter {
+    typealias NiceArg = UnauthProfileAuthorization
+    typealias FfiArg = SignalUnauthProfileAuthorizationFfiArg
+    typealias KeepAlive = UnauthProfileAuthorizationArgConverterKeepAlive
+    static func convertArg(_ niceArg: NiceArg) -> (FfiArg, KeepAlive?) {
+        switch niceArg {
+        case .accessKey(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    FixedByteArrayConverter<FixedByteArrayHelper16>.FfiArg,
+                    FixedByteArrayConverter<FixedByteArrayHelper16>.KeepAlive?,
+                ) = FixedByteArrayConverter<FixedByteArrayHelper16>.convertArg(_0)
+
+            let ffiStructArg = SignalUnauthProfileAuthorizationFfiArgSignalAccessKey_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (FixedByteArrayConverter<FixedByteArrayHelper16>.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalUnauthProfileAuthorizationFfiArg.init(
+                    tag: SignalUnauthProfileAuthorizationFfiArgAccessKey,
+                    .init(access_key: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .accessKey($0) },
+            )
+
+        case .groupSend(
+            let _0,
+        ):
+
+            let (_0_ffi, _0_keepalive):
+                (
+                    ByteArrayConverter<GroupSendFullToken>.FfiArg,
+                    ByteArrayConverter<GroupSendFullToken>.KeepAlive?,
+                ) = ByteArrayConverter<GroupSendFullToken>.convertArg(_0)
+
+            let ffiStructArg = SignalUnauthProfileAuthorizationFfiArgSignalGroupSend_Body(_0: _0_ffi, )
+            let ffiStructKeepAlive: (ByteArrayConverter<GroupSendFullToken>.KeepAlive?, )? =
+                (_0_keepalive != nil || false)
+                ? (_0_keepalive,)
+                : nil
+
+            return (
+                SignalUnauthProfileAuthorizationFfiArg.init(
+                    tag: SignalUnauthProfileAuthorizationFfiArgGroupSend,
+                    .init(group_send: ffiStructArg),
+                ),
+                ffiStructKeepAlive.map { .groupSend($0) },
+            )
+
+        }
+    }
+    static func convertArgBorrowed<Result>(
+        _ niceArg: NiceArg,
+        _ niceThunk: (FfiArg) throws -> Result,
+    ) rethrows -> Result {
+        switch niceArg {
+
+        case .accessKey(
+            let _0,
+        ):
+
+            return try FixedByteArrayConverter<FixedByteArrayHelper16>.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalUnauthProfileAuthorizationFfiArg.init(
+                        tag: SignalUnauthProfileAuthorizationFfiArgAccessKey,
+                        .init(
+                            access_key:
+                                SignalUnauthProfileAuthorizationFfiArgSignalAccessKey_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        case .groupSend(
+            let _0,
+        ):
+
+            return try ByteArrayConverter<GroupSendFullToken>.convertArgBorrowed(_0) {
+                ffi__0 in
+
+                return try niceThunk(
+                    SignalUnauthProfileAuthorizationFfiArg.init(
+                        tag: SignalUnauthProfileAuthorizationFfiArgGroupSend,
+                        .init(
+                            group_send:
+                                SignalUnauthProfileAuthorizationFfiArgSignalGroupSend_Body(
+                                    _0: ffi__0,
+                                )
+                        ),
+                    )
+                )
+
+            }
+
+        }
+    }
+}
+
 internal enum NativeNice {
     internal static func AuthenticatedChatConnection_answer_challenge(
         asyncContext: TokioAsyncContext,
@@ -5376,6 +6715,128 @@ internal enum NativeNice {
         return try DerivedReturnConverterBridgePendingTotpKey.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_get_account_identity(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+    ) async throws -> BridgeAccountIdentity {
+        let rawOutput: DerivedReturnConverterBridgeAccountIdentity.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        SignalFfi.signal_authenticated_chat_connection_get_account_identity(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+            }
+        return try DerivedReturnConverterBridgeAccountIdentity.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_avatar_credential(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        aci: Aci,
+        keyPair key_pair: ZkCredentialKeyPair,
+        rotationId rotation_id: Int64,
+        serverPublicParams server_public_params: GenericServerPublicParams,
+        currentTimeSeconds current_time_seconds: Int64,
+        rng: Int64,
+    ) async throws -> AvatarUploadCredential {
+        let rawOutput: ByteArrayConverter<AvatarUploadCredential>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        AciConverter.convertArgBorrowed(aci) { aciFfi in
+                            ByteArrayConverter<ZkCredentialKeyPair>.convertArgBorrowed(key_pair) { key_pairFfi in
+                                IdentityArgConverter<Int64>.convertArgBorrowed(rotation_id) { rotation_idFfi in
+                                    ByteArrayConverter<GenericServerPublicParams>.convertArgBorrowed(
+                                        server_public_params
+                                    ) { server_public_paramsFfi in
+                                        IdentityArgConverter<Int64>.convertArgBorrowed(current_time_seconds) {
+                                            current_time_secondsFfi in
+                                            IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                                                SignalFfi.signal_authenticated_chat_connection_get_avatar_credential(
+                                                    promiseFfi,
+                                                    asyncContextFfi.const(),
+                                                    chatFfi,
+                                                    aciFfi,
+                                                    key_pairFfi,
+                                                    rotation_idFfi,
+                                                    server_public_paramsFfi,
+                                                    current_time_secondsFfi,
+                                                    rngFfi,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try ByteArrayConverter<AvatarUploadCredential>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+    ) async throws -> S3UploadForm {
+        let rawOutput: DerivedReturnConverterS3UploadFormInternal.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        AciConverter.convertArgBorrowed(aci) { aciFfi in
+                            ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                SignalFfi.signal_authenticated_chat_connection_get_avatar_upload_form_legacy(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    aciFfi,
+                                    profile_keyFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterS3UploadFormInternal.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_badges(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        etag: Data?,
+    ) async throws -> TaggedBadges? {
+        let rawOutput:
+            OptionalReturnConverter<DerivedReturnConverterTaggedBadges, SignalOptionalOfTaggedBadgesFfiResult>.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            OptionalArgConverter<DataConverter, SignalOptionalOfBorrowedBuffer>.convertArgBorrowed(etag)
+                            { etagFfi in
+                                SignalFfi.signal_authenticated_chat_connection_get_badges(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    etagFfi,
+                                )
+                            }
+                        }
+                }
+        return try OptionalReturnConverter<DerivedReturnConverterTaggedBadges, SignalOptionalOfTaggedBadgesFfiResult>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_get_capabilities(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -5486,6 +6947,49 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgePreKeyCounts.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AuthenticatedChatConnection_get_profile(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+        etag: Data?,
+        avatarCdnConfig avatar_cdn_config: AvatarCdnUrlValidationConfig,
+    ) async throws -> FetchedProfile? {
+        let rawOutput:
+            OptionalReturnConverter<DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult>
+                .FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            AciConverter.convertArgBorrowed(aci) { aciFfi in
+                                ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                    OptionalFixedByteArrayConverter<FixedByteArrayHelper10>.convertArgBorrowed(etag) {
+                                        etagFfi in
+                                        BridgeHandleRefConverter<
+                                            SignalMutPointerAvatarCdnUrlValidationConfig, AvatarCdnUrlValidationConfig
+                                        >.convertArgBorrowed(avatar_cdn_config) { avatar_cdn_configFfi in
+                                            SignalFfi.signal_authenticated_chat_connection_get_profile(
+                                                promiseFfi,
+                                                asyncContextFfi.const(),
+                                                chatFfi,
+                                                aciFfi,
+                                                profile_keyFfi,
+                                                etagFfi,
+                                                avatar_cdn_configFfi,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                }
+        return try OptionalReturnConverter<
+            DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func AuthenticatedChatConnection_get_sticker_upload_forms(
@@ -5687,7 +7191,7 @@ internal enum NativeNice {
                 BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
                     .convertArgBorrowed(chat) { chatFfi in
                         ArrayArgConverter<
-                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfc_uchar32
+                            FixedByteArrayConverter<FixedByteArrayHelper32>, SignalBorrowedSliceOfPtrToc_uchar32
                         >.convertArgBorrowed(username_hashes) { username_hashesFfi in
                             SignalFfi.signal_authenticated_chat_connection_reserve_username_hash(
                                 promiseFfi,
@@ -5938,6 +7442,64 @@ internal enum NativeNice {
         return try VoidConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_profile(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        rng: Int64,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+        profile: Profile,
+        expectedCurrentDataHash expected_current_data_hash: Data?,
+        expectedCurrentProfileKeyVersion expected_current_profile_key_version: ProfileKeyVersion?,
+        avatarCdnConfig avatar_cdn_config: AvatarCdnUrlValidationConfig,
+    ) async throws -> Data {
+        let rawOutput: FixedByteArrayConverter<FixedByteArrayHelper32>.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                            AciConverter.convertArgBorrowed(aci) { aciFfi in
+                                ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                    DerivedArgConverterProfile.convertArgBorrowed(profile) { profileFfi in
+                                        OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.convertArgBorrowed(
+                                            expected_current_data_hash
+                                        ) { expected_current_data_hashFfi in
+                                            OptionalArgConverter<
+                                                ProfileKeyVersionArgConverter<
+                                                    FixedByteArrayConverter<FixedByteArrayHelper64>
+                                                >, SignalOptionalOfPtrToc_uchar64
+                                            >.convertArgBorrowed(expected_current_profile_key_version) {
+                                                expected_current_profile_key_versionFfi in
+                                                BridgeHandleRefConverter<
+                                                    SignalMutPointerAvatarCdnUrlValidationConfig,
+                                                    AvatarCdnUrlValidationConfig
+                                                >.convertArgBorrowed(avatar_cdn_config) { avatar_cdn_configFfi in
+                                                    SignalFfi.signal_authenticated_chat_connection_set_profile(
+                                                        promiseFfi,
+                                                        asyncContextFfi.const(),
+                                                        chatFfi,
+                                                        rngFfi,
+                                                        aciFfi,
+                                                        profile_keyFfi,
+                                                        profileFfi,
+                                                        expected_current_data_hashFfi,
+                                                        expected_current_profile_key_versionFfi,
+                                                        avatar_cdn_configFfi,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+            }
+        return try FixedByteArrayConverter<FixedByteArrayHelper32>.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_set_push_token_apns(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -6075,6 +7637,35 @@ internal enum NativeNice {
         return try UuidNiceConverter.convertReturn(consuming: rawOutput)
 
     }
+    internal static func AuthenticatedChatConnection_set_zk_credential_key(
+        asyncContext: TokioAsyncContext,
+        chat: AuthenticatedChatConnection,
+        rng: Int64,
+    ) async throws -> (ZkCredentialKeyPair, Int64) {
+        let rawOutput:
+            PairOfResultConverter<
+                ByteArrayConverter<ZkCredentialKeyPair>, IdentityResultConverter<Int64>, SignalPairOfOwnedBufferi64
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerAuthenticatedChatConnection, AuthenticatedChatConnection>
+                        .convertArgBorrowed(chat) { chatFfi in
+                            IdentityArgConverter.convertArgBorrowed(rng) { rngFfi in
+                                SignalFfi.signal_authenticated_chat_connection_set_zk_credential_key(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    rngFfi,
+                                )
+                            }
+                        }
+                }
+        return try PairOfResultConverter<
+            ByteArrayConverter<ZkCredentialKeyPair>, IdentityResultConverter<Int64>, SignalPairOfOwnedBufferi64
+        >.convertReturn(consuming: rawOutput)
+
+    }
     internal static func AuthenticatedChatConnection_start_mfa_verification(
         asyncContext: TokioAsyncContext,
         chat: AuthenticatedChatConnection,
@@ -6113,6 +7704,25 @@ internal enum NativeNice {
                     }
             }
         return try DerivedReturnConverterBridgeWebAuthnCreateParameters.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func AvatarCdnUrlValidationConfig_new(
+        validUrlPrefixes valid_url_prefixes: [String],
+    ) throws -> AvatarCdnUrlValidationConfig {
+        try ArrayArgConverter<StringConverter, SignalBorrowedSliceOfCStringPtr>.convertArgBorrowed(valid_url_prefixes) {
+            valid_url_prefixesFfi in
+            var rawOutput = BridgeHandleConverter<
+                SignalMutPointerAvatarCdnUrlValidationConfig, AvatarCdnUrlValidationConfig
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_avatar_cdn_url_validation_config_new(
+                    &rawOutput,
+                    valid_url_prefixesFfi,
+                )
+            )
+            return try BridgeHandleConverter<SignalMutPointerAvatarCdnUrlValidationConfig, AvatarCdnUrlValidationConfig>
+                .convertReturn(consuming: rawOutput)
+        }
 
     }
     internal static func BackupJsonExporter_ExportFrames(
@@ -6234,12 +7844,66 @@ internal enum NativeNice {
         }
 
     }
+    internal static func Error_GetCurrentProfileVersion(
+        err: SignalFfiErrorRef?,
+    ) throws -> ProfileKeyVersion? {
+        try IdentityArgConverter<SignalFfiErrorRef?>.convertArgBorrowed(err) { errFfi in
+            var rawOutput = OptionalReturnConverter<
+                ProfileKeyVersionReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper64>>,
+                SignalOptionalOfc_uchar64
+            >.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_error_get_current_profile_version(
+                    &rawOutput,
+                    errFfi,
+                )
+            )
+            return try OptionalReturnConverter<
+                ProfileKeyVersionReturnConverter<FixedByteArrayConverter<FixedByteArrayHelper64>>,
+                SignalOptionalOfc_uchar64
+            >.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func Error_GetProfileValidationError(
+        err: SignalFfiErrorRef?,
+    ) throws -> ProfileValidationErrorInternal {
+        try IdentityArgConverter<SignalFfiErrorRef?>.convertArgBorrowed(err) { errFfi in
+            var rawOutput = DerivedReturnConverterProfileValidationErrorInternal.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_error_get_profile_validation_error(
+                    &rawOutput,
+                    errFfi,
+                )
+            )
+            return try DerivedReturnConverterProfileValidationErrorInternal.convertReturn(consuming: rawOutput)
+        }
+
+    }
+    internal static func ProvisioningPublicKey_Serialize(
+        key: ProvisioningPublicKey,
+    ) throws -> Data {
+        try BridgeHandleRefConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>.convertArgBorrowed(
+            key
+        ) { keyFfi in
+            var rawOutput = DataConverter.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_provisioning_public_key_serialize(
+                    &rawOutput,
+                    keyFfi,
+                )
+            )
+            return try DataConverter.convertReturn(consuming: rawOutput)
+        }
+
+    }
     internal static func Provisioning_EncryptProvisionMessage(
-        secondaryPublicKey secondary_public_key: Data,
+        secondaryPublicKey secondary_public_key: ProvisioningPublicKey,
         provisionMessage provision_message: Data,
     ) throws -> Data {
-        try FixedByteArrayConverter<FixedByteArrayHelper33>.convertArgBorrowed(secondary_public_key) {
-            secondary_public_keyFfi in
+        try BridgeHandleRefConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>.convertArgBorrowed(
+            secondary_public_key
+        ) { secondary_public_keyFfi in
             try DataConverter.convertArgBorrowed(provision_message) { provision_messageFfi in
                 var rawOutput = DataConverter.emptyFfiReturn()
                 try checkError(
@@ -6289,17 +7953,19 @@ internal enum NativeNice {
     }
     internal static func RecvProvisionCiphertextState_GetPublicKey(
         state: RecvProvisionCiphertextState,
-    ) throws -> Data {
+    ) throws -> ProvisioningPublicKey {
         try BridgeHandleRefConverter<SignalMutPointerRecvProvisionCiphertextState, RecvProvisionCiphertextState>
             .convertArgBorrowed(state) { stateFfi in
-                var rawOutput = FixedByteArrayConverter<FixedByteArrayHelper33>.emptyFfiReturn()
+                var rawOutput = BridgeHandleConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>
+                    .emptyFfiReturn()
                 try checkError(
                     SignalFfi.signal_recv_provision_ciphertext_state_get_public_key(
                         &rawOutput,
                         stateFfi,
                     )
                 )
-                return try FixedByteArrayConverter<FixedByteArrayHelper33>.convertReturn(consuming: rawOutput)
+                return try BridgeHandleConverter<SignalMutPointerProvisioningPublicKey, ProvisioningPublicKey>
+                    .convertReturn(consuming: rawOutput)
             }
 
     }
@@ -6895,6 +8561,133 @@ internal enum NativeNice {
                     }
             }
         return try ByteArrayConverter<ReceiptCredential>.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_delete_avatar(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: AvatarUploadCredentialPresentation,
+    ) async throws {
+        let rawOutput: VoidConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<AvatarUploadCredentialPresentation>.convertArgBorrowed(credential) {
+                            credentialFfi in
+                            SignalFfi.signal_unauthenticated_chat_connection_delete_avatar(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                credentialFfi,
+                            )
+                        }
+                    }
+            }
+        return try VoidConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_extend_avatar_ttl(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: AvatarUploadCredentialPresentation,
+    ) async throws -> String? {
+        let rawOutput: OptionalStringConverter.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<AvatarUploadCredentialPresentation>.convertArgBorrowed(credential) {
+                            credentialFfi in
+                            SignalFfi.signal_unauthenticated_chat_connection_extend_avatar_ttl(
+                                promiseFfi,
+                                asyncContextFfi.const(),
+                                chatFfi,
+                                credentialFfi,
+                            )
+                        }
+                    }
+            }
+        return try OptionalStringConverter.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_get_avatar_upload_form(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        credential: AvatarUploadCredentialPresentation,
+        uploadLength upload_length: Int32,
+    ) async throws -> S3UploadForm {
+        let rawOutput: DerivedReturnConverterS3UploadFormInternal.FfiReturn =
+            try await asyncContext.invokeAsyncFunction {
+                promiseFfi,
+                asyncContextFfi in
+                BridgeHandleRefConverter<SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection>
+                    .convertArgBorrowed(chat) { chatFfi in
+                        ByteArrayConverter<AvatarUploadCredentialPresentation>.convertArgBorrowed(credential) {
+                            credentialFfi in
+                            IdentityArgConverter<Int32>.convertArgBorrowed(upload_length) { upload_lengthFfi in
+                                SignalFfi.signal_unauthenticated_chat_connection_get_avatar_upload_form(
+                                    promiseFfi,
+                                    asyncContextFfi.const(),
+                                    chatFfi,
+                                    credentialFfi,
+                                    upload_lengthFfi,
+                                )
+                            }
+                        }
+                    }
+            }
+        return try DerivedReturnConverterS3UploadFormInternal.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func UnauthenticatedChatConnection_get_profile(
+        asyncContext: TokioAsyncContext,
+        chat: UnauthenticatedChatConnection,
+        aci: Aci,
+        profileKey profile_key: ProfileKey,
+        auth: UnauthProfileAuthorization,
+        etag: Data?,
+        avatarCdnConfig avatar_cdn_config: AvatarCdnUrlValidationConfig,
+    ) async throws -> FetchedProfile? {
+        let rawOutput:
+            OptionalReturnConverter<DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult>
+                .FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<
+                        SignalMutPointerUnauthenticatedChatConnection, UnauthenticatedChatConnection
+                    >.convertArgBorrowed(chat) { chatFfi in
+                        AciConverter.convertArgBorrowed(aci) { aciFfi in
+                            ByteArrayConverter<ProfileKey>.convertArgBorrowed(profile_key) { profile_keyFfi in
+                                DerivedArgConverterUnauthProfileAuthorization.convertArgBorrowed(auth) { authFfi in
+                                    OptionalFixedByteArrayConverter<FixedByteArrayHelper10>.convertArgBorrowed(etag) {
+                                        etagFfi in
+                                        BridgeHandleRefConverter<
+                                            SignalMutPointerAvatarCdnUrlValidationConfig, AvatarCdnUrlValidationConfig
+                                        >.convertArgBorrowed(avatar_cdn_config) { avatar_cdn_configFfi in
+                                            SignalFfi.signal_unauthenticated_chat_connection_get_profile(
+                                                promiseFfi,
+                                                asyncContextFfi.const(),
+                                                chatFfi,
+                                                aciFfi,
+                                                profile_keyFfi,
+                                                authFfi,
+                                                etagFfi,
+                                                avatar_cdn_configFfi,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+        return try OptionalReturnConverter<
+            DerivedReturnConverterFetchedProfile, SignalOptionalOfFetchedProfileFfiResult
+        >.convertReturn(consuming: rawOutput)
 
     }
     internal static func UnauthenticatedChatConnection_get_profile_key_credential(

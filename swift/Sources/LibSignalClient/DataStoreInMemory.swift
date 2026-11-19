@@ -77,6 +77,14 @@ open class InMemorySignalProtocolStore: IdentityKeyStore, PreKeyStore, SignedPre
         return self.publicKeys[address]
     }
 
+    // Declared here, rather than inherited from the protocol extension, so that subclasses can
+    // override it.
+    open func recordReceivedIdentity(
+        _ identity: IdentityKey,
+        for address: ProtocolAddress,
+        context: StoreContext
+    ) throws {}
+
     open func loadPreKey(id: UInt32, context: StoreContext) throws -> PreKeyRecord {
         if let record = prekeyMap[id] {
             return record

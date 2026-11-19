@@ -11,14 +11,14 @@ import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.usernames.Username
+import org.signal.libsignal.usernames.UsernameHash
 import java.util.UUID
 
 public class UnauthUsernamesService(
   private val connection: UnauthenticatedChatConnection,
 ) {
   /**
-   * Looks up a username hash on the service, like that computed by
-   * [org.signal.libsignal.usernames.Username].
+   * Looks up a username hash on the service, like that computed by [Username.getHash].
    *
    * Produces the corresponding account's ACI, or `null` if the username doesn't correspond to an
    * account.
@@ -26,11 +26,11 @@ public class UnauthUsernamesService(
    * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
    * [RequestResult.ApplicationError].
    */
-  public fun lookUpUsernameHash(hash: ByteArray): CompletableFuture<RequestResult<ServiceId.Aci?, Nothing>> =
+  public fun lookUpUsernameHash(hash: UsernameHash): CompletableFuture<RequestResult<ServiceId.Aci?, Nothing>> =
     liftExceptions {
       connection
         .runWithContextAndConnectionHandles { asyncCtx, conn ->
-          Native.UnauthenticatedChatConnection_look_up_username_hash(asyncCtx, conn, hash)
+          Native.UnauthenticatedChatConnection_look_up_username_hash(asyncCtx, conn, hash.internalContentsForJNI)
         }
     }.mapWithCancellation(
       onSuccess = { uuid -> RequestResult.Success(uuid?.let(ServiceId::Aci)) },
@@ -60,7 +60,7 @@ public class UnauthUsernamesService(
         if (pair == null) {
           RequestResult.Success(null)
         } else {
-          RequestResult.Success(Username._withPrecomputedHash(pair.first, pair.second))
+          RequestResult.Success(Username._withPrecomputedHash(pair.first, UsernameHash(pair.second)))
         }
       },
       onError = { err -> err.toRequestResult<LookUpUsernameLinkFailure>() },

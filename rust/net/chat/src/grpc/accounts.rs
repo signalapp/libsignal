@@ -5,10 +5,11 @@
 
 use std::collections::HashSet;
 use std::convert::Infallible;
+use std::str::FromStr as _;
 use std::time::{Duration, SystemTime};
 
 use libsignal_account_keys::{EncryptedMfaMetadata, InvalidMfaMetadata, MfaMetadata, SvrKey};
-use libsignal_core::LogSafeDisplay;
+use libsignal_core::{Aci, E164, LogSafeDisplay, Pni, ServiceId};
 use libsignal_net_grpc::proto::chat::account::accounts_client::AccountsClient;
 use libsignal_net_grpc::proto::chat::account::list_mfa_keys_response::mfa_key_metadata::MfaKeyType as GrpcMfaKeyType;
 use libsignal_net_grpc::proto::chat::account::start_web_authn_registration_response::WebAuthnCreateParameters as GrpcWebAuthnCreateParameters;
@@ -17,12 +18,13 @@ use libsignal_net_grpc::proto::chat::account::{
     ConfirmTotpKeyResponse, DeleteAccountRequest, DeleteAccountResponse,
     FinishMfaVerificationRequest, FinishMfaVerificationResponse, FinishWebAuthnRegistrationRequest,
     FinishWebAuthnRegistrationResponse, GenerateTotpKeyRequest, GenerateTotpKeyResponse,
-    GetCapabilitiesRequest, GetCapabilitiesResponse, GetEntitlementsRequest,
-    GetEntitlementsResponse, ListMfaKeysRequest, ListMfaKeysResponse, RemoveMfaKeyRequest,
-    RemoveMfaKeyResponse, SetDiscoverableByPhoneNumberRequest,
-    SetDiscoverableByPhoneNumberResponse, SetMfaKeyMetadataRequest, SetMfaKeyMetadataResponse,
-    SetRegistrationLockRequest, SetRegistrationLockResponse,
-    SetRegistrationRecoveryPasswordRequest, SetRegistrationRecoveryPasswordResponse,
+    GetAccountIdentityRequest, GetAccountIdentityResponse, GetCapabilitiesRequest,
+    GetCapabilitiesResponse, GetEntitlementsRequest, GetEntitlementsResponse, ListMfaKeysRequest,
+    ListMfaKeysResponse, RemoveMfaKeyRequest, RemoveMfaKeyResponse,
+    SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
+    SetMfaKeyMetadataRequest, SetMfaKeyMetadataResponse, SetRegistrationLockRequest,
+    SetRegistrationLockResponse, SetRegistrationRecoveryPasswordRequest,
+    SetRegistrationRecoveryPasswordResponse, SetZkCredentialKeyRequest, SetZkCredentialKeyResponse,
     StartMfaVerificationRequest, StartMfaVerificationResponse as StartMfaVerificationResponseProto,
     StartWebAuthnRegistrationRequest, StartWebAuthnRegistrationResponse,
     TotpParameters as GrpcTotpParameters, confirm_totp_key_response,
@@ -34,7 +36,11 @@ use libsignal_net_grpc::proto::chat::challenge::answer_challenge_request::{
 };
 use libsignal_net_grpc::proto::chat::challenge::challenge_client::ChallengeClient;
 use libsignal_net_grpc::proto::chat::challenge::{AnswerChallengeRequest, AnswerChallengeResponse};
+use libsignal_net_grpc::proto::chat::common::AccountIdentifiers;
 use libsignal_net_grpc::proto::chat::errors;
+use rand::{CryptoRng, Rng};
+use uuid::Uuid;
+use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::devices::DeviceCapability;
@@ -391,6 +397,13 @@ impl std::fmt::Display for Redact<ClearRegistrationLockRequest> {
     }
 }
 
+impl std::fmt::Display for Redact<GetAccountIdentityRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(GetAccountIdentityRequest {}) = self;
+        f.debug_struct("GetAccountIdentityRequest").finish()
+    }
+}
+
 impl std::fmt::Display for Redact<SetRegistrationRecoveryPasswordRequest> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self(SetRegistrationRecoveryPasswordRequest {
@@ -413,6 +426,102 @@ impl std::fmt::Display for Redact<SetDiscoverableByPhoneNumberRequest> {
         f.debug_struct("SetDiscoverableByPhoneNumberRequest")
             .field("discoverable", discoverable_by_phone_number)
             .finish()
+    }
+}
+
+#[derive(Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq, Debug))]
+pub struct AccountIdentity {
+    /// The ACI for the authenticated account.
+    pub aci: Aci,
+    /// The PNI for the authenticated account, or `None` if the account has no
+    /// phone number.
+    pub pni: Option<Pni>,
+    /// The phone number associated with the authenticated account, or `None`
+    /// if the account has no phone number.
+    pub e164: Option<E164>,
+    /// The hash of the account's current username, or `None` if no username is
+    /// set.
+    pub username_hash: Option<[u8; 32]>,
+    /// The username link handle associated with the account's current
+    /// username, or `None` if no username link is set.
+    pub username_link_handle: Option<Uuid>,
+}
+
+impl TryFrom<AccountIdentifiers> for AccountIdentity {
+    type Error = RequestError<Infallible>;
+
+    fn try_from(identifiers: AccountIdentifiers) -> Result<Self, Self::Error> {
+        fn unexpected<T>(log_safe: &str) -> Result<T, RequestError<Infallible>> {
+            Err(RequestError::Unexpected {
+                log_safe: log_safe.to_string(),
+            })
+        }
+
+        let AccountIdentifiers {
+            service_identifiers,
+            e164,
+            username_hash,
+            username_link_handle,
+        } = identifiers;
+
+        let mut aci = None;
+        let mut pni = None;
+        for identifier in &service_identifiers {
+            match identifier.try_as_service_id() {
+                Some(ServiceId::Aci(a)) => {
+                    if aci.replace(a).is_some() {
+                        return unexpected("multiple ACIs in account identifiers");
+                    }
+                }
+                Some(ServiceId::Pni(p)) => {
+                    if pni.replace(p).is_some() {
+                        return unexpected("multiple PNIs in account identifiers");
+                    }
+                }
+                None => {
+                    // Skip unrecognized identifier kinds for forward compatibility: a future
+                    // server may include identifiers this client doesn't know about, and the ACI
+                    // and PNI we need are still usable.
+                    log::warn!("ignoring unrecognized service identifier in account identifiers");
+                }
+            }
+        }
+        let Some(aci) = aci else {
+            return unexpected("missing ACI in account identifiers");
+        };
+
+        // An account without a phone number has neither a PNI nor an e164. The server sets and
+        // clears the two together, but they're independent here so that an account in some
+        // unanticipated state can still at least learn its ACI.
+        let e164 = if e164.is_empty() {
+            None
+        } else {
+            let Ok(e164) = E164::from_str(&e164) else {
+                return unexpected("invalid e164 in account identifiers");
+            };
+            Some(e164)
+        };
+
+        let username_hash = match username_hash.len() {
+            0 => None,
+            32 => Some(username_hash.try_into().expect("just checked length")),
+            _ => return unexpected("username hash with invalid length"),
+        };
+
+        let username_link_handle = match username_link_handle.len() {
+            0 => None,
+            16 => Some(Uuid::from_slice(&username_link_handle).expect("just checked length")),
+            _ => return unexpected("username link handle with invalid length"),
+        };
+
+        Ok(Self {
+            aci,
+            pni,
+            e164,
+            username_hash,
+            username_link_handle,
+        })
     }
 }
 
@@ -535,8 +644,80 @@ impl std::fmt::Display for Redact<AnswerChallengeRequest> {
             .finish()
     }
 }
+impl std::fmt::Display for Redact<SetZkCredentialKeyRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(SetZkCredentialKeyRequest { public_key }) = self;
+        f.debug_struct("SetZkCredentialKeyRequest")
+            .field("public_key.len()", &public_key.len())
+            .finish()
+    }
+}
+
+/// A random value in `[1, i64::MAX]` that must be included in credential requests using the
+/// ZkCredential key.
+///
+/// This value allows the server to ratchet the resulting binding identity,
+/// as reverting to the previous key will result in a new rotation ID.
+pub type ZkCredentialKeyRotationId = i64;
 
 impl<T: GrpcServiceProvider> Auth<T> {
+    /// Returns basic identifiers for the authenticated account.
+    ///
+    /// The returned [`AccountIdentity`] always includes an ACI. It also includes a PNI and an
+    /// E.164 phone number unless the account has no phone number, and a username hash and
+    /// username link handle when present on the account.
+    pub async fn get_account_identity(&self) -> Result<AccountIdentity, RequestError<Infallible>> {
+        let mut client = AccountsClient::new(self.0.service());
+        let request = GetAccountIdentityRequest {};
+        let desc = Redact(&request).to_string();
+        let GetAccountIdentityResponse {
+            account_identifiers,
+        } = log_and_send(Self::LOG_TAG, &desc, || {
+            client.get_account_identity(request)
+        })
+        .await?
+        .into_inner();
+        account_identifiers
+            .ok_or_else(|| RequestError::Unexpected {
+                log_safe: "missing account identifiers".to_string(),
+            })?
+            .try_into()
+    }
+
+    /// Generate a fresh ZkCredentialKeyPair, and upload its public (anonymous) key to the server.
+    ///
+    /// We generate a fresh key each time to ensure that the server can't reuse a
+    /// (KeyPair, rotation ID) pair
+    pub async fn set_zk_credential_key(
+        &self,
+        rng: &mut (dyn CryptoRng + Send),
+    ) -> Result<(ZkCredentialKeyPair, ZkCredentialKeyRotationId), RequestError<Infallible>> {
+        let key_pair = ZkCredentialKeyPair::generate(rng.random());
+        let public_key = key_pair.public_key();
+        let mut client = AccountsClient::new(self.0.service());
+        let request = SetZkCredentialKeyRequest {
+            public_key: zkgroup::serialize(&public_key),
+        };
+        let desc = Redact(&request).to_string();
+        let SetZkCredentialKeyResponse { rotation_id } = log_and_send(Self::LOG_TAG, &desc, || {
+            client.set_zk_credential_key(request)
+        })
+        .await?
+        .into_inner();
+        if rotation_id == 0 {
+            return Err(RequestError::Unexpected {
+                log_safe: "Server provided a zkcredential rotation ID of 0".into(),
+            });
+        }
+        let rotation_id = ZkCredentialKeyRotationId::try_from(rotation_id).map_err(|_| {
+            RequestError::Unexpected {
+                log_safe: "Server provided a zkcredential rotation ID that doesn't fit in an i64"
+                    .into(),
+            }
+        })?;
+        Ok((key_pair, rotation_id))
+    }
+
     /// Deletes the authenticated account, purging all associated data in the
     /// process.
     ///
@@ -1142,10 +1323,217 @@ pub mod test_cases {
         Capabilities, finish_mfa_verification_request, get_entitlements_response,
         start_mfa_verification_response,
     };
-    use libsignal_net_grpc::proto::chat::common::DeviceCapability as GrpcDeviceCapability;
+    use libsignal_net_grpc::proto::chat::common::{
+        DeviceCapability as GrpcDeviceCapability, ServiceIdentifier,
+    };
     use libsignal_protocol::Timestamp;
+    use rand::SeedableRng;
+    use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 
     use super::*;
+
+    pub enum GetAccountIdentityOut {
+        Success(AccountIdentity),
+        MissingIdentifiers,
+    }
+
+    pub fn get_account_identity_test_cases() -> Vec<
+        GrpcTestCase<
+            (),
+            GetAccountIdentityRequest,
+            GetAccountIdentityResponse,
+            GetAccountIdentityOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/GetAccountIdentity";
+        let aci = Aci::from(uuid::uuid!("9d0652a3-dcc3-4d11-975f-74d61598733f"));
+        let pni = Pni::from(uuid::uuid!("796abedb-ca4e-4f18-8803-1fde5b921f9f"));
+        let e164 = "+18005550123";
+        let username_hash = [0x88; 32];
+        let username_link_handle = uuid::uuid!("35896a91-e44c-425c-a219-72e2d84b960a");
+        let identifiers = |username_hash: &[u8], username_link_handle: &[u8]| AccountIdentifiers {
+            service_identifiers: vec![ServiceIdentifier::from(aci), ServiceIdentifier::from(pni)],
+            e164: e164.to_string(),
+            username_hash: username_hash.to_vec(),
+            username_link_handle: username_link_handle.to_vec(),
+        };
+        let identity =
+            |username_hash: Option<[u8; 32]>, username_link_handle: Option<Uuid>| AccountIdentity {
+                aci,
+                pni: Some(pni),
+                e164: Some(E164::from_str(e164).expect("valid")),
+                username_hash,
+                username_link_handle,
+            };
+        vec![
+            GrpcTestCase {
+                name: "with username".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: Some(identifiers(
+                        &username_hash,
+                        username_link_handle.as_bytes(),
+                    )),
+                },
+                response: GetAccountIdentityOut::Success(identity(
+                    Some(username_hash),
+                    Some(username_link_handle),
+                )),
+            },
+            GrpcTestCase {
+                name: "without username".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: Some(identifiers(&[], &[])),
+                },
+                response: GetAccountIdentityOut::Success(identity(None, None)),
+            },
+            GrpcTestCase {
+                name: "with username but no link".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: Some(identifiers(&username_hash, &[])),
+                },
+                response: GetAccountIdentityOut::Success(identity(Some(username_hash), None)),
+            },
+            GrpcTestCase {
+                // Reclaiming an account clears the username hash but keeps the link handle, so
+                // this is a state the server really produces.
+                name: "with link but no username".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: Some(identifiers(&[], username_link_handle.as_bytes())),
+                },
+                response: GetAccountIdentityOut::Success(identity(
+                    None,
+                    Some(username_link_handle),
+                )),
+            },
+            GrpcTestCase {
+                // An account registered without a phone number has no PNI either.
+                name: "without phone number".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: Some(AccountIdentifiers {
+                        service_identifiers: vec![ServiceIdentifier::from(aci)],
+                        e164: String::new(),
+                        ..identifiers(&username_hash, username_link_handle.as_bytes())
+                    }),
+                },
+                response: GetAccountIdentityOut::Success(AccountIdentity {
+                    pni: None,
+                    e164: None,
+                    ..identity(Some(username_hash), Some(username_link_handle))
+                }),
+            },
+            GrpcTestCase {
+                name: "with unrecognized identifier".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: Some(AccountIdentifiers {
+                        service_identifiers: vec![
+                            ServiceIdentifier::from(aci),
+                            // A hypothetical future identifier kind; should be skipped rather
+                            // than failing the request.
+                            ServiceIdentifier {
+                                identity_type: 9000,
+                                uuid: vec![],
+                            },
+                            ServiceIdentifier::from(pni),
+                        ],
+                        ..identifiers(&[], &[])
+                    }),
+                },
+                response: GetAccountIdentityOut::Success(identity(None, None)),
+            },
+            GrpcTestCase {
+                name: "missing identifiers".to_string(),
+                method: method.to_string(),
+                request: (),
+                request_grpc: GetAccountIdentityRequest {},
+                response_grpc: GetAccountIdentityResponse {
+                    account_identifiers: None,
+                },
+                response: GetAccountIdentityOut::MissingIdentifiers,
+            },
+        ]
+    }
+
+    pub type SetZkCredentialKeyArgs = ();
+    /// If the output is `None`, then the result should be an `Unexpected` error
+    pub type SetZkCredentialKeyOut = Option<(ZkCredentialKeyPair, ZkCredentialKeyRotationId)>;
+    /// The rng seed is exclusively 0
+    pub fn set_zk_credential_key_test_cases() -> Vec<
+        GrpcTestCase<
+            SetZkCredentialKeyArgs,
+            SetZkCredentialKeyRequest,
+            SetZkCredentialKeyResponse,
+            SetZkCredentialKeyOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/SetZkCredentialKey";
+        let seed = 0;
+        let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(seed);
+        let pair = ZkCredentialKeyPair::generate(rng.random());
+        vec![
+            GrpcTestCase {
+                name: "success".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse { rotation_id: 123 },
+                response: Some((pair.clone(), 123)),
+            },
+            GrpcTestCase {
+                name: "success, i64::MAX".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse {
+                    rotation_id: i64::MAX.try_into().expect("fits in u64"),
+                },
+                response: Some((pair.clone(), i64::MAX)),
+            },
+            GrpcTestCase {
+                name: "bad; zero rotation id".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse { rotation_id: 0 },
+                response: None,
+            },
+            GrpcTestCase {
+                name: "bad; rotation id won't fit in i64".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse {
+                    rotation_id: u64::MAX,
+                },
+                response: None,
+            },
+        ]
+    }
 
     // No invalid-response case: the response message is empty, so there is no
     // error contract to prove beyond the shared transport mapping.
@@ -2237,6 +2625,7 @@ pub mod test_cases {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
+    use rand::SeedableRng;
 
     use super::*;
     use crate::api::DisconnectedError;
@@ -2250,6 +2639,23 @@ mod test {
             delete_account_test_cases(),
             |chat: Auth<_>, ()| async move { chat.delete_account().await },
             |(), result| assert_matches!(result, Ok(())),
+        );
+    }
+
+    #[test]
+    fn test_get_account_identity() {
+        use test_cases::*;
+        run_tests(
+            get_account_identity_test_cases(),
+            |chat: Auth<_>, ()| async move { chat.get_account_identity().await },
+            |resp, result| match resp {
+                GetAccountIdentityOut::Success(expected) => {
+                    assert_eq!(expected, result.expect("success"))
+                }
+                GetAccountIdentityOut::MissingIdentifiers => {
+                    assert_matches!(result, Err(RequestError::Unexpected { log_safe: _ }))
+                }
+            },
         );
     }
 
@@ -2958,6 +3364,28 @@ mod test {
             },
             |expected, result| {
                 assert_eq!(expected, result.expect("success"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_set_zk_credential() {
+        use test_cases::*;
+        run_tests(
+            set_zk_credential_key_test_cases(),
+            |chat: Auth<_>, ()| async move {
+                chat.set_zk_credential_key(&mut rand_chacha::ChaCha20Rng::seed_from_u64(0))
+                    .await
+            },
+            |expected, result| match expected {
+                Some(pair) => assert_eq!(
+                    zkgroup::serialize(&result.expect("success")),
+                    zkgroup::serialize(&pair)
+                ),
+                None => assert!(matches!(
+                    result,
+                    Err(RequestError::Unexpected { log_safe: _ })
+                )),
             },
         );
     }

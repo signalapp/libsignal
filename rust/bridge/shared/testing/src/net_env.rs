@@ -10,7 +10,9 @@ use const_str::ip_addr;
 use libsignal_net::chat::RECOMMENDED_CHAT_WS_CONFIG;
 use libsignal_net::connect_state::ServiceName;
 use libsignal_net::enclave::{Cdsi, EnclaveEndpoint, EndpointParams, MrEnclave, SvrSgx};
-use libsignal_net::env::{ConnectionConfig, DomainConfig, Env, KeyTransConfig, Svr2Env, SvrBEnv};
+use libsignal_net::env::{
+    ConnectionConfig, DomainConfig, Env, EnvEnclaveEntry, KeyTransConfig, Svr2Env, SvrBEnv,
+};
 use libsignal_net::infra::RECOMMENDED_WS_CONFIG;
 use libsignal_net::infra::certs::RootCertificates;
 use libsignal_net::infra::route::HttpVersion;
@@ -116,7 +118,7 @@ pub(crate) fn localhost_test_env_with_ports(
         },
         svr_b: SvrBEnv::new(
             [
-                Some(EnclaveEndpoint {
+                Some(EnvEnclaveEntry::Owned(Box::new(EnclaveEndpoint {
                     domain_config: localhost_test_domain_config_with_port_and_cert(
                         ServiceName("svrb"),
                         ports.svrb_port,
@@ -125,7 +127,7 @@ pub(crate) fn localhost_test_env_with_ports(
                     ),
                     ws_config: RECOMMENDED_WS_CONFIG,
                     params: DUMMY_SVRB_ENDPOINT_PARAMS,
-                }),
+                }))),
                 None,
                 None,
             ],

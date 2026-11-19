@@ -250,6 +250,19 @@ internal struct AciConverter: NiceArgConverter, NiceReturnConverter {
     typealias FfiReturn = ServiceIdStorage
 }
 
+internal struct PniConverter: NiceReturnConverter {
+    static func emptyFfiReturn() -> ServiceIdStorage {
+        return ServiceIdConverter.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: ServiceIdStorage) throws -> Pni {
+        return try Pni.parseFrom(fixedWidthBinary: value)
+    }
+
+    typealias NiceReturn = Pni
+    typealias FfiReturn = ServiceIdStorage
+}
+
 internal struct BridgeHandleRefConverter<Ptr: SignalMutPointer, T: NativeHandleOwner<Ptr>>: NiceArgConverter {
     typealias NiceArg = T
     typealias FfiArg = Ptr.ConstPointer
@@ -669,6 +682,32 @@ internal enum FixedByteArrayConverter<Helper: FixedByteArrayHelper>: NiceArgConv
     typealias FfiReturn = Helper.Ffi
 }
 
+internal enum OptionalFixedByteArrayConverter<Helper: FixedByteArrayHelper>: NiceArgConverter {
+    typealias Inner = FixedByteArrayConverter<Helper>
+    typealias NiceArg = Data?
+    typealias FfiArg = Inner.FfiArg
+    typealias KeepAlive = Inner.KeepAlive
+
+    static func convertArg(_ arg: Data?) -> (FfiArg, KeepAlive?) {
+        if let arg {
+            return Inner.convertArg(arg)
+        } else {
+            return (nil, nil)
+        }
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: Data?,
+        _ thunk: (FfiArg) throws -> Result
+    ) rethrows -> Result {
+        if let arg {
+            return try Inner.convertArgBorrowed(arg, thunk)
+        } else {
+            return try thunk(nil)
+        }
+    }
+}
+
 internal enum UuidNiceConverter: NiceArgConverter, NiceReturnConverter {
     static func convertArg(_ arg: UUID) -> (SignalUuid, Never?) {
         (SignalUuid(bytes: arg.uuid), nil)
@@ -871,5 +910,50 @@ where
         var out: NiceReturn = Dictionary(minimumCapacity: value.buffer().count)
         try InnerConverter.convertReturnForEach(consuming: value) { out[$0.0] = $0.1 }
         return out
+    }
+}
+
+internal enum ProfileKeyVersionArgConverter<Inner: NiceArgConverter>: NiceArgConverter where Inner.NiceArg == Data {
+    typealias NiceArg = ProfileKeyVersion
+    typealias FfiArg = Inner.FfiArg
+    typealias KeepAlive = Inner.KeepAlive
+
+    static func convertArg(_ arg: ProfileKeyVersion) -> (Inner.FfiArg, Inner.KeepAlive?) {
+        Inner.convertArg(arg.serialize())
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: ProfileKeyVersion,
+        _ thunk: (Inner.FfiArg) throws -> Result
+    ) rethrows -> Result {
+        try Inner.convertArgBorrowed(arg.serialize(), thunk)
+    }
+}
+
+internal enum ProfileKeyVersionReturnConverter<Inner: NiceReturnConverter>: NiceReturnConverter
+where Inner.NiceReturn == Data {
+    typealias NiceReturn = ProfileKeyVersion
+    typealias FfiReturn = Inner.FfiReturn
+
+    static func emptyFfiReturn() -> FfiReturn {
+        Inner.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        try ProfileKeyVersion(contents: try Inner.convertReturn(consuming: value))
+    }
+}
+
+internal enum IdentityKeyResultConverter<Inner: NiceReturnConverter>: NiceReturnConverter
+where Inner.NiceReturn == PublicKey {
+    typealias NiceReturn = IdentityKey
+    typealias FfiReturn = Inner.FfiReturn
+
+    static func emptyFfiReturn() -> Inner.FfiReturn {
+        Inner.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: Inner.FfiReturn) throws -> IdentityKey {
+        IdentityKey(publicKey: try Inner.convertReturn(consuming: value))
     }
 }

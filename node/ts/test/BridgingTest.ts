@@ -571,6 +571,26 @@ describe('NativeTestingNice', () => {
       nativeIdentityAsync: NativeNice.TESTING_conversion_Data32_identity_async,
     });
   });
+  it('OptionalData32', async () => {
+    for (const item of [null, crypto.getRandomValues(new Uint8Array(32))]) {
+      const toString = item === null ? '%' : toBase64(item);
+      await testConversion({
+        item,
+        toString,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionalData32_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionalData32_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionalData32_identity_async,
+      });
+    }
+    assert.throws(() =>
+      NativeNice.TESTING_conversion_OptionalData32_to_string({
+        x: new Uint8Array(31),
+      })
+    );
+  });
   it('BridgeVec<Data32>', async () => {
     for (let count = 0; count < 8; count++) {
       const item = [];
@@ -611,6 +631,21 @@ describe('NativeTestingNice', () => {
           NativeNice.TESTING_conversion_DeviceId_identity({ x }),
         nativeIdentityAsync:
           NativeNice.TESTING_conversion_DeviceId_identity_async,
+      });
+    }
+  });
+  it('Option<boolean>', async () => {
+    for (const item of [null, true, false]) {
+      const toString = item === null ? '' : JSON.stringify(item);
+      await testConversion({
+        item,
+        toString,
+        nativeToString: (x) =>
+          NativeNice.TESTING_conversion_OptionBool_to_string({ x }),
+        nativeIdentity: (x) =>
+          NativeNice.TESTING_conversion_OptionBool_identity({ x }),
+        nativeIdentityAsync:
+          NativeNice.TESTING_conversion_OptionBool_identity_async,
       });
     }
   });

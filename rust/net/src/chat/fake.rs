@@ -68,14 +68,32 @@ pub enum ReceiveRequestError {
     GotResponse,
 }
 
+/// Settings for [`ChatConnection::new_fake`] beyond the runtime and listener.
+///
+/// The defaults match a connection with no remote config: every request goes over gRPC, nothing
+/// is compressed, and no alerts are delivered.
+#[derive(Default)]
+pub struct FakeChatOptions<'a> {
+    /// Requests to send over the websocket instead of gRPC, by request name.
+    pub grpc_overrides: Vec<&'static str>,
+    /// Whether the server may gzip its responses to key transparency requests.
+    pub offer_compression_for_key_transparency: bool,
+    /// Alerts to deliver in the connect response headers.
+    pub alerts: Vec<&'a str>,
+}
+
 impl ChatConnection {
     /// Creates a `ChatConnection` connected to a fake remote end.
-    pub fn new_fake<'a>(
+    pub fn new_fake(
         tokio_runtime: tokio::runtime::Handle,
         listener: ws::EventListener,
-        grpc_overrides: impl IntoIterator<Item = &'static str>,
-        alerts: impl IntoIterator<Item = &'a str>,
+        options: FakeChatOptions<'_>,
     ) -> (Self, FakeChatRemote) {
+        let FakeChatOptions {
+            grpc_overrides,
+            offer_compression_for_key_transparency,
+            alerts,
+        } = options;
         let (tx_to_local, rx_from_remote) = tokio::sync::mpsc::unbounded_channel();
         let (tx_to_remote, rx_from_local) = tokio::sync::mpsc::unbounded_channel();
 
@@ -150,6 +168,7 @@ impl ChatConnection {
                     .into_iter()
                     .map(|api| (api, GrpcOverride::UseWs)),
             ),
+            offer_compression_for_key_transparency,
             // This isn't perfect, but without it we can't test APIs that rely on knowing the self
             // ACI, so it's better that we set it to *something*.
             self_aci: Some(libsignal_core::Aci::from_uuid_bytes([0xff; 16])),

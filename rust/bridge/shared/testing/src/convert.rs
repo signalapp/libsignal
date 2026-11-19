@@ -642,6 +642,21 @@ pub mod test_conversions {
     }
 
     #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalData32_identity(x: Option<[u8; 32]>) -> Option<[u8; 32]> {
+        x
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionalData32_to_string(x: Option<[u8; 32]>) -> String {
+        TESTING_conversion_OptionalBytes_to_string(x.map(Vec::from))
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionalData32_identity_async(
+        x: Option<[u8; 32]>,
+    ) -> Option<[u8; 32]> {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
     fn TESTING_conversion_PairStringString_to_string(x: (String, String)) -> String {
         format!("{},{}", x.0, x.1)
     }
@@ -730,6 +745,19 @@ pub mod test_conversions {
     async fn TESTING_conversion_MapStringMySimpleTestEnum_identity_async(
         x: HashMap<String, MySimpleTestEnum>,
     ) -> HashMap<String, MySimpleTestEnum> {
+        x
+    }
+
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionBool_to_string(x: Option<bool>) -> String {
+        x.map(|x| x.to_string()).unwrap_or_default()
+    }
+    #[bridge_fn(nice = true)]
+    fn TESTING_conversion_OptionBool_identity(x: Option<bool>) -> Option<bool> {
+        x
+    }
+    #[bridge_io(TokioAsyncContext, nice = true, ffi = false, jni = false)]
+    async fn TESTING_conversion_OptionBool_identity_async(x: Option<bool>) -> Option<bool> {
         x
     }
 }

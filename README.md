@@ -200,18 +200,19 @@ To learn about the Swift build process see [``swift/README.md``](swift/)
 You'll need Node installed to build. If you have [nvm][], you can run `nvm use` to select an
 appropriate version automatically.
 
-We use `npm` as our package manager, and a Python script to control building the Rust library, accessible as `npm run build`.
+We use `pnpm` as our package manager, and a Python script to control building the Rust library, accessible as `pnpm run build`.
 
 ```shell
 $ cd node
 $ nvm use
-$ npm install
-$ npm run build
-$ npm run tsc
-$ npm run test
+$ npm install -g pnpm  # or use `npx pnpm`
+$ pnpm install
+$ pnpm run build
+$ pnpm run tsc
+$ pnpm run test
 ```
 
-When testing changes locally, you can use `npm run build` to do an incremental rebuild of the Rust library. Alternately, `npm run build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
+When testing changes locally, you can use `pnpm run build` to do an incremental rebuild of the Rust library. Alternately, `pnpm run build-with-debug-level-logs` will rebuild without filtering out debug- and verbose-level logs.
 
 When exposing new APIs to Node, you will need to run `just generate-node` in
 addition to rebuilding.

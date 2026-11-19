@@ -12,9 +12,47 @@
 
 import type { Bytes } from '@signalapp/types';
 
-import type { InvalidProvisioningMessageError } from './Errors.js';
+import type {
+  InvalidProvisioningMessageError,
+  LibSignalErrorBase,
+} from './Errors.js';
 import * as Native from './Native.js';
 import * as NativeNice from './NativeNice.js';
+
+/**
+ * The public key that a secondary device puts in its provisioning QR code, and that the primary
+ * encrypts the `ProvisionMessage` or `RegistrationProvisionMessage` to.
+ */
+export class ProvisioningPublicKey {
+  readonly _nativeHandle: Native.ProvisioningPublicKey;
+
+  private constructor(handle: Native.ProvisioningPublicKey) {
+    this._nativeHandle = handle;
+  }
+
+  static _fromNativeHandle(
+    handle: Native.ProvisioningPublicKey
+  ): ProvisioningPublicKey {
+    return new ProvisioningPublicKey(handle);
+  }
+
+  /**
+   * Wraps a serialized provisioning public key, i.e. the output of
+   * {@link ProvisioningPublicKey.serialize}. The public key is not validated until it is used.
+   */
+  static deserialize(pubkeyBytes: Bytes): ProvisioningPublicKey {
+    return new ProvisioningPublicKey(
+      Native.ProvisioningPublicKey_Deserialize(pubkeyBytes)
+    );
+  }
+
+  /**
+   * Returns the bytes this public key was created from.
+   */
+  serialize(): Bytes {
+    return NativeNice.ProvisioningPublicKey_Serialize({ key: this });
+  }
+}
 
 /**
  * The state that a secondary device keeps while it is waiting to receive an encrypted `ProvisionMessage` or
@@ -37,13 +75,13 @@ export class RecvProvisionCiphertextState {
   }
 
   /**
-   * The 33-byte serialized public key that the primary should encrypt to. This is what the
-   * secondary puts in its provisioning QR code.
+   * The public key that the primary should encrypt to. This is what the secondary puts in its
+   * provisioning QR code.
    */
-  get publicKey(): Bytes {
-    return NativeNice.RecvProvisionCiphertextState_GetPublicKey({
-      state: this,
-    });
+  get publicKey(): ProvisioningPublicKey {
+    return ProvisioningPublicKey._fromNativeHandle(
+      Native.RecvProvisionCiphertextState_GetPublicKey(this)
+    );
   }
 
   /**
@@ -65,15 +103,14 @@ export class RecvProvisionCiphertextState {
  * Encrypts a serialized `ProvisionMessage` or `RegistrationProvisionMessage` to a secondary device,
  * returning a serialized `ProvisionEnvelope`.
  *
- * `secondaryPublicKey` is the 33-byte public key from the secondary's provisioning QR code, i.e.
+ * `secondaryPublicKey` is the public key from the secondary's provisioning QR code, i.e.
  * {@link RecvProvisionCiphertextState.publicKey}.
  *
- * @throws {TypeError} if `secondaryPublicKey` is not 33 bytes
- * @throws {InvalidProvisioningMessageError} if the first byte of `secondaryPublicKey` is not the
- *   X25519 key type byte (0x05)
+ * @throws {LibSignalErrorBase} with the generic error code if `secondaryPublicKey` is malformed,
+ *   as for other invalid keys
  */
 export function encryptProvisionMessage(
-  secondaryPublicKey: Bytes,
+  secondaryPublicKey: ProvisioningPublicKey,
   provisionMessage: Bytes
 ): Bytes {
   return NativeNice.Provisioning_EncryptProvisionMessage({

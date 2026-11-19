@@ -20,7 +20,8 @@ public class RequestUnauthorizedException :
   GetUploadFormError,
   MultiRecipientSendFailure,
   SealedSendFailure,
-  GetProfileKeyCredentialFailure {
+  GetProfileKeyCredentialFailure,
+  UnauthGetProfileErrorException {
   @CalledFromNative
   public constructor(message: String) : super(message) {
   }

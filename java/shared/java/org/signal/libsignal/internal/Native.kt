@@ -377,6 +377,39 @@ internal object Native {
   ): CompletableFuture<Object>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_get_account_identity(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_get_avatar_credential(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    aci: ByteArray,
+    keyPair: ByteArray,
+    rotationId: Long,
+    serverPublicParams: ByteArray,
+    currentTimeSeconds: Long,
+    rng: Long,
+  ): CompletableFuture<ByteArray>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    aci: ByteArray,
+    profileKey: ByteArray,
+  ): CompletableFuture<Object>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_get_badges(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    etag: ByteArray?,
+  ): CompletableFuture<Object?>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_get_capabilities(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -405,6 +438,16 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
   ): CompletableFuture<Object>
+
+  @JvmStatic
+  public external fun AuthenticatedChatConnection_get_profile(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    aci: ByteArray,
+    profileKey: ByteArray,
+    etag: ByteArray?,
+    avatarCdnConfig: SimpleOwner,
+  ): CompletableFuture<Object?>
 
   @JvmStatic
   public external fun AuthenticatedChatConnection_get_sticker_upload_forms(
@@ -582,6 +625,19 @@ internal object Native {
   ): CompletableFuture<Void?>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_profile(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    rng: Long,
+    aci: ByteArray,
+    profileKey: ByteArray,
+    profile: Object,
+    expectedCurrentDataHash: ByteArray?,
+    expectedCurrentProfileKeyVersion: ByteArray?,
+    avatarCdnConfig: SimpleOwner,
+  ): CompletableFuture<ByteArray>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_set_push_token_fcm(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -621,6 +677,13 @@ internal object Native {
   ): CompletableFuture<UUID>
 
   @JvmStatic
+  public external fun AuthenticatedChatConnection_set_zk_credential_key(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    rng: Long,
+  ): CompletableFuture<Pair<ByteArray, Long>>
+
+  @JvmStatic
   public external fun AuthenticatedChatConnection_start_mfa_verification(
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
@@ -631,6 +694,12 @@ internal object Native {
     asyncRuntime: ObjectHandle,
     chat: SimpleOwner,
   ): CompletableFuture<Object>
+
+  @JvmStatic
+  public external fun AvatarCdnUrlValidationConfig_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun AvatarCdnUrlValidationConfig_new(validUrlPrefixes: Array<*>): ObjectHandle
 
   @JvmStatic
   @Throws(Exception::class)
@@ -2293,9 +2362,18 @@ internal object Native {
   ): Unit
 
   @JvmStatic
+  public external fun ProvisioningPublicKey_Deserialize(pubkeyBytes: ByteArray): ObjectHandle
+
+  @JvmStatic
+  public external fun ProvisioningPublicKey_Destroy(handle: ObjectHandle): Unit
+
+  @JvmStatic
+  public external fun ProvisioningPublicKey_Serialize(key: SimpleOwner): ByteArray
+
+  @JvmStatic
   @Throws(Exception::class)
   public external fun Provisioning_EncryptProvisionMessage(
-    secondaryPublicKey: ByteArray,
+    secondaryPublicKey: SimpleOwner,
     provisionMessage: ByteArray,
   ): ByteArray
 
@@ -2351,7 +2429,7 @@ internal object Native {
   public external fun RecvProvisionCiphertextState_Generate(): ObjectHandle
 
   @JvmStatic
-  public external fun RecvProvisionCiphertextState_GetPublicKey(state: SimpleOwner): ByteArray
+  public external fun RecvProvisionCiphertextState_GetPublicKey(state: SimpleOwner): ObjectHandle
 
   @JvmStatic
   public external fun RegisterAccountRequest_Create(): ObjectHandle
@@ -3467,10 +3545,32 @@ internal object Native {
   ): CompletableFuture<ByteArray>
 
   @JvmStatic
+  public external fun UnauthenticatedChatConnection_delete_avatar(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: ByteArray,
+  ): CompletableFuture<Void?>
+
+  @JvmStatic
   public external fun UnauthenticatedChatConnection_disconnect(
     asyncRuntime: ObjectHandle,
     chat: ObjectHandle,
   ): CompletableFuture<Void?>
+
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_extend_avatar_ttl(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: ByteArray,
+  ): CompletableFuture<String?>
+
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_avatar_upload_form(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    credential: ByteArray,
+    uploadLength: Int,
+  ): CompletableFuture<Object>
 
   @JvmStatic
   public external fun UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
@@ -3497,6 +3597,17 @@ internal object Native {
     target: ByteArray,
     device: Int,
   ): CompletableFuture<Object>
+
+  @JvmStatic
+  public external fun UnauthenticatedChatConnection_get_profile(
+    asyncRuntime: ObjectHandle,
+    chat: SimpleOwner,
+    aci: ByteArray,
+    profileKey: ByteArray,
+    auth: Object,
+    etag: ByteArray?,
+    avatarCdnConfig: SimpleOwner,
+  ): CompletableFuture<Object?>
 
   @JvmStatic
   public external fun UnauthenticatedChatConnection_get_profile_key_credential(

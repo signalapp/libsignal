@@ -12,6 +12,7 @@ import org.signal.libsignal.internal.NativeTesting
 import org.signal.libsignal.internal.TokioAsyncContext
 import org.signal.libsignal.keytrans.TestStore
 import org.signal.libsignal.net.KeyTransparency.CheckMode
+import org.signal.libsignal.usernames.UsernameHash
 import org.signal.libsignal.util.TestEnvironment
 import java.util.Deque
 import java.util.concurrent.ExecutionException
@@ -63,7 +64,7 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
         KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY,
-        KeyTransparencyTest.TEST_USERNAME_HASH,
+        UsernameHash(KeyTransparencyTest.TEST_USERNAME_HASH),
         store,
       ).get()
       .also {
@@ -91,7 +92,7 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
         KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY,
-        KeyTransparencyTest.TEST_USERNAME_HASH,
+        UsernameHash(KeyTransparencyTest.TEST_USERNAME_HASH),
         store,
       ).get()
       .also {
@@ -112,7 +113,7 @@ class KeyTransparencyClientTest {
         KeyTransparencyTest.TEST_ACI_IDENTITY_KEY,
         KeyTransparencyTest.TEST_E164,
         KeyTransparencyTest.TEST_UNIDENTIFIED_ACCESS_KEY,
-        KeyTransparencyTest.TEST_USERNAME_HASH,
+        UsernameHash(KeyTransparencyTest.TEST_USERNAME_HASH),
         store,
       ).get()
       .also {

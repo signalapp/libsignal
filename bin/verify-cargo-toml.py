@@ -7,10 +7,9 @@ Lint our Cargo.toml files
 - Ensure that all crates inherit workspace's lints, authors, license, edition, and rust-version
 """
 
+import tomllib
 import typing
 from pathlib import Path
-
-import tomllib
 
 # The workspace root
 ROOT = Path(__file__).absolute().parent.parent

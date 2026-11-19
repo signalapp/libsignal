@@ -18,7 +18,9 @@ use http::HeaderName;
 use http::uri::PathAndQuery;
 use libsignal_net::auth::Auth;
 use libsignal_net::connect_state::{ConnectState, ConnectionResources, SUGGESTED_CONNECT_CONFIG};
-use libsignal_net::enclave::{EnclaveKind, EndpointParams, MrEnclave, NewHandshake, SvrSgx};
+use libsignal_net::enclave::{
+    AnyEnclaveEndpoint as _, EnclaveKind, EndpointParams, MrEnclave, NewHandshake, SvrSgx,
+};
 use libsignal_net::svr::SvrConnection;
 use libsignal_net_infra::EnableDomainFronting;
 use libsignal_net_infra::dns::DnsResolver;

@@ -22,6 +22,7 @@ use libsignal_account_keys::{
     InvalidMfaMetadata, MEDIA_ENCRYPTION_KEY_LEN, MEDIA_ID_LEN, MfaMetadata,
 };
 use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom, bridge_callbacks};
+use libsignal_core::{Aci, Pni};
 use libsignal_net::chat::fake::FakeChatRemote;
 use libsignal_net::chat::server_requests::DisconnectCause;
 use libsignal_net::chat::ws::ListenerEvent;
@@ -40,13 +41,15 @@ use libsignal_net::infra::{EnableDomainFronting, EnforceMinimumTls, OverrideNagl
 use libsignal_net_chat::api::backups::BackupAuthCredentialRejected;
 use libsignal_net_chat::api::{Auth as AuthConn, RequestError, Unauth};
 use libsignal_net_chat::grpc::accounts::{
-    ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters, WebAuthnCreateParameters,
+    AccountIdentity, ConfirmedMfaKey, MfaKeyKind, PendingTotpKey, TotpParameters,
+    WebAuthnCreateParameters,
 };
 use libsignal_net_chat::grpc::backups::{
     CopyBackupMediaFailure, CopyBackupMediaItem, CopyBackupMediaOutcome, DeleteBackupMediaItem,
     MediaBackupInfo, MessageBackupInfo,
 };
 use libsignal_net_chat::grpc::keys::PreKeyCounts;
+use libsignal_net_chat::grpc::profiles::AvatarCdnUrlValidationConfig;
 use libsignal_net_chat::stream_util::{
     BulkPolledStream, BulkPolledStreamChunk, BulkPolledStreamTerminationReason,
 };
@@ -115,6 +118,7 @@ enum MaybeChatConnection {
         runtime: tokio::runtime::Handle,
         pending: AsyncMutex<chat::PendingChatConnection>,
         grpc_overrides: HashMap<&'static str, chat::GrpcOverride>,
+        offer_compression_for_key_transparency: bool,
     },
     TemporarilyEvicted,
 }
@@ -139,6 +143,8 @@ impl UnauthenticatedChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides,
+                offer_compression_for_key_transparency: connection_manager
+                    .offer_compression_for_key_transparency(),
             }
             .into(),
         })
@@ -246,6 +252,8 @@ impl AuthenticatedChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides,
+                offer_compression_for_key_transparency: connection_manager
+                    .offer_compression_for_key_transparency(),
             }
             .into(),
         })
@@ -333,6 +341,7 @@ impl ProvisioningChatConnection {
                 runtime: tokio::runtime::Handle::current(),
                 pending: pending.into(),
                 grpc_overrides: Default::default(),
+                offer_compression_for_key_transparency: false,
             }
             .into(),
         })
@@ -405,6 +414,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 runtime: _,
                 pending,
                 grpc_overrides: _,
+                offer_compression_for_key_transparency: _,
             } => pending.lock().await.disconnect().await,
             MaybeChatConnection::TemporarilyEvicted => {
                 unreachable!("unobservable state");
@@ -422,6 +432,7 @@ impl<C: AsRef<tokio::sync::RwLock<MaybeChatConnection>> + Sync> BridgeChatConnec
                 runtime: _,
                 pending,
                 grpc_overrides: _,
+                offer_compression_for_key_transparency: _,
             } => pending.blocking_lock().connection_info(),
             MaybeChatConnection::TemporarilyEvicted => unreachable!("unobservable state"),
         }
@@ -453,12 +464,13 @@ pub(crate) async fn connect_registration_chat(
         tokio_runtime.clone(),
         pending,
         Default::default(),
+        false,
         Box::new(listener),
     )))
 }
 
 fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::EventListener) {
-    let (tokio_runtime, pending, grpc_overrides) =
+    let (tokio_runtime, pending, grpc_overrides, offer_compression_for_key_transparency) =
         match std::mem::replace(connection, MaybeChatConnection::TemporarilyEvicted) {
             MaybeChatConnection::Running(chat_connection) => {
                 *connection = MaybeChatConnection::Running(chat_connection);
@@ -468,7 +480,13 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::Event
                 runtime,
                 pending,
                 grpc_overrides,
-            } => (runtime, pending, grpc_overrides),
+                offer_compression_for_key_transparency,
+            } => (
+                runtime,
+                pending,
+                grpc_overrides,
+                offer_compression_for_key_transparency,
+            ),
             MaybeChatConnection::TemporarilyEvicted => panic!("should be a temporary state"),
         };
 
@@ -476,6 +494,7 @@ fn init_listener(connection: &mut MaybeChatConnection, listener: chat::ws::Event
         tokio_runtime,
         pending.into_inner(),
         grpc_overrides,
+        offer_compression_for_key_transparency,
         listener,
     ))
 }
@@ -489,8 +508,15 @@ impl FakeChatConnection {
         grpc_overrides: impl IntoIterator<Item = &'static str>,
         alerts: impl IntoIterator<Item = &'a str>,
     ) -> (Self, FakeChatRemote) {
-        let (inner, remote) =
-            ChatConnection::new_fake(tokio_runtime, listener, grpc_overrides, alerts);
+        let (inner, remote) = ChatConnection::new_fake(
+            tokio_runtime,
+            listener,
+            chat::fake::FakeChatOptions {
+                grpc_overrides: grpc_overrides.into_iter().collect(),
+                offer_compression_for_key_transparency: false,
+                alerts: alerts.into_iter().collect(),
+            },
+        );
         (Self(inner), remote)
     }
 
@@ -871,6 +897,35 @@ pub enum UserBasedSendAuthorizationKind {
 }
 
 #[derive(BridgedAsValue)]
+#[bridge(arg = false)]
+pub struct BridgeAccountIdentity {
+    pub aci: Aci,
+    pub pni: Option<Pni>,
+    pub e164: Option<String>,
+    pub username_hash: Option<Vec<u8>>,
+    pub username_link_handle: Option<uuid::Uuid>,
+}
+
+impl From<AccountIdentity> for BridgeAccountIdentity {
+    fn from(value: AccountIdentity) -> Self {
+        let AccountIdentity {
+            aci,
+            pni,
+            e164,
+            username_hash,
+            username_link_handle,
+        } = value;
+        Self {
+            aci,
+            pni,
+            e164: e164.map(|e164| e164.to_string()),
+            username_hash: username_hash.map(Vec::from),
+            username_link_handle,
+        }
+    }
+}
+
+#[derive(BridgedAsValue)]
 #[bridge(jni_nice_type = "org.signal.libsignal.net.CopyBackupMediaItem")]
 pub struct BridgeCopyBackupMediaItem {
     pub source_attachment_cdn: i32,
@@ -1179,6 +1234,12 @@ impl From<DeleteBackupMediaItem> for BridgeDeleteBackupMediaItem {
     }
 }
 
+bridge_as_handle!(
+    AvatarCdnUrlValidationConfig,
+    swift_type = "AvatarCdnUrlValidationConfig",
+    jni_class = "org.signal.libsignal.net.AvatarCdnUrlValidationConfig",
+);
+
 #[derive(BridgedAsValue)]
 #[bridge(arg = false)]
 pub struct DeleteBackupMediaNextChunk {
@@ -1203,8 +1264,127 @@ pub mod remote_derives {
     use libsignal_core::DeviceId;
     use libsignal_net_chat::api::S3UploadForm;
     use libsignal_net_chat::grpc::payments::{Currency, CurrencyConversions};
+    use libsignal_net_chat::grpc::profiles::{
+        BadgeId, CdnUrl, PaymentAddress, Profile as ActualProfile, ProfileDataHash, ProfileEtag,
+    };
 
     use super::*;
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::profiles::UnauthProfileAuthorization,
+        ffi_nice_type = "UnauthProfileAuthorization",
+    )]
+    #[allow(unused)]
+    enum UnauthProfileAuthorization {
+        AccessKey([u8; 16]),
+        GroupSend(::zkgroup::groups::GroupSendFullToken),
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[bridge(
+        arg = false,
+        ffi_nice_type = "FetchedProfile",
+        jni_nice_type = "org.signal.libsignal.net.FetchedProfile"
+    )]
+    #[structural_from(libsignal_net_chat::grpc::profiles::FetchedProfile)]
+    pub struct FetchedProfile {
+        pub profile: Profile,
+        pub etag: Option<ProfileEtag>,
+        pub v2_data_hash: Option<ProfileDataHash>,
+        pub identity_key: IdentityKey,
+        pub unidentified_access_key_fingerprint: Option<[u8; 32]>,
+        pub unrestricted_unidentified_access: bool,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength,
+        ffi_nice_type = "ProfileFieldWithMaxLength",
+        jni_nice_type = "org.signal.libsignal.net.ProfileFieldWithMaxLength",
+    )]
+    #[allow(unused)]
+    enum ProfileFieldWithMaxLength {
+        GivenName,
+        FamilyName,
+        About,
+        AboutEmoji,
+        Avatar,
+        PaymentAddress,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(jni_nice_type = "org.signal.libsignal.net.ProfileValidationError")]
+    pub enum ProfileValidationErrorInternal {
+        FieldTooLong {
+            field: libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength,
+            len: i32,
+            max_len: i32,
+        },
+        AvatarUrlInvalid,
+    }
+    impl From<libsignal_net_chat::grpc::profiles::ProfileValidationError>
+        for ProfileValidationErrorInternal
+    {
+        fn from(value: libsignal_net_chat::grpc::profiles::ProfileValidationError) -> Self {
+            match value {
+                libsignal_net_chat::grpc::profiles::ProfileValidationError::FieldTooLong {
+                    field,
+                    len,
+                    max_len,
+                } => Self::FieldTooLong {
+                    field,
+                    len: len.try_into().expect("fits in i32"),
+                    max_len: max_len.try_into().expect("fits in i32"),
+                },
+                libsignal_net_chat::grpc::profiles::ProfileValidationError::AvatarUrlInvalid => {
+                    Self::AvatarUrlInvalid
+                }
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(ActualProfile)]
+    #[bridge(
+        ffi_nice_type = "Profile",
+        jni_nice_type = "org.signal.libsignal.net.Profile"
+    )]
+    pub struct Profile {
+        pub given_name: String,
+        pub family_name: String,
+        pub about: String,
+        pub about_emoji: String,
+        pub avatar: Option<CdnUrl>,
+        pub phone_number_sharing: Option<bool>,
+        pub payment_address: Option<PaymentAddress>,
+        pub badge_ids: BridgeVec<BadgeId>,
+    }
+    impl From<Profile> for ActualProfile {
+        fn from(
+            Profile {
+                given_name,
+                family_name,
+                about,
+                about_emoji,
+                avatar,
+                phone_number_sharing,
+                payment_address,
+                badge_ids,
+            }: Profile,
+        ) -> Self {
+            Self {
+                given_name,
+                family_name,
+                about,
+                about_emoji,
+                avatar,
+                phone_number_sharing,
+                payment_address,
+                badge_ids: badge_ids.0,
+            }
+        }
+    }
 
     #[derive(BridgedAsValue)]
     #[bridge(arg = false)]
@@ -1228,6 +1408,53 @@ pub mod remote_derives {
         pub currencies: BridgeVec<CurrencyInternal>,
     }
 
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        remote = libsignal_net_grpc::proto::chat::common::BadgeSvg,
+        ffi_nice_type = "BadgeSvg",
+        jni_nice_type = "org.signal.libsignal.net.BadgeSvg",
+    )]
+    #[allow(unused)]
+    struct BadgeSvg {
+        light: String,
+        dark: String,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[bridge(
+        ffi_nice_type = "Badge",
+        jni_nice_type = "org.signal.libsignal.net.Badge"
+    )]
+    #[structural_from(libsignal_net_grpc::proto::chat::common::Badge)]
+    pub struct Badge {
+        pub id: String,
+        pub category: String,
+        pub name: String,
+        pub description: String,
+        pub sprites6: BridgeVec<String>,
+        pub svg: String,
+        pub svgs: BridgeVec<libsignal_net_chat::grpc::remote_configuration::BadgeSvg>,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(
+        ffi_nice_type = "TaggedBadges",
+        jni_nice_type = "org.signal.libsignal.net.TaggedBadges"
+    )]
+    pub struct TaggedBadges {
+        pub badges: HashMap<String, Badge>,
+        pub etag: Vec<u8>,
+    }
+    impl From<libsignal_net_chat::grpc::remote_configuration::TaggedBadges> for TaggedBadges {
+        fn from(
+            libsignal_net_chat::grpc::remote_configuration::TaggedBadges{ badges, etag }: libsignal_net_chat::grpc::remote_configuration::TaggedBadges,
+        ) -> Self {
+            TaggedBadges {
+                badges: badges.into_iter().map(|(k, v)| (k, v.into())).collect(),
+                etag,
+            }
+        }
+    }
     #[derive(BridgedAsValue)]
     #[bridge(
         remote = libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel,

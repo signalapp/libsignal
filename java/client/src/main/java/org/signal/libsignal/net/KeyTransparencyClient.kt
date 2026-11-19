@@ -17,6 +17,7 @@ import org.signal.libsignal.keytrans.VerificationFailedException
 import org.signal.libsignal.net.KeyTransparency.CheckMode
 import org.signal.libsignal.protocol.IdentityKey
 import org.signal.libsignal.protocol.ServiceId
+import org.signal.libsignal.usernames.UsernameHash
 
 /**
  * Typed API to access the key transparency subsystem using an existing unauthenticated chat
@@ -92,7 +93,8 @@ public class KeyTransparencyClient internal constructor(
    * @param e164 string representation of an E.164 number associated with the account. Optional.
    * @param unidentifiedAccessKey unidentified access key for the account. This parameter has the
    *   same optionality as the E.164 parameter.
-   * @param usernameHash hash of the username associated with the account. Optional.
+   * @param usernameHash hash of the username associated with the account, as computed by
+   *   [org.signal.libsignal.usernames.Username.getHash]. Optional.
    * @param store local persistent storage for key transparency-related data, such as the latest
    *   tree heads and account monitoring data. It will be queried for data before performing the
    *   server request and updated with the latest information from the server response if it
@@ -106,7 +108,7 @@ public class KeyTransparencyClient internal constructor(
     aciIdentityKey: IdentityKey,
     e164: String?,
     unidentifiedAccessKey: ByteArray?,
-    usernameHash: ByteArray?,
+    usernameHash: UsernameHash?,
     store: Store,
   ): CompletableFuture<RequestResult<Unit, KeyTransparencyException>> =
     liftExceptions {
@@ -123,7 +125,7 @@ public class KeyTransparencyClient internal constructor(
                 identityKeyGuard.nativeHandle(),
                 e164,
                 unidentifiedAccessKey,
-                usernameHash,
+                usernameHash?.internalContentsForJNI,
                 // Technically this is a required parameter, but passing null
                 // to generate the error on the Rust side.
                 store.getAccountData(aci).orElse(null),

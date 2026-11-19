@@ -112,6 +112,7 @@ const config = defineConfig(
       'prefer-template': 'error',
 
       '@typescript-eslint/no-require-imports': 'error',
+      '@typescript-eslint/no-namespace': 'off',
       '@typescript-eslint/consistent-type-assertions': 'error',
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/restrict-template-expressions': 'off',
@@ -174,8 +175,8 @@ const config = defineConfig(
     // Ignores in their own config object are treated as global.
     {
       ignores: [
-        'build/**/*',
         'dist/**/*',
+        'platform/**/*',
         '**/eslint.config.js',
         '**/Native.js',
         '**/zkgroup.js',

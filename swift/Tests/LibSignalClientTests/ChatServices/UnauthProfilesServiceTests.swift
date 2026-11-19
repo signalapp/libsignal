@@ -75,6 +75,122 @@ class UnauthProfilesServiceTests: UnauthChatServiceTestBase<any UnauthProfilesSe
         )
 
     }
+
+    func testExtendAvatarTtl() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_ExtendAvatarTtlTests(),
+            invoke: { api, args in
+                try await api.extendAvatarTtl(
+                    credential: args,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .found(let url):
+                    XCTAssertEqual(url, try actual.get())
+                case .notFound:
+                    XCTAssertEqual(nil, try actual.get())
+                case .invalidCredentials:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidAvatarUploadCredentialPresentation(_) {
+                    }
+                }
+            }
+        )
+    }
+
+    func testDeleteAvatar() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_DeleteAvatarTests(),
+            invoke: { api, args in
+                try await api.deleteAvatar(
+                    credential: args,
+                )
+            },
+            check: { expected, actual in
+                if expected {
+                    try actual.get()
+                } else {
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidAvatarUploadCredentialPresentation(_) {
+                    }
+                }
+            }
+        )
+    }
+
+    func testGetAvatarUploadForm() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetAvatarUploadFormTests(),
+            invoke: { api, args in
+                try await api.getAvatarUploadForm(
+                    credential: args.credential,
+                    uploadLength: args.uploadLength,
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .invalidCredential:
+                    do {
+                        _ = try actual.get()
+                        XCTFail("Expected exception")
+                    } catch SignalError.invalidAvatarUploadCredentialPresentation(_) {
+                    }
+                case .success(let form):
+                    XCTAssertEqual(form, try actual.get())
+                }
+            }
+        )
+    }
+
+    func testGetProfile() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_UnauthGetProfileTests(),
+            invoke: { api, args in
+                let inner = args.inner
+                return try await api.getProfile(
+                    aci: inner.aci,
+                    profileKey: inner.profileKey,
+                    auth: args.auth,
+                    etag: inner.etag,
+                    avatarCdnUrlValidationConfig: try AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+                        args.inner.avatarCdnConfigValidUrls
+                    )
+                )
+            },
+            check: { expected, actual in
+                switch expected {
+                case .failure(let err):
+                    switch err {
+                    case .profileDecodeError(_):
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.profileCantBeDecoded(_) {
+                        }
+                    case .profileNotFound:
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.profileNotFound(_) {
+                        }
+                    case .failedUnidentifiedAuthorization:
+                        do {
+                            _ = try actual.get()
+                            XCTFail("Expected exception")
+                        } catch SignalError.requestUnauthorized(_) {
+                        }
+                    }
+                case .success(let fetchedProfile):
+                    XCTAssertEqual(fetchedProfile, try actual.get())
+                }
+            }
+        )
+    }
 }
 
 #endif

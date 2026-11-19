@@ -1,7 +1,10 @@
 {
   "name": "@signalapp/libsignal-client",
-  "version": "0.106.2",
-  "repository": "github:signalapp/libsignal",
+  "version": "0.108.2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/signalapp/libsignal.git"
+  },
   "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/index.js",
@@ -23,7 +26,7 @@
   "scripts": {
     "build": "python3 build_node_bridge.py",
     "build-with-debug-level-logs": "python3 build_node_bridge.py --debug-level-logs",
-    "clean": "rimraf dist build prebuilds",
+    "clean": "rimraf dist build prebuilds platform/*/prebuilds",
     "format": "p() { prettier ${@:- --write} '**/*.{css,js,json,md,scss,ts,tsx}'; }; p",
     "format-check": "p() { prettier ${@:- --check} '**/*.{css,js,json,md,scss,ts,tsx}'; }; p",
     "format-stdin": "prettier",
@@ -35,7 +38,13 @@
   "dependencies": {
     "@signalapp/types": "^0.3.0",
     "node-gyp-build": "^4.8.0",
-    "type-fest": "^5.5.0"
+    "type-fest": "^5.5.0",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@signalapp/libsignal-client-darwin": "workspace:*",
+    "@signalapp/libsignal-client-linux": "workspace:*",
+    "@signalapp/libsignal-client-win32": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",

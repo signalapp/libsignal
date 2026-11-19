@@ -8,12 +8,11 @@ use std::convert::Infallible;
 use std::time::{Duration, SystemTime};
 
 use libsignal_net_grpc::proto::chat::errors::{FailedPrecondition, NotFound};
-use libsignal_net_grpc::proto::chat::purchase::PaymentMethod as GrpcPaymentMethod;
 use libsignal_net_grpc::proto::chat::purchase::product_configuration_client::ProductConfigurationClient;
 use libsignal_net_grpc::proto::chat::purchase::subscriptions_client::SubscriptionsClient;
 use libsignal_net_grpc::proto::chat::purchase::{
     GetConfigurationRequest, GetConfigurationResponse, GetReceiptCredentialRequest,
-    get_receipt_credential_response,
+    PaymentMethod as GrpcPaymentMethod, get_receipt_credential_response,
 };
 use zkgroup::receipts::{
     ReceiptCredential, ReceiptCredentialRequestContext, ReceiptCredentialResponse,

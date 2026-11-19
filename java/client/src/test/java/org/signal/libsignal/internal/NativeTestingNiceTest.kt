@@ -21,6 +21,7 @@ import java.util.UUID
 import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -437,6 +438,15 @@ class NativeTestingNiceTest {
     )
   }
 
+  @Test
+  fun testOptionBool() =
+    testConversion(
+      sequenceOf(null, true, false),
+      toString = { it?.toString() ?: "" },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionBool_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionBool_identity,
+    )
+
   val floatsToTest: Sequence<Float> =
     sequenceOf(
       0.0f,
@@ -504,6 +514,26 @@ class NativeTestingNiceTest {
       nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalBytes_identity,
       equality = java.util.Arrays::equals,
     )
+
+  @Test
+  fun testOptionalData32() {
+    testConversion(
+      sequenceOf(null, Random.nextBytes(32)),
+      toString = {
+        if (it == null) {
+          "%"
+        } else {
+          Base64.encode(it)
+        }
+      },
+      nativeToString = NativeTestingNice::TESTING_conversion_OptionalData32_to_string,
+      nativeIdentity = NativeTestingNice::TESTING_conversion_OptionalData32_identity,
+      equality = java.util.Arrays::equals,
+    )
+    assertFailsWith<IllegalArgumentException> {
+      NativeTestingNice.TESTING_conversion_OptionalData32_to_string(ByteArray(31))
+    }
+  }
 
   @Test
   fun testReturnedError() {

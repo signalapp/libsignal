@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 #
 
+import errno
 import hashlib
 import mmap
 import optparse
@@ -59,8 +60,49 @@ def maybe_dump_debug_symbols(*, src_path: str, src_checksum_path: str, dst_path:
     with open(dst_checksum_path, 'w') as f:
         f.write(checksum)
 
-    print('Dumping debug symbols to %s' % dst_path)
+    print(f'Dumping debug symbols to {dst_path}')
     subprocess.check_call([dump_syms, src_path, '-o', dst_path])
+
+
+def copy_to_prebuild_dir(
+    *,
+    libs_in: str,
+    lib_basename: str,
+    lib_format: str,
+    debug_format: str,
+    debug_format_for_checksum: str,
+    prebuild_dir: str,
+    is_debug: bool,
+    allow_debug_level_logs: bool,
+    node_os_name: str,
+    node_arch: str,
+    objcopy: Optional[str]
+) -> None:
+    src_path = os.path.join(libs_in, lib_format.format(lib_basename))
+    if not os.access(src_path, os.R_OK):
+        raise FileNotFoundError(errno.ENOENT, 'did not find generated library', src_path)
+
+    if not allow_debug_level_logs:
+        check_for_debug_level_logs(src_path)
+    check_for_attest_testutil(src_path)
+
+    platform_prebuild_dir = os.path.join(prebuild_dir, f'{node_os_name}-{node_arch}')
+    prebuild_path = os.path.join(platform_prebuild_dir, '@signalapp+libsignal-client.node')
+    print(f'Copying {src_path} to {prebuild_path}')
+    os.makedirs(platform_prebuild_dir, exist_ok=True)
+    if objcopy and not is_debug:
+        subprocess.check_call([objcopy, '-S', src_path, prebuild_path])
+    else:
+        shutil.copyfile(src_path, prebuild_path)
+
+    if not is_debug:
+        debug_info_filename = f'libsignal_client_{node_os_name}_{node_arch}-debuginfo.sym'
+        maybe_dump_debug_symbols(
+            src_path=os.path.join(libs_in, debug_format.format(lib_basename)),
+            src_checksum_path=os.path.join(libs_in, debug_format_for_checksum.format(lib_basename)),
+            dst_path=os.path.join(prebuild_dir, debug_info_filename),
+            dst_checksum_path=os.path.join(prebuild_dir, debug_info_filename + '.sha256'),
+        )
 
 
 def main(args: Optional[List[str]] = None) -> int:
@@ -70,11 +112,9 @@ def main(args: Optional[List[str]] = None) -> int:
     if sys.platform == 'win32':
         args = shlex.split(' '.join(args), posix=0)
 
-    print("Invoked with '%s'" % (' '.join(args)))
+    print(f"Invoked with '{' '.join(args)}'")
 
     parser = optparse.OptionParser()
-    parser.add_option('--out-dir', '-o', default=None, metavar='DIR',
-                      help='specify destination dir (default build/$CONFIGURATION_NAME)')
     parser.add_option('--configuration', '-C', default='Release', metavar='CONFIG',
                       help='specify build configuration (Release or Debug)')
     # Luckily, Python's sys.platform matches Node's OS names for our supported targets.
@@ -86,8 +126,6 @@ def main(args: Optional[List[str]] = None) -> int:
                       help='specify cargo target')
     parser.add_option('--node-arch', '--arch', default=None,
                       help='specify node arch (x64, ia32, arm64)')
-    parser.add_option('--copy-to-prebuilds', action='store_true',
-                      help='copy library to prebuilds/$OS-$ARCH when finished')
     parser.add_option('--debug-level-logs', action='store_true',
                       help='include log levels below INFO (default for Debug builds)')
 
@@ -98,7 +136,7 @@ def main(args: Optional[List[str]] = None) -> int:
         print('ERROR: --configuration is required')
         return 1
     elif configuration_name not in ['Release', 'Debug']:
-        print("ERROR: Unknown value for --configuration '%s'" % (configuration_name))
+        print(f"ERROR: Unknown value for --configuration '{configuration_name}'")
         return 1
 
     node_os_name = options.os_name
@@ -125,8 +163,6 @@ def main(args: Optional[List[str]] = None) -> int:
         }.get(node_os_name, node_os_name)
         cargo_target = f'{cargo_arch}-{cargo_target_suffix}'
 
-    out_dir = (options.out_dir or os.path.join('build', configuration_name)).strip('"')
-
     # Fetch all dependencies first, so we can check information about them in constructing our
     # command lines.
     subprocess.check_call(['cargo', 'fetch'])
@@ -143,7 +179,7 @@ def main(args: Optional[List[str]] = None) -> int:
         cmdline.append('--release')
     else:
         allow_debug_level_logs = True
-    print("Running '%s'" % (' '.join(cmdline)))
+    print(f"Running '{' '.join(cmdline)}'")
 
     cargo_env = os.environ.copy()
     cargo_env['RUSTFLAGS'] = cargo_env.get('RUSTFLAGS') or ''
@@ -215,8 +251,8 @@ def main(args: Optional[List[str]] = None) -> int:
         debug_format_for_checksum = os.path.join(debug_format, 'Contents', 'Resources', 'DWARF', lib_format)
 
         # macOS has a nice place for us to stash our version number.
-        if 'npm_package_version' in cargo_env:
-            cargo_env['RUSTFLAGS'] += ' -Clink-arg=-Wl,-current_version,%s' % cargo_env['npm_package_version']
+        if version_number := cargo_env.get('npm_package_version'):
+            cargo_env['RUSTFLAGS'] += f' -Clink-arg=-Wl,-current_version,{version_number}'
 
     else:
         # Assume Linux-like.
@@ -226,11 +262,12 @@ def main(args: Optional[List[str]] = None) -> int:
         debug_format = 'lib{}.so'
         debug_format_for_checksum = debug_format
 
-        objcopy = shutil.which('%s-linux-gnu-objcopy' % cargo_target.split('-')[0]) or 'objcopy'
+        cargo_arch = cargo_target.split('-')[0]
+        objcopy = shutil.which(f'{cargo_arch}-linux-gnu-objcopy') or 'objcopy'
 
     print('with environment:')
     for (k, v) in cargo_env.items():
-        print('%s=%s' % (k, v))
+        print(f'{k}={v}')
     print('', flush=True)
 
     subprocess.check_call(cmdline, env=cargo_env)
@@ -239,40 +276,25 @@ def main(args: Optional[List[str]] = None) -> int:
                            cargo_target,
                            configuration_name.lower())
 
-    src_path = os.path.join(libs_in, lib_format.format('signal_node'))
-    if os.access(src_path, os.R_OK):
-        if not allow_debug_level_logs:
-            check_for_debug_level_logs(src_path)
-        check_for_attest_testutil(src_path)
+    # If we have a dedicated platform package, put the build there.
+    prebuild_dir = 'prebuilds'
+    platform_package_dir = os.path.join('platform', node_os_name)
+    if os.path.exists(platform_package_dir):
+        prebuild_dir = os.path.join(platform_package_dir, prebuild_dir)
 
-        dst_base = 'libsignal_client_%s_%s' % (node_os_name, node_arch)
-
-        dst_path = os.path.join(out_dir, dst_base + '.node')
-        print('Copying %s to %s' % (src_path, dst_path))
-        os.makedirs(out_dir, exist_ok=True)
-        if objcopy and configuration_name != 'Debug':
-            subprocess.check_call([objcopy, '-S', src_path, dst_path])
-        else:
-            shutil.copyfile(src_path, dst_path)
-
-        if configuration_name != 'Debug':
-            maybe_dump_debug_symbols(
-                src_path=os.path.join(libs_in, debug_format.format('signal_node')),
-                src_checksum_path=os.path.join(libs_in, debug_format_for_checksum.format('signal_node')),
-                dst_path=os.path.join(out_dir, dst_base + '-debuginfo.sym'),
-                dst_checksum_path=os.path.join(out_dir, dst_base + '-debuginfo.sha256'),
-            )
-
-        if options.copy_to_prebuilds:
-            prebuild_dir = os.path.join('prebuilds', f'{node_os_name}-{node_arch}')
-            prebuild_path = os.path.join(prebuild_dir, '@signalapp+libsignal-client.node')
-            print('Copying %s to %s' % (dst_path, prebuild_path))
-            os.makedirs(prebuild_dir, exist_ok=True)
-            # We copy from dst_path in the build directory because it's already gone through an objcopy pass
-            shutil.copyfile(dst_path, prebuild_path)
-    else:
-        print('ERROR: did not find generated library')
-        return 1
+    copy_to_prebuild_dir(
+        libs_in=libs_in,
+        lib_basename='signal_node',
+        lib_format=lib_format,
+        debug_format=debug_format,
+        debug_format_for_checksum=debug_format_for_checksum,
+        prebuild_dir=prebuild_dir,
+        is_debug=(configuration_name == 'Debug'),
+        allow_debug_level_logs=allow_debug_level_logs,
+        node_os_name=node_os_name,
+        node_arch=node_arch,
+        objcopy=objcopy,
+    )
 
     return 0
 

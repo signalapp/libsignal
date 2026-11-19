@@ -17,17 +17,21 @@ use libsignal_net::infra::errors::TransportConnectError;
 use libsignal_net::infra::ws::WebSocketConnectError;
 use libsignal_net_chat::api::RateLimitChallenge;
 use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFormFailure};
-use libsignal_net_chat::api::keys::GetPreKeysFailure;
 use libsignal_net_chat::api::keytrans::Error as KeyTransError;
 use libsignal_net_chat::api::messages::{MismatchedDeviceError, UploadTooLarge};
 use libsignal_net_chat::api::purchase::ChargeFailure;
 use libsignal_net_chat::api::registration::{RegistrationLock, VerificationCodeNotDeliverable};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::keys::GetPreKeysFailure;
+use libsignal_net_chat::grpc::profiles::{
+    AuthGetProfileError, SetProfileError, UnauthGetProfileError,
+};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
 use signal_crypto::Error as SignalCryptoError;
 use usernames::{UsernameError, UsernameLinkError};
+use zkgroup::profiles::ProfileKeyVersion;
 use zkgroup::{ZkGroupDeserializationFailure, ZkGroupVerificationFailure};
 
 use super::{FutureCancelled, NullPointerError, UnexpectedPanic};
@@ -170,6 +174,15 @@ pub enum SignalErrorCode {
     ProfileNotFound = 239,
 
     ReceiptAlreadyRedeemed = 240,
+    InvalidAvatarUploadCredentialPresentation = 241,
+    AccountMissingZkCredentialKey = 242,
+
+    SetProfileInvalidProfile = 243,
+    SetProfileExpectedDataWriteConflict = 244,
+    SetProfileExpectedVersionWriteConflict = 245,
+    SetProfilePaymentsForbiddenInRegion = 246,
+
+    ProfileCantBeDecoded = 247,
 }
 
 pub trait UpcastAsAny {
@@ -236,6 +249,15 @@ pub trait FfiError: UpcastAsAny + fmt::Debug + Send + 'static {
         Err(WrongErrorKind)
     }
     fn provide_charge_failure(&self) -> Result<Option<ChargeFailure>, WrongErrorKind> {
+        Err(WrongErrorKind)
+    }
+    fn provide_profile_validation_error(
+        &self,
+    ) -> Result<crate::net::chat::remote_derives::ProfileValidationErrorInternal, WrongErrorKind>
+    {
+        Err(WrongErrorKind)
+    }
+    fn provide_current_profile_version(&self) -> Result<Option<ProfileKeyVersion>, WrongErrorKind> {
         Err(WrongErrorKind)
     }
 }
@@ -879,7 +901,7 @@ impl IntoFfiError for BackupAuthCredentialRejected {
     }
 }
 
-impl IntoFfiError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+impl IntoFfiError for GetPreKeysFailure {
     fn into_ffi_error(self) -> impl Into<SignalFfiError> {
         let code = match self {
             GetPreKeysFailure::Unauthorized => SignalErrorCode::RequestUnauthorized,
@@ -1531,6 +1553,103 @@ where
         match self {
             Self::Request(e) => SignalFfiError::from(e),
             Self::Argument(e) => SignalFfiError::from(e),
+        }
+    }
+}
+
+impl IntoFfiError
+    for libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation
+{
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            SignalErrorCode::InvalidAvatarUploadCredentialPresentation,
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            SignalErrorCode::AccountMissingZkCredentialKey,
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for AuthGetProfileError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            match self {
+                AuthGetProfileError::ProfileNotFound => SignalErrorCode::ProfileNotFound,
+                AuthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                    SignalErrorCode::ProfileCantBeDecoded
+                }
+            },
+            self.to_string(),
+        )
+    }
+}
+
+impl IntoFfiError for UnauthGetProfileError {
+    fn into_ffi_error(self) -> impl Into<SignalFfiError> {
+        SimpleError::new(
+            match self {
+                UnauthGetProfileError::ProfileNotFound => SignalErrorCode::ProfileNotFound,
+                UnauthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                    SignalErrorCode::ProfileCantBeDecoded
+                }
+                UnauthGetProfileError::FailedUnidentifiedAuthorization => {
+                    SignalErrorCode::RequestUnauthorized
+                }
+            },
+            self.to_string(),
+        )
+    }
+}
+
+impl FfiError for SetProfileError {
+    fn describe(&self) -> Cow<'_, str> {
+        self.to_string().into()
+    }
+
+    fn code(&self) -> SignalErrorCode {
+        match self {
+            SetProfileError::InvalidProfile(_) => SignalErrorCode::SetProfileInvalidProfile,
+            SetProfileError::ExpectedDataWriteConflict => {
+                SignalErrorCode::SetProfileExpectedDataWriteConflict
+            }
+            SetProfileError::ExpectedVersionWriteConflict { .. } => {
+                SignalErrorCode::SetProfileExpectedVersionWriteConflict
+            }
+            SetProfileError::PaymentsForbiddenInRegion => {
+                SignalErrorCode::SetProfilePaymentsForbiddenInRegion
+            }
+            SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles => {
+                SignalErrorCode::InvalidArgument
+            }
+        }
+    }
+
+    fn provide_current_profile_version(&self) -> Result<Option<ProfileKeyVersion>, WrongErrorKind> {
+        if let SetProfileError::ExpectedVersionWriteConflict {
+            current_profile_version,
+        } = self
+        {
+            Ok(*current_profile_version)
+        } else {
+            Err(WrongErrorKind)
+        }
+    }
+
+    fn provide_profile_validation_error(
+        &self,
+    ) -> Result<crate::net::chat::remote_derives::ProfileValidationErrorInternal, WrongErrorKind>
+    {
+        if let SetProfileError::InvalidProfile(e) = self {
+            Ok((*e).into())
+        } else {
+            Err(WrongErrorKind)
         }
     }
 }

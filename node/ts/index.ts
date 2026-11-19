@@ -779,6 +779,13 @@ export abstract class IdentityKeyStore {
     return new IdentityKeyPair(privKey.getPublicKey(), privKey);
   }
   abstract getLocalRegistrationId(): Promise<number>;
+  /**
+   * Saves `key` as the identity for `name`, which is then considered trusted.
+   *
+   * libsignal calls this after every successful decrypt on the active session, and after
+   * every encrypt, even when `key` is unchanged. Implementations that track the identity of
+   * the last received message (see `recordReceivedIdentity`) should update it here too.
+   */
   abstract saveIdentity(
     name: ProtocolAddress,
     key: PublicKey
@@ -789,6 +796,23 @@ export abstract class IdentityKeyStore {
     direction: Direction
   ): Promise<boolean>;
   abstract getIdentity(name: ProtocolAddress): Promise<PublicKey | null>;
+  /**
+   * Records that a message from `name` was just decrypted under `key` on an archived session.
+   *
+   * After the trust check, each successful decrypt calls exactly one of `saveIdentity` and
+   * this method: `saveIdentity` when the message was decrypted on the active session or
+   * established a new session, and this method when it was decrypted on an existing archived
+   * session. An archived session may belong to an identity that has since been replaced, so
+   * `key` can differ from the saved identity.
+   *
+   * The default implementation does nothing.
+   */
+  recordReceivedIdentity(
+    _name: ProtocolAddress,
+    _key: PublicKey
+  ): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 export abstract class PreKeyStore {
@@ -1061,6 +1085,15 @@ function bridgeIdentityKeyStore(
         ProtocolAddress._fromNativeHandle(name)
       );
       return key ? key._nativeHandle : null;
+    },
+    async recordReceivedIdentityKey(
+      name: Native.ProtocolAddress,
+      key: Native.PublicKey
+    ): Promise<void> {
+      return store.recordReceivedIdentity(
+        ProtocolAddress._fromNativeHandle(name),
+        PublicKey._fromNativeHandle(key)
+      );
     },
   };
 }

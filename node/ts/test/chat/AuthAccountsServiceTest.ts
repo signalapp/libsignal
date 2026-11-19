@@ -12,12 +12,15 @@ import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
 import {
   AuthAccountsService,
+  AvatarCdnUrlValidationConfig,
   MFA_KEY_NAME_MAX_LENGTH,
   TokioAsyncContext,
+  ZkCredentialRotationId,
 } from '../../net.js';
 import { SvrKey } from '../../AccountKeys.js';
 import { connectAuth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
+import { ZkCredentialKeyPair } from '../../zkgroup/index.js';
 
 use(chaiAsPromised);
 
@@ -25,6 +28,25 @@ util.initLogger();
 config.truncateThreshold = 0;
 
 describe('AuthAccountsService', () => {
+  describe('getAccountIdentity', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetAccountIdentityTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _req: void,
+        resp: NativeNice.GetAccountIdentityOut
+      ) => {
+        const out = chat.getAccountIdentity({});
+        if (resp === 'missingIdentifiers') {
+          await expect(out).to.eventually.be.rejectedWith(LibSignalErrorBase);
+        } else {
+          expect(await out).to.deep.equal(resp.success);
+        }
+      }
+    );
+  });
+
   describe('deleteAccount', () => {
     defineTestGrpcCases(
       NativeNice.TESTING_DeleteAccountTests(),
@@ -521,5 +543,42 @@ describe('AuthAccountsService', () => {
         expect(await out).to.equal(resp);
       }
     );
+  });
+
+  describe('setZkCredentialKey', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_SetZkCredentialKeyTests(),
+      connectAuth<AuthAccountsService>,
+      async (
+        chat: AuthAccountsService,
+        _: void,
+        resp: [ZkCredentialKeyPair, ZkCredentialRotationId] | null
+      ) => {
+        const out = chat.setZkCredentialKey({
+          rngSeedForTesting: { __deterministicRngSeedForTesting: 0 },
+        });
+        if (resp === null) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.IoError,
+            });
+        } else {
+          expect(await out).to.deep.equal(resp);
+        }
+      }
+    );
+  });
+  describe('AvatarCdnUrlValidationConfig', () => {
+    it('should not throw exceptions for valid inputs', () => {
+      AvatarCdnUrlValidationConfig.fromUrlPrefixes([
+        'https://www.example.com/',
+      ]);
+    });
+    it('should throw exceptions for invalid inputs', () => {
+      expect(() =>
+        AvatarCdnUrlValidationConfig.fromUrlPrefixes([''])
+      ).to.throw();
+    });
   });
 });

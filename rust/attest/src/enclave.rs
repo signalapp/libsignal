@@ -12,7 +12,7 @@ use prost::Message;
 use crate::client_connection::ClientConnection;
 use crate::constants::SGX_TCB_EVALUATION_DATA_NUMBER_MIN;
 use crate::svr2::RaftConfig;
-use crate::{SnowError, client_connection, dcap, proto, snow_resolver};
+use crate::{SnowError, client_connection, dcap, nitro, proto, snow_resolver};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -83,6 +83,20 @@ impl From<prost::DecodeError> for Error {
         Error::AttestationDataError {
             reason: err.to_string(),
         }
+    }
+}
+
+impl From<nitro::NitroError> for AttestationError {
+    fn from(err: nitro::NitroError) -> Self {
+        AttestationError {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<nitro::NitroError> for Error {
+    fn from(err: nitro::NitroError) -> Self {
+        Self::AttestationError(err.into())
     }
 }
 

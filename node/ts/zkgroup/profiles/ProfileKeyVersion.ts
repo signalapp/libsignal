@@ -5,19 +5,25 @@
 
 import type { Bytes } from '@signalapp/types';
 
-import ByteArray from '../internal/ByteArray.js';
-
-export default class ProfileKeyVersion extends ByteArray {
+export default class ProfileKeyVersion {
   private readonly __type?: never;
   static SIZE = 64;
+  private contents: Bytes;
 
   constructor(contents: Bytes | string) {
-    super(
+    this.contents =
       typeof contents === 'string'
         ? new TextEncoder().encode(contents)
-        : contents,
-      ProfileKeyVersion.checkLength(ProfileKeyVersion.SIZE)
-    );
+        : contents;
+    if (this.contents.length !== ProfileKeyVersion.SIZE) {
+      throw new RangeError(
+        `ProfileKeyVersion: expected ${ProfileKeyVersion.SIZE} bytes. Got ${this.contents.length}`
+      );
+    }
+  }
+
+  getContents(): Bytes {
+    return new Uint8Array(this.contents);
   }
 
   toString(): string {

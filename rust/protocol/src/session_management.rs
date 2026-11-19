@@ -250,7 +250,11 @@ pub struct PreKeyDecryptResult {
 /// both retransmitted pre-key messages and messages 1+ of the initial chain,
 /// which all carry the same base key. The peer's identity is always
 /// trust-checked, but only saved for an active session. Messages on existing
-/// archived sessions cannot replace the stored identity.
+/// archived sessions cannot replace the stored identity; they are reported
+/// through [`IdentityKeyStore::record_received_identity`] instead. A new session
+/// always saves, even when it is placed in the archive (which only happens when
+/// its identity matches the active session's). After the trust check, each
+/// receive makes exactly one of the two calls.
 ///
 /// Otherwise this builds a candidate session from the pre-key material,
 /// AEAD-verifies the inner [`SignalMessage`] against the candidate, and only
@@ -348,7 +352,10 @@ async fn message_decrypt_prekey_impl<R: Rng + CryptoRng>(
     //    The PQXDH handshake completed when that session was created, so there
     //    is no new handshake and no pre-key consumption. As on the Whisper
     //    path, trust-check the identity but only save it for an active session.
-    //    An archived session must not roll back a subsequently learned identity.
+    //    An archived session must not roll back a subsequently learned
+    //    identity. Only a session the peer initiated may be matched: an honest
+    //    peer never sends a PreKey message carrying the base key of a session
+    //    we initiated.
     //
     // 2. Fresh — no session for this base key. Build a *candidate* session
     //    (pure: no record mutation, no prekey consumption), AEAD-verify the
@@ -363,6 +370,21 @@ async fn message_decrypt_prekey_impl<R: Rng + CryptoRng>(
         let mut state = session_record
             .get_session(loc)?
             .expect("session present at validated location");
+
+        // A PreKey message naming a session we initiated will never
+        // happen honestly. Reject it.
+        if !tahini::may_match_retransmitted_initiation(&state) {
+            log::warn!(
+                "Rejecting PreKey message from {} referencing a locally initiated session. \
+                     Base key: {}",
+                remote_address,
+                hex::encode(ciphertext.base_key().serialize()),
+            );
+            return Err(SignalProtocolError::InvalidMessage(
+                CiphertextMessageType::PreKey,
+                "PreKey message references a locally initiated session".to_owned(),
+            ));
+        }
 
         // The message's identity key must match the one recorded for this session. (Note that
         // this is a constant-time comparison as long as the keys have the same type: see
@@ -426,12 +448,20 @@ async fn message_decrypt_prekey_impl<R: Rng + CryptoRng>(
                 remote_address.clone(),
             ));
         }
-        if matches!(loc, SessionLocation::Current) {
-            identity_store
-                .save_identity(remote_address, &their_identity_key)
-                .await?;
+        match loc {
+            SessionLocation::Current => {
+                identity_store
+                    .save_identity(remote_address, &their_identity_key)
+                    .await?;
+            }
+            SessionLocation::Archived(_) => {
+                identity_store
+                    .record_received_identity(remote_address, &their_identity_key)
+                    .await?;
+            }
         }
 
+        tahini::on_receive_session_state(&mut state);
         session_record.update_session_state(loc, state)?;
         match loc {
             SessionLocation::Current => tahini::on_receive_active(&mut session_record),
@@ -568,6 +598,9 @@ async fn message_decrypt_prekey_impl<R: Rng + CryptoRng>(
 /// Tries all sessions in the session record. Checks identity key trust
 /// after decryption. Only a receive on the active session saves the identity;
 /// archived sessions may decrypt delayed messages from a retired identity.
+/// A receive on an archived session calls
+/// [`IdentityKeyStore::record_received_identity`] instead, so after the trust
+/// check each receive makes exactly one of the two calls.
 pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     ciphertext: &SignalMessage,
     remote_address: &ProtocolAddress,
@@ -615,6 +648,10 @@ pub async fn message_decrypt_signal<R: Rng + CryptoRng>(
     if result.decrypted_on_active {
         identity_store
             .save_identity(remote_address, &their_identity_key)
+            .await?;
+    } else {
+        identity_store
+            .record_received_identity(remote_address, &their_identity_key)
             .await?;
     }
 

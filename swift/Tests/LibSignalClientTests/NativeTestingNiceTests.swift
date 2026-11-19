@@ -92,6 +92,22 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testOptionBool() throws {
+        try OptionalArgConverter<IdentityArgConverter<Bool>, SignalOptionalOfbool>.testConversion(
+            items: [nil, true, false],
+            toString: {
+                if let x = $0 {
+                    return "\(x)"
+                } else {
+                    return ""
+                }
+            },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_OptionBool_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_option_bool_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionBool_identity(x: $0) }
+        )
+    }
+    @Test
     func testU8() throws {
         try IdentityArgConverter<UInt8>.testConversion(
             items: UInt8.min...UInt8.max,
@@ -183,10 +199,20 @@ struct NativeTestingNiceTests {
         )
     }
     @Test
+    func testOptionalData32() async throws {
+        try OptionalFixedByteArrayConverter<FixedByteArrayHelper32>.testConversion(
+            items: [nil, Data((0..<32).map { _ in .random(in: 0...255) })],
+            toString: { (item: Data?) in item?.base64EncodedString() ?? "%" },
+            nativeToString: { try NativeTestingNice.TESTING_conversion_OptionalData32_to_string(x: $0) },
+            rawNativeToString: SignalFfi.signal_testing_conversion_optional_data32_to_string,
+            nativeIdentity: { try NativeTestingNice.TESTING_conversion_OptionalData32_identity(x: $0) }
+        )
+    }
+    @Test
     func testBridgeVecData32() throws {
         try ArrayArgConverter<
             FixedByteArrayConverter<FixedByteArrayHelper32>,
-            SignalBorrowedSliceOfc_uchar32
+            SignalBorrowedSliceOfPtrToc_uchar32
         >.testConversion(
             items: (0..<8).map { count in
                 (0..<count).map { _ in Data((0..<32).map { _ in UInt8.random(in: 0...255) }) }

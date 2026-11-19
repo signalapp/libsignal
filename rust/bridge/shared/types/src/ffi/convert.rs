@@ -12,14 +12,15 @@ use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::{ChallengeOption, UploadForm};
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use uuid::Uuid;
-use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
+use zkgroup::{PROFILE_KEY_VERSION_ENCODED_LEN, ZkGroupDeserializationFailure};
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -579,20 +580,6 @@ impl NiceResultConverter for uuid::Uuid {
     }
 }
 
-impl ResultTypeInfo for Option<uuid::Uuid> {
-    type ResultType = OptionalUuid;
-    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        if let Some(uuid) = self {
-            Ok(OptionalUuid {
-                present: true,
-                bytes: *uuid.as_bytes(),
-            })
-        } else {
-            Ok(OptionalUuid::default())
-        }
-    }
-}
-
 /// Implements the nice converters for `ServiceId` and its narrower forms, which all cross the
 /// bridge as Service-Id-FixedWidthBinary. `$swift` is the Swift type the app sees; its converter is
 /// hand-written in NiceBridgingUtils.swift as `<$swift>Converter`.
@@ -676,6 +663,14 @@ impl SimpleArgTypeInfo for libsignal_protocol::Pni {
             .map_err(|_| IllegalArgumentError::new("not a PNI").into())
     }
 }
+
+impl ResultTypeInfo for libsignal_protocol::Pni {
+    type ResultType = libsignal_protocol::ServiceIdFixedWidthBinaryBytes;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        libsignal_protocol::ServiceId::from(self).convert_into()
+    }
+}
+nice_service_id_result_converter!(Pni, "Pni");
 
 fn parse_e164(s: &str) -> SignalFfiResult<libsignal_core::E164> {
     let parsed = s
@@ -820,6 +815,61 @@ zkgroup_serialize_type!(
     "DonationPermitRequestContext"
 );
 zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "ZkCredentialKeyPair"
+);
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredentialPresentation,
+    "AvatarUploadCredentialPresentation"
+);
+zkgroup_serialize_type!(zkgroup::profiles::ProfileKey, "ProfileKey");
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredential,
+    "AvatarUploadCredential"
+);
+
+impl SimpleArgTypeInfo for ProfileKeyVersion {
+    type ArgType = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let raw =
+            <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as SimpleArgTypeInfo>::convert_from(foreign)?;
+        Ok(ProfileKeyVersion::from_hex_bytes(&raw)
+            .map_err(|_| IllegalArgumentError::new("ProfileKeyVersion invalid hex bytes"))?)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let inner = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN]>::register_swift_arg_converter(ctx);
+        SwiftArgConverter {
+            nice_type: "ProfileKeyVersion".into(),
+            converter_type: format!("ProfileKeyVersionArgConverter<{}>", inner.converter_type),
+        }
+    }
+}
+impl ResultTypeInfo for ProfileKeyVersion {
+    type ResultType = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.hex_bytes().convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let inner = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN]>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: "ProfileKeyVersion".into(),
+            converter_type: format!("ProfileKeyVersionReturnConverter<{}>", inner.converter_type),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -912,6 +962,28 @@ impl<const LEN: usize> SimpleArgTypeInfo for Option<&'_ [u8; LEN]> {
     }
 }
 
+impl<const LEN: usize> SimpleArgTypeInfo for Option<[u8; LEN]> {
+    type ArgType = *const [u8; LEN];
+    #[allow(clippy::not_unsafe_ptr_arg_deref)]
+    fn convert_from(arg: Self::ArgType) -> SignalFfiResult<Self> {
+        Ok(unsafe { arg.as_ref() }.copied())
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceArgConverter for Option<[u8; LEN]> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        ctx.fixed_byte_array_lengths.insert(LEN);
+        SwiftArgConverter {
+            nice_type: "Data?".to_string(),
+            converter_type: format!(
+                "OptionalFixedByteArrayConverter<{}>",
+                names::fixed_byte_array_helper(LEN)
+            ),
+        }
+    }
+}
+
 impl<const LEN: usize> ResultTypeInfo for [u8; LEN] {
     type ResultType = [u8; LEN];
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -929,6 +1001,30 @@ impl<const LEN: usize> NiceResultConverter for [u8; LEN] {
                 "FixedByteArrayConverter<{}>",
                 names::fixed_byte_array_helper(LEN)
             ),
+        }
+    }
+}
+
+impl<const LEN: usize> ResultTypeInfo for Option<[u8; LEN]> {
+    type ResultType = OptionalOf<<[u8; LEN] as ResultTypeInfo>::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(if let Some(x) = self {
+            OptionalOf::some(x.convert_into()?)
+        } else {
+            OptionalOf::NONE
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceResultConverter for Option<[u8; LEN]> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let opt = OptionalOf::<<[u8; LEN] as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+        let opt = opt.swift_name();
+        let ty = <[u8; LEN] as NiceResultConverter>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("{}?", ty.nice_type),
+            converter_type: format!("OptionalReturnConverter<{}, {opt}>", ty.converter_type),
         }
     }
 }
@@ -1997,23 +2093,28 @@ impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTyp
     }
 }
 
-impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)>
-where
-    A::ResultType: Default,
-    B::ResultType: Default,
-{
-    type ResultType = OptionalPairOf<A::ResultType, B::ResultType>;
+impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)> {
+    type ResultType = OptionalOf<PairOf<A::ResultType, B::ResultType>>;
 
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
-        let Some(value) = self else {
-            return Ok(OptionalPairOf::default());
-        };
-        Ok(OptionalPairOf {
-            present: true,
-            first: value.0.convert_into()?,
-            // TODO: if self.1.convert_into() fails, we may leak memory
-            second: value.1.convert_into()?,
-        })
+        match self {
+            Some(value) => Ok(OptionalOf::some(value.convert_into()?)),
+            None => Ok(OptionalOf::NONE),
+        }
+    }
+}
+#[cfg(feature = "metadata")]
+impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTypeInfo>
+    NiceResultConverter for Option<(A, B)>
+{
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let opt = OptionalOf::<<(A, B) as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+        let opt = opt.swift_name();
+        let ty = <(A, B) as NiceResultConverter>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("{}?", ty.nice_type),
+            converter_type: format!("OptionalReturnConverter<{}, {opt}>", ty.converter_type),
+        }
     }
 }
 
@@ -2057,6 +2158,27 @@ impl ResultTypeInfo for PreKeysResponse {
                     .into_boxed_slice(),
             ),
         })
+    }
+}
+
+impl ResultTypeInfo for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.into_public_key().convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "IdentityKey".into(),
+            converter_type: format!(
+                "IdentityKeyResultConverter<{}>",
+                <PublicKey as NiceResultConverter>::register_swift_result_converter(ctx)
+                    .converter_type
+            ),
+        }
     }
 }
 
@@ -2431,10 +2553,17 @@ macro_rules! simple_optional {
     };
 }
 simple_optional!(f32);
+simple_optional!(bool);
 simple_optional!(Vec<u8>);
+return_optional!(libsignal_protocol::Pni);
+return_optional!(uuid::Uuid);
+simple_optional!(ProfileKeyVersion);
+simple_optional!(zkgroup::avatars::AvatarUploadCredential);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
+return_optional!(crate::net::chat::remote_derives::TaggedBadges);
 return_optional!(crate::net::chat::remote_derives::BackupEntitlement);
+return_optional!(crate::net::chat::remote_derives::FetchedProfile);
 
 #[cfg(test)]
 mod test {

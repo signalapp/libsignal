@@ -162,16 +162,26 @@ fn verify_full_tree_head(
     }
 
     // 2. Verify the signatures in TreeHead.signature.
-    {
-        for (key, head) in
-            &tree_head
-                .to_single_signature_tree_heads(config)
+    match config.mode.get_associated_keys() {
+        None => {
+            let head = tree_head
+                .to_single_signature_tree_head()
                 .ok_or(Error::BadData(
-                    "server signatures are either missing or not available for all auditors"
-                        .to_string(),
-                ))?
-        {
-            verify_tree_head_signature(config, head, &root, &config.signature_key, Some(key))?;
+                    "tree head must have exactly one server signature".to_string(),
+                ))?;
+            verify_tree_head_signature(config, &head, &root, &config.signature_key, None)?;
+        }
+        Some(keys) => {
+            for (key, head) in
+                &tree_head
+                    .to_single_signature_tree_heads(keys)
+                    .ok_or(Error::BadData(
+                        "server signatures are either missing or not available for all auditors"
+                            .to_string(),
+                    ))?
+            {
+                verify_tree_head_signature(config, head, &root, &config.signature_key, Some(key))?;
+            }
         }
     }
 
@@ -1000,6 +1010,7 @@ mod test {
     use test_case::test_case;
 
     use super::*;
+    use crate::SingleSignatureTreeHead;
     use crate::proto::PrefixProof;
 
     const MAX_AHEAD: Duration = Duration::from_secs(42);
@@ -1400,5 +1411,67 @@ mod test {
         let data = wrapper.inner.expect("valid test data");
 
         assert_eq!(1, data.greatest_version(),);
+    }
+
+    enum TreeHeadSignature {
+        Missing,
+        Valid,
+        WrongKey,
+        WithAuditorKey,
+        TwoSignatures,
+    }
+
+    #[test_case(TreeHeadSignature::Valid => matches Ok(()); "valid")]
+    #[test_case(TreeHeadSignature::Missing => matches Err(Error::BadData(_)); "missing")]
+    #[test_case(TreeHeadSignature::WrongKey => matches Err(Error::VerificationFailed(_)); "wrong key")]
+    #[test_case(TreeHeadSignature::WithAuditorKey => matches Ok(()); "with auditor key")]
+    #[test_case(TreeHeadSignature::TwoSignatures => matches Err(Error::BadData(_)); "two signatures")]
+    fn verify_full_tree_head_contact_monitoring(signature: TreeHeadSignature) -> Result<()> {
+        use ed25519_dalek::{Signer as _, SigningKey};
+
+        let operator_key = SigningKey::from_bytes(&[1; 32]);
+        let config = PublicConfig {
+            mode: DeploymentMode::ContactMonitoring,
+            signature_key: operator_key.verifying_key(),
+            vrf_key: vrf::PublicKey::try_from(const_str::hex!(
+                "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
+            ))
+            .expect("valid VRF key"),
+        };
+        let root = [2; 32];
+        let now = SystemTime::now();
+        let unsigned = TreeHead {
+            tree_size: 4,
+            timestamp: make_timestamp(now),
+            signatures: vec![],
+        };
+        let sign = |key: &SigningKey, auditor_public_key: Vec<u8>| {
+            let header =
+                SingleSignatureTreeHead(unsigned.clone()).to_signable_header(&root, &config, None);
+            crate::proto::Signature {
+                auditor_public_key,
+                signature: key.sign(&header).to_bytes().to_vec(),
+            }
+        };
+        let signatures = match signature {
+            TreeHeadSignature::Missing => vec![],
+            TreeHeadSignature::Valid => vec![sign(&operator_key, vec![])],
+            TreeHeadSignature::WrongKey => vec![sign(&SigningKey::from_bytes(&[3; 32]), vec![])],
+            TreeHeadSignature::WithAuditorKey => vec![sign(&operator_key, vec![4; 32])],
+            TreeHeadSignature::TwoSignatures => {
+                vec![sign(&operator_key, vec![]), sign(&operator_key, vec![])]
+            }
+        };
+        let fth = FullTreeHead {
+            tree_head: Some(TreeHead {
+                signatures,
+                ..unsigned
+            }),
+            last: vec![],
+            distinguished: vec![],
+            full_auditor_tree_heads: vec![],
+        };
+
+        verify_full_tree_head(&config, &fth, root, None, None, now).map(|_| ())
     }
 }

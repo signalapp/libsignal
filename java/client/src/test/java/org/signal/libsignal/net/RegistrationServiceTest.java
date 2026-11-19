@@ -31,6 +31,7 @@ import org.signal.libsignal.protocol.ecc.ECPublicKey;
 import org.signal.libsignal.protocol.kem.KEMKeyPair;
 import org.signal.libsignal.protocol.kem.KEMKeyType;
 import org.signal.libsignal.protocol.kem.KEMPublicKey;
+import org.signal.libsignal.usernames.UsernameHash;
 
 public class RegistrationServiceTest {
 
@@ -83,7 +84,9 @@ public class RegistrationServiceTest {
     assertEquals(
         response.getPni(),
         ServiceId.Pni.parseFromString("PNI:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));
-    assertArrayEquals(response.getUsernameHash(), "username-hash".getBytes());
+    assertEquals(
+        response.getUsernameHash(),
+        new UsernameHash("username-hash-that-is-32-bytes!!".getBytes()));
     assertEquals(
         response.getUsernameLinkHandle(), UUID.fromString("55555555-5555-5555-5555-555555555555"));
     assertEquals(response.isStorageCapable(), true);

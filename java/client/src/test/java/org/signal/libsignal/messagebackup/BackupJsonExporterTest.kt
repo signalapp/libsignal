@@ -109,13 +109,13 @@ class BackupJsonExporterTest {
   }
 
   @Test
-  fun filteredFramesHaveNoValidationErrorWhenValid() {
+  fun disappearingMessagesHaveValidationErrorDespiteBeingFiltered() {
     val (exporter, _) = BackupJsonExporter.start(backupInfo, validate = true)
     exporter.use {
       val results = exporter.exportFrames(insertLengthPrefix(disappearingChatItemFrame))
       assertEquals(1, results.size)
       assertNull(results[0].line)
-      assertNull(results[0].errorMessage)
+      assertNotNull(results[0].errorMessage)
       // Finish should report an error because we never sent an AccountData frame.
       assertNotNull(exporter.finishExport())
     }

@@ -5,13 +5,16 @@
 
 package org.signal.libsignal.zkgroup.profiles;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import org.signal.libsignal.internal.CalledFromNative;
 import org.signal.libsignal.zkgroup.InvalidInputException;
 
 public final class ProfileKeyVersion {
 
   private byte[] contents;
 
+  @CalledFromNative
   public ProfileKeyVersion(byte[] contents) throws InvalidInputException {
     if (contents.length != 64) {
       throw new InvalidInputException("bad length");
@@ -19,16 +22,32 @@ public final class ProfileKeyVersion {
     this.contents = contents.clone();
   }
 
-  public ProfileKeyVersion(String contents)
-      throws InvalidInputException, UnsupportedEncodingException {
-    this(contents.getBytes("UTF-8"));
+  public ProfileKeyVersion(String contents) throws InvalidInputException {
+    this(contents.getBytes(StandardCharsets.UTF_8));
   }
 
   public String serialize() {
-    try {
-      return new String(contents, "UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      throw new AssertionError();
-    }
+    return new String(contents, StandardCharsets.UTF_8);
+  }
+
+  public byte[] getContents() {
+    return contents.clone();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) return false;
+    ProfileKeyVersion that = (ProfileKeyVersion) o;
+    return Arrays.equals(contents, that.contents);
+  }
+
+  @Override
+  public int hashCode() {
+    return Arrays.hashCode(contents);
+  }
+
+  @Override
+  public String toString() {
+    return "ProfileKeyVersion{" + "contents=" + Arrays.toString(contents) + '}';
   }
 }

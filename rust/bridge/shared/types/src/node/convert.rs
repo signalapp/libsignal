@@ -15,12 +15,13 @@ use std::slice;
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_net_chat::api::UploadForm;
-use libsignal_net_chat::api::keys::DeviceSpecifier;
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use neon::types::JsBigInt;
 use paste::paste;
 use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -570,7 +571,12 @@ macro_rules! nice_service_id_result_converter {
                 TsReturnConverter {
                     nice_type: $ts.into(),
                     ffi_type: <$typ as ResultTypeInfo>::register_ts_ffi_type(ctx),
-                    converter_function: format!("{}.parseFromServiceIdFixedWidthBinary", $ts),
+                    // Wrapped in a closure rather than passed as a bare method reference,
+                    // because the method relies on `this` and may be handed to e.g. `liftNull`.
+                    converter_function: format!(
+                        "((__bytes: Bytes) => {}.parseFromServiceIdFixedWidthBinary(__bytes))",
+                        $ts
+                    ),
                 }
             }
         }
@@ -809,6 +815,29 @@ impl NiceArgConverter for DeviceId {
     }
 }
 
+impl<'a> ResultTypeInfo<'a> for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo<'a>>::ResultType;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        self.into_public_key().convert_into(cx)
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        <PublicKey as ResultTypeInfo<'a>>::register_ts_ffi_type(ctx)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "EcKeys.PublicKey".into(),
+            ffi_type: "PublicKey".into(),
+            converter_function: "EcKeys.PublicKey._fromNativeHandle".into(),
+        }
+    }
+}
+
 impl<T> SimpleArgTypeInfo for StrictPreKeyId<T>
 where
     T: From<u32> + 'static,
@@ -896,7 +925,7 @@ macro_rules! zkgroup_serialize_type {
                 TsReturnConverter {
                     nice_type: format!("zkgroup.{}", $cls),
                     ffi_type: "Bytes".to_string(),
-                    converter_function: format!("((x) => new zkgroup.{}(x))", $cls),
+                    converter_function: format!("((x: Bytes) => new zkgroup.{}(x))", $cls),
                 }
             }
         }
@@ -929,6 +958,69 @@ zkgroup_serialize_type!(
     "DonationPermitRequestContext"
 );
 zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "ZkCredentialKeyPair"
+);
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredentialPresentation,
+    "AvatarUploadCredentialPresentation"
+);
+zkgroup_serialize_type!(zkgroup::profiles::ProfileKey, "ProfileKey");
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredential,
+    "AvatarUploadCredential"
+);
+
+impl SimpleArgTypeInfo for ProfileKeyVersion {
+    type ArgType = JsUint8Array;
+
+    fn convert_from(cx: &mut FunctionContext, foreign: Handle<Self::ArgType>) -> NeonResult<Self> {
+        ProfileKeyVersion::from_hex_bytes(foreign.as_slice(cx))
+            .or_else(|_| cx.throw_error("Invalid ProfileKeyVersion hex bytes"))
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+        "Bytes".into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_ts_arg_converter(_ctx: &mut TsMetadataContext) -> TsArgConverter {
+        TsArgConverter {
+            nice_type: "zkgroup.ProfileKeyVersion".into(),
+            ffi_type: "Bytes".into(),
+            converter_function: "((profileKeyVersion: zkgroup.ProfileKeyVersion) => profileKeyVersion.getContents())".to_string(),
+        }
+    }
+}
+impl<'a> ResultTypeInfo<'a> for ProfileKeyVersion {
+    type ResultType = JsUint8Array;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        JsUint8Array::from_slice(cx, &self.hex_bytes())
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(_ctx: &mut TsMetadataContext) -> String {
+        "Bytes".into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_ts_result_converter(_ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        TsReturnConverter {
+            nice_type: "zkgroup.ProfileKeyVersion".into(),
+            ffi_type: "Bytes".into(),
+            converter_function: "((x: Bytes) => new zkgroup.ProfileKeyVersion(x))".into(),
+        }
+    }
+}
 
 // Used for callback results.
 impl SimpleArgTypeInfo for () {
@@ -1836,6 +1928,7 @@ impl<'a> ResultTypeInfo<'a> for libsignal_protocol::Pni {
     }
     register_ts_ffi_type!("Bytes");
 }
+nice_service_id_result_converter!(Pni, "Pni");
 
 /// Converts `None` to `null`, passing through all other values.
 impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for Option<T> {

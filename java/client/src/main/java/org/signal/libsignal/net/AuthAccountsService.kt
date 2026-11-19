@@ -5,6 +5,7 @@
 
 package org.signal.libsignal.net
 
+import org.signal.libsignal.internal.BridgeAccountIdentity
 import org.signal.libsignal.internal.BridgeChallengeAnswer
 import org.signal.libsignal.internal.BridgeConfirmedMfaKey
 import org.signal.libsignal.internal.BridgeConfirmedMfaKeyMetadata
@@ -17,8 +18,57 @@ import org.signal.libsignal.internal.CompletableFuture
 import org.signal.libsignal.internal.NativeNice
 import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
+import org.signal.libsignal.protocol.ServiceId
+import org.signal.libsignal.usernames.UsernameHash
+import org.signal.libsignal.zkgroup.ZkCredentialKeyPair
 import java.time.Duration
 import java.time.Instant
+import java.util.UUID
+
+public data class AccountIdentity(
+  /**
+   * The ACI for the authenticated account.
+   */
+  val aci: ServiceId.Aci,
+  /**
+   * The PNI for the authenticated account, or `null` if the account has no phone number.
+   */
+  val pni: ServiceId.Pni?,
+  /**
+   * The phone number associated with the authenticated account, in E.164 format, or `null` if the
+   * account has no phone number.
+   */
+  val e164: String?,
+  /**
+   * The hash of the account's current username, or `null` if no username is set.
+   */
+  val usernameHash: UsernameHash?,
+  /**
+   * The username link handle associated with the account's current username, or `null` if no
+   * username link is set.
+   */
+  val usernameLinkHandle: UUID?,
+) {
+  internal companion object {
+    internal fun fromInternal(raw: BridgeAccountIdentity): AccountIdentity =
+      AccountIdentity(
+        aci = raw.aci,
+        pni = raw.pni,
+        e164 = raw.e164,
+        usernameHash = raw.usernameHash?.let(::UsernameHash),
+        usernameLinkHandle = raw.usernameLinkHandle,
+      )
+  }
+}
+
+/**
+ * A random value in `[1, Long.MAX_VALUE]` that must be included in credential requests using the
+ * ZkCredential key.
+ *
+ * This value allows the server to ratchet the resulting binding identity,
+ * as reverting to the previous key will result in a new rotation ID.
+ */
+public typealias ZkCredentialRotationId = Long
 
 /**
  * The user-specified metadata attached to a multi-factor authentication (MFA) key, such as a TOTP
@@ -367,6 +417,28 @@ public sealed interface FinishWebAuthnRegistrationError : BadRequestError
 public class AuthAccountsService(
   private val connection: AuthenticatedChatConnection,
 ) {
+  /**
+   * Returns basic identifiers for the authenticated account.
+   *
+   * The returned [AccountIdentity] always includes an ACI. It also includes a PNI and an E.164 phone
+   * number unless the account has no phone number, and a username hash and username link handle
+   * when present on the account.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun getAccountIdentity(): CompletableFuture<RequestResult<AccountIdentity, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_get_account_identity(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+        )
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(AccountIdentity.fromInternal(it)) },
+      onError = { err -> err.toRequestResult() },
+    )
+
   /**
    * Deletes the authenticated account, purging all associated data in the process.
    *
@@ -851,4 +923,27 @@ public class AuthAccountsService(
       onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult() },
     )
+
+  /**
+   * Generate a fresh ZkCredentialKeyPair, and upload its public (anonymous) key to the server.
+   *
+   * @return a [ZkCredentialKeyPair] and its associated [ZkCredentialRotationId]
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setZkCredentialKey(
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Pair<ZkCredentialKeyPair, ZkCredentialRotationId>, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_set_zk_credential_key(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult() },
+        )
+    }
 }

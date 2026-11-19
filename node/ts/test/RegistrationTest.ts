@@ -69,7 +69,9 @@ describe('Registration types', () => {
     expect(response.pni).to.deep.eq(
       Pni.parseFromServiceIdString('PNI:bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')
     );
-    expect(response.usernameHash).to.deep.eq(Buffer.from('username-hash'));
+    expect(response.usernameHash).to.deep.eq(
+      Buffer.from('username-hash-that-is-32-bytes!!')
+    );
     expect(response.usernameLinkHandle).to.deep.eq(
       Uint8Array.from(Array(16).fill(0x55))
     );

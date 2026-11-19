@@ -24,6 +24,12 @@ public protocol StoreContext {}
 public protocol IdentityKeyStore: AnyObject {
     func identityKeyPair(context: StoreContext) throws -> IdentityKeyPair
     func localRegistrationId(context: StoreContext) throws -> UInt32
+    /// Saves `identity` for `address`, which is then considered trusted.
+    ///
+    /// libsignal calls this after every successful decrypt on the active session, and after every
+    /// encrypt, even when `identity` is unchanged. Implementations that track the identity of the
+    /// last received message (see ``recordReceivedIdentity(_:for:context:)``) should update it
+    /// here too.
     func saveIdentity(
         _ identity: IdentityKey,
         for address: ProtocolAddress,
@@ -36,6 +42,25 @@ public protocol IdentityKeyStore: AnyObject {
         context: StoreContext
     ) throws -> Bool
     func identity(for address: ProtocolAddress, context: StoreContext) throws -> IdentityKey?
+    /// Records that a message from `address` was just decrypted under `identity` on an archived
+    /// session.
+    ///
+    /// After the trust check, each successful decrypt calls exactly one of
+    /// ``saveIdentity(_:for:context:)`` and this method: `saveIdentity` when the message was
+    /// decrypted on the active session or established a new session, and this method when it was
+    /// decrypted on an existing archived session. An archived session may belong to an identity
+    /// that has since been replaced, so `identity` can differ from the saved identity.
+    ///
+    /// The default implementation does nothing.
+    func recordReceivedIdentity(_ identity: IdentityKey, for address: ProtocolAddress, context: StoreContext) throws
+}
+
+extension IdentityKeyStore {
+    public func recordReceivedIdentity(
+        _ identity: IdentityKey,
+        for address: ProtocolAddress,
+        context: StoreContext
+    ) throws {}
 }
 
 public protocol PreKeyStore: AnyObject {

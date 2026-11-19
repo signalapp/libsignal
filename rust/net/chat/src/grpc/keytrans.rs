@@ -29,11 +29,21 @@ const LOG_TAG: &str = "kt";
 /// other gRPC services use. `LowLevelChatApi` has no transport marker parameter
 /// (it is used as a `dyn` by [`crate::api::keytrans::KeyTransparencyClient`]), so a
 /// second blanket impl on `Unauth` would overlap with the [`crate::ws::WsConnection`].
-pub struct KtOverGrpc<P>(pub P);
+pub struct KtOverGrpc<C: GrpcServiceProvider> {
+    pub connection: C,
+    /// Whether to tell the server it may gzip its responses, per the
+    /// `offerCompressionForKeyTransparency` remote config.
+    pub offer_compression: bool,
+}
 
-impl<P: GrpcServiceProvider> KtOverGrpc<P> {
-    fn client(&self) -> KeyTransparencyQueryServiceClient<P::Service> {
-        KeyTransparencyQueryServiceClient::new(self.0.service())
+impl<C: GrpcServiceProvider> KtOverGrpc<C> {
+    fn client(&self) -> KeyTransparencyQueryServiceClient<C::Service> {
+        let client = KeyTransparencyQueryServiceClient::new(self.connection.service());
+        if self.offer_compression {
+            client.accept_compressed(tonic::codec::CompressionEncoding::Gzip)
+        } else {
+            client
+        }
     }
 }
 
@@ -59,7 +69,7 @@ fn missing_response<T>() -> Result<T, RequestError<Error>> {
 }
 
 #[async_trait]
-impl<P: GrpcServiceProvider> LowLevelChatApi for KtOverGrpc<P> {
+impl<C: GrpcServiceProvider> LowLevelChatApi for KtOverGrpc<C> {
     async fn search(
         &self,
         aci: &Aci,
@@ -184,6 +194,13 @@ mod test {
     const DISTINGUISHED_PATH: &str = "/kt_query.KeyTransparencyQueryService/DistinguishedV2";
     const MONITOR_PATH: &str = "/kt_query.KeyTransparencyQueryService/MonitorV2";
 
+    fn uncompressed_kt_over_grpc<C: GrpcServiceProvider>(connection: C) -> KtOverGrpc<C> {
+        KtOverGrpc {
+            connection,
+            offer_compression: false,
+        }
+    }
+
     fn expected_search_request(
         use_e164: bool,
         use_username_hash: bool,
@@ -230,7 +247,7 @@ mod test {
             }),
         };
 
-        KtOverGrpc(&validator)
+        uncompressed_kt_over_grpc(&validator)
             .search(
                 &test_account::aci(),
                 &test_account::aci_identity_key(),
@@ -260,7 +277,7 @@ mod test {
             response: ok(kt_query::DistinguishedResponse::default()),
         };
 
-        KtOverGrpc(&validator)
+        uncompressed_kt_over_grpc(&validator)
             .distinguished(with_previous_tree.then_some(&tree))
             .now_or_never()
             .expect("sync")
@@ -323,7 +340,7 @@ mod test {
         };
 
         let username_hash = test_account::username_hash();
-        KtOverGrpc(&validator)
+        uncompressed_kt_over_grpc(&validator)
             .monitor(
                 &test_account::aci(),
                 use_e164.then_some(&test_account::PHONE_NUMBER),
@@ -344,7 +361,7 @@ mod test {
         account_data.username_hash = None;
 
         let username_hash = test_account::username_hash();
-        let result = KtOverGrpc(&crate::grpc::testutil::UnreachableValidator)
+        let result = uncompressed_kt_over_grpc(&crate::grpc::testutil::UnreachableValidator)
             .monitor(
                 &test_account::aci(),
                 use_e164.then_some(&test_account::PHONE_NUMBER),
@@ -398,7 +415,7 @@ mod test {
         };
 
         let username_hash = test_account::username_hash();
-        let result = KtOverGrpc(&validator)
+        let result = uncompressed_kt_over_grpc(&validator)
             .monitor(
                 &test_account::aci(),
                 Some(&test_account::PHONE_NUMBER),
@@ -545,7 +562,7 @@ mod test {
     where
         for<'a> &'a RequestValidator<T>: GrpcServiceProvider,
     {
-        KtOverGrpc(validator)
+        uncompressed_kt_over_grpc(validator)
             .search(
                 &test_account::aci(),
                 &test_account::aci_identity_key(),
@@ -768,5 +785,98 @@ mod test {
         assert_eq!(decoded.inclusion, vec![vec![38], vec![39, 40]]);
 
         assert_eq!(bytes, decoded.encode_to_vec());
+    }
+
+    // The compression setting travels from the `ChatConnection` through the dispatch in
+    // `crate::ws::keytrans` to the tonic client, which has to both advertise gzip and decode it.
+    //
+    // The server is free to ignore the offer, so an uncompressed response still has to work when
+    // compression is on. The reverse, a gzip response to a request that didn't offer it, is a server
+    // bug; tonic rejects it without decoding the body and we report it like any other unexpected
+    // gRPC status.
+    #[test_case(false, false; "compression off")]
+    #[test_case(false, true; "compression off, gzip response")]
+    #[test_case(true, true; "compression on, gzip response")]
+    #[test_case(true, false; "compression on, uncompressed response")]
+    #[tokio::test]
+    async fn compression_follows_connection_setting(
+        offer_compression: bool,
+        server_compresses: bool,
+    ) {
+        use libsignal_net::chat::ChatConnection;
+        use libsignal_net::chat::fake::FakeChatOptions;
+
+        use crate::api::DisconnectedError;
+        use crate::grpc::testutil::ok_compressed;
+
+        const GRPC_ACCEPT_ENCODING: http::HeaderName =
+            http::HeaderName::from_static("grpc-accept-encoding");
+
+        let (chat, remote) = ChatConnection::new_fake(
+            tokio::runtime::Handle::current(),
+            Box::new(|_event| {}),
+            FakeChatOptions {
+                offer_compression_for_key_transparency: offer_compression,
+                ..Default::default()
+            },
+        );
+        let chat = Unauth(chat);
+        let inner = make_search_response();
+        let aci = test_account::aci();
+        let aci_identity_key = test_account::aci_identity_key();
+        let distinguished_tree = test_distinguished_tree();
+
+        let respond = async {
+            let mut grpc = remote.grpc().await;
+            let (id, request) = grpc
+                .receive_request()
+                .await
+                .expect("valid request")
+                .expect("got a request");
+            assert_eq!(request.uri().path(), SEARCH_PATH);
+            // Don't depend on exactly how tonic formats the list of encodings.
+            let accept_encoding = request
+                .headers()
+                .get(GRPC_ACCEPT_ENCODING)
+                .map(|value| value.to_str().expect("ASCII"));
+            if offer_compression {
+                assert_matches!(accept_encoding, Some(value) if value.contains("gzip"));
+            } else {
+                assert_matches!(accept_encoding, None);
+            }
+
+            let response = SearchResponseV2 {
+                response: Some(search_response_v2::Response::SearchResponse(inner.clone())),
+            };
+            grpc.send_response(
+                id,
+                if server_compresses {
+                    ok_compressed(response)
+                } else {
+                    ok(response)
+                },
+            )
+            .expect("still connected");
+        };
+        let (result, ()) = tokio::join!(
+            chat.search(
+                &aci,
+                &aci_identity_key,
+                None,
+                None,
+                None,
+                &distinguished_tree
+            ),
+            respond
+        );
+        if server_compresses && !offer_compression {
+            assert_matches!(
+                result,
+                Err(RequestError::Disconnected(DisconnectedError::Transport { log_safe }))
+                    if log_safe.contains("Unimplemented")
+            );
+        } else {
+            assert_eq!(result.expect("success"), inner.encode_to_vec());
+        }
     }
 }

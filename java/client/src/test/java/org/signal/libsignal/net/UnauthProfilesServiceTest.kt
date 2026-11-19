@@ -6,12 +6,15 @@
 package org.signal.libsignal.net
 
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.signal.libsignal.internal.ExtendAvatarTtlOut
+import org.signal.libsignal.internal.GetAvatarUploadFormOut
 import org.signal.libsignal.internal.GetProfileKeyCredentialOut
 import org.signal.libsignal.internal.NativeTestingNice
 import org.signal.libsignal.internal.ProfileKeyCredentialRequestError
 import org.signal.libsignal.internal.TokioAsyncContext
+import org.signal.libsignal.internal.UnauthGetProfileError
+import org.signal.libsignal.internal.UnauthGetProfileOut
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.zkgroup.ServerPublicParams
 import org.signal.libsignal.zkgroup.profiles.ExpiringProfileKeyCredential
@@ -19,7 +22,9 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.arrayOf
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import org.signal.libsignal.internal.UnauthProfileAuthorization as UnauthProfileAuthorizationInternal
 
 class UnauthProfilesServiceTest {
   @Test
@@ -101,4 +106,136 @@ class UnauthProfilesServiceTest {
         },
       )
     }
+
+  @Test
+  fun testExtendAvatarTtl() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_ExtendAvatarTtlTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.extendAvatarTtl(
+            credential = req,
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is ExtendAvatarTtlOut.Found -> assertEquals(actual.assertSuccess(), expected._0)
+            ExtendAvatarTtlOut.InvalidCredentials ->
+              actual
+                .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+            ExtendAvatarTtlOut.NotFound -> assertEquals(null, actual.assertSuccess())
+          }
+        },
+      )
+    }
+  }
+
+  @Test
+  fun testDeleteAvatar() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_DeleteAvatarTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.deleteAvatar(
+            credential = req,
+          )
+        },
+        check = { expected, actual ->
+          if (expected) {
+            actual.assertSuccess()
+          } else {
+            actual.assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+          }
+        },
+      )
+    }
+  }
+
+  @Test
+  fun testGetAvatarUploadForm() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_GetAvatarUploadFormTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.getAvatarUploadForm(
+            credential = req.credential,
+            uploadLength = req.uploadLength,
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            GetAvatarUploadFormOut.InvalidCredential ->
+              actual
+                .assertNonSuccess<_, _, InvalidAvatarUploadCredentialPresentationException>()
+            is GetAvatarUploadFormOut.Success -> assertEquals(expected._0, actual.assertSuccess())
+          }
+        },
+      )
+    }
+  }
+
+  @Test
+  fun testGetProfile() {
+    runTest {
+      GrpcTestCase.runTests(
+        NativeTestingNice.TESTING_UnauthGetProfileTests(),
+        { tokio, listener ->
+          UnauthenticatedChatConnection.fakeConnect(tokio, listener, Network.Environment.STAGING)
+        },
+        ::UnauthProfilesService,
+        invoke = { chat, req ->
+          chat.getProfile(
+            aci = req.inner.aci,
+            profileKey = req.inner.profileKey,
+            auth =
+              when (req.auth) {
+                is UnauthProfileAuthorizationInternal.GroupSend ->
+                  UnauthProfileAuthorization
+                    .GroupSend(
+                      req.auth._0,
+                    )
+                is UnauthProfileAuthorizationInternal.AccessKey ->
+                  UnauthProfileAuthorization
+                    .AccessKey(
+                      req.auth._0,
+                    )
+              },
+            etag = req.inner.etag,
+            avatarCdnUrlValidationConfig =
+              AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+                req.inner.avatarCdnConfigValidUrls,
+              ),
+          )
+        },
+        check = { expected, actual ->
+          when (expected) {
+            is UnauthGetProfileOut.Failure ->
+              when (expected._0) {
+                is UnauthGetProfileError.ProfileDecodeError ->
+                  actual.assertNonSuccess<_, _, ProfileCantBeDecodedException>()
+                UnauthGetProfileError.ProfileNotFound ->
+                  actual.assertNonSuccess<_, _, ProfileNotFoundException>()
+                UnauthGetProfileError.FailedUnidentifiedAuthorization ->
+                  actual
+                    .assertNonSuccess<_, _, RequestUnauthorizedException>()
+              }
+            is UnauthGetProfileOut.Success ->
+              assertEquals(expected._0, actual.assertSuccess())
+          }
+        },
+      )
+    }
+  }
 }

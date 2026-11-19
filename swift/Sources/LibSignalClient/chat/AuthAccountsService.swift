@@ -5,6 +5,45 @@
 
 import Foundation
 
+public struct AccountIdentity: Sendable, Equatable {
+    /// The ACI for the authenticated account.
+    public let aci: Aci
+    /// The PNI for the authenticated account, or `nil` if the account has no phone number.
+    public let pni: Pni?
+    /// The phone number associated with the authenticated account, in E.164 format, or `nil` if
+    /// the account has no phone number.
+    public let e164: String?
+    /// The hash of the account's current username, or `nil` if no username is set.
+    public let usernameHash: Data?
+    /// The username link handle associated with the account's current username, or `nil` if no
+    /// username link is set.
+    public let usernameLinkHandle: UUID?
+
+    public init(
+        aci: Aci,
+        pni: Pni?,
+        e164: String?,
+        usernameHash: Data?,
+        usernameLinkHandle: UUID?
+    ) {
+        self.aci = aci
+        self.pni = pni
+        self.e164 = e164
+        self.usernameHash = usernameHash
+        self.usernameLinkHandle = usernameLinkHandle
+    }
+
+    internal static func fromInternal(_ raw: BridgeAccountIdentity) -> AccountIdentity {
+        AccountIdentity(
+            aci: raw.aci,
+            pni: raw.pni,
+            e164: raw.e164,
+            usernameHash: raw.usernameHash,
+            usernameLinkHandle: raw.usernameLinkHandle,
+        )
+    }
+}
+
 /// The user-specified metadata attached to a multi-factor authentication (MFA) key, such as a TOTP
 /// key, on the account.
 ///
@@ -231,7 +270,32 @@ public enum ChallengeAnswer: Sendable {
     case captcha(String)
 }
 
+/// A random value in `[1, (1 << 63) - 1]` that must be included in credential requests using the
+/// ZkCredential key.
+///
+/// This value allows the server to ratchet the resulting binding identity,
+/// as reverting to the previous key will result in a new rotation ID.
+public typealias ZkCredentialKeyRotationId = Int64
+
 public protocol AuthAccountsService: Sendable {
+    /// Returns basic identifiers for the authenticated account.
+    ///
+    /// The returned ``AccountIdentity`` always includes an ACI. It also includes a PNI and an
+    /// E.164 phone number unless the account has no phone number, and a username hash and
+    /// username link handle when present on the account.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func getAccountIdentity() async throws -> AccountIdentity
+
+    /// Generate a fresh ``ZkCredentialKeyPair```, and upload its public (anonymous) key to the
+    /// server.
+    /// - Returns:
+    ///   - a ``ZkCredentialKeyPair`` and its associated ``ZkCredentialRotationId``
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func setZkCredentialKey() async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId)
+
     /// Deletes the authenticated account, purging all associated data in the
     /// process.
     ///
@@ -481,6 +545,19 @@ public protocol AuthAccountsService: Sendable {
 }
 
 extension AuthenticatedChatConnection: AuthAccountsService {
+    public func getAccountIdentity() async throws -> AccountIdentity {
+        return try await AccountIdentity.fromInternal(
+            NativeNice.AuthenticatedChatConnection_get_account_identity(
+                asyncContext: self.tokioAsyncContext,
+                chat: self,
+            )
+        )
+    }
+
+    public func setZkCredentialKey() async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId) {
+        return try await self.setZkCredentialKeyImpl(rngSeed: -1)
+    }
+
     public func deleteAccount() async throws {
         return try await NativeNice.AuthenticatedChatConnection_delete_account(
             asyncContext: self.tokioAsyncContext,
@@ -634,6 +711,10 @@ extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthAc
 }
 
 internal protocol AuthAccountsServiceImpl: Sendable {
+    func setZkCredentialKeyImpl(
+        rngSeed: Int64
+    ) async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId)
+
     func confirmTotpKey(
         oneTimePassword: Int,
         metadata: MfaMetadata,
@@ -693,6 +774,16 @@ private func bridgeMfaKeyName(_ value: String) throws -> String {
 }
 
 extension AuthenticatedChatConnection: AuthAccountsServiceImpl {
+    func setZkCredentialKeyImpl(
+        rngSeed: Int64
+    ) async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId) {
+        return try await NativeNice.AuthenticatedChatConnection_set_zk_credential_key(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            rng: rngSeed,
+        )
+    }
+
     func confirmTotpKey(
         oneTimePassword: Int,
         metadata: MfaMetadata,
