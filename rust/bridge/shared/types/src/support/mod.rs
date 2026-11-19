@@ -14,10 +14,12 @@ use ref_cast::RefCast;
 
 mod as_type;
 mod async_mutex;
+mod integers;
 mod sequences;
 mod serialized;
 pub use as_type::*;
 pub use async_mutex::*;
+pub use integers::*;
 pub use sequences::*;
 pub use serialized::*;
 

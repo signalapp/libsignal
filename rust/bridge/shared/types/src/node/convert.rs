@@ -37,7 +37,7 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, Serialized, U31, U53, U63, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -1859,6 +1859,36 @@ impl<'a> ResultTypeInfo<'a> for i64 {
     register_ts_ffi_type!("bigint");
 }
 nice_identity_result_converter!(i64);
+
+impl<'a> ResultTypeInfo<'a> for U31 {
+    type ResultType = JsNumber;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.number(f64::from(self)))
+    }
+    register_ts_ffi_type!("number");
+}
+nice_identity_result_converter!(U31);
+
+impl<'a> ResultTypeInfo<'a> for U53 {
+    type ResultType = JsNumber;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.number(f64::from(self)))
+    }
+    register_ts_ffi_type!("number");
+}
+nice_identity_result_converter!(U53);
+
+impl<'a> ResultTypeInfo<'a> for U63 {
+    type ResultType = JsBigInt;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        u64::from(self).convert_into(cx)
+    }
+    register_ts_ffi_type!("bigint");
+}
+nice_identity_result_converter!(U63);
 
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;

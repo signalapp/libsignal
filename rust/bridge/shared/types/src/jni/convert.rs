@@ -46,7 +46,7 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, Serialized, U31, U53, U63, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -1794,6 +1794,36 @@ impl ResultTypeInfo<'_> for u64 {
         Ok(self as jlong)
     }
 }
+
+impl ResultTypeInfo<'_> for U31 {
+    type ResultType = jint;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(int);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i32::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U31, "Int");
+
+impl ResultTypeInfo<'_> for U53 {
+    type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(long);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i64::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U53, "Long");
+
+impl ResultTypeInfo<'_> for U63 {
+    type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(long);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i64::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U63, "Long");
 
 /// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
 ///

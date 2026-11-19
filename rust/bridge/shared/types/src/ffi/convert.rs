@@ -41,7 +41,8 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, IllegalArgumentError, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, IllegalArgumentError, Serialized, U31, U53, U63,
+    extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -2494,6 +2495,28 @@ trivial!(usize, "UInt");
 trivial!(bool, "Bool");
 trivial!(f64, "Double");
 trivial!(f32, "Float");
+
+impl ResultTypeInfo for U31 {
+    type ResultType = u32;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        u32::from(self).convert_into()
+    }
+}
+nice_identity_result_converter!(U31, "UInt32");
+impl ResultTypeInfo for U53 {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        u64::from(self).convert_into()
+    }
+}
+nice_identity_result_converter!(U53, "UInt64");
+impl ResultTypeInfo for U63 {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        u64::from(self).convert_into()
+    }
+}
+nice_identity_result_converter!(U63, "UInt64");
 
 macro_rules! return_optional {
     ($ty:ty) => {
