@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import type { ChargeFailure } from './Errors.js';
 
 export type StringMapFfiContents<Value> = Array<string | Value>;
+export type BigIntMapFfiContents<Value> = Array<bigint | Value>;
 
 export type Uuid = Bytes;
 

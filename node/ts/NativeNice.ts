@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
+  BigIntMapFfiContents,
   GrpcTestCase,
   StringMapFfiContents,
   ArgFfiBadgeVisibility,
@@ -33,9 +34,12 @@ import type {
   ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
   ReturnFfiAuthGetProfileError,
+  ReturnFfiBackupConfiguration,
   ReturnFfiBackupEntitlement,
+  ReturnFfiBackupLevelConfiguration,
   ReturnFfiBadge,
   ReturnFfiBadgeEntitlement,
+  ReturnFfiBadgeLevelConfiguration,
   ReturnFfiBadgeSvg,
   ReturnFfiBadgeVisibility,
   ReturnFfiBridgeAccountIdentity,
@@ -68,6 +72,7 @@ import type {
   ReturnFfiCreateDonationPermitsOut,
   ReturnFfiCreateLoginReceiptCredentialArgs,
   ReturnFfiCreateLoginReceiptCredentialOut,
+  ReturnFfiCurrencyConfiguration,
   ReturnFfiCurrencyConversionsInternal,
   ReturnFfiCurrencyInternal,
   ReturnFfiDeleteBackupMediaNextChunk,
@@ -108,6 +113,7 @@ import type {
   ReturnFfiListMediaResponse,
   ReturnFfiListMfaKeysArgs,
   ReturnFfiListMfaKeysOut,
+  ReturnFfiLoginConfiguration,
   ReturnFfiLoginReceiptLevel,
   ReturnFfiLookUpUsernameLinkArgs,
   ReturnFfiLookUpUsernameLinkOut,
@@ -117,11 +123,13 @@ import type {
   ReturnFfiMyTestEnum,
   ReturnFfiMyTestPoint,
   ReturnFfiMyTestStruct,
+  ReturnFfiPaymentMethodInternal,
   ReturnFfiPaymentProviderInternal,
   ReturnFfiProfile,
   ReturnFfiProfileFieldWithMaxLength,
   ReturnFfiProfileKeyCredentialRequestError,
   ReturnFfiProfileValidationErrorInternal,
+  ReturnFfiPurchaseProductConfiguration,
   ReturnFfiReceiptCredentialError,
   ReturnFfiRedeemBackupReceiptOut,
   ReturnFfiRedeemDonationReceiptArgs,
@@ -183,6 +191,7 @@ import {
   liftNull,
   stringMapArgConverter,
   stringMapResultConverter,
+  bigintMapResultConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';
@@ -205,9 +214,20 @@ export type AuthGetProfileError =
       profileDecodeError: string;
     };
 
+export type BackupConfiguration = {
+  levels: Map<bigint, BackupLevelConfiguration>;
+  freeTierMediaDays: number;
+};
+
 export type BackupEntitlement = {
   level: bigint;
   expiration: Timestamp;
+};
+
+export type BackupLevelConfiguration = {
+  storageAllowanceBytes: number;
+  playProductId: string;
+  mediaTtlDays: number;
 };
 
 export type Badge = {
@@ -224,6 +244,11 @@ export type BadgeEntitlement = {
   badgeId: string;
   expiration: Timestamp;
   visible: boolean;
+};
+
+export type BadgeLevelConfiguration = {
+  badgeId: string;
+  badgeDurationSeconds: number | null;
 };
 
 export type BadgeSvg = {
@@ -445,6 +470,14 @@ export type CreateLoginReceiptCredentialOut =
   | {
       explicitError: ReceiptCredentialError;
     };
+
+export type CurrencyConfiguration = {
+  minimum: number;
+  oneTimeDonationAmounts: Map<bigint, Array<number>>;
+  subscriptionAmounts: Map<bigint, number>;
+  backupSubscriptionAmounts: Map<bigint, number>;
+  supportedPaymentMethods: Array<PaymentMethodInternal>;
+};
 
 export type CurrencyConversionsInternal = {
   timestampMs: Timestamp;
@@ -714,6 +747,13 @@ export type ListMfaKeysOut = {
   success: Array<BridgeConfirmedMfaKey>;
 };
 
+export type LoginConfiguration = {
+  level: bigint;
+  playProductId: string;
+  playOptionId: string;
+  appStoreProductId: string;
+};
+
 export type LoginReceiptLevel = 'normal' | 'sandbox';
 
 export type LookUpUsernameLinkArgs = {
@@ -775,6 +815,14 @@ export type MyTestStruct = {
   myStringField: string;
 };
 
+export type PaymentMethodInternal =
+  | 'card'
+  | 'sepaDebit'
+  | 'ideal'
+  | 'payPal'
+  | 'googlePlayBilling'
+  | 'appleAppStore';
+
 export type PaymentProviderInternal =
   | 'googlePlayBilling'
   | 'appleAppStore'
@@ -811,6 +859,14 @@ export type ProfileValidationErrorInternal =
       };
     }
   | 'avatarUrlInvalid';
+
+export type PurchaseProductConfiguration = {
+  currencies: Map<string, CurrencyConfiguration>;
+  badgeLevels: Map<bigint, BadgeLevelConfiguration>;
+  backup: BackupConfiguration;
+  sepaMaximumEuros: number;
+  login: LoginConfiguration;
+};
 
 export type ReceiptCredentialError =
   | 'paymentStillProcessing'
@@ -1088,12 +1144,34 @@ export function returnConverterAuthGetProfileError(
   }
 }
 
+export function returnConverterBackupConfiguration(
+  ffiInput: Native.ReturnFfiBackupConfiguration
+): BackupConfiguration {
+  return {
+    levels: bigintMapResultConverter<
+      ReturnFfiBackupLevelConfiguration,
+      BackupLevelConfiguration
+    >(returnConverterBackupLevelConfiguration)(ffiInput.levels),
+    freeTierMediaDays: identity(ffiInput.free_tier_media_days),
+  };
+}
+
 export function returnConverterBackupEntitlement(
   ffiInput: Native.ReturnFfiBackupEntitlement
 ): BackupEntitlement {
   return {
     level: identity(ffiInput.level),
     expiration: identity(ffiInput.expiration),
+  };
+}
+
+export function returnConverterBackupLevelConfiguration(
+  ffiInput: Native.ReturnFfiBackupLevelConfiguration
+): BackupLevelConfiguration {
+  return {
+    storageAllowanceBytes: identity(ffiInput.storage_allowance_bytes),
+    playProductId: identity(ffiInput.play_product_id),
+    mediaTtlDays: identity(ffiInput.media_ttl_days),
   };
 }
 
@@ -1118,6 +1196,15 @@ export function returnConverterBadgeEntitlement(
     badgeId: identity(ffiInput.badge_id),
     expiration: identity(ffiInput.expiration),
     visible: identity(ffiInput.visible),
+  };
+}
+
+export function returnConverterBadgeLevelConfiguration(
+  ffiInput: Native.ReturnFfiBadgeLevelConfiguration
+): BadgeLevelConfiguration {
+  return {
+    badgeId: identity(ffiInput.badge_id),
+    badgeDurationSeconds: liftNull(identity)(ffiInput.badge_duration_seconds),
   };
 }
 
@@ -1608,6 +1695,28 @@ export function returnConverterCreateLoginReceiptCredentialOut(
         'Unknown FFI return enum type for CreateLoginReceiptCredentialOut'
       );
   }
+}
+
+export function returnConverterCurrencyConfiguration(
+  ffiInput: Native.ReturnFfiCurrencyConfiguration
+): CurrencyConfiguration {
+  return {
+    minimum: identity(ffiInput.minimum),
+    oneTimeDonationAmounts: bigintMapResultConverter<
+      Array<number>,
+      Array<number>
+    >(identity)(ffiInput.one_time_donation_amounts),
+    subscriptionAmounts: bigintMapResultConverter<number, number>(identity)(
+      ffiInput.subscription_amounts
+    ),
+    backupSubscriptionAmounts: bigintMapResultConverter<number, number>(
+      identity
+    )(ffiInput.backup_subscription_amounts),
+    supportedPaymentMethods: ((arr: Array<ReturnFfiPaymentMethodInternal>) =>
+      arr.map(returnConverterPaymentMethodInternal))(
+      ffiInput.supported_payment_methods
+    ),
+  };
 }
 
 export function returnConverterCurrencyConversionsInternal(
@@ -2265,6 +2374,17 @@ export function returnConverterListMfaKeysOut(
   }
 }
 
+export function returnConverterLoginConfiguration(
+  ffiInput: Native.ReturnFfiLoginConfiguration
+): LoginConfiguration {
+  return {
+    level: identity(ffiInput.level),
+    playProductId: identity(ffiInput.play_product_id),
+    playOptionId: identity(ffiInput.play_option_id),
+    appStoreProductId: identity(ffiInput.app_store_product_id),
+  };
+}
+
 export function returnConverterLoginReceiptLevel(
   ffiInput: Native.ReturnFfiLoginReceiptLevel
 ): LoginReceiptLevel {
@@ -2405,6 +2525,29 @@ export function returnConverterMyTestStruct(
   };
 }
 
+export function returnConverterPaymentMethodInternal(
+  ffiInput: Native.ReturnFfiPaymentMethodInternal
+): PaymentMethodInternal {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'card';
+    case 1:
+      return 'sepaDebit';
+    case 2:
+      return 'ideal';
+    case 3:
+      return 'payPal';
+    case 4:
+      return 'googlePlayBilling';
+    case 5:
+      return 'appleAppStore';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for PaymentMethodInternal');
+  }
+}
+
 export function returnConverterPaymentProviderInternal(
   ffiInput: Native.ReturnFfiPaymentProviderInternal
 ): PaymentProviderInternal {
@@ -2504,6 +2647,24 @@ export function returnConverterProfileValidationErrorInternal(
         'Unknown FFI return enum type for ProfileValidationErrorInternal'
       );
   }
+}
+
+export function returnConverterPurchaseProductConfiguration(
+  ffiInput: Native.ReturnFfiPurchaseProductConfiguration
+): PurchaseProductConfiguration {
+  return {
+    currencies: stringMapResultConverter<
+      ReturnFfiCurrencyConfiguration,
+      CurrencyConfiguration
+    >(returnConverterCurrencyConfiguration)(ffiInput.currencies),
+    badgeLevels: bigintMapResultConverter<
+      ReturnFfiBadgeLevelConfiguration,
+      BadgeLevelConfiguration
+    >(returnConverterBadgeLevelConfiguration)(ffiInput.badge_levels),
+    backup: returnConverterBackupConfiguration(ffiInput.backup),
+    sepaMaximumEuros: identity(ffiInput.sepa_maximum_euros),
+    login: returnConverterLoginConfiguration(ffiInput.login),
+  };
 }
 
 export function returnConverterReceiptCredentialError(
@@ -5009,6 +5170,15 @@ export function TESTING_GetPreKeysTests(): Array<
   )(Native.TESTING_GetPreKeysTests());
 }
 
+export function TESTING_GetProductConfigurationTests(): Array<
+  GrpcTestCase<void, PurchaseProductConfiguration>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterPurchaseProductConfiguration
+  )(Native.TESTING_GetProductConfigurationTests());
+}
+
 export function TESTING_GetProfileKeyCredentialTests(): Array<
   GrpcTestCase<GetProfileKeyCredentialArgs, GetProfileKeyCredentialOut>
 > {
@@ -6936,6 +7106,25 @@ export async function UnauthenticatedChatConnection_get_avatar_upload_form({
         identity(chat),
         ByteArray.prototype.getContents.call(credential),
         identity(upload_length)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_get_product_configuration({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+}): Promise<PurchaseProductConfiguration> {
+  return returnConverterPurchaseProductConfiguration(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_get_product_configuration(
+        asyncContext,
+        identity(chat)
       )
     )
   );

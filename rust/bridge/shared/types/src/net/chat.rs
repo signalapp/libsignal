@@ -1942,8 +1942,7 @@ pub mod remote_derives {
     #[bridge(
         arg = false,
         ffi = false,
-        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration",
-        node = false
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration"
     )]
     pub struct PurchaseProductConfiguration {
         /// Map of lower-cased ISO 3-letter currency codes to currency-specific configuration
@@ -1990,8 +1989,7 @@ pub mod remote_derives {
     #[bridge(
         arg = false,
         ffi = false,
-        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration",
-        node = false
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration"
     )]
     pub struct CurrencyConfiguration {
         /// Minimum one-time donation in the currency's minor unit
@@ -2057,8 +2055,7 @@ pub mod remote_derives {
     #[bridge(
         arg = false,
         ffi = false,
-        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration",
-        node = false
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration"
     )]
     pub struct BadgeLevelConfiguration {
         /// The ID of the badge awarded at this level. Resolve to full badge details
@@ -2094,8 +2091,7 @@ pub mod remote_derives {
     #[bridge(
         arg = false,
         ffi = false,
-        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration",
-        node = false
+        jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration"
     )]
     pub struct BackupConfiguration {
         /// A map of numeric backup level IDs to level-specific backup configuration

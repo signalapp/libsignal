@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import type { ChargeFailure } from './Errors.js';
 
 export type StringMapFfiContents<Value> = Array<string | Value>;
+export type BigIntMapFfiContents<Value> = Array<bigint | Value>;
 
 export type Uuid = Bytes;
 
@@ -189,9 +190,20 @@ export type ReturnFfiAuthGetProfileError =
       log_safe: string;
     };
 
+export type ReturnFfiBackupConfiguration = {
+  levels: BigIntMapFfiContents<ReturnFfiBackupLevelConfiguration>;
+  free_tier_media_days: number;
+};
+
 export type ReturnFfiBackupEntitlement = {
   level: bigint;
   expiration: Timestamp;
+};
+
+export type ReturnFfiBackupLevelConfiguration = {
+  storage_allowance_bytes: number;
+  play_product_id: string;
+  media_ttl_days: number;
 };
 
 export type ReturnFfiBadge = {
@@ -208,6 +220,11 @@ export type ReturnFfiBadgeEntitlement = {
   badge_id: string;
   expiration: Timestamp;
   visible: boolean;
+};
+
+export type ReturnFfiBadgeLevelConfiguration = {
+  badge_id: string;
+  badge_duration_seconds: number | null;
 };
 
 export type ReturnFfiBadgeSvg = {
@@ -483,6 +500,14 @@ export type ReturnFfiCreateLoginReceiptCredentialOut =
       __type: 2;
       _0: ReturnFfiReceiptCredentialError;
     };
+
+export type ReturnFfiCurrencyConfiguration = {
+  minimum: number;
+  one_time_donation_amounts: BigIntMapFfiContents<Array<number>>;
+  subscription_amounts: BigIntMapFfiContents<number>;
+  backup_subscription_amounts: BigIntMapFfiContents<number>;
+  supported_payment_methods: Array<ReturnFfiPaymentMethodInternal>;
+};
 
 export type ReturnFfiCurrencyConversionsInternal = {
   timestamp_ms: Timestamp;
@@ -848,6 +873,13 @@ export type ReturnFfiListMfaKeysOut = {
   _0: Array<ReturnFfiBridgeConfirmedMfaKey>;
 };
 
+export type ReturnFfiLoginConfiguration = {
+  level: bigint;
+  play_product_id: string;
+  play_option_id: string;
+  app_store_product_id: string;
+};
+
 export type ReturnFfiLoginReceiptLevel =
   | {
       __type: 0;
@@ -939,6 +971,26 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiPaymentMethodInternal =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    }
+  | {
+      __type: 5;
+    };
+
 export type ReturnFfiPaymentProviderInternal =
   | {
       __type: 0;
@@ -1002,6 +1054,14 @@ export type ReturnFfiProfileValidationErrorInternal =
   | {
       __type: 1;
     };
+
+export type ReturnFfiPurchaseProductConfiguration = {
+  currencies: StringMapFfiContents<ReturnFfiCurrencyConfiguration>;
+  badge_levels: BigIntMapFfiContents<ReturnFfiBadgeLevelConfiguration>;
+  backup: ReturnFfiBackupConfiguration;
+  sepa_maximum_euros: number;
+  login: ReturnFfiLoginConfiguration;
+};
 
 export type ReturnFfiReceiptCredentialError =
   | {
@@ -3718,6 +3778,9 @@ type NativeFunctions = {
   TESTING_GetPreKeysTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiGetPreKeysArgs, ReturnFfiGetPreKeysOut>
   >;
+  TESTING_GetProductConfigurationTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiPurchaseProductConfiguration>
+  >;
   TESTING_GetProfileKeyCredentialTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiGetProfileKeyCredentialArgs,
@@ -4307,6 +4370,10 @@ type NativeFunctions = {
     target: Bytes,
     device: number
   ) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_product_configuration: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiPurchaseProductConfiguration>;
   UnauthenticatedChatConnection_get_profile: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -5091,6 +5158,7 @@ const {
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
   TESTING_GetPreKeysTests,
+  TESTING_GetProductConfigurationTests,
   TESTING_GetProfileKeyCredentialTests,
   TESTING_GetProfileTests,
   TESTING_GetStickerUploadFormTests,
@@ -5287,6 +5355,7 @@ const {
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
+  UnauthenticatedChatConnection_get_product_configuration,
   UnauthenticatedChatConnection_get_profile,
   UnauthenticatedChatConnection_get_profile_key_credential,
   UnauthenticatedChatConnection_get_subscription_receipt_credential,
@@ -5968,6 +6037,7 @@ export {
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
   TESTING_GetPreKeysTests,
+  TESTING_GetProductConfigurationTests,
   TESTING_GetProfileKeyCredentialTests,
   TESTING_GetProfileTests,
   TESTING_GetStickerUploadFormTests,
@@ -6164,6 +6234,7 @@ export {
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
+  UnauthenticatedChatConnection_get_product_configuration,
   UnauthenticatedChatConnection_get_profile,
   UnauthenticatedChatConnection_get_profile_key_credential,
   UnauthenticatedChatConnection_get_subscription_receipt_credential,

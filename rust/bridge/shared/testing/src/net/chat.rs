@@ -2024,7 +2024,7 @@ fn TESTING_UnauthGetProfileTests()
     libsignal_net_chat::grpc::profiles::test_cases::get_profile_unauth_test_cases().into()
 }
 
-#[bridge_fn(nice = true, ffi = false, node = false)]
+#[bridge_fn(nice = true, ffi = false)]
 fn TESTING_GetProductConfigurationTests() -> GrpcTestCases<(), PurchaseProductConfiguration> {
     libsignal_net_chat::grpc::subscriptions::test_cases::get_product_configuration_test_cases()
         .into()
