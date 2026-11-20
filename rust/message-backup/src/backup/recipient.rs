@@ -124,6 +124,13 @@ pub enum MinimalRecipientData {
     },
 }
 
+impl MinimalRecipientData {
+    /// Returns true iff `self` is the Self recipient.
+    pub fn is_self(&self) -> bool {
+        matches!(self, Self::Self_)
+    }
+}
+
 /// Minimal information about the recipient in a [`proto::Chat`].
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]

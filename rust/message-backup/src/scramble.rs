@@ -971,6 +971,7 @@ impl Visit<Scrambler> for proto::Quote {
             text,
             attachments,
             type_: _,
+            privateReplyDescriptor: _,
             special_fields: _,
         } = self;
 
