@@ -1,6 +1,2 @@
-v0.108.3
+v0.108.4
 
-- backups: Support and validate private-reply quotes (`Quote.privateReplyDescriptor`)
-- Backups: Validate the new hiddenAtTimestamp field on Contact.
-- New typed APIs:
-    - UnauthSubscriptionService.getPurchaseProductConfiguration
