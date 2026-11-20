@@ -318,6 +318,7 @@ pub struct GroupData {
     pub blocked_at: Option<Timestamp>,
     #[serde_as(as = "Option<serialize::EnumAsString>")]
     pub avatar_color: Option<proto::AvatarColor>,
+    pub deleted_tombstone: bool,
     _limit_construction_to_module: (),
 }
 
@@ -333,6 +334,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupData, C> for proto::Group {
             blocked,
             blockedAtTimestamp,
             avatarColor,
+            deletedTombstone,
             special_fields: _,
         } = self;
 
@@ -372,6 +374,7 @@ impl<C: ReportUnusualTimestamp> TryIntoWith<GroupData, C> for proto::Group {
             blocked,
             blocked_at,
             avatar_color,
+            deleted_tombstone: deletedTombstone,
             _limit_construction_to_module: (),
         })
     }
@@ -483,6 +486,7 @@ mod test {
                 blocked: false,
                 blocked_at: None,
                 avatar_color: None,
+                deleted_tombstone: false,
                 _limit_construction_to_module: (),
             }
         }

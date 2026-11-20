@@ -139,6 +139,7 @@
         "blocked": false,
         "blocked_at": null,
         "avatar_color": null,
+        "deleted_tombstone": false,
         "_limit_construction_to_module": null
       }
     },
@@ -270,6 +271,7 @@
                       "blocked": false,
                       "blocked_at": null,
                       "avatar_color": null,
+                      "deleted_tombstone": false,
                       "_limit_construction_to_module": null
                     }
                   }
