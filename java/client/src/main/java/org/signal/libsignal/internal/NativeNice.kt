@@ -389,11 +389,15 @@ public sealed class DeviceCapabilityInternal {
 
   public data object SparsePostQuantumRatchet : DeviceCapabilityInternal()
 
-  public data object ProfilesV2 : DeviceCapabilityInternal()
-
   public data object UsernameChangeSyncMessage : DeviceCapabilityInternal()
 
   public data object OptionalPhoneNumber : DeviceCapabilityInternal()
+
+  public data object ReplyPrivately : DeviceCapabilityInternal()
+
+  public data object ContactDelete : DeviceCapabilityInternal()
+
+  public data object AdminRemoveAndDelete : DeviceCapabilityInternal()
 }
 
 /*
@@ -1265,13 +1269,6 @@ public object DeviceCapabilityInternal_SparsePostQuantumRatchet_ReturnConverter 
   internal fun fromNative(): Any? = DeviceCapabilityInternal.SparsePostQuantumRatchet
 }
 
-public object DeviceCapabilityInternal_ProfilesV2_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.ProfilesV2
-}
-
 public object DeviceCapabilityInternal_UsernameChangeSyncMessage_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1284,6 +1281,27 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
+}
+
+public object DeviceCapabilityInternal_ReplyPrivately_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ReplyPrivately
+}
+
+public object DeviceCapabilityInternal_ContactDelete_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ContactDelete
+}
+
+public object DeviceCapabilityInternal_AdminRemoveAndDelete_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.AdminRemoveAndDelete
 }
 
 public object FetchedProfile_ReturnConverter {
@@ -2078,12 +2096,6 @@ public fun DeviceCapabilityInternal.SparsePostQuantumRatchet.toFfiArgType(): Dev
   DeviceCapabilityInternal_SparsePostQuantumRatchet_FfiArgType
 
 @CalledFromNative
-public object DeviceCapabilityInternal_ProfilesV2_FfiArgType : DeviceCapabilityInternal_FfiArgType()
-
-public fun DeviceCapabilityInternal.ProfilesV2.toFfiArgType(): DeviceCapabilityInternal_ProfilesV2_FfiArgType =
-  DeviceCapabilityInternal_ProfilesV2_FfiArgType
-
-@CalledFromNative
 public object DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType : DeviceCapabilityInternal_FfiArgType()
 
 public fun DeviceCapabilityInternal.UsernameChangeSyncMessage.toFfiArgType(): DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType =
@@ -2095,6 +2107,24 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType : DeviceCa
 public fun DeviceCapabilityInternal.OptionalPhoneNumber.toFfiArgType(): DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType =
   DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType
 
+@CalledFromNative
+public object DeviceCapabilityInternal_ReplyPrivately_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.ReplyPrivately.toFfiArgType(): DeviceCapabilityInternal_ReplyPrivately_FfiArgType =
+  DeviceCapabilityInternal_ReplyPrivately_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_ContactDelete_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.ContactDelete.toFfiArgType(): DeviceCapabilityInternal_ContactDelete_FfiArgType =
+  DeviceCapabilityInternal_ContactDelete_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_AdminRemoveAndDelete_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.AdminRemoveAndDelete.toFfiArgType(): DeviceCapabilityInternal_AdminRemoveAndDelete_FfiArgType =
+  DeviceCapabilityInternal_AdminRemoveAndDelete_FfiArgType
+
 public fun DeviceCapabilityInternal.toFfiArgTypeObject(): Object =
   convertToObject(
     when (this) {
@@ -2102,9 +2132,11 @@ public fun DeviceCapabilityInternal.toFfiArgTypeObject(): Object =
       is DeviceCapabilityInternal.Transfer -> this.toFfiArgType()
       is DeviceCapabilityInternal.AttachmentBackfill -> this.toFfiArgType()
       is DeviceCapabilityInternal.SparsePostQuantumRatchet -> this.toFfiArgType()
-      is DeviceCapabilityInternal.ProfilesV2 -> this.toFfiArgType()
       is DeviceCapabilityInternal.UsernameChangeSyncMessage -> this.toFfiArgType()
       is DeviceCapabilityInternal.OptionalPhoneNumber -> this.toFfiArgType()
+      is DeviceCapabilityInternal.ReplyPrivately -> this.toFfiArgType()
+      is DeviceCapabilityInternal.ContactDelete -> this.toFfiArgType()
+      is DeviceCapabilityInternal.AdminRemoveAndDelete -> this.toFfiArgType()
     },
   )
 

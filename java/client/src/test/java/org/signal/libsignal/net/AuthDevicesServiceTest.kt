@@ -26,9 +26,11 @@ internal fun DeviceCapabilityInternal.toDeviceCapability(): DeviceCapability =
     DeviceCapabilityInternal.Transfer -> DeviceCapability.TRANSFER
     DeviceCapabilityInternal.AttachmentBackfill -> DeviceCapability.ATTACHMENT_BACKFILL
     DeviceCapabilityInternal.SparsePostQuantumRatchet -> DeviceCapability.SPARSE_POST_QUANTUM_RATCHET
-    DeviceCapabilityInternal.ProfilesV2 -> DeviceCapability.PROFILES_V2
     DeviceCapabilityInternal.UsernameChangeSyncMessage -> DeviceCapability.USERNAME_CHANGE_SYNC_MESSAGE
     DeviceCapabilityInternal.OptionalPhoneNumber -> DeviceCapability.OPTIONAL_PHONE_NUMBER
+    DeviceCapabilityInternal.ReplyPrivately -> DeviceCapability.REPLY_PRIVATELY
+    DeviceCapabilityInternal.ContactDelete -> DeviceCapability.CONTACT_DELETE
+    DeviceCapabilityInternal.AdminRemoveAndDelete -> DeviceCapability.ADMIN_REMOVE_AND_DELETE
   }
 
 class AuthDevicesServiceTest {

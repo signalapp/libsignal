@@ -4473,9 +4473,11 @@ internal enum DeviceCapabilityInternal {
     case transfer
     case attachmentBackfill
     case sparsePostQuantumRatchet
-    case profilesV2
     case usernameChangeSyncMessage
     case optionalPhoneNumber
+    case replyPrivately
+    case contactDelete
+    case adminRemoveAndDelete
 }
 
 */
@@ -5395,12 +5397,16 @@ internal enum DerivedReturnConverterDeviceCapabilityInternal: NiceReturnConverte
             return DeviceCapability.attachmentBackfill
         case SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet:
             return DeviceCapability.sparsePostQuantumRatchet
-        case SignalDeviceCapabilityInternalFfiResultProfilesV2:
-            return DeviceCapability.profilesV2
         case SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage:
             return DeviceCapability.usernameChangeSyncMessage
         case SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber:
             return DeviceCapability.optionalPhoneNumber
+        case SignalDeviceCapabilityInternalFfiResultReplyPrivately:
+            return DeviceCapability.replyPrivately
+        case SignalDeviceCapabilityInternalFfiResultContactDelete:
+            return DeviceCapability.contactDelete
+        case SignalDeviceCapabilityInternalFfiResultAdminRemoveAndDelete:
+            return DeviceCapability.adminRemoveAndDelete
         default:
             throw SignalError.internalError("Unexpected enum tag for DeviceCapabilityInternal: \(ffiTag)")
         }
@@ -6720,14 +6726,20 @@ internal enum DerivedArgConverterDeviceCapabilityInternal: NiceArgConverter {
         case .sparsePostQuantumRatchet:
             return (SignalDeviceCapabilityInternalFfiArgSparsePostQuantumRatchet, nil)
 
-        case .profilesV2:
-            return (SignalDeviceCapabilityInternalFfiArgProfilesV2, nil)
-
         case .usernameChangeSyncMessage:
             return (SignalDeviceCapabilityInternalFfiArgUsernameChangeSyncMessage, nil)
 
         case .optionalPhoneNumber:
             return (SignalDeviceCapabilityInternalFfiArgOptionalPhoneNumber, nil)
+
+        case .replyPrivately:
+            return (SignalDeviceCapabilityInternalFfiArgReplyPrivately, nil)
+
+        case .contactDelete:
+            return (SignalDeviceCapabilityInternalFfiArgContactDelete, nil)
+
+        case .adminRemoveAndDelete:
+            return (SignalDeviceCapabilityInternalFfiArgAdminRemoveAndDelete, nil)
 
         }
     }
@@ -6749,14 +6761,20 @@ internal enum DerivedArgConverterDeviceCapabilityInternal: NiceArgConverter {
         case .sparsePostQuantumRatchet:
             return try niceThunk(SignalDeviceCapabilityInternalFfiArgSparsePostQuantumRatchet)
 
-        case .profilesV2:
-            return try niceThunk(SignalDeviceCapabilityInternalFfiArgProfilesV2)
-
         case .usernameChangeSyncMessage:
             return try niceThunk(SignalDeviceCapabilityInternalFfiArgUsernameChangeSyncMessage)
 
         case .optionalPhoneNumber:
             return try niceThunk(SignalDeviceCapabilityInternalFfiArgOptionalPhoneNumber)
+
+        case .replyPrivately:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgReplyPrivately)
+
+        case .contactDelete:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgContactDelete)
+
+        case .adminRemoveAndDelete:
+            return try niceThunk(SignalDeviceCapabilityInternalFfiArgAdminRemoveAndDelete)
 
         }
     }

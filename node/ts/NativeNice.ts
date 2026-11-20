@@ -507,9 +507,11 @@ export type DeviceCapabilityInternal =
   | 'transfer'
   | 'attachmentBackfill'
   | 'sparsePostQuantumRatchet'
-  | 'profilesV2'
   | 'usernameChangeSyncMessage'
-  | 'optionalPhoneNumber';
+  | 'optionalPhoneNumber'
+  | 'replyPrivately'
+  | 'contactDelete'
+  | 'adminRemoveAndDelete';
 
 export type ExtendAvatarTtlOut =
   | {
@@ -1786,11 +1788,15 @@ export function returnConverterDeviceCapabilityInternal(
     case 3:
       return 'sparsePostQuantumRatchet';
     case 4:
-      return 'profilesV2';
-    case 5:
       return 'usernameChangeSyncMessage';
-    case 6:
+    case 5:
       return 'optionalPhoneNumber';
+    case 6:
+      return 'replyPrivately';
+    case 7:
+      return 'contactDelete';
+    case 8:
+      return 'adminRemoveAndDelete';
 
     default:
       ffiInput satisfies never;
@@ -3401,16 +3407,24 @@ export function argConverterDeviceCapabilityInternal(
     return { __type: 3 };
   }
 
-  if (niceInput === 'profilesV2') {
+  if (niceInput === 'usernameChangeSyncMessage') {
     return { __type: 4 };
   }
 
-  if (niceInput === 'usernameChangeSyncMessage') {
+  if (niceInput === 'optionalPhoneNumber') {
     return { __type: 5 };
   }
 
-  if (niceInput === 'optionalPhoneNumber') {
+  if (niceInput === 'replyPrivately') {
     return { __type: 6 };
+  }
+
+  if (niceInput === 'contactDelete') {
+    return { __type: 7 };
+  }
+
+  if (niceInput === 'adminRemoveAndDelete') {
+    return { __type: 8 };
   }
 
   niceInput satisfies never;

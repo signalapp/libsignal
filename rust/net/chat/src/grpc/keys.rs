@@ -468,7 +468,7 @@ fn build_bundle(
     let DevicePreKeyBundle {
         ec_signed_pre_key,
         ec_one_time_pre_key,
-        kem_one_time_pre_key,
+        kem_pre_key,
         registration_id,
     } = bundle;
 
@@ -504,14 +504,14 @@ fn build_bundle(
         key_id: kyber_pre_key_id,
         public_key: kyber_pre_key_public,
         signature: kyber_pre_key_signature,
-    } = kem_one_time_pre_key.ok_or_else(|| unexpected("missing kemOneTimePreKey"))?;
+    } = kem_pre_key.ok_or_else(|| unexpected("missing kemPreKey"))?;
     // As above, the signature is verified when starting a session.
     if kyber_pre_key_signature.is_empty() {
-        return Err(unexpected("empty kemOneTimePreKey signature"));
+        return Err(unexpected("empty kemPreKey signature"));
     }
     let kyber_pre_key_id = key_id_to_u32(kyber_pre_key_id)?;
     let kyber_pre_key_public = kem::PublicKey::deserialize(kyber_pre_key_public.as_slice())
-        .map_err(|_| unexpected("invalid kemOneTimePreKey public key"))?;
+        .map_err(|_| unexpected("invalid kemPreKey public key"))?;
 
     PreKeyBundle::new(
         registration_id,
@@ -924,7 +924,7 @@ pub mod test_cases {
                 key_id,
                 public_key: test_ec_public_key_bytes(fill),
             }),
-            kem_one_time_pre_key: Some(KemPreKeyProto {
+            kem_pre_key: Some(KemPreKeyProto {
                 key_id: kyber_pre_key_id,
                 public_key: test_kem_public_key_bytes(kyber_fill),
                 signature: vec![kyber_fill; 64],
@@ -1203,7 +1203,7 @@ pub mod test_cases {
                     [(
                         2,
                         DevicePreKeyBundle {
-                            kem_one_time_pre_key: None,
+                            kem_pre_key: None,
                             ..grpc_device_bundle(1234, 7, 0x31, Some((5, 0x33)), 9, 0x34)
                         },
                     )],
@@ -1217,7 +1217,7 @@ pub mod test_cases {
                     [(
                         2,
                         DevicePreKeyBundle {
-                            kem_one_time_pre_key: Some(KemPreKeyProto {
+                            kem_pre_key: Some(KemPreKeyProto {
                                 key_id: 9,
                                 public_key: test_kem_public_key_bytes(0x3B),
                                 signature: vec![],
@@ -1281,7 +1281,7 @@ pub mod test_cases {
                     [(
                         2,
                         DevicePreKeyBundle {
-                            kem_one_time_pre_key: Some(KemPreKeyProto {
+                            kem_pre_key: Some(KemPreKeyProto {
                                 key_id: 9,
                                 // A KEM type byte with no key material following it.
                                 public_key: vec![0x08],

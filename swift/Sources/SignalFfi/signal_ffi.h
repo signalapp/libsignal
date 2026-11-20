@@ -838,9 +838,11 @@ typedef enum {
   SignalDeviceCapabilityInternalFfiResultTransfer,
   SignalDeviceCapabilityInternalFfiResultAttachmentBackfill,
   SignalDeviceCapabilityInternalFfiResultSparsePostQuantumRatchet,
-  SignalDeviceCapabilityInternalFfiResultProfilesV2,
   SignalDeviceCapabilityInternalFfiResultUsernameChangeSyncMessage,
   SignalDeviceCapabilityInternalFfiResultOptionalPhoneNumber,
+  SignalDeviceCapabilityInternalFfiResultReplyPrivately,
+  SignalDeviceCapabilityInternalFfiResultContactDelete,
+  SignalDeviceCapabilityInternalFfiResultAdminRemoveAndDelete,
 } SignalDeviceCapabilityInternalFfiResult;
 static_assert_64bit(sizeof(SignalDeviceCapabilityInternalFfiResult) == 4);
 static_assert_64bit(alignof(SignalDeviceCapabilityInternalFfiResult) == 4);
@@ -1448,9 +1450,11 @@ typedef enum {
   SignalDeviceCapabilityInternalFfiArgTransfer,
   SignalDeviceCapabilityInternalFfiArgAttachmentBackfill,
   SignalDeviceCapabilityInternalFfiArgSparsePostQuantumRatchet,
-  SignalDeviceCapabilityInternalFfiArgProfilesV2,
   SignalDeviceCapabilityInternalFfiArgUsernameChangeSyncMessage,
   SignalDeviceCapabilityInternalFfiArgOptionalPhoneNumber,
+  SignalDeviceCapabilityInternalFfiArgReplyPrivately,
+  SignalDeviceCapabilityInternalFfiArgContactDelete,
+  SignalDeviceCapabilityInternalFfiArgAdminRemoveAndDelete,
 } SignalDeviceCapabilityInternalFfiArg;
 static_assert_64bit(sizeof(SignalDeviceCapabilityInternalFfiArg) == 4);
 static_assert_64bit(alignof(SignalDeviceCapabilityInternalFfiArg) == 4);

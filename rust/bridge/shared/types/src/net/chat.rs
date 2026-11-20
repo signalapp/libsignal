@@ -1716,9 +1716,11 @@ pub mod remote_derives {
         Transfer,
         AttachmentBackfill,
         SparsePostQuantumRatchet,
-        ProfilesV2,
         UsernameChangeSyncMessage,
         OptionalPhoneNumber,
+        ReplyPrivately,
+        ContactDelete,
+        AdminRemoveAndDelete,
     }
 
     #[derive(BridgedAsValue)]

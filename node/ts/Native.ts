@@ -560,6 +560,12 @@ export type ReturnFfiDeviceCapabilityInternal =
     }
   | {
       __type: 6;
+    }
+  | {
+      __type: 7;
+    }
+  | {
+      __type: 8;
     };
 
 export type ReturnFfiExtendAvatarTtlOut =
@@ -1456,6 +1462,12 @@ export type ArgFfiDeviceCapabilityInternal =
     }
   | {
       __type: 6;
+    }
+  | {
+      __type: 7;
+    }
+  | {
+      __type: 8;
     };
 
 export type ArgFfiLoginReceiptLevel =
