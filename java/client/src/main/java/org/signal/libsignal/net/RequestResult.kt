@@ -121,15 +121,23 @@ public inline fun <reified E : BadRequestError> Throwable.toRequestResult(): Req
 public fun Throwable.toRequestResult(): RequestResult<Nothing, Nothing> =
   when (this) {
     is TimeoutException -> RequestResult.RetryableNetworkError(this, null)
+
     is ChatServiceInactiveException -> RequestResult.RetryableNetworkError(this)
+
     is ConnectedElsewhereException -> RequestResult.RetryableNetworkError(this)
+
     // ConnectionInvalidated is mapped to a network error. Only one legacy API uses its
     // specific meaning; all other APIs treat it as a generic network error.
     is ConnectionInvalidatedException -> RequestResult.RetryableNetworkError(this)
+
     is RetryLaterException -> RequestResult.RetryableNetworkError(this, duration)
+
     is TransportFailureException -> RequestResult.RetryableNetworkError(this)
+
     is ServerSideErrorException -> RequestResult.RetryableNetworkError(this)
+
     is UnexpectedResponseException -> RequestResult.ApplicationError(this)
+
     else -> RequestResult.ApplicationError(this)
   }
 

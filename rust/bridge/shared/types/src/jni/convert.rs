@@ -18,11 +18,14 @@ use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
 use libsignal_core::try_scoped;
 use libsignal_net::cdsi::LookupResponseEntry;
 use libsignal_net_chat::api::UploadForm;
-use libsignal_net_chat::api::keys::DeviceSpecifier;
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use ref_cast::RefCast as _;
+use zkgroup::PROFILE_KEY_VERSION_ENCODED_LEN;
+use zkgroup::avatars::AvatarUploadCredential;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -31,7 +34,7 @@ use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters;
 use crate::net::chat::{
     ChatListener, JavaBridgeChatListener, JavaBridgeProvisioningListener, JniChatListener,
-    JniProvisioningListener, PreKeysResponse, ProvisioningListener,
+    JniProvisioningListener, PreKeysResponse, ProvisioningListener, ReceiptLevelHashMap,
 };
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::protocol::StrictPreKeyId;
@@ -43,7 +46,7 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, Serialized, U31, U53, U63, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -812,6 +815,90 @@ zkgroup_serialize_type!(
     zkgroup::donations::DonationPermit,
     "org.signal.libsignal.zkgroup.donation.DonationPermit"
 );
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "org.signal.libsignal.zkgroup.ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "org.signal.libsignal.zkgroup.ZkCredentialKeyPair"
+);
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredentialPresentation,
+    "org.signal.libsignal.zkgroup.avatars.AvatarUploadCredentialPresentation"
+);
+zkgroup_serialize_type!(
+    zkgroup::profiles::ProfileKey,
+    "org.signal.libsignal.zkgroup.profiles.ProfileKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredential,
+    "org.signal.libsignal.zkgroup.avatars.AvatarUploadCredential"
+);
+
+impl<'a> SimpleArgTypeInfo<'a> for ProfileKeyVersion {
+    type ArgType = JByteArray<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        foreign: &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        let len = foreign
+            .len(env)
+            .check_exceptions(env, "ProfileKeyVersion::SimpleArgTypeInfo, get length")?;
+        if len != PROFILE_KEY_VERSION_ENCODED_LEN {
+            return Err(BridgeLayerError::bad_argument(
+                "ProfileKeyVersion has wrong byte count".into(),
+            ));
+        }
+        let mut hex_buf = [0_u8; PROFILE_KEY_VERSION_ENCODED_LEN];
+        let hex_buf_i8: &mut [i8; PROFILE_KEY_VERSION_ENCODED_LEN] =
+            zerocopy::transmute_mut!(&mut hex_buf);
+        foreign
+            .get_region(env, 0, hex_buf_i8.as_mut_slice())
+            .check_exceptions(env, "ProfileKeyVersion::SimpleArgTypeInfo, get bytes")?;
+        ProfileKeyVersion::from_hex_bytes(&hex_buf).map_err(|_| {
+            BridgeLayerError::bad_argument("ProfileKeyVersion bytes aren't hex-encoded".into())
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_kt_arg_converter(_ctx: &mut KtMetadataContext) -> KtArgConverter {
+        KtArgConverter {
+            nice_type: "org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion".into(),
+            ffi_type: "ByteArray".into(),
+            ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+            converter_function:
+                "(org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion::getContents)".into(),
+        }
+    }
+}
+impl<'a> ResultTypeInfo<'a> for ProfileKeyVersion {
+    type ResultType = JByteArray<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        let hex_buf = self.hex_bytes();
+        JByteArray::new(env, PROFILE_KEY_VERSION_ENCODED_LEN)
+            .and_then(|buf| {
+                let hex_buf_i8: &[i8; PROFILE_KEY_VERSION_ENCODED_LEN] =
+                    zerocopy::transmute_ref!(&hex_buf);
+                buf.set_region(env, 0, hex_buf_i8.as_slice())?;
+                Ok(buf)
+            })
+            .check_exceptions(env, "ProfileKeyVersion::convert_into()")
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion".into(),
+            ffi_type: "ByteArray".into(),
+            converter_function: "({ profileKeyHex: ByteArray -> org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion(profileKeyHex) })".into(),
+        }
+    }
+}
 
 impl<'a> SimpleArgTypeInfo<'a> for Box<[u8]> {
     type ArgType = JByteArray<'a>;
@@ -1176,6 +1263,28 @@ impl<T: NiceArgConverter> NiceArgConverter for BridgeVec<T> {
             converter_function: format!(
                 "mapBridgeVecArg<{}, {}>({{ {}(it) }})",
                 t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+impl<'a> ResultTypeInfo<'a> for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo<'a>>::ResultType;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        self.into_public_key().convert_into(env)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let public_key = <PublicKey as NiceResultConverter>::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: "org.signal.libsignal.protocol.IdentityKey".into(),
+            ffi_type: public_key.ffi_type.clone(),
+            converter_function: format!(
+                "({{ handle: {} -> org.signal.libsignal.protocol.IdentityKey({}(handle)) }})",
+                public_key.ffi_type, public_key.converter_function
             ),
         }
     }
@@ -1686,6 +1795,54 @@ impl ResultTypeInfo<'_> for u64 {
     }
 }
 
+impl ResultTypeInfo<'_> for U31 {
+    type ResultType = jint;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(int);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i32::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U31, "Int");
+
+impl ResultTypeInfo<'_> for U53 {
+    type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(long);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i64::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U53, "Long");
+
+impl ResultTypeInfo<'_> for U63 {
+    type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(long);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i64::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U63, "Long");
+
+/// Uses a compact i32 representation for the bridge, but the nice type goes back to a boxed `Int?`.
+impl ResultTypeInfo<'_> for Option<U31> {
+    type ResultType = jint;
+    fn convert_into(self, env: &mut jni::Env<'_>) -> Result<Self::ResultType, BridgeLayerError> {
+        self.map_or(-1, i32::from).convert_into(env)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Option<U31> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Int?".to_string(),
+            ffi_type: "Int".to_string(),
+            converter_function: "({ x: Int -> if (x < 0) null else x })".to_string(),
+        }
+    }
+}
+
 /// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
 ///
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
@@ -1799,6 +1956,33 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
 nice_identity_result_converter!(Vec<u8>, "ByteArray");
 impl_result_type_info_for_option!(Vec<u8>);
 
+impl<'a> ResultTypeInfo<'a> for Vec<i64> {
+    type ResultType = JLongArray<'a>;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!([long]);
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        JLongArray::new(env, self.len())
+            .and_then(|array| {
+                array.set_region(env, 0, &self)?;
+                Ok(array)
+            })
+            .check_exceptions(env, "Vec<i64>::convert_into")
+    }
+}
+nice_identity_result_converter!(Vec<i64>, "LongArray");
+
+impl<'a> ResultTypeInfo<'a> for Vec<U53> {
+    type ResultType = JLongArray<'a>;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!([long]);
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        // Vecs are good at reusing storage.
+        self.into_iter()
+            .map(i64::from)
+            .collect_vec()
+            .convert_into(env)
+    }
+}
+nice_identity_result_converter!(Vec<U53>, "LongArray");
+
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JByteArray<'a>;
     const JNI_SIGNATURE: &'static str = <&'static [u8]>::JNI_SIGNATURE;
@@ -1871,6 +2055,18 @@ impl<const LEN: usize> NiceArgConverter for Option<[u8; LEN]> {
             ffi_type: "ByteArray?".to_string(),
             ffi_field_type_erased: ffi_field_type_erased::<Self>(),
             converter_function: "identity".to_string(),
+        }
+    }
+}
+
+impl<'a, const LEN: usize> ResultTypeInfo<'a> for Option<[u8; LEN]> {
+    type ResultType = Nullable<JByteArray<'a>>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        if let Some(x) = self {
+            Ok(Nullable(x.convert_into(env)?))
+        } else {
+            Ok(Nullable(JByteArray::null()))
         }
     }
 }
@@ -2364,6 +2560,9 @@ where
     }
 }
 
+/// Converts to an array of alternating keys and values.
+///
+/// This minimizes allocations compared to, say, an array of pairs.
 impl<'a, T: ResultTypeInfo<'a>, S> ResultTypeInfo<'a> for HashMap<String, T, S> {
     type ResultType = JavaArrayStar<'a>;
 
@@ -2392,6 +2591,44 @@ impl<T: NiceResultConverter, S> NiceResultConverter for HashMap<String, T, S> {
             ffi_type: "Array<*>".into(),
             converter_function: format!(
                 "stringMapReturnConverter<{}, {}>({{ {}(it) }})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+/// Converts to an array of alternating keys and values.
+///
+/// This minimizes allocations compared to, say, an array of pairs.
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for ReceiptLevelHashMap<T> {
+    type ResultType = JavaArrayStar<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        const CONTEXT: &str = "ReceiptLevelHashMap<T>::convert_into()";
+        let arr = JObjectArray::<JObject>::new(env, self.len() * 2, JObject::null())
+            .check_exceptions(env, CONTEXT)?;
+        for (i, (k, v)) in self.into_iter().enumerate() {
+            // Preserve all bits of a receipt level.
+            let k = k as jlong;
+            let k = box_primitive_if_needed(env, k.into())?.auto();
+            let v = v.convert_into(env)?;
+            let v = box_primitive_if_needed(env, v.into())?.auto();
+            arr.set_element(env, i * 2, k)
+                .and_then(|()| arr.set_element(env, i * 2 + 1, v))
+                .check_exceptions(env, CONTEXT)?;
+        }
+        Ok(JavaArrayStar(arr))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter> NiceResultConverter for ReceiptLevelHashMap<T> {
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let t = T::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: format!("Map<Long, {}>", t.nice_type),
+            ffi_type: "Array<*>".into(),
+            converter_function: format!(
+                "longMapReturnConverter<{}, {}>({{ {}(it) }})",
                 t.ffi_type, t.nice_type, t.converter_function
             ),
         }
@@ -3198,6 +3435,38 @@ impl<'a> ResultTypeInfo<'a> for f32 {
 }
 nice_identity_result_converter!(f32, "Float");
 
+impl<'a> SimpleArgTypeInfo<'a> for Option<bool> {
+    type ArgType = JavaOptionalBoolean<'a>;
+
+    fn convert_from(
+        env: &mut jni::Env<'a>,
+        JavaOptionalBoolean(foreign): &Self::ArgType,
+    ) -> Result<Self, BridgeLayerError> {
+        if foreign.is_null() {
+            return Ok(None);
+        }
+        Ok(Some(call_method_checked(
+            env,
+            foreign,
+            "booleanValue",
+            jni_args!(() -> bool),
+        )?))
+    }
+}
+nice_identity_arg_converter!(Option<bool>, "Boolean?");
+
+impl<'a> ResultTypeInfo<'a> for Option<bool> {
+    type ResultType = JavaOptionalBoolean<'a>;
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        if let Some(x) = self {
+            box_primitive_if_needed(env, JValueOwned::from(x)).map(JavaOptionalBoolean)
+        } else {
+            Ok(Default::default())
+        }
+    }
+}
+nice_identity_result_converter!(Option<bool>, "Boolean?");
+
 impl<'a> ResultTypeInfo<'a> for &'_ [libsignal_net_chat::api::ChallengeOption] {
     type ResultType = JObjectArray<'a>;
 
@@ -3798,7 +4067,45 @@ nice_identity_result_converter!(i64, "Long");
 nice_identity_arg_converter!(i64, "Long");
 
 impl_result_type_info_for_option!(BridgeWebAuthnAuthenticationParameters);
+impl_result_type_info_for_option!(crate::net::chat::remote_derives::TaggedBadges);
+impl_result_type_info_for_option!(AvatarUploadCredential);
 impl_result_type_info_for_option!(crate::net::chat::remote_derives::BackupEntitlement);
+impl_result_type_info_for_option!(ProfileKeyVersion);
+impl_result_type_info_for_option!(crate::net::chat::remote_derives::FetchedProfile);
+
+macro_rules! simple_arg_type_option {
+    ($ty:ty) => {
+        impl<'a> SimpleArgTypeInfo<'a> for Option<$ty> {
+            type ArgType = Nullable<<$ty as SimpleArgTypeInfo<'a>>::ArgType>;
+            fn convert_from(
+                env: &mut jni::Env<'a>,
+                Nullable(foreign): &Self::ArgType,
+            ) -> Result<Self, BridgeLayerError> {
+                if foreign.is_null() {
+                    Ok(None)
+                } else {
+                    SimpleArgTypeInfo::convert_from(env, foreign).map(Some)
+                }
+            }
+        }
+        #[cfg(feature = "metadata")]
+        impl NiceArgConverter for Option<$ty> {
+            fn register_kt_arg_converter(ctx: &mut KtMetadataContext) -> KtArgConverter {
+                let inner = <$ty as NiceArgConverter>::register_kt_arg_converter(ctx);
+                KtArgConverter {
+                    nice_type: format!("{}?", inner.nice_type),
+                    ffi_type: format!("{}?", inner.ffi_type),
+                    ffi_field_type_erased: ffi_field_type_erased::<Self>(),
+                    converter_function: format!(
+                        "({{ optionArg: {}? -> optionArg?.let<{}, {}> {{ {}(it) }} }})",
+                        inner.nice_type, inner.nice_type, inner.ffi_type, inner.converter_function
+                    ),
+                }
+            }
+        }
+    };
+}
+simple_arg_type_option!(ProfileKeyVersion);
 
 #[cfg(feature = "metadata")]
 impl<T, U> NiceResultConverter for Option<T>

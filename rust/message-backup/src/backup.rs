@@ -98,6 +98,10 @@ pub struct PartialBackup<M: Method + ReferencedTypes> {
     favorite_stickers: Option<M::Value<FavoriteStickerList>>,
     notification_profiles: UnorderedList<NotificationProfile<M::RecipientReference>>,
     chat_folders: Vec<ChatFolder<M::RecipientReference>>,
+    /// The Self recipient, once it's been seen, for checks that need to know which recipient is us.
+    ///
+    /// If a backup has more than one, this is the first; that's reported as an error on completion.
+    self_recipient: Option<M::RecipientReference>,
     /// Stored here so PartialBackup can be the only context necessary for processing backup frames.
     unusual_timestamp_tracker: RefCell<UnusualTimestampTracker>,
 }
@@ -233,6 +237,7 @@ impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<
             favorite_stickers,
             notification_profiles,
             chat_folders,
+            self_recipient: _,
             unusual_timestamp_tracker: _,
         } = value;
 
@@ -692,6 +697,7 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
             favorite_stickers: None,
             notification_profiles: Default::default(),
             chat_folders: Default::default(),
+            self_recipient: None,
             unusual_timestamp_tracker,
         })
     }
@@ -759,7 +765,10 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
         match self.recipients.entry(id) {
             intmap::Entry::Occupied(_) => Err(err_with_id(RecipientError::DuplicateRecipient)),
             intmap::Entry::Vacant(v) => {
-                let _ = v.insert(recipient.into());
+                let data: &M::RecipientData = v.insert(recipient.into());
+                if self.self_recipient.is_none() && data.as_ref().is_self() {
+                    self.self_recipient = Some(M::recipient_reference(&id, data).clone());
+                }
                 Ok(())
             }
         }
@@ -793,7 +802,9 @@ impl<M: Method + ReferencedTypes> PartialBackup<M> {
                 )
             })?;
 
-        Ok(self.chats.add_chat_item(chat_id, chat_item_data)?)
+        Ok(self
+            .chats
+            .add_chat_item(chat_id, chat_item_data, self.self_recipient.as_ref())?)
     }
 
     fn add_sticker_pack(
@@ -879,6 +890,7 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
         &mut self,
         chat_id: ChatId,
         mut item: ChatItemData<M>,
+        self_recipient: Option<&M::RecipientReference>,
     ) -> Result<(), ChatFrameError> {
         let Self {
             chat_items_count,
@@ -900,8 +912,12 @@ impl<M: Method + ReferencedTypes> ChatsData<M> {
             .get_mut(chat_id)
             .ok_or_else(|| wrap_error(ChatItemError::NoChatForItem))?;
 
-        item.validate_chat_recipient(&chat_data.recipient, &chat_data.cached_recipient_info)
-            .map_err(wrap_error)?;
+        item.validate_chat_recipient(
+            &chat_data.recipient,
+            &chat_data.cached_recipient_info,
+            self_recipient,
+        )
+        .map_err(wrap_error)?;
 
         item.total_chat_item_order_index = *chat_items_count;
 

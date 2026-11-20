@@ -20,6 +20,7 @@ import org.signal.libsignal.internal.liftExceptions
 import org.signal.libsignal.internal.mapWithCancellation
 import org.signal.libsignal.protocol.ServiceId
 import org.signal.libsignal.usernames.UsernameHash
+import org.signal.libsignal.zkgroup.ZkCredentialKeyPair
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -59,6 +60,15 @@ public data class AccountIdentity(
       )
   }
 }
+
+/**
+ * A random value in `[1, Long.MAX_VALUE]` that must be included in credential requests using the
+ * ZkCredential key.
+ *
+ * This value allows the server to ratchet the resulting binding identity,
+ * as reverting to the previous key will result in a new rotation ID.
+ */
+public typealias ZkCredentialRotationId = Long
 
 /**
  * The user-specified metadata attached to a multi-factor authentication (MFA) key, such as a TOTP
@@ -913,4 +923,27 @@ public class AuthAccountsService(
       onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult() },
     )
+
+  /**
+   * Generate a fresh ZkCredentialKeyPair, and upload its public (anonymous) key to the server.
+   *
+   * @return a [ZkCredentialKeyPair] and its associated [ZkCredentialRotationId]
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun setZkCredentialKey(
+    rngSeedForTesting: DeterministicRandomSeedUseOnlyForTesting? = null,
+  ): CompletableFuture<RequestResult<Pair<ZkCredentialKeyPair, ZkCredentialRotationId>, Nothing>> =
+    liftExceptions {
+      NativeNice
+        .AuthenticatedChatConnection_set_zk_credential_key(
+          asyncCtx = connection.tokioAsyncContext,
+          chat = connection,
+          rng = rngSeedForTesting,
+        ).mapWithCancellation(
+          onSuccess = { RequestResult.Success(it) },
+          onError = { err -> err.toRequestResult() },
+        )
+    }
 }

@@ -35,14 +35,25 @@ impl Serialize for ProfileKeyVersion {
     where
         S: Serializer,
     {
-        let mut ascii: [u8; PROFILE_KEY_VERSION_ENCODED_LEN] =
-            [0u8; PROFILE_KEY_VERSION_ENCODED_LEN];
-        hex::encode_to_slice(self.bytes, &mut ascii).expect("lengths match");
+        let ascii = self.hex_bytes();
         let mut seq = serializer.serialize_tuple(ascii.len())?;
         for b in ascii.iter() {
             seq.serialize_element(b)?;
         }
         seq.end()
+    }
+}
+
+impl ProfileKeyVersion {
+    pub fn hex_bytes(&self) -> [u8; PROFILE_KEY_VERSION_ENCODED_LEN] {
+        let mut out = [0; PROFILE_KEY_VERSION_ENCODED_LEN];
+        hex::encode_to_slice(self.bytes, &mut out).expect("buffer is the right length");
+        out
+    }
+    pub fn from_hex_bytes(hex_bytes: &[u8]) -> Result<Self, hex::FromHexError> {
+        let mut bytes = [0; PROFILE_KEY_LEN];
+        hex::decode_to_slice(hex_bytes, &mut bytes)?;
+        Ok(Self { bytes })
     }
 }
 

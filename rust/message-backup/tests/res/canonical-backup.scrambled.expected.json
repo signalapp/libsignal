@@ -84,6 +84,65 @@
     },
     "ReleaseNotes",
     {
+      "Contact": {
+        "aci": "8edb4710-6e1a-46a8-83d5-45849b8ab81b",
+        "pni": null,
+        "profile_key": "10eb99e218c5be855df2859f267d07fa024a19693b96894336ac426710210a40",
+        "username": null,
+        "registration": "Registered",
+        "e164": null,
+        "blocked": false,
+        "blocked_at": null,
+        "visibility": "VISIBLE",
+        "hidden_at": null,
+        "profile_sharing": true,
+        "profile_given_name": "eqG",
+        "profile_family_name": "rnys",
+        "hide_story": false,
+        "identity_key": null,
+        "identity_state": "DEFAULT",
+        "nickname": null,
+        "note": "",
+        "system_given_name": "",
+        "system_family_name": "",
+        "system_nickname": "",
+        "shared_name": null,
+        "avatar_color": null,
+        "key_transparency_data": null
+      }
+    },
+    {
+      "Group": {
+        "master_key": "635ce54aa15782cd2b9c6ca22b2501eabdf3c808fa1ab8ea9317661527e0fb03",
+        "whitelisted": true,
+        "hide_story": false,
+        "story_send_mode": "DEFAULT",
+        "snapshot": {
+          "title": "MvpvlDL3NuUTWn",
+          "description": null,
+          "avatar_url": "",
+          "disappearing_messages_timer": null,
+          "access_control_attributes": "UNKNOWN",
+          "access_control_members": "UNKNOWN",
+          "access_control_add_from_invite_link": "UNKNOWN",
+          "access_control_member_label": "UNKNOWN",
+          "version": 1,
+          "members": [],
+          "members_pending_profile_key": [],
+          "members_pending_admin_approval": [],
+          "invite_link_password": "",
+          "announcements_only": false,
+          "members_banned": [],
+          "terminated": false,
+          "_limit_construction_to_module": null
+        },
+        "blocked": false,
+        "blocked_at": null,
+        "avatar_color": null,
+        "_limit_construction_to_module": null
+      }
+    },
+    {
       "DistributionList": {
         "List": {
           "distribution_id": "00000000-0000-0000-0000-000000000000",
@@ -103,7 +162,160 @@
       }
     }
   ],
-  "chats": [],
+  "chats": [
+    {
+      "recipient": {
+        "Contact": {
+          "aci": "8edb4710-6e1a-46a8-83d5-45849b8ab81b",
+          "pni": null,
+          "profile_key": "10eb99e218c5be855df2859f267d07fa024a19693b96894336ac426710210a40",
+          "username": null,
+          "registration": "Registered",
+          "e164": null,
+          "blocked": false,
+          "blocked_at": null,
+          "visibility": "VISIBLE",
+          "hidden_at": null,
+          "profile_sharing": true,
+          "profile_given_name": "eqG",
+          "profile_family_name": "rnys",
+          "hide_story": false,
+          "identity_key": null,
+          "identity_state": "DEFAULT",
+          "nickname": null,
+          "note": "",
+          "system_given_name": "",
+          "system_family_name": "",
+          "system_nickname": "",
+          "shared_name": null,
+          "avatar_color": null,
+          "key_transparency_data": null
+        }
+      },
+      "items": [
+        {
+          "author": {
+            "Contact": {
+              "aci": "8edb4710-6e1a-46a8-83d5-45849b8ab81b",
+              "pni": null,
+              "profile_key": "10eb99e218c5be855df2859f267d07fa024a19693b96894336ac426710210a40",
+              "username": null,
+              "registration": "Registered",
+              "e164": null,
+              "blocked": false,
+              "blocked_at": null,
+              "visibility": "VISIBLE",
+              "hidden_at": null,
+              "profile_sharing": true,
+              "profile_given_name": "eqG",
+              "profile_family_name": "rnys",
+              "hide_story": false,
+              "identity_key": null,
+              "identity_state": "DEFAULT",
+              "nickname": null,
+              "note": "",
+              "system_given_name": "",
+              "system_family_name": "",
+              "system_nickname": "",
+              "shared_name": null,
+              "avatar_color": null,
+              "key_transparency_data": null
+            }
+          },
+          "message": {
+            "Standard": {
+              "text": {
+                "text": "https://signal.org: Why",
+                "ranges": []
+              },
+              "quote": {
+                "author": {
+                  "Self_": {
+                    "avatar_color": null
+                  }
+                },
+                "quote_type": "Normal",
+                "target_sent_timestamp": 1715635000000,
+                "attachments": [],
+                "text": {
+                  "text": "https://sig",
+                  "ranges": []
+                },
+                "private_reply": {
+                  "Group": {
+                    "Group": {
+                      "master_key": "635ce54aa15782cd2b9c6ca22b2501eabdf3c808fa1ab8ea9317661527e0fb03",
+                      "whitelisted": true,
+                      "hide_story": false,
+                      "story_send_mode": "DEFAULT",
+                      "snapshot": {
+                        "title": "MvpvlDL3NuUTWn",
+                        "description": null,
+                        "avatar_url": "",
+                        "disappearing_messages_timer": null,
+                        "access_control_attributes": "UNKNOWN",
+                        "access_control_members": "UNKNOWN",
+                        "access_control_add_from_invite_link": "UNKNOWN",
+                        "access_control_member_label": "UNKNOWN",
+                        "version": 1,
+                        "members": [],
+                        "members_pending_profile_key": [],
+                        "members_pending_admin_approval": [],
+                        "invite_link_password": "",
+                        "announcements_only": false,
+                        "members_banned": [],
+                        "terminated": false,
+                        "_limit_construction_to_module": null
+                      },
+                      "blocked": false,
+                      "blocked_at": null,
+                      "avatar_color": null,
+                      "_limit_construction_to_module": null
+                    }
+                  }
+                }
+              },
+              "attachments": [],
+              "reactions": {
+                "reactions": []
+              },
+              "link_previews": [],
+              "long_text": null,
+              "_limit_construction_to_module": null
+            }
+          },
+          "revisions": [],
+          "direction": {
+            "Incoming": {
+              "sent": null,
+              "received": 1715636000001,
+              "read": true,
+              "sealed_sender": false
+            }
+          },
+          "expire_start": null,
+          "expires_in": null,
+          "sent_at": 1715636000000,
+          "sms": false,
+          "total_chat_item_order_index": 0,
+          "pin_details": null,
+          "_limit_construction_to_module": null
+        }
+      ],
+      "expiration_timer": null,
+      "expiration_timer_version": 0,
+      "mute_until": null,
+      "style": null,
+      "pinned_order": null,
+      "dont_notify_for_mentions_if_muted": false,
+      "notify_for_calls_if_muted": null,
+      "notify_for_mentions_if_muted": null,
+      "notify_for_replies_if_muted": null,
+      "show_unread_reminders": null,
+      "marked_unread": false,
+      "archived": false
+    }
+  ],
   "ad_hoc_calls": [],
   "pinned_chats": [],
   "sticker_packs": [],

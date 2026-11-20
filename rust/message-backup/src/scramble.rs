@@ -463,6 +463,7 @@ impl Visit<Scrambler> for proto::Contact {
             blocked: _,
             blockedAtTimestamp: _,
             visibility: _,
+            hiddenAtTimestamp: _,
             profileKey,
             profileSharing: _,
             profileGivenName,
@@ -970,6 +971,7 @@ impl Visit<Scrambler> for proto::Quote {
             text,
             attachments,
             type_: _,
+            privateReplyDescriptor: _,
             special_fields: _,
         } = self;
 
@@ -1503,6 +1505,7 @@ impl Visit<Scrambler> for proto::GroupMemberRemovedUpdate {
         let Self {
             removerAci,
             removedAci,
+            deleteData: _,
             special_fields: _,
         } = self;
         if let Some(remover) = removerAci {
@@ -1805,6 +1808,7 @@ impl Visit<Scrambler> for proto::GroupTerminateChangeUpdate {
     fn accept(&mut self, visitor: &mut Scrambler) {
         let Self {
             updaterAci,
+            deleteData: _,
             special_fields: _,
         } = self;
         if let Some(updater) = updaterAci {

@@ -12,14 +12,15 @@ use std::ops::Deref;
 
 use itertools::Itertools as _;
 use libsignal_account_keys::{AccountEntropyPool, InvalidAccountEntropyPool};
-use libsignal_net_chat::api::keys::DeviceSpecifier;
 use libsignal_net_chat::api::registration::PushToken;
 use libsignal_net_chat::api::{ChallengeOption, UploadForm};
+use libsignal_net_chat::grpc::keys::DeviceSpecifier;
 use libsignal_net_chat::stream_util::BulkPolledStreamTerminationReason;
 use paste::paste;
 use uuid::Uuid;
-use zkgroup::ZkGroupDeserializationFailure;
 use zkgroup::groups::GroupSendFullToken;
+use zkgroup::profiles::ProfileKeyVersion;
+use zkgroup::{PROFILE_KEY_VERSION_ENCODED_LEN, ZkGroupDeserializationFailure};
 
 use super::*;
 use crate::crypto::RandomNumberGenerator;
@@ -28,7 +29,7 @@ use crate::ffi::FfiInputStreamStruct;
 use crate::io::{FfiSyncInputStreamStruct, InputStream, SyncInputStream};
 use crate::net::chat::{
     ChatListener, FfiChatListenerStruct, FfiProvisioningListenerStruct, PreKeysResponse,
-    ProvisioningListener,
+    ProvisioningListener, ReceiptLevelHashMap,
 };
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
@@ -40,7 +41,8 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, IllegalArgumentError, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, IllegalArgumentError, Serialized, U31, U53, U63,
+    extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -814,6 +816,61 @@ zkgroup_serialize_type!(
     "DonationPermitRequestContext"
 );
 zkgroup_serialize_type!(zkgroup::donations::DonationPermit, "DonationPermit");
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialPublicKey,
+    "ZkCredentialPublicKey"
+);
+zkgroup_serialize_type!(
+    zkgroup::zk_credential_key::ZkCredentialKeyPair,
+    "ZkCredentialKeyPair"
+);
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredentialPresentation,
+    "AvatarUploadCredentialPresentation"
+);
+zkgroup_serialize_type!(zkgroup::profiles::ProfileKey, "ProfileKey");
+zkgroup_serialize_type!(
+    zkgroup::avatars::AvatarUploadCredential,
+    "AvatarUploadCredential"
+);
+
+impl SimpleArgTypeInfo for ProfileKeyVersion {
+    type ArgType = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as SimpleArgTypeInfo>::ArgType;
+
+    fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
+        let raw =
+            <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as SimpleArgTypeInfo>::convert_from(foreign)?;
+        Ok(ProfileKeyVersion::from_hex_bytes(&raw)
+            .map_err(|_| IllegalArgumentError::new("ProfileKeyVersion invalid hex bytes"))?)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for ProfileKeyVersion {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        let inner = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN]>::register_swift_arg_converter(ctx);
+        SwiftArgConverter {
+            nice_type: "ProfileKeyVersion".into(),
+            converter_type: format!("ProfileKeyVersionArgConverter<{}>", inner.converter_type),
+        }
+    }
+}
+impl ResultTypeInfo for ProfileKeyVersion {
+    type ResultType = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN] as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.hex_bytes().convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for ProfileKeyVersion {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let inner = <[u8; PROFILE_KEY_VERSION_ENCODED_LEN]>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: "ProfileKeyVersion".into(),
+            converter_type: format!("ProfileKeyVersionReturnConverter<{}>", inner.converter_type),
+        }
+    }
+}
 
 impl SimpleArgTypeInfo for Box<[u8]> {
     type ArgType = BorrowedSliceOf<c_uchar>;
@@ -821,6 +878,12 @@ impl SimpleArgTypeInfo for Box<[u8]> {
     fn convert_from(foreign: Self::ArgType) -> SignalFfiResult<Self> {
         let slice = unsafe { foreign.as_slice()? };
         Ok(slice.into())
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceArgConverter for Box<[u8]> {
+    fn register_swift_arg_converter(ctx: &mut SwiftMetadataContext) -> SwiftArgConverter {
+        <&[u8]>::register_swift_arg_converter(ctx)
     }
 }
 
@@ -945,6 +1008,30 @@ impl<const LEN: usize> NiceResultConverter for [u8; LEN] {
                 "FixedByteArrayConverter<{}>",
                 names::fixed_byte_array_helper(LEN)
             ),
+        }
+    }
+}
+
+impl<const LEN: usize> ResultTypeInfo for Option<[u8; LEN]> {
+    type ResultType = OptionalOf<<[u8; LEN] as ResultTypeInfo>::ResultType>;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        Ok(if let Some(x) = self {
+            OptionalOf::some(x.convert_into()?)
+        } else {
+            OptionalOf::NONE
+        })
+    }
+}
+#[cfg(feature = "metadata")]
+impl<const LEN: usize> NiceResultConverter for Option<[u8; LEN]> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let opt = OptionalOf::<<[u8; LEN] as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+        let opt = opt.swift_name();
+        let ty = <[u8; LEN] as NiceResultConverter>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("{}?", ty.nice_type),
+            converter_type: format!("OptionalReturnConverter<{}, {opt}>", ty.converter_type),
         }
     }
 }
@@ -1363,6 +1450,21 @@ impl NiceResultConverter for Vec<u8> {
     }
 }
 
+// Array<UInt64> is the correct choice for this type, so we can use BridgeVec's implementation.
+// (Note U53 is exported as UInt64.)
+impl ResultTypeInfo for Vec<U53> {
+    type ResultType = <BridgeVec<U53> as ResultTypeInfo>::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        BridgeVec::<U53>::from(self).convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Vec<U53> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        BridgeVec::<U53>::register_swift_result_converter(ctx)
+    }
+}
+
 impl ResultTypeInfo for bytes::Bytes {
     type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -1408,6 +1510,23 @@ impl ResultTypeInfo for Option<u64> {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.unwrap_or(u64::MAX))
+    }
+}
+
+/// Uses a compact u32 representation for the bridge, but the nice type goes back to a boxed `UInt32?`.
+impl ResultTypeInfo for Option<U31> {
+    type ResultType = u32;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.map_or(u32::MAX, u32::from).convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Option<U31> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "UInt32?".to_string(),
+            converter_type: "NonHighBitConverter<UInt32>".to_string(),
+        }
     }
 }
 
@@ -1930,6 +2049,38 @@ impl<T: NiceResultConverter + ResultTypeInfo, S> NiceResultConverter for HashMap
     }
 }
 
+impl<T: ResultTypeInfo> ResultTypeInfo for ReceiptLevelHashMap<T> {
+    type ResultType = <BridgeVec<(u64, T)> as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        // TODO: we could avoid the intermediate copy into a Vec<>. Not worth it at this time.
+        BridgeVec(self.into_iter().collect()).convert_into()
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for ReceiptLevelHashMap<T> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let t = T::register_swift_result_converter(ctx);
+        let pair_type =
+            <PairOf<<u64 as ResultTypeInfo>::ResultType, T::ResultType> as IsCType>::register_c_type(
+                ctx,
+            );
+        let buffer_type = <OwnedBufferOfMaxAligned<
+            PairOf<<u64 as ResultTypeInfo>::ResultType, T::ResultType>,
+        > as IsCType>::register_c_type(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("[UInt64:{}]", t.nice_type),
+            converter_type: format!(
+                "IntMapReturnConverter<{}, {}, {}>",
+                t.converter_type,
+                buffer_type.swift_name(),
+                pair_type.swift_name(),
+            ),
+        }
+    }
+}
+
 impl<A: ArgTypeInfoBase, B: ArgTypeInfoBase> ArgTypeInfoBase for (A, B) {
     type ArgType = PairOf<A::ArgType, B::ArgType>;
 }
@@ -2023,6 +2174,20 @@ impl<A: ResultTypeInfo, B: ResultTypeInfo> ResultTypeInfo for Option<(A, B)> {
         }
     }
 }
+#[cfg(feature = "metadata")]
+impl<A: NiceResultConverter + ResultTypeInfo, B: NiceResultConverter + ResultTypeInfo>
+    NiceResultConverter for Option<(A, B)>
+{
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let opt = OptionalOf::<<(A, B) as ResultTypeInfo>::ResultType>::register_c_type(ctx);
+        let opt = opt.swift_name();
+        let ty = <(A, B) as NiceResultConverter>::register_swift_result_converter(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("{}?", ty.nice_type),
+            converter_type: format!("OptionalReturnConverter<{}, {opt}>", ty.converter_type),
+        }
+    }
+}
 
 impl ResultTypeInfo for libsignal_net::cdsi::LookupResponse {
     type ResultType = FfiCdsiLookupResponse;
@@ -2064,6 +2229,27 @@ impl ResultTypeInfo for PreKeysResponse {
                     .into_boxed_slice(),
             ),
         })
+    }
+}
+
+impl ResultTypeInfo for IdentityKey {
+    type ResultType = <PublicKey as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.into_public_key().convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for IdentityKey {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "IdentityKey".into(),
+            converter_type: format!(
+                "IdentityKeyResultConverter<{}>",
+                <PublicKey as NiceResultConverter>::register_swift_result_converter(ctx)
+                    .converter_type
+            ),
+        }
     }
 }
 
@@ -2374,6 +2560,28 @@ trivial!(bool, "Bool");
 trivial!(f64, "Double");
 trivial!(f32, "Float");
 
+impl ResultTypeInfo for U31 {
+    type ResultType = u32;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        u32::from(self).convert_into()
+    }
+}
+nice_identity_result_converter!(U31, "UInt32");
+impl ResultTypeInfo for U53 {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        u64::from(self).convert_into()
+    }
+}
+nice_identity_result_converter!(U53, "UInt64");
+impl ResultTypeInfo for U63 {
+    type ResultType = u64;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        u64::from(self).convert_into()
+    }
+}
+nice_identity_result_converter!(U63, "UInt64");
+
 macro_rules! return_optional {
     ($ty:ty) => {
         impl ResultTypeInfo for Option<$ty> {
@@ -2438,12 +2646,17 @@ macro_rules! simple_optional {
     };
 }
 simple_optional!(f32);
+simple_optional!(bool);
 simple_optional!(Vec<u8>);
 return_optional!(libsignal_protocol::Pni);
 return_optional!(uuid::Uuid);
+simple_optional!(ProfileKeyVersion);
+simple_optional!(zkgroup::avatars::AvatarUploadCredential);
 return_optional!(libsignal_net_chat::api::purchase::ChargeFailure);
 return_optional!(crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters);
+return_optional!(crate::net::chat::remote_derives::TaggedBadges);
 return_optional!(crate::net::chat::remote_derives::BackupEntitlement);
+return_optional!(crate::net::chat::remote_derives::FetchedProfile);
 
 #[cfg(test)]
 mod test {

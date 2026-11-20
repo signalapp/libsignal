@@ -296,6 +296,7 @@ message Contact {
   optional bytes keyTransparencyData = 22;
   uint64 blockedAtTimestamp = 23; // if `blocked` is true, 0 means unknown block time
   Name sharedName = 24; // absent iff both `given` and `family` are empty, name provided by third party
+  uint64 hiddenAtTimestamp = 25; // if `visibility` is not VISIBLE, 0 means unknown hide time
 }
 
 message Group {
@@ -895,6 +896,14 @@ message Quote {
   optional Text text = 3;
   repeated QuotedAttachment attachments = 4;
   Type type = 5;
+
+  // We don't always know the group for a private reply in cases where groups were fully deleted after
+  // receiving the message. Always prefer setting the [privateReplyGroupRecipientId] if available, falling back to
+  // [unknownPrivateReply] only when it isn't.
+  oneof privateReplyDescriptor {
+    bool unknownPrivateReply = 6;
+    uint64 privateReplyGroupRecipientId = 7;
+  }
 }
 
 message BodyRange {
@@ -1200,6 +1209,7 @@ message GroupMemberLeftUpdate {
 message GroupMemberRemovedUpdate {
   optional bytes removerAci = 1;
   bytes removedAci = 2;
+  bool deleteData = 3;
 }
 
 message SelfInvitedToGroupUpdate {
@@ -1341,6 +1351,7 @@ message GroupExpirationTimerUpdate {
 
 message GroupTerminateChangeUpdate {
   optional bytes updaterAci = 1;
+  bool deleteData = 2;
 }
 
 message PollTerminateUpdate {

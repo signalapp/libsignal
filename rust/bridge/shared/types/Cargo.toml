@@ -25,6 +25,7 @@ libsignal-keytrans = { workspace = true }
 libsignal-message-backup = { workspace = true, features = ["json"] }
 libsignal-net = { workspace = true }
 libsignal-net-chat = { workspace = true }
+libsignal-net-grpc = { workspace = true }
 libsignal-protocol = { workspace = true }
 libsignal-provisioning = { workspace = true }
 libsignal-svrb = { workspace = true }
@@ -60,6 +61,7 @@ static_assertions = { workspace = true }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
+typenum = { workspace = true, features = ["const-generics"] }
 uuid = { workspace = true }
 visibility = { workspace = true }
 zerocopy = { workspace = true }

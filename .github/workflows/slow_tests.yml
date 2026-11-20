@@ -293,7 +293,8 @@ jobs:
     - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
       with:
         node-version-file: '.nvmrc'
-    - run: npm ci && npm run tsc && npm run test
+    - run: npm install -g pnpm
+    - run: pnpm ci && pnpm run tsc && pnpm run test
       working-directory: node
       env:
         PREBUILDS_ONLY: 1
@@ -301,7 +302,7 @@ jobs:
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: node-prebuilds
-        path: node/prebuilds
+        path: node/platform/linux/prebuilds
         retention-days: 2
 
   node-docker-secondary:
@@ -319,7 +320,7 @@ jobs:
       uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: node-prebuilds-secondary
-        path: node/prebuilds
+        path: node/platform/linux/prebuilds
         retention-days: 2
 
   node-reproducibility:
@@ -367,7 +368,9 @@ jobs:
       with:
         node-version-file: '.nvmrc'
     - name: Build for arm64
-      run: npm run build -- --arch arm64 --copy-to-prebuilds
+      # Use plain old npm to run this script to avoid having to install pnpm.
+      # (But we still want to run through npm to set env vars appropriately instead of calling build_node_bridge.py directly.)
+      run: npm run build -- --arch arm64
       working-directory: node
 
   swift-ios:
@@ -454,7 +457,7 @@ jobs:
       run: cargo fetch --verbose
 
     - name: Fetch all node deps before the hermetic test
-      run: npm install
+      run: npm ci
       working-directory: rust/bridge/node/futures/tests/node-tests/
 
     - name: Run hermetic tests without network access

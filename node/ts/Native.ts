@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import type { ChargeFailure } from './Errors.js';
 
 export type StringMapFfiContents<Value> = Array<string | Value>;
+export type BigIntMapFfiContents<Value> = Array<bigint | Value>;
 
 export type Uuid = Bytes;
 
@@ -180,15 +181,55 @@ export type ReturnFfiAuthCheckResult =
       __type: 2;
     };
 
+export type ReturnFfiAuthGetProfileError =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      log_safe: string;
+    };
+
+export type ReturnFfiBackupConfiguration = {
+  levels: BigIntMapFfiContents<ReturnFfiBackupLevelConfiguration>;
+  free_tier_media_days: number;
+};
+
 export type ReturnFfiBackupEntitlement = {
   level: bigint;
   expiration: Timestamp;
+};
+
+export type ReturnFfiBackupLevelConfiguration = {
+  storage_allowance_bytes: number;
+  play_product_id: string;
+  media_ttl_days: number;
+};
+
+export type ReturnFfiBadge = {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  sprites6: Array<string>;
+  svg: string;
+  svgs: Array<ReturnFfiBadgeSvg>;
 };
 
 export type ReturnFfiBadgeEntitlement = {
   badge_id: string;
   expiration: Timestamp;
   visible: boolean;
+};
+
+export type ReturnFfiBadgeLevelConfiguration = {
+  badge_id: string;
+  badge_duration_seconds: number | null;
+};
+
+export type ReturnFfiBadgeSvg = {
+  light: string;
+  dark: string;
 };
 
 export type ReturnFfiBadgeVisibility =
@@ -460,6 +501,14 @@ export type ReturnFfiCreateLoginReceiptCredentialOut =
       _0: ReturnFfiReceiptCredentialError;
     };
 
+export type ReturnFfiCurrencyConfiguration = {
+  minimum: number;
+  one_time_donation_amounts: BigIntMapFfiContents<Array<number>>;
+  subscription_amounts: BigIntMapFfiContents<number>;
+  backup_subscription_amounts: BigIntMapFfiContents<number>;
+  supported_payment_methods: Array<ReturnFfiPaymentMethodInternal>;
+};
+
 export type ReturnFfiCurrencyConversionsInternal = {
   timestamp_ms: Timestamp;
   currencies: Array<ReturnFfiCurrencyInternal>;
@@ -511,7 +560,34 @@ export type ReturnFfiDeviceCapabilityInternal =
     }
   | {
       __type: 6;
+    }
+  | {
+      __type: 7;
+    }
+  | {
+      __type: 8;
     };
+
+export type ReturnFfiExtendAvatarTtlOut =
+  | {
+      __type: 0;
+      _0: string;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiFetchedProfile = {
+  profile: ReturnFfiProfile;
+  etag: Bytes | null;
+  v2_data_hash: Bytes | null;
+  identity_key: PublicKey;
+  unidentified_access_key_fingerprint: Bytes | null;
+  unrestricted_unidentified_access: boolean;
+};
 
 export type ReturnFfiFinishMfaVerificationOut =
   | {
@@ -557,6 +633,33 @@ export type ReturnFfiGetAccountIdentityOut =
   | {
       __type: 0;
       _0: ReturnFfiBridgeAccountIdentity;
+    }
+  | {
+      __type: 1;
+    };
+
+export type ReturnFfiGetAvatarCredentialArgs = {
+  aci: Bytes;
+  key_pair: Bytes;
+  rotation_id: bigint;
+  server_public_params: Bytes;
+  current_time_seconds: bigint;
+};
+
+export type ReturnFfiGetAvatarUploadFormArgs = {
+  credential: Bytes;
+  upload_length: number;
+};
+
+export type ReturnFfiGetAvatarUploadFormLegacyArgs = {
+  aci: Bytes;
+  profile_key: Bytes;
+};
+
+export type ReturnFfiGetAvatarUploadFormOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiS3UploadFormInternal;
     }
   | {
       __type: 1;
@@ -620,6 +723,35 @@ export type ReturnFfiGetMessageBackupInfoOut =
       __type: 2;
     };
 
+export type ReturnFfiGetPreKeysArgs = {
+  auth: ReturnFfiTestingUserBasedAuthorization;
+  target: Bytes;
+  device_id: number;
+};
+
+export type ReturnFfiGetPreKeysOut =
+  | {
+      __type: 0;
+      identity_key: Bytes;
+      bundle_count: number;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    };
+
+export type ReturnFfiGetProfileArgs = {
+  aci: Bytes;
+  profile_key: Bytes;
+  etag: Bytes | null;
+  avatar_cdn_config_valid_urls: Array<string>;
+};
+
 export type ReturnFfiGetProfileKeyCredentialArgs = {
   profile_key_request_context: Bytes;
   server_params: ReturnFfiServerPublicParamsSerialized;
@@ -637,6 +769,16 @@ export type ReturnFfiGetProfileKeyCredentialOut =
   | {
       __type: 2;
       _0: ReturnFfiProfileKeyCredentialRequestError;
+    };
+
+export type ReturnFfiGetProfileOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiFetchedProfile | null;
+    }
+  | {
+      __type: 1;
+      _0: ReturnFfiAuthGetProfileError;
     };
 
 export type ReturnFfiGetStickerUploadFormsOut =
@@ -737,6 +879,13 @@ export type ReturnFfiListMfaKeysOut = {
   _0: Array<ReturnFfiBridgeConfirmedMfaKey>;
 };
 
+export type ReturnFfiLoginConfiguration = {
+  level: bigint;
+  play_product_id: string;
+  play_option_id: string;
+  app_store_product_id: string;
+};
+
 export type ReturnFfiLoginReceiptLevel =
   | {
       __type: 0;
@@ -828,6 +977,26 @@ export type ReturnFfiMyTestStruct = {
   my_string_field: string;
 };
 
+export type ReturnFfiPaymentMethodInternal =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    }
+  | {
+      __type: 5;
+    };
+
 export type ReturnFfiPaymentProviderInternal =
   | {
       __type: 0;
@@ -842,6 +1011,37 @@ export type ReturnFfiPaymentProviderInternal =
       __type: 3;
     };
 
+export type ReturnFfiProfile = {
+  given_name: string;
+  family_name: string;
+  about: string;
+  about_emoji: string;
+  avatar: string | null;
+  phone_number_sharing: boolean | null;
+  payment_address: Bytes | null;
+  badge_ids: Array<string>;
+};
+
+export type ReturnFfiProfileFieldWithMaxLength =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    }
+  | {
+      __type: 5;
+    };
+
 export type ReturnFfiProfileKeyCredentialRequestError =
   | {
       __type: 0;
@@ -849,6 +1049,25 @@ export type ReturnFfiProfileKeyCredentialRequestError =
   | {
       __type: 1;
     };
+
+export type ReturnFfiProfileValidationErrorInternal =
+  | {
+      __type: 0;
+      field: ReturnFfiProfileFieldWithMaxLength;
+      len: number;
+      max_len: number;
+    }
+  | {
+      __type: 1;
+    };
+
+export type ReturnFfiPurchaseProductConfiguration = {
+  currencies: StringMapFfiContents<ReturnFfiCurrencyConfiguration>;
+  badge_levels: BigIntMapFfiContents<ReturnFfiBadgeLevelConfiguration>;
+  backup: ReturnFfiBackupConfiguration;
+  sepa_maximum_euros: number;
+  login: ReturnFfiLoginConfiguration;
+};
 
 export type ReturnFfiReceiptCredentialError =
   | {
@@ -995,6 +1214,45 @@ export type ReturnFfiSetOneTimeKemPreKeysArgs = {
   pre_keys: Array<ReturnFfiTestingAnySignedPreKey>;
 };
 
+export type ReturnFfiSetProfileArgs = {
+  rng_seed: bigint;
+  aci: Bytes;
+  profile_key: Bytes;
+  profile: ReturnFfiProfile;
+  expected_current_data_hash: Bytes | null;
+  expected_current_profile_key_version: Bytes | null;
+  avatar_cdn_config_valid_urls: Array<string>;
+};
+
+export type ReturnFfiSetProfileError =
+  | {
+      __type: 0;
+      _0: ReturnFfiProfileValidationErrorInternal;
+    }
+  | {
+      __type: 1;
+    }
+  | {
+      __type: 2;
+      current_profile_version: Bytes | null;
+    }
+  | {
+      __type: 3;
+    }
+  | {
+      __type: 4;
+    };
+
+export type ReturnFfiSetProfileOut =
+  | {
+      __type: 0;
+      _0: Bytes;
+    }
+  | {
+      __type: 1;
+      _0: ReturnFfiSetProfileError;
+    };
+
 export type ReturnFfiSetSignedEcPreKeyArgs = {
   identity: number;
   pre_key: ReturnFfiTestingAnySignedPreKey;
@@ -1048,6 +1306,11 @@ export type ReturnFfiStartWebAuthnRegistrationOut =
       __type: 1;
     };
 
+export type ReturnFfiTaggedBadges = {
+  badges: StringMapFfiContents<ReturnFfiBadge>;
+  etag: Bytes;
+};
+
 export type ReturnFfiTestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -1058,6 +1321,56 @@ export type ReturnFfiTestingAnySignedPreKey = {
   key: Bytes;
   sig: Bytes;
 };
+
+export type ReturnFfiTestingUserBasedAuthorization =
+  | {
+      __type: 0;
+      key: Bytes;
+    }
+  | {
+      __type: 1;
+      token: Bytes;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiUnauthGetProfileArgs = {
+  inner: ReturnFfiGetProfileArgs;
+  auth: ReturnFfiUnauthProfileAuthorization;
+};
+
+export type ReturnFfiUnauthGetProfileError =
+  | {
+      __type: 0;
+    }
+  | {
+      __type: 1;
+      log_safe: string;
+    }
+  | {
+      __type: 2;
+    };
+
+export type ReturnFfiUnauthGetProfileOut =
+  | {
+      __type: 0;
+      _0: ReturnFfiFetchedProfile | null;
+    }
+  | {
+      __type: 1;
+      _0: ReturnFfiUnauthGetProfileError;
+    };
+
+export type ReturnFfiUnauthProfileAuthorization =
+  | {
+      __type: 0;
+      _0: Bytes;
+    }
+  | {
+      __type: 1;
+      _0: Bytes;
+    };
 
 export type ArgFfiBadgeVisibility =
   | {
@@ -1149,6 +1462,12 @@ export type ArgFfiDeviceCapabilityInternal =
     }
   | {
       __type: 6;
+    }
+  | {
+      __type: 7;
+    }
+  | {
+      __type: 8;
     };
 
 export type ArgFfiLoginReceiptLevel =
@@ -1236,6 +1555,27 @@ export type ArgFfiPaymentProviderInternal =
       __type: 3;
     };
 
+export type ArgFfiProfile = {
+  given_name: string;
+  family_name: string;
+  about: string;
+  about_emoji: string;
+  avatar: string | null;
+  phone_number_sharing: boolean | null;
+  payment_address: Bytes | null;
+  badge_ids: Array<string>;
+};
+
+export type ArgFfiUnauthProfileAuthorization =
+  | {
+      __type: 0;
+      _0: Bytes;
+    }
+  | {
+      __type: 1;
+      _0: Bytes;
+    };
+
 export const NetRemoteConfigKeys = [
   'chatRequestConnectionCheckTimeoutMillis',
   'offerCompressionForKeyTransparency',
@@ -1250,7 +1590,7 @@ export const NetRemoteConfigKeys = [
   'grpc.KeyTransparencyQueryServiceSearchV2',
 ] as const;
 
-import load from 'node-gyp-build';
+import nativeModule from './NativeLoad.js';
 
 type NativeFunctions = {
   registerErrors: (errorsModule: Record<string, unknown>) => void;
@@ -1382,6 +1722,27 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgeAccountIdentity>;
+  AuthenticatedChatConnection_get_avatar_credential: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    aci: Bytes,
+    key_pair: Bytes,
+    rotation_id: bigint,
+    server_public_params: Bytes,
+    current_time_seconds: bigint,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<Bytes>;
+  AuthenticatedChatConnection_get_avatar_upload_form_legacy: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    aci: Bytes,
+    profile_key: Bytes
+  ) => CancellablePromise<ReturnFfiS3UploadFormInternal>;
+  AuthenticatedChatConnection_get_badges: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    etag: Bytes | null
+  ) => CancellablePromise<ReturnFfiTaggedBadges | null>;
   AuthenticatedChatConnection_get_capabilities: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -1402,6 +1763,14 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgePreKeyCounts>;
+  AuthenticatedChatConnection_get_profile: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    aci: Bytes,
+    profile_key: Bytes,
+    etag: Bytes | null,
+    avatar_cdn_config: Wrapper<AvatarCdnUrlValidationConfig>
+  ) => CancellablePromise<ReturnFfiFetchedProfile | null>;
   AuthenticatedChatConnection_get_sticker_upload_forms: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -1535,6 +1904,17 @@ type NativeFunctions = {
     pre_key_data: Array<Wrapper<KyberPublicKey>>,
     pre_key_signatures: Array<Bytes>
   ) => CancellablePromise<void>;
+  AuthenticatedChatConnection_set_profile: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator,
+    aci: Bytes,
+    profile_key: Bytes,
+    profile: ArgFfiProfile,
+    expected_current_data_hash: Bytes | null,
+    expected_current_profile_key_version: Bytes | null,
+    avatar_cdn_config: Wrapper<AvatarCdnUrlValidationConfig>
+  ) => CancellablePromise<Bytes>;
   AuthenticatedChatConnection_set_registration_lock: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>,
@@ -1559,6 +1939,11 @@ type NativeFunctions = {
     username_ciphertext: Bytes,
     keep_link_handle: boolean
   ) => CancellablePromise<Uuid>;
+  AuthenticatedChatConnection_set_zk_credential_key: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator
+  ) => CancellablePromise<[Bytes, bigint]>;
   AuthenticatedChatConnection_start_mfa_verification: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
@@ -1567,6 +1952,9 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<AuthenticatedChatConnection>
   ) => CancellablePromise<ReturnFfiBridgeWebAuthnCreateParameters>;
+  AvatarCdnUrlValidationConfig_new: (
+    valid_url_prefixes: Array<string>
+  ) => AvatarCdnUrlValidationConfig;
   AvatarUploadCredentialPresentation_CheckValidContents: (
     presentation_bytes: Bytes
   ) => void;
@@ -3204,6 +3592,7 @@ type NativeFunctions = {
   TESTING_CreateOTP: (username: string, secret: Bytes) => string;
   TESTING_CreateOTPFromBase64: (username: string, secret: string) => string;
   TESTING_DeleteAccountTests: () => Array<GrpcTestCaseFfi<void, void>>;
+  TESTING_DeleteAvatarTests: () => Array<GrpcTestCaseFfi<Bytes, boolean>>;
   TESTING_DeleteBackupMediaTests: () => Array<
     GrpcTestCaseFfi<
       Array<ReturnFfiBridgeDeleteBackupMediaItem>,
@@ -3226,6 +3615,9 @@ type NativeFunctions = {
     _needs_cleanup: null
   ) => CancellablePromise<null>;
   TESTING_ErrorOnReturnSync: (_needs_cleanup: null) => null;
+  TESTING_ExtendAvatarTtlTests: () => Array<
+    GrpcTestCaseFfi<Bytes, ReturnFfiExtendAvatarTtlOut>
+  >;
   TESTING_FakeChatConnection_Create: (
     tokio: Wrapper<TokioAsyncContext>,
     listener: ChatListener,
@@ -3350,11 +3742,29 @@ type NativeFunctions = {
   TESTING_GetAccountIdentityTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetAccountIdentityOut>
   >;
+  TESTING_GetAvatarCredentialTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiGetAvatarCredentialArgs, Bytes | null>
+  >;
+  TESTING_GetAvatarUploadFormLegacyTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiGetAvatarUploadFormLegacyArgs,
+      ReturnFfiS3UploadFormInternal
+    >
+  >;
+  TESTING_GetAvatarUploadFormTests: () => Array<
+    GrpcTestCaseFfi<
+      ReturnFfiGetAvatarUploadFormArgs,
+      ReturnFfiGetAvatarUploadFormOut
+    >
+  >;
   TESTING_GetBackupCdnCredentialsTests: () => Array<
     GrpcTestCaseFfi<number, ReturnFfiGetCdnCredentialsOut>
   >;
   TESTING_GetBackupSvrBCredentialsTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetSvrBCredentialsOut>
+  >;
+  TESTING_GetBadgesTests: () => Array<
+    GrpcTestCaseFfi<Bytes | null, ReturnFfiTaggedBadges | null>
   >;
   TESTING_GetCapabilitiesTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiGetCapabilitiesOut>
@@ -3377,11 +3787,20 @@ type NativeFunctions = {
   TESTING_GetPreKeyCountTests: () => Array<
     GrpcTestCaseFfi<void, ReturnFfiBridgePreKeyCounts>
   >;
+  TESTING_GetPreKeysTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiGetPreKeysArgs, ReturnFfiGetPreKeysOut>
+  >;
+  TESTING_GetProductConfigurationTests: () => Array<
+    GrpcTestCaseFfi<void, ReturnFfiPurchaseProductConfiguration>
+  >;
   TESTING_GetProfileKeyCredentialTests: () => Array<
     GrpcTestCaseFfi<
       ReturnFfiGetProfileKeyCredentialArgs,
       ReturnFfiGetProfileKeyCredentialOut
     >
+  >;
+  TESTING_GetProfileTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiGetProfileArgs, ReturnFfiGetProfileOut>
   >;
   TESTING_GetStickerUploadFormTests: () => Array<
     GrpcTestCaseFfi<number, ReturnFfiGetStickerUploadFormsOut>
@@ -3486,6 +3905,9 @@ type NativeFunctions = {
   ) => CancellablePromise<null>;
   TESTING_PanicOnReturnSync: (_needs_cleanup: null) => null;
   TESTING_ProcessBytestringArray: (input: Array<Bytes>) => Array<Bytes>;
+  TESTING_ProfileFieldMaxLengths: () => Array<
+    [ReturnFfiProfileFieldWithMaxLength, number]
+  >;
   TESTING_RedeemBackupReceiptTests: () => Array<
     GrpcTestCaseFfi<Bytes, ReturnFfiRedeemBackupReceiptOut>
   >;
@@ -3569,6 +3991,12 @@ type NativeFunctions = {
   TESTING_SetOneTimeKemPreKeysTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetOneTimeKemPreKeysArgs, void>
   >;
+  TESTING_SetProfileTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetProfileArgs, ReturnFfiSetProfileOut>
+  >;
+  TESTING_SetProfileValidationTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiSetProfileArgs, ReturnFfiSetProfileOut>
+  >;
   TESTING_SetRegistrationLockTests: () => Array<GrpcTestCaseFfi<Bytes, void>>;
   TESTING_SetRegistrationRecoveryPasswordTests: () => Array<
     GrpcTestCaseFfi<Bytes, void>
@@ -3578,6 +4006,9 @@ type NativeFunctions = {
   >;
   TESTING_SetUsernameLinkTests: () => Array<
     GrpcTestCaseFfi<ReturnFfiSetUsernameLinkArgs, ReturnFfiSetUsernameLinkOut>
+  >;
+  TESTING_SetZkCredentialKeyTests: () => Array<
+    GrpcTestCaseFfi<void, [Bytes, bigint] | null>
   >;
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly: (
     source_public_key: Wrapper<PublicKey>,
@@ -3608,6 +4039,9 @@ type NativeFunctions = {
     asyncRuntime: Wrapper<TokioAsyncContext>,
     input: number
   ) => CancellablePromise<number>;
+  TESTING_UnauthGetProfileTests: () => Array<
+    GrpcTestCaseFfi<ReturnFfiUnauthGetProfileArgs, ReturnFfiUnauthGetProfileOut>
+  >;
   TESTING_conversion_BridgeVecData32_identity: (
     x: Array<Bytes>
   ) => Array<Bytes>;
@@ -3674,17 +4108,24 @@ type NativeFunctions = {
   TESTING_conversion_MapStringString_to_string: (
     x: StringMapFfiContents<string>
   ) => string;
+  TESTING_conversion_OptionBool_identity: (x: boolean | null) => boolean | null;
+  TESTING_conversion_OptionBool_identity_async: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    x: boolean | null
+  ) => CancellablePromise<boolean | null>;
+  TESTING_conversion_OptionBool_to_string: (x: boolean | null) => string;
   TESTING_conversion_OptionalBytes_identity: (x: Bytes | null) => Bytes | null;
   TESTING_conversion_OptionalBytes_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     x: Bytes | null
   ) => CancellablePromise<Bytes | null>;
   TESTING_conversion_OptionalBytes_to_string: (x: Bytes | null) => string;
-  TESTING_conversion_OptionalData32_to_string: (x: Bytes | null) => string;
-  TESTING_conversion_OptionalData32_to_string_async: (
+  TESTING_conversion_OptionalData32_identity: (x: Bytes | null) => Bytes | null;
+  TESTING_conversion_OptionalData32_identity_async: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     x: Bytes | null
-  ) => CancellablePromise<string>;
+  ) => CancellablePromise<Bytes | null>;
+  TESTING_conversion_OptionalData32_to_string: (x: Bytes | null) => string;
   TESTING_conversion_OptionalFloat_identity: (
     x: number | null
   ) => number | null;
@@ -3901,10 +4342,26 @@ type NativeFunctions = {
     purchase_time: Timestamp,
     expected_level: ArgFfiLoginReceiptLevel
   ) => CancellablePromise<Bytes>;
+  UnauthenticatedChatConnection_delete_avatar: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Bytes
+  ) => CancellablePromise<void>;
   UnauthenticatedChatConnection_disconnect: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>
   ) => CancellablePromise<void>;
+  UnauthenticatedChatConnection_extend_avatar_ttl: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Bytes
+  ) => CancellablePromise<string | null>;
+  UnauthenticatedChatConnection_get_avatar_upload_form: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    credential: Bytes,
+    upload_length: number
+  ) => CancellablePromise<ReturnFfiS3UploadFormInternal>;
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -3925,6 +4382,19 @@ type NativeFunctions = {
     target: Bytes,
     device: number
   ) => CancellablePromise<PreKeysResponse>;
+  UnauthenticatedChatConnection_get_product_configuration: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>
+  ) => CancellablePromise<ReturnFfiPurchaseProductConfiguration>;
+  UnauthenticatedChatConnection_get_profile: (
+    asyncRuntime: Wrapper<TokioAsyncContext>,
+    chat: Wrapper<UnauthenticatedChatConnection>,
+    aci: Bytes,
+    profile_key: Bytes,
+    auth: ArgFfiUnauthProfileAuthorization,
+    etag: Bytes | null,
+    avatar_cdn_config: Wrapper<AvatarCdnUrlValidationConfig>
+  ) => CancellablePromise<ReturnFfiFetchedProfile | null>;
   UnauthenticatedChatConnection_get_profile_key_credential: (
     asyncRuntime: Wrapper<TokioAsyncContext>,
     chat: Wrapper<UnauthenticatedChatConnection>,
@@ -4091,11 +4561,15 @@ const {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_avatar_credential,
+  AuthenticatedChatConnection_get_avatar_upload_form_legacy,
+  AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_entitlements,
   AuthenticatedChatConnection_get_pre_key_count,
+  AuthenticatedChatConnection_get_profile,
   AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
@@ -4118,12 +4592,15 @@ const {
   AuthenticatedChatConnection_set_mfa_key_metadata,
   AuthenticatedChatConnection_set_one_time_ec_pre_keys,
   AuthenticatedChatConnection_set_one_time_kem_pre_keys,
+  AuthenticatedChatConnection_set_profile,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_set_zk_credential_key,
   AuthenticatedChatConnection_start_mfa_verification,
   AuthenticatedChatConnection_start_web_authn_registration,
+  AvatarCdnUrlValidationConfig_new,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -4635,6 +5112,7 @@ const {
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteAccountTests,
+  TESTING_DeleteAvatarTests,
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
@@ -4646,6 +5124,7 @@ const {
   TESTING_ErrorOnReturnAsync,
   TESTING_ErrorOnReturnIo,
   TESTING_ErrorOnReturnSync,
+  TESTING_ExtendAvatarTtlTests,
   TESTING_FakeChatConnection_Create,
   TESTING_FakeChatConnection_CreateProvisioning,
   TESTING_FakeChatConnection_TakeAuthenticatedChat,
@@ -4677,8 +5156,12 @@ const {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarCredentialTests,
+  TESTING_GetAvatarUploadFormLegacyTests,
+  TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetBadgesTests,
   TESTING_GetCapabilitiesTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
@@ -4686,7 +5169,10 @@ const {
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
+  TESTING_GetPreKeysTests,
+  TESTING_GetProductConfigurationTests,
   TESTING_GetProfileKeyCredentialTests,
+  TESTING_GetProfileTests,
   TESTING_GetStickerUploadFormTests,
   TESTING_GetSubscriptionReceiptCredentialTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
@@ -4729,6 +5215,7 @@ const {
   TESTING_PanicOnReturnIo,
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
+  TESTING_ProfileFieldMaxLengths,
   TESTING_RedeemBackupReceiptTests,
   TESTING_RedeemDonationReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
@@ -4763,10 +5250,13 @@ const {
   TESTING_SetMfaKeyMetadataTests,
   TESTING_SetOneTimeEcPreKeysTests,
   TESTING_SetOneTimeKemPreKeysTests,
+  TESTING_SetProfileTests,
+  TESTING_SetProfileValidationTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
+  TESTING_SetZkCredentialKeyTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_StartMfaVerificationTests,
   TESTING_StartWebAuthnRegistrationTests,
@@ -4779,6 +5269,7 @@ const {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_UnauthGetProfileTests,
   TESTING_conversion_BridgeVecData32_identity,
   TESTING_conversion_BridgeVecData32_identity_async,
   TESTING_conversion_BridgeVecData32_to_string,
@@ -4806,11 +5297,15 @@ const {
   TESTING_conversion_MapStringString_identity,
   TESTING_conversion_MapStringString_identity_async,
   TESTING_conversion_MapStringString_to_string,
+  TESTING_conversion_OptionBool_identity,
+  TESTING_conversion_OptionBool_identity_async,
+  TESTING_conversion_OptionBool_to_string,
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalData32_identity,
+  TESTING_conversion_OptionalData32_identity_async,
   TESTING_conversion_OptionalData32_to_string,
-  TESTING_conversion_OptionalData32_to_string_async,
   TESTING_conversion_OptionalFloat_identity,
   TESTING_conversion_OptionalFloat_identity_async,
   TESTING_conversion_OptionalFloat_to_string,
@@ -4865,10 +5360,15 @@ const {
   UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_create_login_receipt_credential,
+  UnauthenticatedChatConnection_delete_avatar,
   UnauthenticatedChatConnection_disconnect,
+  UnauthenticatedChatConnection_extend_avatar_ttl,
+  UnauthenticatedChatConnection_get_avatar_upload_form,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
+  UnauthenticatedChatConnection_get_product_configuration,
+  UnauthenticatedChatConnection_get_profile,
   UnauthenticatedChatConnection_get_profile_key_credential,
   UnauthenticatedChatConnection_get_subscription_receipt_credential,
   UnauthenticatedChatConnection_info,
@@ -4907,7 +5407,7 @@ const {
   uuid_from_string,
   uuid_new_v4,
   uuid_to_string,
-} = load(`${import.meta.dirname}/../`) as NativeFunctions;
+} = nativeModule as NativeFunctions;
 
 export {
   registerErrors,
@@ -4940,11 +5440,15 @@ export {
   AuthenticatedChatConnection_finish_web_authn_registration,
   AuthenticatedChatConnection_generate_totp_key,
   AuthenticatedChatConnection_get_account_identity,
+  AuthenticatedChatConnection_get_avatar_credential,
+  AuthenticatedChatConnection_get_avatar_upload_form_legacy,
+  AuthenticatedChatConnection_get_badges,
   AuthenticatedChatConnection_get_capabilities,
   AuthenticatedChatConnection_get_currency_conversions,
   AuthenticatedChatConnection_get_devices,
   AuthenticatedChatConnection_get_entitlements,
   AuthenticatedChatConnection_get_pre_key_count,
+  AuthenticatedChatConnection_get_profile,
   AuthenticatedChatConnection_get_sticker_upload_forms,
   AuthenticatedChatConnection_get_upload_form,
   AuthenticatedChatConnection_info,
@@ -4967,12 +5471,15 @@ export {
   AuthenticatedChatConnection_set_mfa_key_metadata,
   AuthenticatedChatConnection_set_one_time_ec_pre_keys,
   AuthenticatedChatConnection_set_one_time_kem_pre_keys,
+  AuthenticatedChatConnection_set_profile,
   AuthenticatedChatConnection_set_registration_lock,
   AuthenticatedChatConnection_set_registration_recovery_password,
   AuthenticatedChatConnection_set_signed_ec_pre_key,
   AuthenticatedChatConnection_set_username_link,
+  AuthenticatedChatConnection_set_zk_credential_key,
   AuthenticatedChatConnection_start_mfa_verification,
   AuthenticatedChatConnection_start_web_authn_registration,
+  AvatarCdnUrlValidationConfig_new,
   AvatarUploadCredentialPresentation_CheckValidContents,
   AvatarUploadCredentialPresentation_GetCm,
   AvatarUploadCredentialPresentation_GetRedemptionTime,
@@ -5484,6 +5991,7 @@ export {
   TESTING_CreateOTP,
   TESTING_CreateOTPFromBase64,
   TESTING_DeleteAccountTests,
+  TESTING_DeleteAvatarTests,
   TESTING_DeleteBackupMediaTests,
   TESTING_DeleteUsernameHashTests,
   TESTING_DeleteUsernameLinkTests,
@@ -5495,6 +6003,7 @@ export {
   TESTING_ErrorOnReturnAsync,
   TESTING_ErrorOnReturnIo,
   TESTING_ErrorOnReturnSync,
+  TESTING_ExtendAvatarTtlTests,
   TESTING_FakeChatConnection_Create,
   TESTING_FakeChatConnection_CreateProvisioning,
   TESTING_FakeChatConnection_TakeAuthenticatedChat,
@@ -5526,8 +6035,12 @@ export {
   TESTING_FutureSuccess,
   TESTING_GenerateTotpKeyTests,
   TESTING_GetAccountIdentityTests,
+  TESTING_GetAvatarCredentialTests,
+  TESTING_GetAvatarUploadFormLegacyTests,
+  TESTING_GetAvatarUploadFormTests,
   TESTING_GetBackupCdnCredentialsTests,
   TESTING_GetBackupSvrBCredentialsTests,
+  TESTING_GetBadgesTests,
   TESTING_GetCapabilitiesTests,
   TESTING_GetCurrencyConversionsTests,
   TESTING_GetDevicesTests,
@@ -5535,7 +6048,10 @@ export {
   TESTING_GetMediaBackupInfoTests,
   TESTING_GetMessageBackupInfoTests,
   TESTING_GetPreKeyCountTests,
+  TESTING_GetPreKeysTests,
+  TESTING_GetProductConfigurationTests,
   TESTING_GetProfileKeyCredentialTests,
+  TESTING_GetProfileTests,
   TESTING_GetStickerUploadFormTests,
   TESTING_GetSubscriptionReceiptCredentialTests,
   TESTING_InputStreamReadIntoZeroLengthSlice,
@@ -5578,6 +6094,7 @@ export {
   TESTING_PanicOnReturnIo,
   TESTING_PanicOnReturnSync,
   TESTING_ProcessBytestringArray,
+  TESTING_ProfileFieldMaxLengths,
   TESTING_RedeemBackupReceiptTests,
   TESTING_RedeemDonationReceiptTests,
   TESTING_RegisterAccountResponse_CreateTestValue,
@@ -5612,10 +6129,13 @@ export {
   TESTING_SetMfaKeyMetadataTests,
   TESTING_SetOneTimeEcPreKeysTests,
   TESTING_SetOneTimeKemPreKeysTests,
+  TESTING_SetProfileTests,
+  TESTING_SetProfileValidationTests,
   TESTING_SetRegistrationLockTests,
   TESTING_SetRegistrationRecoveryPasswordTests,
   TESTING_SetSignedEcPreKeyTests,
   TESTING_SetUsernameLinkTests,
+  TESTING_SetZkCredentialKeyTests,
   TESTING_SignedPublicPreKey_CheckBridgesCorrectly,
   TESTING_StartMfaVerificationTests,
   TESTING_StartWebAuthnRegistrationTests,
@@ -5628,6 +6148,7 @@ export {
   TESTING_TokioAsyncContext_FutureSuccessBytes,
   TESTING_TokioAsyncContext_NewSingleThreaded,
   TESTING_TokioAsyncFuture,
+  TESTING_UnauthGetProfileTests,
   TESTING_conversion_BridgeVecData32_identity,
   TESTING_conversion_BridgeVecData32_identity_async,
   TESTING_conversion_BridgeVecData32_to_string,
@@ -5655,11 +6176,15 @@ export {
   TESTING_conversion_MapStringString_identity,
   TESTING_conversion_MapStringString_identity_async,
   TESTING_conversion_MapStringString_to_string,
+  TESTING_conversion_OptionBool_identity,
+  TESTING_conversion_OptionBool_identity_async,
+  TESTING_conversion_OptionBool_to_string,
   TESTING_conversion_OptionalBytes_identity,
   TESTING_conversion_OptionalBytes_identity_async,
   TESTING_conversion_OptionalBytes_to_string,
+  TESTING_conversion_OptionalData32_identity,
+  TESTING_conversion_OptionalData32_identity_async,
   TESTING_conversion_OptionalData32_to_string,
-  TESTING_conversion_OptionalData32_to_string_async,
   TESTING_conversion_OptionalFloat_identity,
   TESTING_conversion_OptionalFloat_identity_async,
   TESTING_conversion_OptionalFloat_to_string,
@@ -5714,10 +6239,15 @@ export {
   UnauthenticatedChatConnection_check_svr_credentials,
   UnauthenticatedChatConnection_connect,
   UnauthenticatedChatConnection_create_login_receipt_credential,
+  UnauthenticatedChatConnection_delete_avatar,
   UnauthenticatedChatConnection_disconnect,
+  UnauthenticatedChatConnection_extend_avatar_ttl,
+  UnauthenticatedChatConnection_get_avatar_upload_form,
   UnauthenticatedChatConnection_get_pre_keys_access_key_auth,
   UnauthenticatedChatConnection_get_pre_keys_group_auth,
   UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth,
+  UnauthenticatedChatConnection_get_product_configuration,
+  UnauthenticatedChatConnection_get_profile,
   UnauthenticatedChatConnection_get_profile_key_credential,
   UnauthenticatedChatConnection_get_subscription_receipt_credential,
   UnauthenticatedChatConnection_info,
@@ -5845,6 +6375,9 @@ export interface Aes256GcmSiv {
   readonly __type: unique symbol;
 }
 export interface AuthenticatedChatConnection {
+  readonly __type: unique symbol;
+}
+export interface AvatarCdnUrlValidationConfig {
   readonly __type: unique symbol;
 }
 export interface BackupJsonExporter {

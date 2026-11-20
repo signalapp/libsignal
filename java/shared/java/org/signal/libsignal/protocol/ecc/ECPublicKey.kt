@@ -103,14 +103,21 @@ public final class ECPublicKey :
 
   override fun equals(other: Any?): Boolean =
     when (other) {
-      null -> false
-      is ECPublicKey ->
+      null -> {
+        false
+      }
+
+      is ECPublicKey -> {
         this.guardedMap { thisHandle ->
           other.guardedMap { thatHandle ->
             Native.ECPublicKey_Equals(thisHandle, thatHandle)
           }
         }
-      else -> false
+      }
+
+      else -> {
+        false
+      }
     }
 
   public override fun hashCode(): Int = Arrays.hashCode(this.serialize())

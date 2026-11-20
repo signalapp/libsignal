@@ -7,7 +7,6 @@
 //! websocket, as implemented in [`libsignal_net::chat`].
 
 mod backups;
-mod keys;
 mod keytrans;
 mod messages;
 mod profiles;

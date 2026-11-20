@@ -14,7 +14,6 @@ use libsignal_net::infra::errors::RetryLater;
 use ref_cast::RefCast as _;
 
 pub mod backups;
-pub mod keys;
 pub mod keytrans;
 pub mod messages;
 pub mod profiles;
@@ -248,7 +247,6 @@ pub struct S3UploadForm {
 /// UnauthenticatedChatApi generically should accept an arbitrary `T` here.
 pub trait UnauthenticatedChatApi<T>:
     backups::UnauthenticatedChatApi<T>
-    + keys::UnauthenticatedChatApi<T>
     + keytrans::UnauthenticatedChatApi
     + messages::UnauthenticatedChatApi<T>
     + profiles::UnauthenticatedChatApi
@@ -257,7 +255,6 @@ pub trait UnauthenticatedChatApi<T>:
 }
 impl<T, U> UnauthenticatedChatApi<T> for U where
     U: backups::UnauthenticatedChatApi<T>
-        + keys::UnauthenticatedChatApi<T>
         + keytrans::UnauthenticatedChatApi
         + messages::UnauthenticatedChatApi<T>
         + profiles::UnauthenticatedChatApi
@@ -268,7 +265,6 @@ impl<T, U> UnauthenticatedChatApi<T> for U where
 #[cfg(test)]
 pub(crate) mod testutil {
     use const_str::concat_bytes;
-    use data_encoding_macro::base64;
     use rand::SeedableRng as _;
 
     pub const TEST_SELF_ACI: libsignal_core::Aci =
@@ -322,15 +318,20 @@ pub(crate) mod testutil {
         ))
         .expect("valid (enough)")
     }
+    pub(crate) use super::testutil_for_test_cases::*;
+}
 
-    /// The serialized form of [`structurally_valid_group_send_token`].
+// This isn't marked as #[cfg(test)] since it needs to be used in test_cases
+pub(crate) mod testutil_for_test_cases {
+    use data_encoding_macro::base64;
+    /// The serialized form of `super::testutil::structurally_valid_group_send_token`.
     pub(crate) const SERIALIZED_GROUP_SEND_TOKEN: &[u8] =
         &base64!("ABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABo5c+LAQAA");
 
     #[test]
     fn serialized_group_send_token_is_correct() {
         assert_eq!(
-            &zkgroup::serialize(&structurally_valid_group_send_token()),
+            &zkgroup::serialize(&super::testutil::structurally_valid_group_send_token()),
             SERIALIZED_GROUP_SEND_TOKEN,
         );
     }

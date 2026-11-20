@@ -43,9 +43,11 @@ public enum DeviceCapability: Sendable, CaseIterable {
     case transfer
     case attachmentBackfill
     case sparsePostQuantumRatchet
-    case profilesV2
     case usernameChangeSyncMessage
     case optionalPhoneNumber
+    case replyPrivately
+    case contactDelete
+    case adminRemoveAndDelete
 }
 
 public protocol AuthDevicesService: Sendable {

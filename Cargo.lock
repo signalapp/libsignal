@@ -2809,6 +2809,7 @@ dependencies = [
  "test-case",
  "thiserror 2.0.18",
  "tokio",
+ "typenum",
  "usernames",
  "uuid",
  "visibility",
@@ -2863,7 +2864,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi"
-version = "0.108.0"
+version = "0.108.4"
 dependencies = [
  "cpufeatures 0.2.17",
  "libsignal-ffi-impl",
@@ -2872,7 +2873,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-ffi-impl"
-version = "0.108.0"
+version = "0.108.4"
 dependencies = [
  "cpufeatures 0.2.17",
  "hex",
@@ -2889,6 +2890,7 @@ dependencies = [
  "signal-media",
  "uuid",
  "zerocopy",
+ "zkgroup",
 ]
 
 [[package]]
@@ -2909,7 +2911,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni"
-version = "0.108.0"
+version = "0.108.4"
 dependencies = [
  "libsignal-debug",
  "libsignal-jni-impl",
@@ -2917,7 +2919,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-impl"
-version = "0.108.0"
+version = "0.108.4"
 dependencies = [
  "assert_matches",
  "cfg-if",
@@ -2950,7 +2952,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-jni-testing"
-version = "0.108.0"
+version = "0.108.4"
 dependencies = [
  "jni",
  "libsignal-bridge-testing",
@@ -3275,7 +3277,7 @@ dependencies = [
 
 [[package]]
 name = "libsignal-node"
-version = "0.108.0"
+version = "0.108.4"
 dependencies = [
  "futures",
  "libsignal-bridge",
@@ -3421,9 +3423,9 @@ dependencies = [
 
 [[package]]
 name = "libz-sys"
-version = "1.1.31"
+version = "1.1.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff20308ecabd635a2dc1dd5834a86c462cca20efba1d5d3ddab1f8aea3455cb2"
+checksum = "fee3f59f4321dab0c78d828942e7aa09d0bd8ad6e78a501977e6bf3d02938045"
 dependencies = [
  "cc",
  "pkg-config",

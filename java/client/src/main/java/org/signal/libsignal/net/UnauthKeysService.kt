@@ -47,7 +47,9 @@ public class UnauthKeysService(
           device.deviceId
         }
 
-        is DeviceSpecifier.AllDevices -> -1
+        is DeviceSpecifier.AllDevices -> {
+          -1
+        }
       }
     return liftExceptions {
       connection

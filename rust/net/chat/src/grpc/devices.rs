@@ -93,9 +93,11 @@ pub enum DeviceCapability {
     Transfer,
     AttachmentBackfill,
     SparsePostQuantumRatchet,
-    ProfilesV2,
     UsernameChangeSyncMessage,
     OptionalPhoneNumber,
+    ReplyPrivately,
+    ContactDelete,
+    AdminRemoveAndDelete,
 }
 
 impl From<DeviceCapability> for GrpcDeviceCapability {
@@ -105,9 +107,11 @@ impl From<DeviceCapability> for GrpcDeviceCapability {
             DeviceCapability::Transfer => Self::Transfer,
             DeviceCapability::AttachmentBackfill => Self::AttachmentBackfill,
             DeviceCapability::SparsePostQuantumRatchet => Self::SparsePostQuantumRatchet,
-            DeviceCapability::ProfilesV2 => Self::ProfilesV2,
             DeviceCapability::UsernameChangeSyncMessage => Self::UsernameChangeSyncMessage,
             DeviceCapability::OptionalPhoneNumber => Self::OptionalPhoneNumber,
+            DeviceCapability::ReplyPrivately => Self::ReplyPrivately,
+            DeviceCapability::ContactDelete => Self::ContactDelete,
+            DeviceCapability::AdminRemoveAndDelete => Self::AdminRemoveAndDelete,
         }
     }
 }
@@ -125,9 +129,11 @@ impl TryFrom<GrpcDeviceCapability> for DeviceCapability {
             GrpcDeviceCapability::Transfer => Ok(Self::Transfer),
             GrpcDeviceCapability::AttachmentBackfill => Ok(Self::AttachmentBackfill),
             GrpcDeviceCapability::SparsePostQuantumRatchet => Ok(Self::SparsePostQuantumRatchet),
-            GrpcDeviceCapability::ProfilesV2 => Ok(Self::ProfilesV2),
             GrpcDeviceCapability::UsernameChangeSyncMessage => Ok(Self::UsernameChangeSyncMessage),
             GrpcDeviceCapability::OptionalPhoneNumber => Ok(Self::OptionalPhoneNumber),
+            GrpcDeviceCapability::ReplyPrivately => Ok(Self::ReplyPrivately),
+            GrpcDeviceCapability::ContactDelete => Ok(Self::ContactDelete),
+            GrpcDeviceCapability::AdminRemoveAndDelete => Ok(Self::AdminRemoveAndDelete),
         }
     }
 }
@@ -542,12 +548,14 @@ pub mod test_cases {
                         DeviceCapability::Storage,
                         DeviceCapability::SparsePostQuantumRatchet,
                         DeviceCapability::Transfer,
-                        DeviceCapability::ProfilesV2,
                         DeviceCapability::AttachmentBackfill,
+                        DeviceCapability::AdminRemoveAndDelete,
+                        DeviceCapability::ReplyPrivately,
+                        DeviceCapability::ContactDelete,
                     ],
                 },
                 request_grpc: SetCapabilitiesRequest {
-                    capabilities: vec![1, 2, 6, 7, 8, 9, 10],
+                    capabilities: vec![1, 2, 6, 7, 9, 10, 11, 12, 13],
                 },
                 response_grpc: SetCapabilitiesResponse {},
                 response: (),
@@ -718,12 +726,16 @@ mod test {
                 GrpcDeviceCapability::SparsePostQuantumRatchet => {
                     Some(DeviceCapability::SparsePostQuantumRatchet)
                 }
-                GrpcDeviceCapability::ProfilesV2 => Some(DeviceCapability::ProfilesV2),
                 GrpcDeviceCapability::UsernameChangeSyncMessage => {
                     Some(DeviceCapability::UsernameChangeSyncMessage)
                 }
                 GrpcDeviceCapability::OptionalPhoneNumber => {
                     Some(DeviceCapability::OptionalPhoneNumber)
+                }
+                GrpcDeviceCapability::ReplyPrivately => Some(DeviceCapability::ReplyPrivately),
+                GrpcDeviceCapability::ContactDelete => Some(DeviceCapability::ContactDelete),
+                GrpcDeviceCapability::AdminRemoveAndDelete => {
+                    Some(DeviceCapability::AdminRemoveAndDelete)
                 }
             };
             if let Some(public) = public {

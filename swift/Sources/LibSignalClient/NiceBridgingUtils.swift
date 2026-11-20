@@ -912,3 +912,93 @@ where
         return out
     }
 }
+
+internal enum ProfileKeyVersionArgConverter<Inner: NiceArgConverter>: NiceArgConverter where Inner.NiceArg == Data {
+    typealias NiceArg = ProfileKeyVersion
+    typealias FfiArg = Inner.FfiArg
+    typealias KeepAlive = Inner.KeepAlive
+
+    static func convertArg(_ arg: ProfileKeyVersion) -> (Inner.FfiArg, Inner.KeepAlive?) {
+        Inner.convertArg(arg.serialize())
+    }
+
+    static func convertArgBorrowed<Result>(
+        _ arg: ProfileKeyVersion,
+        _ thunk: (Inner.FfiArg) throws -> Result
+    ) rethrows -> Result {
+        try Inner.convertArgBorrowed(arg.serialize(), thunk)
+    }
+}
+
+internal enum ProfileKeyVersionReturnConverter<Inner: NiceReturnConverter>: NiceReturnConverter
+where Inner.NiceReturn == Data {
+    typealias NiceReturn = ProfileKeyVersion
+    typealias FfiReturn = Inner.FfiReturn
+
+    static func emptyFfiReturn() -> FfiReturn {
+        Inner.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: FfiReturn) throws -> NiceReturn {
+        try ProfileKeyVersion(contents: try Inner.convertReturn(consuming: value))
+    }
+}
+
+internal enum IdentityKeyResultConverter<Inner: NiceReturnConverter>: NiceReturnConverter
+where Inner.NiceReturn == PublicKey {
+    typealias NiceReturn = IdentityKey
+    typealias FfiReturn = Inner.FfiReturn
+
+    static func emptyFfiReturn() -> Inner.FfiReturn {
+        Inner.emptyFfiReturn()
+    }
+
+    static func convertReturn(consuming value: Inner.FfiReturn) throws -> IdentityKey {
+        IdentityKey(publicKey: try Inner.convertReturn(consuming: value))
+    }
+}
+
+internal enum IntMapReturnConverter<
+    ValueConverter: NiceReturnConverter,
+    Buffer: SignalOwnedBufferOfMaxAligned,
+    PairType: SignalPairOf
+>: NiceReturnConverter
+where
+    Buffer.Element == PairType,
+    PairType.First: FixedWidthInteger & DefaultInit,
+    PairType.Second == ValueConverter.FfiReturn
+{
+    typealias InnerConverter = ArrayReturnConverter<
+        PairOfResultConverter<IdentityResultConverter<PairType.First>, ValueConverter, PairType>, Buffer
+    >
+    typealias NiceReturn = [PairType.First: ValueConverter.NiceReturn]
+    typealias FfiReturn = InnerConverter.FfiReturn
+
+    static func emptyFfiReturn() -> InnerConverter.FfiReturn {
+        InnerConverter.emptyFfiReturn()
+    }
+
+    static func convertReturn(
+        consuming value: FfiReturn
+    ) throws -> [PairType.First: ValueConverter.NiceReturn] {
+        var out: NiceReturn = Dictionary(minimumCapacity: value.buffer().count)
+        try InnerConverter.convertReturnForEach(consuming: value) { out[$0.0] = $0.1 }
+        return out
+    }
+}
+
+internal enum NonHighBitConverter<T: FixedWidthInteger>: NiceReturnConverter {
+    typealias NiceReturn = T?
+    typealias FfiReturn = T
+
+    static func emptyFfiReturn() -> T {
+        .zero
+    }
+
+    static func convertReturn(consuming value: T) throws -> T? {
+        if value.leadingZeroBitCount == 0 {
+            return nil
+        }
+        return value
+    }
+}

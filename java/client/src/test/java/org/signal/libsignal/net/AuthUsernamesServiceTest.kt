@@ -34,13 +34,16 @@ class AuthUsernamesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is ReserveUsernameHashOut.Success ->
+            is ReserveUsernameHashOut.Success -> {
               assertEquals(
                 UsernameHash(expected._0),
                 assertIs<RequestResult.Success<UsernameHash>>(actual).result,
               )
-            ReserveUsernameHashOut.UsernameNotAvailable ->
+            }
+
+            ReserveUsernameHashOut.UsernameNotAvailable -> {
               actual.assertNonSuccess<_, _, UsernameNotAvailableException>()
+            }
           }
         },
       )
@@ -63,15 +66,20 @@ class AuthUsernamesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is ConfirmUsernameOut.Success ->
+            is ConfirmUsernameOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<UUID>>(actual).result,
               )
-            ConfirmUsernameOut.ReservationNotFound ->
+            }
+
+            ConfirmUsernameOut.ReservationNotFound -> {
               actual.assertNonSuccess<_, _, UsernameReservationNotFoundException>()
-            ConfirmUsernameOut.UsernameNotAvailable ->
+            }
+
+            ConfirmUsernameOut.UsernameNotAvailable -> {
               actual.assertNonSuccess<_, _, UsernameNotAvailableException>()
+            }
           }
         },
       )
@@ -92,12 +100,16 @@ class AuthUsernamesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is SetUsernameLinkOut.Success ->
+            is SetUsernameLinkOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<UUID>>(actual).result,
               )
-            SetUsernameLinkOut.UsernameNotSet -> actual.assertNonSuccess<_, _, UsernameNotSetException>()
+            }
+
+            SetUsernameLinkOut.UsernameNotSet -> {
+              actual.assertNonSuccess<_, _, UsernameNotSetException>()
+            }
           }
         },
       )

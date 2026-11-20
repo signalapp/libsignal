@@ -131,8 +131,8 @@ fn verify_tree_head_signature(
         .map_err(|_| Error::VerificationFailed("failed to verify tree head signature".to_string()))
 }
 
-/// Checks that a FullTreeHead structure is valid. It stores the tree head for
-/// later requests if it succeeds.
+/// Checks that a FullTreeHead structure is valid, and returns the tree head for
+/// the caller to store.
 fn verify_full_tree_head(
     config: &PublicConfig,
     fth: &FullTreeHead,
@@ -143,6 +143,9 @@ fn verify_full_tree_head(
 ) -> Result<LastTreeHead> {
     let tree_head = get_proto_field(&fth.tree_head, "tree_head")?;
 
+    // Verify the consistency proofs against the last tree head and the last
+    // distinguished tree head that the client stored. If the client has not
+    // stored one yet, its proof must be empty.
     {
         let current_tree_head = (tree_head, &root);
         if let Some(verify) = check_consistency_metadata(
@@ -161,7 +164,7 @@ fn verify_full_tree_head(
         }
     }
 
-    // 2. Verify the signatures in TreeHead.signature.
+    // Verify the signatures in TreeHead.signature.
     match config.mode.get_associated_keys() {
         None => {
             let head = tree_head
@@ -185,7 +188,7 @@ fn verify_full_tree_head(
         }
     }
 
-    // 3. Verify that the timestamp in TreeHead is sufficiently recent.
+    // Verify that the timestamp in TreeHead is sufficiently recent.
     verify_timestamp(
         Qualifier::Server,
         tree_head.timestamp,
@@ -193,8 +196,7 @@ fn verify_full_tree_head(
         now,
     )?;
 
-    // 4. If third-party auditing is used, verify every auditor_tree_head with the
-    //    steps described in Section 11.2.
+    // If third-party auditing is used, verify every auditor_tree_head.
     if let DeploymentMode::ThirdPartyAuditing(auditor_keys) = &config.mode {
         let key_head_pairs = fth
             .auditor_tree_heads(auditor_keys.iter())
@@ -206,7 +208,7 @@ fn verify_full_tree_head(
         for (verifying_key, auditor_tree_head) in key_head_pairs.iter() {
             let auditor_head = get_proto_field(&auditor_tree_head.tree_head, "tree_head")?;
 
-            // 2. Verify that TreeHead.timestamp is sufficiently recent.
+            // Verify that its timestamp is sufficiently recent.
             verify_timestamp(
                 Qualifier::Validator,
                 auditor_head.timestamp,
@@ -214,8 +216,8 @@ fn verify_full_tree_head(
                 now,
             )?;
 
-            // 3. Verify that TreeHead.tree_size is sufficiently close to the most
-            //    recent tree head from the service operator.
+            // Verify that its tree_size is sufficiently close to the most recent tree
+            // head from the service operator.
             if auditor_head.tree_size > tree_head.tree_size {
                 return Err(Error::BadData(
                     "auditor tree head may not be further along than service tree head".to_string(),
@@ -226,9 +228,8 @@ fn verify_full_tree_head(
                     "auditor tree head is too far behind service tree head".to_string(),
                 ));
             }
-            // 4. Verify the consistency proof between this tree head and the most
-            //    recent tree head from the service operator.
-            // 1. Verify the signature in TreeHead.signature.
+            // Verify the consistency proof between this tree head and the most recent
+            // tree head from the service operator, and its signature.
             if tree_head.tree_size > auditor_head.tree_size {
                 let auditor_root: &[u8; 32] =
                     get_proto_field(&auditor_tree_head.root_value, "root_value")?
@@ -388,57 +389,6 @@ fn verify_timestamp(
         )));
     }
     Ok(())
-}
-
-/// Checks that the provided FullTreeHead has a valid consistency proof relative
-/// to the provided distinguished head.
-pub fn verify_distinguished(
-    fth: &FullTreeHead,
-    last_tree_head: Option<&LastTreeHead>,
-    last_distinguished_tree_head: &LastTreeHead,
-) -> Result<()> {
-    let tree_size = get_proto_field(&fth.tree_head, "tree_head")?.tree_size;
-
-    if last_tree_head.is_none() {
-        return Ok(());
-    }
-    let root = match last_tree_head {
-        Some(LastTreeHead(tree_head, root)) if tree_head.tree_size == tree_size => root,
-        _ => {
-            return Err(Error::BadData(
-                "expected tree head not found in storage".to_string(),
-            ));
-        }
-    };
-
-    let LastTreeHead(
-        TreeHead {
-            tree_size: distinguished_size,
-            timestamp: _,
-            signatures: _,
-        },
-        distinguished_root,
-    ) = last_distinguished_tree_head;
-
-    // Handle special case when tree_size == distinguished_size.
-    if tree_size == *distinguished_size {
-        let result = if root == distinguished_root {
-            Ok(())
-        } else {
-            Err(Error::BadData(
-                "root hash does not match expected value".to_string(),
-            ))
-        };
-        return result;
-    }
-
-    Ok(verify_consistency_proof(
-        *distinguished_size,
-        tree_size,
-        &get_hash_proof(&fth.distinguished)?,
-        distinguished_root,
-        root,
-    )?)
 }
 
 fn evaluate_vrf_proof(

@@ -5,10 +5,13 @@
 /.swiftpm
 /swift/**/.build
 /swift/**/.swiftpm
+
 /node/dist
 /node/node_modules
-/node/build
+/node/prebuilds
 /node/tsconfig.tsbuildinfo
+/node/platform/*/node_modules
+/node/platform/*/prebuilds
 
 /rust/bridge/node/futures/tests/node-tests/node_modules
 
@@ -38,3 +41,4 @@ java/server/src/main/resources/*.dll
 Brewfile.lock.json
 
 __pycache__
+.pnpm-store

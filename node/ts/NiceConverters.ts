@@ -104,17 +104,31 @@ export function stringMapArgConverter<ValueFfi, ValueNice>(
   };
 }
 
-export function stringMapResultConverter<ValueFfi, ValueNice>(
+function mapResultConverter<VerbatimKey, ValueFfi, ValueNice>(
   f: (x: ValueFfi) => ValueNice
-): (entries: (string | ValueFfi)[]) => Map<string, ValueNice> {
-  return function (entries: (string | ValueFfi)[]): Map<string, ValueNice> {
+): (entries: (VerbatimKey | ValueFfi)[]) => Map<VerbatimKey, ValueNice> {
+  return function (
+    entries: (VerbatimKey | ValueFfi)[]
+  ): Map<VerbatimKey, ValueNice> {
     if (entries.length % 2 !== 0) {
       throw new RangeError('Expected an even-sized array');
     }
-    const out: Map<string, ValueNice> = new Map();
+    const out: Map<VerbatimKey, ValueNice> = new Map();
     for (let i = 0; i < entries.length; i += 2) {
-      out.set(entries[i] as string, f(entries[i + 1] as ValueFfi));
+      out.set(entries[i] as VerbatimKey, f(entries[i + 1] as ValueFfi));
     }
     return out;
   };
+}
+
+export function stringMapResultConverter<ValueFfi, ValueNice>(
+  f: (x: ValueFfi) => ValueNice
+): (entries: (string | ValueFfi)[]) => Map<string, ValueNice> {
+  return mapResultConverter<string, ValueFfi, ValueNice>(f);
+}
+
+export function bigintMapResultConverter<ValueFfi, ValueNice>(
+  f: (x: ValueFfi) => ValueNice
+): (entries: (bigint | ValueFfi)[]) => Map<bigint, ValueNice> {
+  return mapResultConverter<bigint, ValueFfi, ValueNice>(f);
 }

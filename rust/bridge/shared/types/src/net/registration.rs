@@ -102,7 +102,10 @@ pub type SignedPublicPreKey = SignedPreKeyBody<Box<[u8]>>;
 bridge_as_handle!(RegistrationService);
 bridge_as_handle!(RegistrationSession);
 bridge_as_handle!(RegisterAccountRequest);
-bridge_as_handle!(RegisterAccountResponse);
+bridge_as_handle!(
+    RegisterAccountResponse,
+    swift_type = "RegisterAccountResponse"
+);
 bridge_as_handle!(RegistrationAccountAttributes);
 
 /// Precursor to a [`Box<dyn ConnectUnauthChat>`](ConnectUnauthChat).

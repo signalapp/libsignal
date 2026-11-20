@@ -3599,7 +3599,7 @@ DEALINGS IN THE SOFTWARE.
 
 ```
 
-## libz-sys 1.1.31
+## libz-sys 1.1.33
 
 ```
 Copyright (c) 2014 Alex Crichton

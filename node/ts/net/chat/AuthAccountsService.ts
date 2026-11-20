@@ -23,6 +23,7 @@ import { SvrKey } from '../../AccountKeys.js';
 import type { Aci, Pni } from '../../Address.js';
 import type { Rng } from '../../RngForTesting.js';
 import type { DeviceCapability } from './AuthDevicesService.js';
+import { ZkCredentialKeyPair } from '../../zkgroup/index.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -247,6 +248,15 @@ export type BadgeEntitlement = {
 };
 
 export type ChallengeAnswer = { push: string } | { captcha: string };
+
+/**
+ * A random value in `[1, (1 << 63) - 1]` that must be included in credential requests using the
+ * ZkCredential key.
+ *
+ * This value allows the server to ratchet the resulting binding identity,
+ * as reverting to the previous key will result in a new rotation ID.
+ */
+export type ZkCredentialRotationId = bigint;
 
 export interface AuthAccountsService {
   /**
@@ -598,6 +608,20 @@ export interface AuthAccountsService {
     request: { token: string } & ChallengeAnswer,
     options?: RequestOptions
   ) => Promise<boolean>;
+
+  /**
+   * Generate a fresh ZkCredentialKeyPair, and upload its public (anonymous) key
+   * to the server.
+   *
+   * @returns a ZkCredentialKeyPair and its associated ZkCredentialRotationId
+   * @throws {StandardNetworkError}
+   */
+  setZkCredentialKey: (
+    request: {
+      rngSeedForTesting?: Rng;
+    },
+    options?: RequestOptions
+  ) => Promise<[ZkCredentialKeyPair, ZkCredentialRotationId]>;
 }
 
 AuthenticatedChatConnection.prototype.getAccountIdentity = async function (
@@ -870,5 +894,17 @@ AuthenticatedChatConnection.prototype.answerChallenge = async function (
     chat: this.chatService,
     token: request.token,
     answer: request,
+  });
+};
+
+AuthenticatedChatConnection.prototype.setZkCredentialKey = async function (
+  { rngSeedForTesting },
+  options?: RequestOptions
+): Promise<[ZkCredentialKeyPair, ZkCredentialRotationId]> {
+  return await NativeNice.AuthenticatedChatConnection_set_zk_credential_key({
+    asyncContext: this.asyncContext,
+    abortSignal: options?.abortSignal,
+    chat: this.chatService,
+    rng: rngSeedForTesting,
   });
 };

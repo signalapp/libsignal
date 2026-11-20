@@ -3,12 +3,15 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+use ::zkgroup::avatars::{AvatarUploadCredential, AvatarUploadCredentialPresentation};
+use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use itertools::Itertools;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::chat::remote_derives::{
     BridgeMfaVerificationCredential, CallQualitySurveyInternal, CurrencyConversionsInternal,
+    PurchaseProductConfiguration,
 };
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, BridgeCopyBackupMediaItem, BridgeDeleteBackupMediaItem,
@@ -20,7 +23,11 @@ use libsignal_net::chat::{
     ConnectError, RequestProto, Response as ChatResponse, ResponseProto, SendError,
 };
 use libsignal_net::infra::errors::RetryLater;
+use libsignal_net_chat::api::S3UploadForm;
+use libsignal_net_chat::grpc::accounts::ZkCredentialKeyRotationId;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
+use libsignal_net_chat::grpc::profiles::ProfileFieldWithMaxLength;
+use strum::VariantArray;
 
 use crate::net::make_error_testing_enum;
 use crate::*;
@@ -41,7 +48,7 @@ pub struct FakeChatResponse(ResponseProto);
 
 bridge_as_handle!(FakeChatConnection);
 bridge_handle_fns!(FakeChatConnection, clone = false);
-bridge_as_handle!(FakeChatRemoteEnd);
+bridge_as_handle!(FakeChatRemoteEnd, swift_type = "FakeChatRemote");
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
 bridge_as_handle!(FakeChatServer);
 bridge_handle_fns!(FakeChatServer, clone = false);
@@ -230,7 +237,7 @@ fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEn
         .expect("chat task finished")
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     chat: &FakeChatRemoteEnd,
 ) -> Option<(HttpRequest, u64)> {
@@ -267,7 +274,7 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     Some((http_request, id.unwrap()))
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
     chat: &FakeChatRemoteEnd,
 ) -> Option<(HttpRequest, u64)> {
@@ -498,7 +505,10 @@ use grpc_test_cases::*;
 
 mod remote_derives {
     use ::zkgroup::ServerPublicParams;
+    use ::zkgroup::generic_server_params::GenericServerPublicParams;
+    use ::zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
     use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
+    use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
     use libsignal_bridge_macros::{BridgedAsValue, StructuralFrom};
     use libsignal_bridge_types::net::chat::remote_derives::{
         AccountEntitlements, GetStickerUploadFormsResponse, ListMediaResponse,
@@ -511,14 +521,129 @@ mod remote_derives {
     };
     use libsignal_core::Aci;
     use libsignal_net_chat::api::purchase::{ChargeFailure, PaymentProvider};
+    use libsignal_net_chat::api::{S3UploadForm, UserBasedAuthorization};
+    use libsignal_net_chat::grpc::accounts::ZkCredentialKeyRotationId;
     use libsignal_net_chat::grpc::devices::{DeviceCapability, LinkedDevice};
     use libsignal_net_chat::grpc::donations::BadgeVisibility;
+    use libsignal_net_chat::grpc::keys::DeviceSpecifier;
     use libsignal_net_chat::grpc::login_purchase::LoginReceiptLevel;
+    use libsignal_net_chat::grpc::profiles::{
+        CdnUrl, ProfileDataHash, ProfileEtag, UnauthProfileAuthorization,
+        test_cases as profile_test_cases,
+    };
     use libsignal_net_chat::grpc::{login_purchase, subscriptions};
-    use libsignal_protocol::Timestamp;
+    use libsignal_protocol::{ServiceId, Timestamp};
     use uuid::Uuid;
 
     use super::*;
+
+    #[derive(BridgedAsValue)]
+    pub struct GetProfileArgs {
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+        pub etag: Option<ProfileEtag>,
+        pub avatar_cdn_config_valid_urls: BridgeVec<String>,
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs> for GetProfileArgs {
+        fn from(
+            libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs {
+                aci,
+                profile_key,
+                etag,
+                avatar_cdn_config,
+            }: libsignal_net_chat::grpc::profiles::test_cases::GetProfileArgs,
+        ) -> Self {
+            Self {
+                aci,
+                profile_key,
+                etag,
+                avatar_cdn_config_valid_urls: avatar_cdn_config
+                    .valid_url_prefixes()
+                    .to_vec()
+                    .into(),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    #[allow(clippy::large_enum_variant)] // This is just for testing
+    pub enum GetProfileOut {
+        Success(Option<libsignal_bridge_types::net::chat::remote_derives::FetchedProfile>),
+        Failure(AuthGetProfileError),
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::GetProfileOut> for GetProfileOut {
+        fn from(value: libsignal_net_chat::grpc::profiles::test_cases::GetProfileOut) -> Self {
+            match value {
+                profile_test_cases::GetProfileOut::Success(fetched_profile) => {
+                    Self::Success(fetched_profile.map(Into::into))
+                }
+                profile_test_cases::GetProfileOut::Failure(auth_get_profile_error) => {
+                    Self::Failure(auth_get_profile_error.into())
+                }
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::AuthGetProfileError)]
+    pub enum AuthGetProfileError {
+        ProfileNotFound,
+        ProfileDecodeError { log_safe: String },
+    }
+
+    #[derive(BridgedAsValue)]
+    pub struct GetAvatarCredentialArgs {
+        pub aci: Aci,
+        pub key_pair: ZkCredentialKeyPair,
+        pub rotation_id: ZkCredentialKeyRotationId,
+        pub server_public_params: GenericServerPublicParams,
+        pub current_time_seconds: i64,
+    }
+    impl From<profile_test_cases::GetAvatarCredentialArgs> for GetAvatarCredentialArgs {
+        fn from(
+            profile_test_cases::GetAvatarCredentialArgs {
+                aci,
+                key_pair,
+                rotation_id,
+                server_public_params,
+                current_time,
+            }: profile_test_cases::GetAvatarCredentialArgs,
+        ) -> Self {
+            Self {
+                aci,
+                key_pair,
+                rotation_id,
+                server_public_params,
+                current_time_seconds: current_time
+                    .epoch_seconds()
+                    .try_into()
+                    .expect("fits in i64"),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(
+        libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormLegacyArgs
+    )]
+    pub struct GetAvatarUploadFormLegacyArgs {
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormArgs)]
+    pub struct GetAvatarUploadFormArgs {
+        pub credential: AvatarUploadCredentialPresentation,
+        pub upload_length: i32,
+    }
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::GetAvatarUploadFormOut)]
+    pub enum GetAvatarUploadFormOut {
+        Success(S3UploadForm),
+        InvalidCredential,
+    }
 
     #[derive(BridgedAsValue)]
     pub struct ServerPublicParamsSerialized {
@@ -704,6 +829,87 @@ mod remote_derives {
     #[structural_from(libsignal_net_chat::grpc::devices::test_cases::GetDevicesOut)]
     pub struct GetDevicesOut {
         pub devices: BridgeVec<LinkedDevice>,
+    }
+
+    #[derive(BridgedAsValue)]
+    pub enum TestingUserBasedAuthorization {
+        AccessKey { key: Vec<u8> },
+        GroupSendToken { token: Vec<u8> },
+        Unrestricted,
+    }
+
+    impl From<UserBasedAuthorization> for TestingUserBasedAuthorization {
+        fn from(value: UserBasedAuthorization) -> Self {
+            match value {
+                UserBasedAuthorization::AccessKey(key) => Self::AccessKey { key: key.to_vec() },
+                UserBasedAuthorization::Group(token) => Self::GroupSendToken {
+                    token: ::zkgroup::serialize(&token),
+                },
+                UserBasedAuthorization::UnrestrictedUnauthenticatedAccess => Self::Unrestricted,
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    pub struct GetPreKeysArgs {
+        pub auth: TestingUserBasedAuthorization,
+        pub target: ServiceId,
+        pub device_id: i32,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::GetPreKeysArgs> for GetPreKeysArgs {
+        fn from(value: libsignal_net_chat::grpc::keys::test_cases::GetPreKeysArgs) -> Self {
+            let libsignal_net_chat::grpc::keys::test_cases::GetPreKeysArgs {
+                auth,
+                target,
+                device,
+            } = value;
+            Self {
+                auth: auth.into(),
+                target,
+                // The app-language test harnesses interpret a negative device ID as "all
+                // devices"; `-1` is the sole sentinel produced by this bridge.
+                device_id: match device {
+                    DeviceSpecifier::AllDevices => -1,
+                    DeviceSpecifier::Specific(id) => i32::from(u8::from(id)),
+                },
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue)]
+    pub enum GetPreKeysOut {
+        Success {
+            identity_key: Vec<u8>,
+            bundle_count: i32,
+        },
+        NotFound,
+        Unauthorized,
+        Unexpected,
+    }
+
+    impl From<libsignal_net_chat::grpc::keys::test_cases::GetPreKeysOut> for GetPreKeysOut {
+        fn from(value: libsignal_net_chat::grpc::keys::test_cases::GetPreKeysOut) -> Self {
+            use libsignal_net_chat::grpc::keys::test_cases::GetPreKeysOut as Source;
+            match value {
+                Source::Success {
+                    identity_key,
+                    bundles,
+                } => Self::Success {
+                    identity_key: identity_key.serialize().into_vec(),
+                    // This checks less than the Rust-level tests, which compare the contents of
+                    // every bundle. We don't expose the contents of the bundles in the same way;
+                    // we only bridge opaque handles to clients, so all they need to do is round-trip.
+                    bundle_count: bundles
+                        .len()
+                        .try_into()
+                        .expect("test bundle count fits in i32"),
+                },
+                Source::NotFound => Self::NotFound,
+                Source::Unauthorized => Self::Unauthorized,
+                Source::Unexpected => Self::Unexpected,
+            }
+        }
     }
 
     #[derive(BridgedAsValue, StructuralFrom)]
@@ -1271,6 +1477,115 @@ mod remote_derives {
         token: String,
         answer: libsignal_net_chat::grpc::accounts::ChallengeAnswer,
     }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::ExtendAvatarTtlOut)]
+    #[bridge(arg = false)]
+    pub enum ExtendAvatarTtlOut {
+        Found(CdnUrl),
+        NotFound,
+        InvalidCredentials,
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::SetProfileError)]
+    #[bridge(arg = false)]
+    pub enum SetProfileError {
+        InvalidProfile(
+            libsignal_bridge_types::net::chat::remote_derives::ProfileValidationErrorInternal,
+        ),
+        ExpectedDataWriteConflict,
+        ExpectedVersionWriteConflict {
+            current_profile_version: Option<ProfileKeyVersion>,
+        },
+        PaymentsForbiddenInRegion,
+        IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles,
+    }
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    pub struct SetProfileArgs {
+        pub rng_seed: i64,
+        pub aci: Aci,
+        pub profile_key: ProfileKey,
+        pub profile: libsignal_bridge_types::net::chat::remote_derives::Profile,
+        pub expected_current_data_hash: Option<ProfileDataHash>,
+        pub expected_current_profile_key_version: Option<ProfileKeyVersion>,
+        pub avatar_cdn_config_valid_urls: BridgeVec<String>,
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs> for SetProfileArgs {
+        fn from(
+            libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs {
+                rng_seed,
+                aci,
+                profile_key,
+                profile,
+                expected_current_data_hash,
+                expected_current_profile_key_version,
+                avatar_cdn_config,
+            }: libsignal_net_chat::grpc::profiles::test_cases::SetProfileArgs,
+        ) -> Self {
+            Self {
+                rng_seed,
+                aci,
+                profile_key,
+                profile: profile.into(),
+                expected_current_data_hash,
+                expected_current_profile_key_version,
+                avatar_cdn_config_valid_urls: avatar_cdn_config
+                    .valid_url_prefixes()
+                    .to_vec()
+                    .into(),
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::SetProfileOut)]
+    #[bridge(arg = false)]
+    pub enum SetProfileOut {
+        Success(ProfileDataHash),
+        Failure(SetProfileError),
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::test_cases::UnauthGetProfileArgs)]
+    #[bridge(arg = false)]
+    pub struct UnauthGetProfileArgs {
+        pub inner: GetProfileArgs,
+        pub auth: UnauthProfileAuthorization,
+    }
+
+    #[derive(BridgedAsValue)]
+    #[bridge(arg = false)]
+    #[allow(clippy::large_enum_variant)] // This is just for testing
+    pub enum UnauthGetProfileOut {
+        Success(Option<libsignal_bridge_types::net::chat::remote_derives::FetchedProfile>),
+        Failure(UnauthGetProfileError),
+    }
+    impl From<libsignal_net_chat::grpc::profiles::test_cases::UnauthGetProfileOut>
+        for UnauthGetProfileOut
+    {
+        fn from(
+            value: libsignal_net_chat::grpc::profiles::test_cases::UnauthGetProfileOut,
+        ) -> Self {
+            match value {
+                profile_test_cases::UnauthGetProfileOut::Success(fetched_profile) => {
+                    Self::Success(fetched_profile.map(Into::into))
+                }
+                profile_test_cases::UnauthGetProfileOut::Failure(unauth_get_profile_error) => {
+                    Self::Failure(unauth_get_profile_error.into())
+                }
+            }
+        }
+    }
+
+    #[derive(BridgedAsValue, StructuralFrom)]
+    #[structural_from(libsignal_net_chat::grpc::profiles::UnauthGetProfileError)]
+    pub enum UnauthGetProfileError {
+        ProfileNotFound,
+        ProfileDecodeError { log_safe: String },
+        FailedUnidentifiedAuthorization,
+    }
 }
 
 #[bridge_fn(nice = true)]
@@ -1316,6 +1631,11 @@ fn TESTING_DeleteUsernameLinkTests() -> GrpcTestCases<(), ()> {
 #[bridge_fn(nice = true)]
 fn TESTING_GetDevicesTests() -> GrpcTestCases<(), remote_derives::GetDevicesOut> {
     libsignal_net_chat::grpc::devices::test_cases::get_devices_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetPreKeysTests()
+-> GrpcTestCases<remote_derives::GetPreKeysArgs, remote_derives::GetPreKeysOut> {
+    libsignal_net_chat::grpc::keys::test_cases::get_pre_keys_test_cases().into()
 }
 // setPushToken is only bridged where each token kind is used: APNs for Swift
 // and FCM for Java. (Desktop never sets a push token.)
@@ -1591,6 +1911,18 @@ fn TESTING_GetSubscriptionReceiptCredentialTests() -> GrpcTestCases<
 }
 
 #[bridge_fn(nice = true)]
+fn TESTING_GetBadgesTests() -> GrpcTestCases<
+    Option<Vec<u8>>,
+    Option<libsignal_bridge_types::net::chat::remote_derives::TaggedBadges>,
+> {
+    libsignal_net_chat::grpc::remote_configuration::test_cases::get_badges_test_cases()
+        .into_iter()
+        .map(|tc| tc.map_response(|x| x.map(Into::into)))
+        .collect_vec()
+        .into()
+}
+
+#[bridge_fn(nice = true)]
 fn TESTING_CreateDonationPermitsTests() -> GrpcTestCases<
     remote_derives::CreateDonationPermitsArgs,
     remote_derives::CreateDonationPermitsOut,
@@ -1619,4 +1951,81 @@ fn TESTING_GetCapabilitiesTests() -> GrpcTestCases<(), remote_derives::GetCapabi
 #[bridge_fn(nice = true)]
 fn TESTING_AnswerChallengeTests() -> GrpcTestCases<remote_derives::AnswerChallengeArgs, bool> {
     libsignal_net_chat::grpc::accounts::test_cases::answer_challenge_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_SetZkCredentialKeyTests()
+-> GrpcTestCases<(), Option<(ZkCredentialKeyPair, ZkCredentialKeyRotationId)>> {
+    libsignal_net_chat::grpc::accounts::test_cases::set_zk_credential_key_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_ExtendAvatarTtlTests()
+-> GrpcTestCases<AvatarUploadCredentialPresentation, remote_derives::ExtendAvatarTtlOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::extend_avatar_ttl_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_DeleteAvatarTests() -> GrpcTestCases<
+    libsignal_net_chat::grpc::profiles::test_cases::DeleteAvatarArgs,
+    libsignal_net_chat::grpc::profiles::test_cases::DeleteAvatarOut,
+> {
+    libsignal_net_chat::grpc::profiles::test_cases::delete_avatar_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetAvatarUploadFormTests()
+-> GrpcTestCases<remote_derives::GetAvatarUploadFormArgs, remote_derives::GetAvatarUploadFormOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_avatar_upload_form_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetAvatarUploadFormLegacyTests()
+-> GrpcTestCases<remote_derives::GetAvatarUploadFormLegacyArgs, S3UploadForm> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_avatar_upload_form_legacy_test_cases()
+        .into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetAvatarCredentialTests()
+-> GrpcTestCases<remote_derives::GetAvatarCredentialArgs, Option<AvatarUploadCredential>> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_avatar_credential_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SetProfileTests()
+-> GrpcTestCases<remote_derives::SetProfileArgs, remote_derives::SetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::set_profile_test_cases().into()
+}
+#[bridge_fn(nice = true)]
+fn TESTING_SetProfileValidationTests()
+-> GrpcTestCases<remote_derives::SetProfileArgs, remote_derives::SetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::set_profile_validation_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_ProfileFieldMaxLengths() -> BridgeVec<(ProfileFieldWithMaxLength, i32)> {
+    BridgeVec(
+        ProfileFieldWithMaxLength::VARIANTS
+            .iter()
+            .copied()
+            .map(|field| {
+                (
+                    field,
+                    i32::try_from(field.max_length()).expect("fits in i32"),
+                )
+            })
+            .collect(),
+    )
+}
+#[bridge_fn(nice = true)]
+fn TESTING_GetProfileTests()
+-> GrpcTestCases<remote_derives::GetProfileArgs, remote_derives::GetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_profile_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_UnauthGetProfileTests()
+-> GrpcTestCases<remote_derives::UnauthGetProfileArgs, remote_derives::UnauthGetProfileOut> {
+    libsignal_net_chat::grpc::profiles::test_cases::get_profile_unauth_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetProductConfigurationTests() -> GrpcTestCases<(), PurchaseProductConfiguration> {
+    libsignal_net_chat::grpc::subscriptions::test_cases::get_product_configuration_test_cases()
+        .into()
 }

@@ -22,15 +22,15 @@ fi
 docker build --platform=linux/amd64 --build-arg "UID=${UID:-501}" --build-arg "GID=${GID:-501}" --build-arg "NODE_VERSION=$(cat .nvmrc)" -t ${DOCKER_IMAGE} -f node/Dockerfile .
 
 # We build both architectures in the same run action to save on intermediates
-# (including downloading dependencies)
+# (including downloading dependencies).
+# We use plain old npm to run this script to avoid having to install pnpm.
+# (But we still want to run through npm to set env vars appropriately instead of calling build_node_bridge.py directly.)
 docker run ${IS_TTY:+ -it} --init --rm -v "${PWD}":/home/libsignal/src ${DOCKER_IMAGE} sh -c '
     cd ~/src/node &&
     env CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
         CC=aarch64-linux-gnu-gcc \
         CXX=aarch64-linux-gnu-g++ \
         CPATH=/usr/aarch64-linux-gnu/include \
-        npm run build -- --arch arm64 --copy-to-prebuilds &&
-    mv build/Release/*-debuginfo.* . &&
-    npm run build -- --arch x64 --copy-to-prebuilds &&
-    mv build/Release/*-debuginfo.* .
+        npm run build -- --arch arm64 &&
+    npm run build -- --arch x64
 '

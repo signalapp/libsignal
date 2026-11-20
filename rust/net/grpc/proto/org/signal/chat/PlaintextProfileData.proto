@@ -9,7 +9,7 @@ package org.signal.chat.profile;
 
 // Externally padded using PKCS#7
 message PlaintextProfileData {
-  string givenName = 1; // min length = 1, max length = 257
+  string givenName = 1; // min length = 0, max length = 257
   string familyName = 2; // min length = 0, max length = 257
   string about = 3; // min length = 0, max length = 512
   string aboutEmoji = 4; // min length = 0, max length = 32

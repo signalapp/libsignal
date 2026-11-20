@@ -32,12 +32,21 @@ class AuthDonationsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            RedeemDonationReceiptOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
-            RedeemDonationReceiptOut.InvalidReceipt -> actual.assertNonSuccess<_, _, InvalidReceiptException>()
-            RedeemDonationReceiptOut.AlreadyRedeemed ->
+            RedeemDonationReceiptOut.Success -> {
+              assertIs<RequestResult.Success<Unit>>(actual)
+            }
+
+            RedeemDonationReceiptOut.InvalidReceipt -> {
+              actual.assertNonSuccess<_, _, InvalidReceiptException>()
+            }
+
+            RedeemDonationReceiptOut.AlreadyRedeemed -> {
               actual.assertNonSuccess<_, _, ReceiptAlreadyRedeemedException>()
-            is RedeemDonationReceiptOut.UnexpectedError ->
+            }
+
+            is RedeemDonationReceiptOut.UnexpectedError -> {
               assertContains(assertIs<RequestResult.ApplicationError>(actual).toString(), expected.contains)
+            }
           }
         },
       )
@@ -67,13 +76,16 @@ class AuthDonationsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is CreateDonationPermitsOut.Success ->
+            is CreateDonationPermitsOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<List<DonationPermit>>>(actual).result,
               )
-            is CreateDonationPermitsOut.UnexpectedError ->
+            }
+
+            is CreateDonationPermitsOut.UnexpectedError -> {
               assertContains(assertIs<RequestResult.ApplicationError>(actual).toString(), expected.contains)
+            }
           }
         },
       )

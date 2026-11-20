@@ -396,17 +396,24 @@ class UnauthUsernamesServiceGrpcTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is LookUpUsernameLinkOut.Success ->
+            is LookUpUsernameLinkOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<Username?>>(actual, actual.toString()).result?.username,
               )
-            LookUpUsernameLinkOut.NotFound ->
+            }
+
+            LookUpUsernameLinkOut.NotFound -> {
               assertNull(assertIs<RequestResult.Success<Username?>>(actual).result)
-            LookUpUsernameLinkOut.LinkDataTooShort ->
+            }
+
+            LookUpUsernameLinkOut.LinkDataTooShort -> {
               actual.assertNonSuccess<_, _, UsernameLinkInvalidLinkData>()
-            LookUpUsernameLinkOut.MissingResponse ->
+            }
+
+            LookUpUsernameLinkOut.MissingResponse -> {
               assertIs<RequestResult.ApplicationError>(actual)
+            }
           }
         },
       )

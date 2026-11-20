@@ -59,6 +59,9 @@ pub mod proto {
                 pub mod purchase {
                     tonic::include_proto!("org.signal.chat.purchase");
                 }
+                pub mod remote_configuration {
+                    tonic::include_proto!("org.signal.chat.remoteconfiguration");
+                }
 
                 // Not actually a proto, we just make sure to generate our helper file in the same place.
                 pub mod services {

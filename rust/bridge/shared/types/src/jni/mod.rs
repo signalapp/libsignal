@@ -33,6 +33,9 @@ use libsignal_net_chat::api::backups::{BackupAuthCredentialRejected, GetUploadFo
 use libsignal_net_chat::api::messages::UploadTooLarge;
 use libsignal_net_chat::api::{RateLimitChallenge, RequestError as ChatRequestError};
 use libsignal_net_chat::grpc::devices::DeviceIdNotFoundInAccount;
+use libsignal_net_chat::grpc::profiles::{
+    AuthGetProfileError, SetProfileError, UnauthGetProfileError,
+};
 use libsignal_net_chat::grpc::usernames::UsernameNotAvailable;
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_protocol::*;
@@ -148,6 +151,8 @@ jni_custom_spellings! {
     pub struct JavaSimpleOwner<'a>(pub JObject<'a>);
     #[kt = "Float?"]
     pub struct JavaOptionalFloat<'a>(pub JObject<'a>);
+    #[kt = "Boolean?"]
+    pub struct JavaOptionalBoolean<'a>(pub JObject<'a>);
 }
 
 pub type JavaObject<'a> = JObject<'a>;
@@ -411,13 +416,16 @@ impl JniError for login_purchase::ReceiptCredentialError {
 }
 #[cfg(feature = "metadata")]
 #[linkme::distributed_slice(crate::metadata::jni::JNI_ITEMS)]
-static _FORCE_CHARGE_FAILURE_CONVERTER_TO_BE_EMITTED: crate::metadata::FnWithModule<
+static _FORCE_ERROR_CLASS_CONVERTERS_TO_BE_EMITTED: crate::metadata::FnWithModule<
     crate::metadata::jni::KtMetadataContext,
 > = crate::metadata::FnWithModule {
     module_path: module_path!(),
     apply: |ctx| {
         use libsignal_net_chat::api::purchase::ChargeFailure;
+
+        use crate::net::chat::remote_derives::ProfileValidationErrorInternal;
         ChargeFailure::register_kt_result_converter(ctx);
+        ProfileValidationErrorInternal::register_kt_result_converter(ctx);
     },
 };
 
@@ -1468,7 +1476,7 @@ impl JniError for libsignal_net_chat::api::messages::UnsealedSendFailure {
     }
 }
 
-impl MessageOnlyExceptionJniError for libsignal_net_chat::api::keys::GetPreKeysFailure {
+impl MessageOnlyExceptionJniError for libsignal_net_chat::grpc::keys::GetPreKeysFailure {
     fn exception_class(&self) -> ClassName<'static> {
         match self {
             Self::Unauthorized => {
@@ -2152,6 +2160,137 @@ impl MessageOnlyExceptionJniError
             Self::InvalidReceipt => ClassName("org.signal.libsignal.net.InvalidReceiptException"),
             Self::AlreadyRedeemed => {
                 ClassName("org.signal.libsignal.net.ReceiptAlreadyRedeemedException")
+            }
+        }
+    }
+}
+
+impl JniError for libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName(
+                "org.signal.libsignal.net.InvalidAvatarUploadCredentialPresentationException",
+            ),
+        )
+    }
+}
+
+impl JniError for libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        make_single_message_throwable(
+            env,
+            message,
+            ClassName("org.signal.libsignal.net.AccountMissingZkCredentialKeyException"),
+        )
+    }
+}
+
+impl JniError for SetProfileError {
+    fn to_throwable_impl<'a>(
+        &self,
+        env: &mut jni::Env<'a>,
+    ) -> Result<JObject<'a>, BridgeLayerError> {
+        let message = self.to_string();
+        match self {
+            SetProfileError::InvalidProfile(profile_validation_error) => {
+                let message = new_jstring_from_owned_utf8(env, message)?;
+                let profile_validation_error =
+                    crate::net::chat::remote_derives::ProfileValidationErrorInternal::from(
+                        *profile_validation_error,
+                    );
+                // The derived return nice converter is the identity function, so we don't need to
+                // do any further conversion here.
+                let profile_validation_error = profile_validation_error.convert_into(env)?;
+                new_instance(
+                    env,
+                    ClassName("org.signal.libsignal.net.SetProfileException$InvalidProfile"),
+                    jni_args!((
+                        profile_validation_error => org.signal.libsignal.net.ProfileValidationError,
+                        message => java.lang.String
+                    ) -> void),
+                )
+            }
+            SetProfileError::ExpectedVersionWriteConflict {
+                current_profile_version,
+            } => {
+                let message = new_jstring_from_owned_utf8(env, message)?;
+                let current_profile_version =
+                    if let Some(current_profile_version) = current_profile_version {
+                        let hex_bytes: JByteArray = current_profile_version.convert_into(env)?;
+                        new_instance(
+                            env,
+                            ClassName("org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion"),
+                            jni_args!((hex_bytes => [jbyte]) -> void),
+                        )?
+                    } else {
+                        JObject::null()
+                    };
+                new_instance(
+                    env,
+                    ClassName(
+                        "org.signal.libsignal.net.SetProfileException$ExpectedVersionWriteConflict",
+                    ),
+                    jni_args!((
+                        current_profile_version => org.signal.libsignal.zkgroup.profiles.ProfileKeyVersion,
+                        message => java.lang.String
+                    ) -> void),
+                )
+            }
+            SetProfileError::ExpectedDataWriteConflict => make_single_message_throwable(
+                env,
+                message,
+                ClassName("org.signal.libsignal.net.SetProfileException$ExpectedDataWriteConflict"),
+            ),
+            SetProfileError::PaymentsForbiddenInRegion => make_single_message_throwable(
+                env,
+                message,
+                ClassName("org.signal.libsignal.net.SetProfileException$PaymentsForbiddenInRegion"),
+            ),
+            SetProfileError::IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles => {
+                make_single_message_throwable(
+                    env,
+                    message,
+                    ClassName("java.lang.IllegalArgumentException"),
+                )
+            }
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for AuthGetProfileError {
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            AuthGetProfileError::ProfileNotFound => {
+                ClassName("org.signal.libsignal.net.ProfileNotFoundException")
+            }
+            AuthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                ClassName("org.signal.libsignal.net.ProfileCantBeDecodedException")
+            }
+        }
+    }
+}
+
+impl MessageOnlyExceptionJniError for UnauthGetProfileError {
+    fn exception_class(&self) -> ClassName<'static> {
+        match self {
+            UnauthGetProfileError::ProfileNotFound => {
+                ClassName("org.signal.libsignal.net.ProfileNotFoundException")
+            }
+            UnauthGetProfileError::ProfileDecodeError { log_safe: _ } => {
+                ClassName("org.signal.libsignal.net.ProfileCantBeDecodedException")
+            }
+            UnauthGetProfileError::FailedUnidentifiedAuthorization => {
+                ClassName("org.signal.libsignal.net.RequestUnauthorizedException")
             }
         }
     }

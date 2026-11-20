@@ -270,6 +270,13 @@ public enum ChallengeAnswer: Sendable {
     case captcha(String)
 }
 
+/// A random value in `[1, (1 << 63) - 1]` that must be included in credential requests using the
+/// ZkCredential key.
+///
+/// This value allows the server to ratchet the resulting binding identity,
+/// as reverting to the previous key will result in a new rotation ID.
+public typealias ZkCredentialKeyRotationId = Int64
+
 public protocol AuthAccountsService: Sendable {
     /// Returns basic identifiers for the authenticated account.
     ///
@@ -280,6 +287,14 @@ public protocol AuthAccountsService: Sendable {
     /// - Throws:
     ///   - the standard Signal network errors
     func getAccountIdentity() async throws -> AccountIdentity
+
+    /// Generate a fresh ``ZkCredentialKeyPair```, and upload its public (anonymous) key to the
+    /// server.
+    /// - Returns:
+    ///   - a ``ZkCredentialKeyPair`` and its associated ``ZkCredentialRotationId``
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func setZkCredentialKey() async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId)
 
     /// Deletes the authenticated account, purging all associated data in the
     /// process.
@@ -539,6 +554,10 @@ extension AuthenticatedChatConnection: AuthAccountsService {
         )
     }
 
+    public func setZkCredentialKey() async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId) {
+        return try await self.setZkCredentialKeyImpl(rngSeed: -1)
+    }
+
     public func deleteAccount() async throws {
         return try await NativeNice.AuthenticatedChatConnection_delete_account(
             asyncContext: self.tokioAsyncContext,
@@ -692,6 +711,10 @@ extension AuthServiceSelector where Self == AuthServiceSelectorHelper<any AuthAc
 }
 
 internal protocol AuthAccountsServiceImpl: Sendable {
+    func setZkCredentialKeyImpl(
+        rngSeed: Int64
+    ) async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId)
+
     func confirmTotpKey(
         oneTimePassword: Int,
         metadata: MfaMetadata,
@@ -751,6 +774,16 @@ private func bridgeMfaKeyName(_ value: String) throws -> String {
 }
 
 extension AuthenticatedChatConnection: AuthAccountsServiceImpl {
+    func setZkCredentialKeyImpl(
+        rngSeed: Int64
+    ) async throws -> (ZkCredentialKeyPair, ZkCredentialKeyRotationId) {
+        return try await NativeNice.AuthenticatedChatConnection_set_zk_credential_key(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            rng: rngSeed,
+        )
+    }
+
     func confirmTotpKey(
         oneTimePassword: Int,
         metadata: MfaMetadata,

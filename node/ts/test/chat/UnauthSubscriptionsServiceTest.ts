@@ -81,4 +81,25 @@ describe('UnauthSubscriptionsService', () => {
       }
     );
   });
+
+  describe('getPurchaseProductConfiguration', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetProductConfigurationTests(),
+      connectUnauth<UnauthSubscriptionsService>,
+      async (
+        chat: UnauthSubscriptionsService,
+        _args: void,
+        resp: NativeNice.PurchaseProductConfiguration
+      ) => {
+        const out = await chat.getPurchaseProductConfiguration({});
+        // Adjust the expected value to u64 instead of i64.
+        resp.login.level = BigInt.asUintN(64, resp.login.level);
+        expect(out).to.deep.equal(resp);
+        // Double-check signedness of bigints.
+        expect(out.login.level).greaterThanOrEqual(0);
+        void expect(out.backup.levels.keys().every((value) => value >= 0)).to.be
+          .true;
+      }
+    );
+  });
 });

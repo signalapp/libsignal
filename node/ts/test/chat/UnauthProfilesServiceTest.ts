@@ -9,10 +9,17 @@ import chaiAsPromised from 'chai-as-promised';
 import * as Native from '../../Native.js';
 import * as NativeNice from '../../NativeNice.js';
 import * as util from '../util.js';
-import { TokioAsyncContext, UnauthProfilesService } from '../../net.js';
+import {
+  AvatarCdnUrlValidationConfig,
+  TokioAsyncContext,
+  UnauthProfilesService,
+} from '../../net.js';
 import { connectUnauth, defineTestGrpcCases } from './ServiceTestUtils.js';
 import { Aci, Pni } from '../../Address.js';
-import { ServerPublicParams } from '../../zkgroup/index.js';
+import {
+  AvatarUploadCredentialPresentation,
+  ServerPublicParams,
+} from '../../zkgroup/index.js';
 import { ErrorCode, LibSignalErrorBase } from '../../Errors.js';
 
 use(chaiAsPromised);
@@ -93,6 +100,147 @@ describe('UnauthProfilesService', () => {
           await expect(out)
             .to.eventually.be.rejectedWith(LibSignalErrorBase)
             .and.deep.include({ code });
+        } else {
+          resp satisfies never;
+          throw new Error('Unreachable!');
+        }
+      }
+    );
+  });
+
+  describe('extendAvatarTtl', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_ExtendAvatarTtlTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        credential: AvatarUploadCredentialPresentation,
+        resp: NativeNice.ExtendAvatarTtlOut
+      ) => {
+        const out = chat.extendAvatarTtl({ credential });
+        if ('notFound' === resp) {
+          expect(await out).to.eq(null);
+        } else if ('invalidCredentials' === resp) {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.InvalidAvatarUploadCredentialPresentation,
+            });
+        } else if ('found' in resp) {
+          expect(await out).to.deep.equal(resp.found);
+        } else {
+          resp satisfies never;
+          throw new Error('Unreachable');
+        }
+      }
+    );
+  });
+
+  describe('deleteAvatar', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_DeleteAvatarTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        credential: AvatarUploadCredentialPresentation,
+        resp: boolean
+      ) => {
+        const out = chat.deleteAvatar({ credential });
+        if (resp) {
+          await out;
+        } else {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.InvalidAvatarUploadCredentialPresentation,
+            });
+        }
+      }
+    );
+  });
+
+  describe('getAvatarUploadForm', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_GetAvatarUploadFormTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        { credential, uploadLength }: NativeNice.GetAvatarUploadFormArgs,
+        resp: NativeNice.GetAvatarUploadFormOut
+      ) => {
+        const out = chat.getAvatarUploadForm({ credential, uploadLength });
+        if (resp === 'invalidCredential') {
+          await expect(out)
+            .to.eventually.be.rejectedWith(LibSignalErrorBase)
+            .and.deep.include({
+              code: ErrorCode.InvalidAvatarUploadCredentialPresentation,
+            });
+        } else if ('success' in resp) {
+          expect(await out).to.deep.equal(resp.success);
+        } else {
+          resp satisfies never;
+          throw new Error('unreachable');
+        }
+      }
+    );
+  });
+
+  describe('getProfile', () => {
+    defineTestGrpcCases(
+      NativeNice.TESTING_UnauthGetProfileTests(),
+      connectUnauth<UnauthProfilesService>,
+      async (
+        chat: UnauthProfilesService,
+        {
+          inner: { aci, profileKey, etag, avatarCdnConfigValidUrls },
+          auth,
+        }: NativeNice.UnauthGetProfileArgs,
+        resp: NativeNice.UnauthGetProfileOut
+      ) => {
+        const out = chat.getProfile({
+          aci,
+          profileKey,
+          auth:
+            'accessKey' in auth
+              ? { accessKey: auth.accessKey }
+              : auth.groupSend,
+          etag,
+          avatarCdnUrlValidationConfig:
+            AvatarCdnUrlValidationConfig.fromUrlPrefixes(
+              avatarCdnConfigValidUrls
+            ),
+        });
+        if ('success' in resp) {
+          const profile = await out;
+          expect(profile).to.deep.equal(resp.success);
+          // chai will assume that all handles are equal, so we need to manually
+          // compare the identity keys
+          expect(profile?.identityKey?.serialize()).to.deep.equal(
+            resp.success?.identityKey?.serialize()
+          );
+        } else if ('failure' in resp) {
+          if (resp.failure === 'profileNotFound') {
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.ProfileNotFound,
+              });
+          } else if (resp.failure === 'failedUnidentifiedAuthorization') {
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.RequestUnauthorized,
+              });
+          } else if ('profileDecodeError' in resp.failure) {
+            await expect(out)
+              .to.eventually.be.rejectedWith(LibSignalErrorBase)
+              .and.deep.include({
+                code: ErrorCode.ProfileCantBeDecoded,
+              });
+          } else {
+            resp.failure satisfies never;
+            throw new Error('Unreachable!');
+          }
         } else {
           resp satisfies never;
           throw new Error('Unreachable!');

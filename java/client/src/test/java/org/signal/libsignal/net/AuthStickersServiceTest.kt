@@ -28,15 +28,18 @@ class AuthStickersServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetStickerUploadFormsOut.Success ->
+            is GetStickerUploadFormsOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<GetStickerUploadFormsResponse>>(actual).result,
               )
-            GetStickerUploadFormsOut.Invalid ->
+            }
+
+            GetStickerUploadFormsOut.Invalid -> {
               assertIs<UnexpectedResponseException>(
                 assertIs<RequestResult.ApplicationError>(actual).cause,
               )
+            }
           }
         },
       )

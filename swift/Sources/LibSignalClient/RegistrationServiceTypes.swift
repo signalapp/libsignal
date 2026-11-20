@@ -110,11 +110,7 @@ public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegister
     /// `nil` for an account with no phone number.
     public var pni: Pni? {
         return failOnError {
-            try self.withNativeHandle { native in
-                try invokeFnReturningOptionalUuid {
-                    signal_register_account_response_get_pni($0, native.const())
-                }
-            }
+            try NativeNice.RegisterAccountResponse_GetPni(response: self)
         }.map { Pni(fromUUID: $0) }
     }
 
@@ -152,11 +148,7 @@ public class RegisterAccountResponse: NativeHandleOwner<SignalMutPointerRegister
 
     public var usernameLinkHandle: UUID? {
         return failOnError {
-            try self.withNativeHandle { native in
-                try invokeFnReturningOptionalUuid {
-                    signal_register_account_response_get_username_link_handle($0, native.const())
-                }
-            }
+            try NativeNice.RegisterAccountResponse_GetUsernameLinkHandle(response: self)
         }
     }
 

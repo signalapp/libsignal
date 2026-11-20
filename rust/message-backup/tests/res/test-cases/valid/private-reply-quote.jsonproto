@@ -1,0 +1,200 @@
+// Includes private replies: 1:1 messages that quote a message from a group chat.
+[
+  {
+    "backupTimeMs": 123456,
+    "version": 1,
+    "mediaRootBackupKey": "q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=",
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY",
+        "defaultSentMediaQuality": "STANDARD",
+        "appTheme": "SYSTEM",
+        "callsUseLessDataSetting": "MOBILE_DATA_ONLY",
+        "unreadBadgeType": "UNREAD_MESSAGES"
+      },
+      "androidSpecificSettings": {
+        "useSystemEmoji": true,
+        "screenshotSecurity": true,
+        "navigationBarSize": "NORMAL"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 1,
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 2,
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 3,
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 4,
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 5,
+      "group": {
+        "masterKey": "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQ=",
+        "whitelisted": true,
+        "hideStory": false,
+        "storySendMode": "DEFAULT",
+        "snapshot": {
+          "title": {
+            "title": "Bounty Hunters"
+          },
+          "avatarUrl": "",
+          "version": 1,
+        }
+      }
+    }
+  },
+  {
+    "chat": {
+      "id": 1,
+      "recipientId": 4, // 1:1 chat with Han
+      "archived": false,
+      "markedUnread": false,
+      "dontNotifyForMentionsIfMuted": false,
+    }
+  },
+  // We reply privately to something Han said in the group.
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 1000,
+      "outgoing": {
+        "sendStatus": [
+          {
+            "recipientId": 4,
+            "timestamp": 1001,
+            "sent": {
+              "sealedSender": true
+            }
+          }
+        ]
+      },
+      "standardMessage": {
+        "text": {
+          "body": "Let's take this out of the group",
+        },
+        "quote": {
+          "targetSentTimestamp": 500,
+          "authorId": 4,
+          "text": {
+            "body": "I've got a bad feeling about this",
+          },
+          "type": "NORMAL",
+          "privateReplyGroupRecipientId": 5,
+        }
+      }
+    }
+  },
+  // Han replies privately to something we said in the group.
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 2000,
+      "incoming": {
+        "dateReceived": 2001,
+        "dateServerSent": 2001,
+        "read": true,
+        "sealedSender": true,
+      },
+      "standardMessage": {
+        "text": {
+          "body": "No reward is worth this",
+        },
+        "quote": {
+          "targetSentTimestamp": 600,
+          "authorId": 1,
+          "text": {
+            "body": "He's no good to me dead",
+          },
+          "type": "NORMAL",
+          "privateReplyGroupRecipientId": 5,
+        }
+      }
+    }
+  },
+  // Han replies privately to something we said in a group we no longer know about.
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 3000,
+      "incoming": {
+        "dateReceived": 3001,
+        "dateServerSent": 3001,
+        "read": true,
+        "sealedSender": true,
+      },
+      "standardMessage": {
+        "text": {
+          "body": "What group was that again?",
+        },
+        "quote": {
+          "targetSentTimestamp": 700,
+          "authorId": 1,
+          "text": {
+            "body": "As you wish",
+          },
+          "type": "NORMAL",
+          "unknownPrivateReply": true,
+        }
+      }
+    }
+  },
+]

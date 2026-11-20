@@ -4,3 +4,7 @@
 {"recipient":{"id":"2","releaseNotes":{}}}
 {"recipient":{"id":"3","distributionList":{"distributionId":"AAAAAAAAAAAAAAAAAAAAAA==","distributionList":{"name":"My Story","allowReplies":true,"privacyMode":"ALL"}}}}
 {"recipient":{"id":"4","callLink":{"name":"Team Meeting","restrictions":"ADMIN_APPROVAL","expirationMs":"1725926400000"}}}
+{"recipient":{"id":"5","contact":{"aci":"X4xWjQEZR72BqruHybcZlQ==","profileSharing":true,"profileGivenName":"Han","profileFamilyName":"Solo","registered":{}}}}
+{"recipient":{"id":"6","group":{"whitelisted":true,"snapshot":{"title":{"title":"Bounty Hunters"},"version":1}}}}
+{"chat":{"id":"1","recipientId":"5"}}
+{"chatItem":{"chatId":"1","authorId":"5","dateSent":"1715636000000","incoming":{"dateReceived":"1715636000001","read":true},"standardMessage":{"quote":{"targetSentTimestamp":"1715635000000","authorId":"1","text":{"body":"As you wish"},"type":"NORMAL","privateReplyGroupRecipientId":"6"},"text":{"body":"He's no good to me dead"}}}}

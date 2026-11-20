@@ -97,6 +97,13 @@ public enum SignalError: Error {
     case webAuthnRegistrationUnsuccessful(String)
     case profileNotFound(String)
     case receiptAlreadyRedeemed(String)
+    case invalidAvatarUploadCredentialPresentation(String)
+    case accountMissingZkCredentialKey(String)
+    case setProfileInvalidProfile(profileValidationError: ProfileValidationError, message: String)
+    case setProfileExpectedDataWriteConflict(String)
+    case setProfileExpectedVersionWriteConflict(currentProfileVersion: ProfileKeyVersion?, message: String)
+    case setProfilePaymentsForbiddenInRegion(String)
+    case profileCantBeDecoded(String)
 
     case unknown(UInt32, String)
 
@@ -415,6 +422,29 @@ internal func checkError(_ error: SignalFfiErrorRef?) throws {
         throw SignalError.profileNotFound(errStr)
     case SignalErrorCodeReceiptAlreadyRedeemed:
         throw SignalError.receiptAlreadyRedeemed(errStr)
+    case SignalErrorCodeInvalidAvatarUploadCredentialPresentation:
+        throw SignalError.invalidAvatarUploadCredentialPresentation(errStr)
+    case SignalErrorCodeAccountMissingZkCredentialKey:
+        throw SignalError.accountMissingZkCredentialKey(errStr)
+    case SignalErrorCodeSetProfileInvalidProfile:
+        let e = try NativeNice.Error_GetProfileValidationError(err: error)
+        let eConverted: ProfileValidationError
+        switch e {
+        case .fieldTooLong(let field, let len, let maxLen):
+            eConverted = .fieldTooLong(field: field, len: Int(len), maxLen: Int(maxLen))
+        case .avatarUrlInvalid:
+            eConverted = .avatarUrlInvalid
+        }
+        throw SignalError.setProfileInvalidProfile(profileValidationError: eConverted, message: errStr)
+    case SignalErrorCodeSetProfileExpectedDataWriteConflict:
+        throw SignalError.setProfileExpectedDataWriteConflict(errStr)
+    case SignalErrorCodeSetProfileExpectedVersionWriteConflict:
+        let v = try NativeNice.Error_GetCurrentProfileVersion(err: error)
+        throw SignalError.setProfileExpectedVersionWriteConflict(currentProfileVersion: v, message: errStr)
+    case SignalErrorCodeSetProfilePaymentsForbiddenInRegion:
+        throw SignalError.setProfilePaymentsForbiddenInRegion(errStr)
+    case SignalErrorCodeProfileCantBeDecoded:
+        throw SignalError.profileCantBeDecoded(errStr)
     default:
         throw SignalError.unknown(errType, errStr)
     }

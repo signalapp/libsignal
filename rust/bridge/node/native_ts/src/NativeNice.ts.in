@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
+  BigIntMapFfiContents,
   GrpcTestCase,
   StringMapFfiContents,
   {% for (ty, v) in ctx.derived_arg_converters|items -%}
@@ -22,6 +23,7 @@ import type {
 } from './Native.js';
 
 import { Aci, Pni, ServiceId, ServiceIdKind } from './Address.js';
+import * as EcKeys from './EcKeys.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -39,6 +41,7 @@ import {
   liftNull,
   stringMapArgConverter,
   stringMapResultConverter,
+  bigintMapResultConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';

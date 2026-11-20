@@ -1,0 +1,20 @@
+{
+  "name": "@signalapp/libsignal-client-win32",
+  "version": "0.108.4",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/signalapp/libsignal.git"
+  },
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "prebuilds/*/*.node"
+  ],
+  "dependencies": {
+    "node-gyp-build": "^4.8.0"
+  },
+  "os": [
+    "win32"
+  ]
+}

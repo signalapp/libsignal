@@ -16,6 +16,7 @@ use libsignal_net_chat::api::ChallengeOption;
 use libsignal_net_chat::api::messages::MismatchedDeviceError;
 use libsignal_net_chat::api::purchase::ChargeFailure;
 use uuid::Uuid;
+use zkgroup::profiles::ProfileKeyVersion;
 
 // Not using bridge_fn because it also handles `NULL`.
 #[unsafe(no_mangle)]
@@ -189,5 +190,28 @@ fn Error_GetChargeFailure(
 ) -> Result<Option<ChargeFailure>, IllegalArgumentError> {
     err.provide_charge_failure().map_err(|_| {
         IllegalArgumentError::new(format!("cannot get charge failure from error ({err})"))
+    })
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn Error_GetCurrentProfileVersion(
+    err: &SignalFfiError,
+) -> Result<Option<ProfileKeyVersion>, IllegalArgumentError> {
+    err.provide_current_profile_version().map_err(|_| {
+        IllegalArgumentError::new(format!("cannot get profile key version from error ({err})"))
+    })
+}
+
+#[bridge_fn(jni = false, node = false, nice = true)]
+fn Error_GetProfileValidationError(
+    err: &SignalFfiError,
+) -> Result<
+    libsignal_bridge_types::net::chat::remote_derives::ProfileValidationErrorInternal,
+    IllegalArgumentError,
+> {
+    err.provide_profile_validation_error().map_err(|_| {
+        IllegalArgumentError::new(format!(
+            "cannot get profile validation error from error ({err})"
+        ))
     })
 }

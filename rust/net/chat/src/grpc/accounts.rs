@@ -24,8 +24,8 @@ use libsignal_net_grpc::proto::chat::account::{
     SetDiscoverableByPhoneNumberRequest, SetDiscoverableByPhoneNumberResponse,
     SetMfaKeyMetadataRequest, SetMfaKeyMetadataResponse, SetRegistrationLockRequest,
     SetRegistrationLockResponse, SetRegistrationRecoveryPasswordRequest,
-    SetRegistrationRecoveryPasswordResponse, StartMfaVerificationRequest,
-    StartMfaVerificationResponse as StartMfaVerificationResponseProto,
+    SetRegistrationRecoveryPasswordResponse, SetZkCredentialKeyRequest, SetZkCredentialKeyResponse,
+    StartMfaVerificationRequest, StartMfaVerificationResponse as StartMfaVerificationResponseProto,
     StartWebAuthnRegistrationRequest, StartWebAuthnRegistrationResponse,
     TotpParameters as GrpcTotpParameters, confirm_totp_key_response,
     finish_web_authn_registration_response, generate_totp_key_response, list_mfa_keys_response,
@@ -38,7 +38,9 @@ use libsignal_net_grpc::proto::chat::challenge::challenge_client::ChallengeClien
 use libsignal_net_grpc::proto::chat::challenge::{AnswerChallengeRequest, AnswerChallengeResponse};
 use libsignal_net_grpc::proto::chat::common::AccountIdentifiers;
 use libsignal_net_grpc::proto::chat::errors;
+use rand::{CryptoRng, Rng};
 use uuid::Uuid;
+use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 
 use crate::api::{Auth, RequestError};
 use crate::grpc::devices::DeviceCapability;
@@ -642,6 +644,21 @@ impl std::fmt::Display for Redact<AnswerChallengeRequest> {
             .finish()
     }
 }
+impl std::fmt::Display for Redact<SetZkCredentialKeyRequest> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Redact(SetZkCredentialKeyRequest { public_key }) = self;
+        f.debug_struct("SetZkCredentialKeyRequest")
+            .field("public_key.len()", &public_key.len())
+            .finish()
+    }
+}
+
+/// A random value in `[1, i64::MAX]` that must be included in credential requests using the
+/// ZkCredential key.
+///
+/// This value allows the server to ratchet the resulting binding identity,
+/// as reverting to the previous key will result in a new rotation ID.
+pub type ZkCredentialKeyRotationId = i64;
 
 impl<T: GrpcServiceProvider> Auth<T> {
     /// Returns basic identifiers for the authenticated account.
@@ -665,6 +682,40 @@ impl<T: GrpcServiceProvider> Auth<T> {
                 log_safe: "missing account identifiers".to_string(),
             })?
             .try_into()
+    }
+
+    /// Generate a fresh ZkCredentialKeyPair, and upload its public (anonymous) key to the server.
+    ///
+    /// We generate a fresh key each time to ensure that the server can't reuse a
+    /// (KeyPair, rotation ID) pair
+    pub async fn set_zk_credential_key(
+        &self,
+        rng: &mut (dyn CryptoRng + Send),
+    ) -> Result<(ZkCredentialKeyPair, ZkCredentialKeyRotationId), RequestError<Infallible>> {
+        let key_pair = ZkCredentialKeyPair::generate(rng.random());
+        let public_key = key_pair.public_key();
+        let mut client = AccountsClient::new(self.0.service());
+        let request = SetZkCredentialKeyRequest {
+            public_key: zkgroup::serialize(&public_key),
+        };
+        let desc = Redact(&request).to_string();
+        let SetZkCredentialKeyResponse { rotation_id } = log_and_send(Self::LOG_TAG, &desc, || {
+            client.set_zk_credential_key(request)
+        })
+        .await?
+        .into_inner();
+        if rotation_id == 0 {
+            return Err(RequestError::Unexpected {
+                log_safe: "Server provided a zkcredential rotation ID of 0".into(),
+            });
+        }
+        let rotation_id = ZkCredentialKeyRotationId::try_from(rotation_id).map_err(|_| {
+            RequestError::Unexpected {
+                log_safe: "Server provided a zkcredential rotation ID that doesn't fit in an i64"
+                    .into(),
+            }
+        })?;
+        Ok((key_pair, rotation_id))
     }
 
     /// Deletes the authenticated account, purging all associated data in the
@@ -1276,6 +1327,8 @@ pub mod test_cases {
         DeviceCapability as GrpcDeviceCapability, ServiceIdentifier,
     };
     use libsignal_protocol::Timestamp;
+    use rand::SeedableRng;
+    use zkgroup::zk_credential_key::ZkCredentialKeyPair;
 
     use super::*;
 
@@ -1414,6 +1467,70 @@ pub mod test_cases {
                     account_identifiers: None,
                 },
                 response: GetAccountIdentityOut::MissingIdentifiers,
+            },
+        ]
+    }
+
+    pub type SetZkCredentialKeyArgs = ();
+    /// If the output is `None`, then the result should be an `Unexpected` error
+    pub type SetZkCredentialKeyOut = Option<(ZkCredentialKeyPair, ZkCredentialKeyRotationId)>;
+    /// The rng seed is exclusively 0
+    pub fn set_zk_credential_key_test_cases() -> Vec<
+        GrpcTestCase<
+            SetZkCredentialKeyArgs,
+            SetZkCredentialKeyRequest,
+            SetZkCredentialKeyResponse,
+            SetZkCredentialKeyOut,
+        >,
+    > {
+        let method = "/org.signal.chat.account.Accounts/SetZkCredentialKey";
+        let seed = 0;
+        let mut rng = rand_chacha::ChaCha20Rng::seed_from_u64(seed);
+        let pair = ZkCredentialKeyPair::generate(rng.random());
+        vec![
+            GrpcTestCase {
+                name: "success".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse { rotation_id: 123 },
+                response: Some((pair.clone(), 123)),
+            },
+            GrpcTestCase {
+                name: "success, i64::MAX".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse {
+                    rotation_id: i64::MAX.try_into().expect("fits in u64"),
+                },
+                response: Some((pair.clone(), i64::MAX)),
+            },
+            GrpcTestCase {
+                name: "bad; zero rotation id".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse { rotation_id: 0 },
+                response: None,
+            },
+            GrpcTestCase {
+                name: "bad; rotation id won't fit in i64".into(),
+                method: method.into(),
+                request: (),
+                request_grpc: SetZkCredentialKeyRequest {
+                    public_key: zkgroup::serialize(&pair.public_key()),
+                },
+                response_grpc: SetZkCredentialKeyResponse {
+                    rotation_id: u64::MAX,
+                },
+                response: None,
             },
         ]
     }
@@ -2403,14 +2520,14 @@ pub mod test_cases {
                         capabilities: vec![
                             GrpcDeviceCapability::SparsePostQuantumRatchet.into(),
                             GrpcDeviceCapability::AttachmentBackfill.into(),
-                            GrpcDeviceCapability::ProfilesV2.into(),
+                            GrpcDeviceCapability::OptionalPhoneNumber.into(),
                         ],
                     }),
                 },
                 response: GetCapabilitiesOut::Success(vec![
                     DeviceCapability::SparsePostQuantumRatchet,
                     DeviceCapability::AttachmentBackfill,
-                    DeviceCapability::ProfilesV2,
+                    DeviceCapability::OptionalPhoneNumber,
                 ]),
             },
             GrpcTestCase {
@@ -2508,6 +2625,7 @@ pub mod test_cases {
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
+    use rand::SeedableRng;
 
     use super::*;
     use crate::api::DisconnectedError;
@@ -3246,6 +3364,28 @@ mod test {
             },
             |expected, result| {
                 assert_eq!(expected, result.expect("success"));
+            },
+        );
+    }
+
+    #[test]
+    fn test_set_zk_credential() {
+        use test_cases::*;
+        run_tests(
+            set_zk_credential_key_test_cases(),
+            |chat: Auth<_>, ()| async move {
+                chat.set_zk_credential_key(&mut rand_chacha::ChaCha20Rng::seed_from_u64(0))
+                    .await
+            },
+            |expected, result| match expected {
+                Some(pair) => assert_eq!(
+                    zkgroup::serialize(&result.expect("success")),
+                    zkgroup::serialize(&pair)
+                ),
+                None => assert!(matches!(
+                    result,
+                    Err(RequestError::Unexpected { log_safe: _ })
+                )),
             },
         );
     }

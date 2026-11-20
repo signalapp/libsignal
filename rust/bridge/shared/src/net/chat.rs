@@ -8,8 +8,12 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use ::zkgroup::ServerPublicParams;
+use ::zkgroup::avatars::{AvatarUploadCredential, AvatarUploadCredentialPresentation};
+use ::zkgroup::generic_server_params::GenericServerPublicParams;
 use ::zkgroup::groups::GroupSendFullToken;
+use ::zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
 use ::zkgroup::receipts::{ReceiptCredential, ReceiptCredentialRequestContext};
+use ::zkgroup::zk_credential_key::ZkCredentialKeyPair;
 use futures_util::TryStreamExt;
 use http::uri::InvalidUri;
 use http::{HeaderName, HeaderValue, StatusCode};
@@ -20,7 +24,7 @@ use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
     AccountEntitlements, BridgeMfaVerificationCredential, CallQualitySurveyInternal,
     CurrencyConversionsInternal, GetStickerUploadFormsResponse, ListMediaResponse,
-    StartMfaVerificationResponse,
+    PurchaseProductConfiguration, StartMfaVerificationResponse,
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -33,7 +37,6 @@ use libsignal_net_chat::api;
 use libsignal_net_chat::api::backups::{
     BackupAuth, BackupAuthCredentialRejected, CdnCredentials, GetUploadFormFailure,
 };
-use libsignal_net_chat::api::keys::{DeviceSpecifier, GetPreKeysFailure, UnauthenticatedChatApi};
 use libsignal_net_chat::api::messages::{
     AuthenticatedChatApi, MultiRecipientMessageResponse, MultiRecipientSendAuthorization,
     MultiRecipientSendFailure, SealedSendFailure, SingleOutboundSealedSenderMessage,
@@ -45,11 +48,11 @@ use libsignal_net_chat::api::profiles::{
 };
 use libsignal_net_chat::api::purchase::PaymentProvider;
 use libsignal_net_chat::api::usernames::UnauthenticatedChatApi as _;
-use libsignal_net_chat::api::{RequestError, UploadForm, UserBasedAuthorization};
+use libsignal_net_chat::api::{RequestError, S3UploadForm, UploadForm, UserBasedAuthorization};
 use libsignal_net_chat::grpc::accounts::{
     ChallengeAnswer, ConfirmTotpKeyError, FinishWebAuthnRegistrationError, GenerateTotpKeyError,
     MAX_MFA_KEY_ID, MfaKeyId, MfaKeyNotFound, MfaVerificationFailed,
-    StartWebAuthnRegistrationError,
+    StartWebAuthnRegistrationError, ZkCredentialKeyRotationId,
 };
 use libsignal_net_chat::grpc::backups::RedeemBackupReceiptFailure;
 use libsignal_net_chat::grpc::credentials::AuthCheckResult;
@@ -57,7 +60,12 @@ use libsignal_net_chat::grpc::devices::{
     DeviceCapability, DeviceIdNotFoundInAccount, LinkedDevice,
 };
 use libsignal_net_chat::grpc::donations::{BadgeVisibility, RedeemDonationReceiptFailure};
-use libsignal_net_chat::grpc::keys::{PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey};
+use libsignal_net_chat::grpc::keys::{
+    DeviceSpecifier, GetPreKeysFailure, PublicEcPreKey, PublicKemPreKey, PublicSignedEcPreKey,
+};
+use libsignal_net_chat::grpc::profiles::{
+    AvatarCdnUrlValidationConfig, CdnUrl, ProfileDataHash, ProfileEtag,
+};
 use libsignal_net_chat::grpc::usernames::{ConfirmUsernameError, UsernameNotAvailable};
 use libsignal_net_chat::grpc::{login_purchase, subscriptions};
 use libsignal_net_chat::stream_util::{BulkPolledStreamChunk, BulkPolledStreamTerminationReason};
@@ -76,6 +84,7 @@ bridge_handle_fns!(AuthenticatedChatConnection, clone = false);
 bridge_handle_fns!(ProvisioningChatConnection, clone = false);
 bridge_handle_fns!(CopyBackupMediaStream, clone = false);
 bridge_handle_fns!(DeleteBackupMediaStream, clone = false);
+bridge_handle_fns!(AvatarCdnUrlValidationConfig, clone = false);
 
 #[bridge_fn(ffi = false)]
 fn HttpRequest_new(
@@ -177,7 +186,7 @@ fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> C
     chat.info()
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn UnauthenticatedChatConnection_look_up_username_hash(
     chat: &UnauthenticatedChatConnection,
     hash: Box<[u8]>,
@@ -188,7 +197,7 @@ async fn UnauthenticatedChatConnection_look_up_username_hash(
         .map(|aci| aci.into()))
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn UnauthenticatedChatConnection_look_up_username_link(
     chat: &UnauthenticatedChatConnection,
     uuid: Uuid,
@@ -407,18 +416,15 @@ async fn UnauthenticatedChatConnection_get_pre_keys_access_key_auth(
     target: ServiceId,
     device: DeviceSpecifier,
 ) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
-    chat.as_typed(|chat| {
-        Box::pin(async move {
-            let (identity_key, pre_key_bundles) = chat
-                .get_pre_keys(UserBasedAuthorization::AccessKey(auth), target, device)
-                .await?;
-            Ok(PreKeysResponse {
-                identity_key,
-                pre_key_bundles,
-            })
-        })
+    let (identity_key, pre_key_bundles) = chat
+        .require_grpc()
+        .await
+        .get_pre_keys(UserBasedAuthorization::AccessKey(auth), target, device)
+        .await?;
+    Ok(PreKeysResponse {
+        identity_key,
+        pre_key_bundles,
     })
-    .await
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -428,18 +434,15 @@ async fn UnauthenticatedChatConnection_get_pre_keys_group_auth(
     target: ServiceId,
     device: DeviceSpecifier,
 ) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
-    chat.as_typed(|chat| {
-        Box::pin(async move {
-            let (identity_key, pre_key_bundles) = chat
-                .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
-                .await?;
-            Ok(PreKeysResponse {
-                identity_key,
-                pre_key_bundles,
-            })
-        })
+    let (identity_key, pre_key_bundles) = chat
+        .require_grpc()
+        .await
+        .get_pre_keys(UserBasedAuthorization::Group(auth), target, device)
+        .await?;
+    Ok(PreKeysResponse {
+        identity_key,
+        pre_key_bundles,
     })
-    .await
 }
 
 #[bridge_io(TokioAsyncContext)]
@@ -448,22 +451,19 @@ async fn UnauthenticatedChatConnection_get_pre_keys_unrestricted_auth(
     target: ServiceId,
     device: DeviceSpecifier,
 ) -> Result<PreKeysResponse, RequestError<GetPreKeysFailure>> {
-    chat.as_typed(|chat| {
-        Box::pin(async move {
-            let (identity_key, pre_key_bundles) = chat
-                .get_pre_keys(
-                    UserBasedAuthorization::UnrestrictedUnauthenticatedAccess,
-                    target,
-                    device,
-                )
-                .await?;
-            Ok(PreKeysResponse {
-                identity_key,
-                pre_key_bundles,
-            })
-        })
+    let (identity_key, pre_key_bundles) = chat
+        .require_grpc()
+        .await
+        .get_pre_keys(
+            UserBasedAuthorization::UnrestrictedUnauthenticatedAccess,
+            target,
+            device,
+        )
+        .await?;
+    Ok(PreKeysResponse {
+        identity_key,
+        pre_key_bundles,
     })
-    .await
 }
 
 #[bridge_io(TokioAsyncContext, nice = true)]
@@ -1577,6 +1577,17 @@ async fn AuthenticatedChatConnection_answer_challenge(
         .await
 }
 
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_get_product_configuration(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+) -> Result<PurchaseProductConfiguration, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_purchase_product_configuration()
+        .await
+        .map(Into::into)
+}
+
 #[cfg(test)]
 mod test {
     use assert_matches::assert_matches;
@@ -1612,4 +1623,184 @@ mod test {
             Ok(_)
         );
     }
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_badges(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    etag: Option<Vec<u8>>,
+) -> Result<Option<remote_derives::TaggedBadges>, RequestError<Infallible>> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_badges(etag.as_deref())
+        .await?
+        .map(|x| x.into()))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_zk_credential_key(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator,
+) -> Result<(ZkCredentialKeyPair, ZkCredentialKeyRotationId), RequestError<core::convert::Infallible>>
+{
+    chat.require_grpc()
+        .await
+        .set_zk_credential_key(&mut rng.create())
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_extend_avatar_ttl(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: AvatarUploadCredentialPresentation,
+) -> Result<
+    Option<CdnUrl>,
+    RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
+> {
+    chat.require_grpc()
+        .await
+        .extend_avatar_ttl(&credential)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_delete_avatar(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: AvatarUploadCredentialPresentation,
+) -> Result<
+    (),
+    RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
+> {
+    chat.require_grpc().await.delete_avatar(&credential).await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_get_avatar_upload_form(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    credential: AvatarUploadCredentialPresentation,
+    upload_length: i32,
+) -> Result<
+    S3UploadForm,
+    RequestError<libsignal_net_chat::grpc::profiles::InvalidAvatarUploadCredentialPresentation>,
+> {
+    chat.require_grpc()
+        .await
+        .get_avatar_upload_form(&credential, upload_length)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    aci: Aci,
+    profile_key: ProfileKey,
+) -> Result<S3UploadForm, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_avatar_upload_form_legacy(aci, &profile_key)
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_avatar_credential(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    aci: Aci,
+    key_pair: ZkCredentialKeyPair,
+    rotation_id: ZkCredentialKeyRotationId,
+    server_public_params: GenericServerPublicParams,
+    current_time_seconds: i64,
+    rng: RandomNumberGenerator,
+) -> Result<
+    AvatarUploadCredential,
+    RequestError<libsignal_net_chat::grpc::profiles::AccountMissingZkCredentialKey>,
+> {
+    chat.require_grpc()
+        .await
+        .get_avatar_credential(
+            aci,
+            &key_pair,
+            rotation_id,
+            &server_public_params,
+            ::zkgroup::Timestamp::from_epoch_seconds(
+                current_time_seconds.try_into().expect("negative seconds"),
+            ),
+            &mut rng.create(),
+        )
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_set_profile(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    rng: RandomNumberGenerator,
+    aci: Aci,
+    profile_key: ProfileKey,
+    profile: remote_derives::Profile,
+    expected_current_data_hash: Option<ProfileDataHash>,
+    expected_current_profile_key_version: Option<ProfileKeyVersion>,
+    avatar_cdn_config: BridgeHandleRef<'_, AvatarCdnUrlValidationConfig>,
+) -> Result<ProfileDataHash, RequestError<libsignal_net_chat::grpc::profiles::SetProfileError>> {
+    let mut rng = rng.create();
+    chat.require_grpc()
+        .await
+        .set_profile(
+            &mut rng,
+            aci,
+            &profile_key,
+            profile.into(),
+            expected_current_data_hash,
+            expected_current_profile_key_version.as_ref(),
+            &avatar_cdn_config,
+        )
+        .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn AuthenticatedChatConnection_get_profile(
+    chat: BridgeHandleRef<'_, AuthenticatedChatConnection>,
+    aci: Aci,
+    profile_key: ProfileKey,
+    etag: Option<ProfileEtag>,
+    avatar_cdn_config: BridgeHandleRef<'_, AvatarCdnUrlValidationConfig>,
+) -> Result<
+    Option<remote_derives::FetchedProfile>,
+    RequestError<libsignal_net_chat::grpc::profiles::AuthGetProfileError>,
+> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_profile(aci, &profile_key, etag, &avatar_cdn_config)
+        .await?
+        .map(Into::into))
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_get_profile(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+    aci: Aci,
+    profile_key: ProfileKey,
+    auth: libsignal_net_chat::grpc::profiles::UnauthProfileAuthorization,
+    etag: Option<ProfileEtag>,
+    avatar_cdn_config: BridgeHandleRef<'_, AvatarCdnUrlValidationConfig>,
+) -> Result<
+    Option<remote_derives::FetchedProfile>,
+    RequestError<libsignal_net_chat::grpc::profiles::UnauthGetProfileError>,
+> {
+    Ok(chat
+        .require_grpc()
+        .await
+        .get_profile(aci, &profile_key, &auth, etag, &avatar_cdn_config)
+        .await?
+        .map(Into::into))
+}
+
+// Since any invalid input is a bug in the client library, we simply our error reporting and panic
+// on invalid input
+#[bridge_fn(nice = true, nice_node = false)]
+pub fn AvatarCdnUrlValidationConfig_new(
+    valid_url_prefixes: BridgeVec<String>,
+) -> AvatarCdnUrlValidationConfig {
+    AvatarCdnUrlValidationConfig::new(valid_url_prefixes.0)
+        .expect("AvatarCdnUrlValidationConfiguration was invalid")
 }

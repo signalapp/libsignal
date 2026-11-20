@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
+  BigIntMapFfiContents,
   GrpcTestCase,
   StringMapFfiContents,
   ArgFfiBadgeVisibility,
@@ -27,11 +28,19 @@ import type {
   ArgFfiMyTestPoint,
   ArgFfiMyTestStruct,
   ArgFfiPaymentProviderInternal,
+  ArgFfiProfile,
+  ArgFfiUnauthProfileAuthorization,
   ReturnFfiAccountEntitlements,
   ReturnFfiAnswerChallengeArgs,
   ReturnFfiAuthCheckResult,
+  ReturnFfiAuthGetProfileError,
+  ReturnFfiBackupConfiguration,
   ReturnFfiBackupEntitlement,
+  ReturnFfiBackupLevelConfiguration,
+  ReturnFfiBadge,
   ReturnFfiBadgeEntitlement,
+  ReturnFfiBadgeLevelConfiguration,
+  ReturnFfiBadgeSvg,
   ReturnFfiBadgeVisibility,
   ReturnFfiBridgeAccountIdentity,
   ReturnFfiBridgeChallengeAnswer,
@@ -63,24 +72,35 @@ import type {
   ReturnFfiCreateDonationPermitsOut,
   ReturnFfiCreateLoginReceiptCredentialArgs,
   ReturnFfiCreateLoginReceiptCredentialOut,
+  ReturnFfiCurrencyConfiguration,
   ReturnFfiCurrencyConversionsInternal,
   ReturnFfiCurrencyInternal,
   ReturnFfiDeleteBackupMediaNextChunk,
   ReturnFfiDeleteBackupMediaOut,
   ReturnFfiDeviceCapabilityInternal,
+  ReturnFfiExtendAvatarTtlOut,
+  ReturnFfiFetchedProfile,
   ReturnFfiFinishMfaVerificationOut,
   ReturnFfiFinishWebAuthnRegistrationArgs,
   ReturnFfiFinishWebAuthnRegistrationOut,
   ReturnFfiGenerateTotpKeyOut,
   ReturnFfiGetAccountIdentityOut,
+  ReturnFfiGetAvatarCredentialArgs,
+  ReturnFfiGetAvatarUploadFormArgs,
+  ReturnFfiGetAvatarUploadFormLegacyArgs,
+  ReturnFfiGetAvatarUploadFormOut,
   ReturnFfiGetCapabilitiesOut,
   ReturnFfiGetCdnCredentialsOut,
   ReturnFfiGetDevicesOut,
   ReturnFfiGetEntitlementsOut,
   ReturnFfiGetMediaBackupInfoOut,
   ReturnFfiGetMessageBackupInfoOut,
+  ReturnFfiGetPreKeysArgs,
+  ReturnFfiGetPreKeysOut,
+  ReturnFfiGetProfileArgs,
   ReturnFfiGetProfileKeyCredentialArgs,
   ReturnFfiGetProfileKeyCredentialOut,
+  ReturnFfiGetProfileOut,
   ReturnFfiGetStickerUploadFormsOut,
   ReturnFfiGetStickerUploadFormsResponse,
   ReturnFfiGetSubscriptionReceiptCredentialArgs,
@@ -93,6 +113,7 @@ import type {
   ReturnFfiListMediaResponse,
   ReturnFfiListMfaKeysArgs,
   ReturnFfiListMfaKeysOut,
+  ReturnFfiLoginConfiguration,
   ReturnFfiLoginReceiptLevel,
   ReturnFfiLookUpUsernameLinkArgs,
   ReturnFfiLookUpUsernameLinkOut,
@@ -102,8 +123,13 @@ import type {
   ReturnFfiMyTestEnum,
   ReturnFfiMyTestPoint,
   ReturnFfiMyTestStruct,
+  ReturnFfiPaymentMethodInternal,
   ReturnFfiPaymentProviderInternal,
+  ReturnFfiProfile,
+  ReturnFfiProfileFieldWithMaxLength,
   ReturnFfiProfileKeyCredentialRequestError,
+  ReturnFfiProfileValidationErrorInternal,
+  ReturnFfiPurchaseProductConfiguration,
   ReturnFfiReceiptCredentialError,
   ReturnFfiRedeemBackupReceiptOut,
   ReturnFfiRedeemDonationReceiptArgs,
@@ -125,6 +151,9 @@ import type {
   ReturnFfiSetMfaKeyMetadataOut,
   ReturnFfiSetOneTimeEcPreKeysArgs,
   ReturnFfiSetOneTimeKemPreKeysArgs,
+  ReturnFfiSetProfileArgs,
+  ReturnFfiSetProfileError,
+  ReturnFfiSetProfileOut,
   ReturnFfiSetSignedEcPreKeyArgs,
   ReturnFfiSetUsernameLinkArgs,
   ReturnFfiSetUsernameLinkOut,
@@ -132,12 +161,19 @@ import type {
   ReturnFfiStartMfaVerificationOut,
   ReturnFfiStartMfaVerificationResponse,
   ReturnFfiStartWebAuthnRegistrationOut,
+  ReturnFfiTaggedBadges,
   ReturnFfiTestStreamChunk,
   ReturnFfiTestingAnySignedPreKey,
+  ReturnFfiTestingUserBasedAuthorization,
+  ReturnFfiUnauthGetProfileArgs,
+  ReturnFfiUnauthGetProfileError,
+  ReturnFfiUnauthGetProfileOut,
+  ReturnFfiUnauthProfileAuthorization,
   /* eslint-enable @typescript-eslint/no-unused-vars */
 } from './Native.js';
 
 import { Aci, Pni, ServiceId, ServiceIdKind } from './Address.js';
+import * as EcKeys from './EcKeys.js';
 import * as zkgroup from './zkgroup/index.js';
 import * as uuid from './uuid.js';
 import ByteArray from './zkgroup/internal/ByteArray.js';
@@ -155,6 +191,7 @@ import {
   liftNull,
   stringMapArgConverter,
   stringMapResultConverter,
+  bigintMapResultConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';
@@ -171,15 +208,52 @@ export type AnswerChallengeArgs = {
 
 export type AuthCheckResult = 'match' | 'noMatch' | 'invalid';
 
+export type AuthGetProfileError =
+  | 'profileNotFound'
+  | {
+      profileDecodeError: string;
+    };
+
+export type BackupConfiguration = {
+  levels: Map<bigint, BackupLevelConfiguration>;
+  freeTierMediaDays: number;
+};
+
 export type BackupEntitlement = {
   level: bigint;
   expiration: Timestamp;
+};
+
+export type BackupLevelConfiguration = {
+  storageAllowanceBytes: number;
+  playProductId: string;
+  mediaTtlDays: number;
+};
+
+export type Badge = {
+  id: string;
+  category: string;
+  name: string;
+  description: string;
+  sprites6: Array<string>;
+  svg: string;
+  svgs: Array<BadgeSvg>;
 };
 
 export type BadgeEntitlement = {
   badgeId: string;
   expiration: Timestamp;
   visible: boolean;
+};
+
+export type BadgeLevelConfiguration = {
+  badgeId: string;
+  badgeDurationSeconds: number | null;
+};
+
+export type BadgeSvg = {
+  light: string;
+  dark: string;
 };
 
 export type BadgeVisibility = 'doNotSet' | 'setVisible' | 'setPrimary';
@@ -397,6 +471,14 @@ export type CreateLoginReceiptCredentialOut =
       explicitError: ReceiptCredentialError;
     };
 
+export type CurrencyConfiguration = {
+  minimum: number;
+  oneTimeDonationAmounts: Map<bigint, Array<number>>;
+  subscriptionAmounts: Map<bigint, number>;
+  backupSubscriptionAmounts: Map<bigint, number>;
+  supportedPaymentMethods: Array<PaymentMethodInternal>;
+};
+
 export type CurrencyConversionsInternal = {
   timestampMs: Timestamp;
   currencies: Array<CurrencyInternal>;
@@ -425,9 +507,27 @@ export type DeviceCapabilityInternal =
   | 'transfer'
   | 'attachmentBackfill'
   | 'sparsePostQuantumRatchet'
-  | 'profilesV2'
   | 'usernameChangeSyncMessage'
-  | 'optionalPhoneNumber';
+  | 'optionalPhoneNumber'
+  | 'replyPrivately'
+  | 'contactDelete'
+  | 'adminRemoveAndDelete';
+
+export type ExtendAvatarTtlOut =
+  | {
+      found: string;
+    }
+  | 'notFound'
+  | 'invalidCredentials';
+
+export type FetchedProfile = {
+  profile: Profile;
+  etag: Bytes | null;
+  v2DataHash: Bytes | null;
+  identityKey: EcKeys.PublicKey;
+  unidentifiedAccessKeyFingerprint: Bytes | null;
+  unrestrictedUnidentifiedAccess: boolean;
+};
 
 export type FinishMfaVerificationOut = 'success' | 'failedToVerify';
 
@@ -458,6 +558,30 @@ export type GetAccountIdentityOut =
       success: BridgeAccountIdentity;
     }
   | 'missingIdentifiers';
+
+export type GetAvatarCredentialArgs = {
+  aci: Aci;
+  keyPair: zkgroup.ZkCredentialKeyPair;
+  rotationId: bigint;
+  serverPublicParams: zkgroup.GenericServerPublicParams;
+  currentTimeSeconds: bigint;
+};
+
+export type GetAvatarUploadFormArgs = {
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+  uploadLength: number;
+};
+
+export type GetAvatarUploadFormLegacyArgs = {
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+};
+
+export type GetAvatarUploadFormOut =
+  | {
+      success: S3UploadFormInternal;
+    }
+  | 'invalidCredential';
 
 export type GetCapabilitiesOut =
   | {
@@ -496,6 +620,30 @@ export type GetMessageBackupInfoOut =
   | 'credentialRejected'
   | 'missingResponse';
 
+export type GetPreKeysArgs = {
+  auth: TestingUserBasedAuthorization;
+  target: ServiceId;
+  deviceId: number;
+};
+
+export type GetPreKeysOut =
+  | {
+      success: {
+        identityKey: Bytes;
+        bundleCount: number;
+      };
+    }
+  | 'notFound'
+  | 'unauthorized'
+  | 'unexpected';
+
+export type GetProfileArgs = {
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  etag: Bytes | null;
+  avatarCdnConfigValidUrls: Array<string>;
+};
+
 export type GetProfileKeyCredentialArgs = {
   profileKeyRequestContext: zkgroup.ProfileKeyCredentialRequestContext;
   serverParams: ServerPublicParamsSerialized;
@@ -510,6 +658,14 @@ export type GetProfileKeyCredentialOut =
     }
   | {
       explicitError: ProfileKeyCredentialRequestError;
+    };
+
+export type GetProfileOut =
+  | {
+      success: FetchedProfile | null;
+    }
+  | {
+      failure: AuthGetProfileError;
     };
 
 export type GetStickerUploadFormsOut =
@@ -593,6 +749,13 @@ export type ListMfaKeysOut = {
   success: Array<BridgeConfirmedMfaKey>;
 };
 
+export type LoginConfiguration = {
+  level: bigint;
+  playProductId: string;
+  playOptionId: string;
+  appStoreProductId: string;
+};
+
 export type LoginReceiptLevel = 'normal' | 'sandbox';
 
 export type LookUpUsernameLinkArgs = {
@@ -654,13 +817,58 @@ export type MyTestStruct = {
   myStringField: string;
 };
 
+export type PaymentMethodInternal =
+  | 'card'
+  | 'sepaDebit'
+  | 'ideal'
+  | 'payPal'
+  | 'googlePlayBilling'
+  | 'appleAppStore';
+
 export type PaymentProviderInternal =
   | 'googlePlayBilling'
   | 'appleAppStore'
   | 'stripe'
   | 'braintree';
 
+export type Profile = {
+  givenName: string;
+  familyName: string;
+  about: string;
+  aboutEmoji: string;
+  avatar: string | null;
+  phoneNumberSharing: boolean | null;
+  paymentAddress: Bytes | null;
+  badgeIds: Array<string>;
+};
+
+export type ProfileFieldWithMaxLength =
+  | 'givenName'
+  | 'familyName'
+  | 'about'
+  | 'aboutEmoji'
+  | 'avatar'
+  | 'paymentAddress';
+
 export type ProfileKeyCredentialRequestError = 'authFailed' | 'profileNotFound';
+
+export type ProfileValidationErrorInternal =
+  | {
+      fieldTooLong: {
+        field: ProfileFieldWithMaxLength;
+        len: number;
+        maxLen: number;
+      };
+    }
+  | 'avatarUrlInvalid';
+
+export type PurchaseProductConfiguration = {
+  currencies: Map<string, CurrencyConfiguration>;
+  badgeLevels: Map<bigint, BadgeLevelConfiguration>;
+  backup: BackupConfiguration;
+  sepaMaximumEuros: number;
+  login: LoginConfiguration;
+};
 
 export type ReceiptCredentialError =
   | 'paymentStillProcessing'
@@ -766,6 +974,35 @@ export type SetOneTimeKemPreKeysArgs = {
   preKeys: Array<TestingAnySignedPreKey>;
 };
 
+export type SetProfileArgs = {
+  rngSeed: bigint;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  profile: Profile;
+  expectedCurrentDataHash: Bytes | null;
+  expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+  avatarCdnConfigValidUrls: Array<string>;
+};
+
+export type SetProfileError =
+  | {
+      invalidProfile: ProfileValidationErrorInternal;
+    }
+  | 'expectedDataWriteConflict'
+  | {
+      expectedVersionWriteConflict: zkgroup.ProfileKeyVersion | null;
+    }
+  | 'paymentsForbiddenInRegion'
+  | 'indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles';
+
+export type SetProfileOut =
+  | {
+      success: Bytes;
+    }
+  | {
+      failure: SetProfileError;
+    };
+
 export type SetSignedEcPreKeyArgs = {
   identity: number;
   preKey: TestingAnySignedPreKey;
@@ -804,6 +1041,11 @@ export type StartWebAuthnRegistrationOut =
     }
   | 'tooManyMfaKeys';
 
+export type TaggedBadges = {
+  badges: Map<string, Badge>;
+  etag: Bytes;
+};
+
 export type TestStreamChunk = {
   chunk: Array<string>;
   termination: ('finished' | Error) | null;
@@ -814,6 +1056,43 @@ export type TestingAnySignedPreKey = {
   key: Bytes;
   sig: Bytes;
 };
+
+export type TestingUserBasedAuthorization =
+  | {
+      accessKey: Bytes;
+    }
+  | {
+      groupSendToken: Bytes;
+    }
+  | 'unrestricted';
+
+export type UnauthGetProfileArgs = {
+  inner: GetProfileArgs;
+  auth: UnauthProfileAuthorization;
+};
+
+export type UnauthGetProfileError =
+  | 'profileNotFound'
+  | {
+      profileDecodeError: string;
+    }
+  | 'failedUnidentifiedAuthorization';
+
+export type UnauthGetProfileOut =
+  | {
+      success: FetchedProfile | null;
+    }
+  | {
+      failure: UnauthGetProfileError;
+    };
+
+export type UnauthProfileAuthorization =
+  | {
+      accessKey: Bytes;
+    }
+  | {
+      groupSend: zkgroup.GroupSendFullToken;
+    };
 
 export function returnConverterAccountEntitlements(
   ffiInput: Native.ReturnFfiAccountEntitlements
@@ -851,12 +1130,64 @@ export function returnConverterAuthCheckResult(
   }
 }
 
+export function returnConverterAuthGetProfileError(
+  ffiInput: Native.ReturnFfiAuthGetProfileError
+): AuthGetProfileError {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'profileNotFound';
+    case 1:
+      return {
+        profileDecodeError: identity(ffiInput.log_safe),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for AuthGetProfileError');
+  }
+}
+
+export function returnConverterBackupConfiguration(
+  ffiInput: Native.ReturnFfiBackupConfiguration
+): BackupConfiguration {
+  return {
+    levels: bigintMapResultConverter<
+      ReturnFfiBackupLevelConfiguration,
+      BackupLevelConfiguration
+    >(returnConverterBackupLevelConfiguration)(ffiInput.levels),
+    freeTierMediaDays: identity(ffiInput.free_tier_media_days),
+  };
+}
+
 export function returnConverterBackupEntitlement(
   ffiInput: Native.ReturnFfiBackupEntitlement
 ): BackupEntitlement {
   return {
     level: identity(ffiInput.level),
     expiration: identity(ffiInput.expiration),
+  };
+}
+
+export function returnConverterBackupLevelConfiguration(
+  ffiInput: Native.ReturnFfiBackupLevelConfiguration
+): BackupLevelConfiguration {
+  return {
+    storageAllowanceBytes: identity(ffiInput.storage_allowance_bytes),
+    playProductId: identity(ffiInput.play_product_id),
+    mediaTtlDays: identity(ffiInput.media_ttl_days),
+  };
+}
+
+export function returnConverterBadge(ffiInput: Native.ReturnFfiBadge): Badge {
+  return {
+    id: identity(ffiInput.id),
+    category: identity(ffiInput.category),
+    name: identity(ffiInput.name),
+    description: identity(ffiInput.description),
+    sprites6: ((arr: Array<string>) => arr.map(identity))(ffiInput.sprites6),
+    svg: identity(ffiInput.svg),
+    svgs: ((arr: Array<ReturnFfiBadgeSvg>) => arr.map(returnConverterBadgeSvg))(
+      ffiInput.svgs
+    ),
   };
 }
 
@@ -867,6 +1198,24 @@ export function returnConverterBadgeEntitlement(
     badgeId: identity(ffiInput.badge_id),
     expiration: identity(ffiInput.expiration),
     visible: identity(ffiInput.visible),
+  };
+}
+
+export function returnConverterBadgeLevelConfiguration(
+  ffiInput: Native.ReturnFfiBadgeLevelConfiguration
+): BadgeLevelConfiguration {
+  return {
+    badgeId: identity(ffiInput.badge_id),
+    badgeDurationSeconds: liftNull(identity)(ffiInput.badge_duration_seconds),
+  };
+}
+
+export function returnConverterBadgeSvg(
+  ffiInput: Native.ReturnFfiBadgeSvg
+): BadgeSvg {
+  return {
+    light: identity(ffiInput.light),
+    dark: identity(ffiInput.dark),
   };
 }
 
@@ -1276,7 +1625,7 @@ export function returnConverterCreateDonationPermitsArgs(
   ffiInput: Native.ReturnFfiCreateDonationPermitsArgs
 ): CreateDonationPermitsArgs {
   return {
-    requestContext: ((x) => new zkgroup.DonationPermitRequestContext(x))(
+    requestContext: ((x: Bytes) => new zkgroup.DonationPermitRequestContext(x))(
       ffiInput.request_context
     ),
     serverParams: returnConverterServerPublicParamsSerialized(
@@ -1292,7 +1641,7 @@ export function returnConverterCreateDonationPermitsOut(
     case 0:
       return {
         success: ((arr: Array<Bytes>) =>
-          arr.map((x) => new zkgroup.DonationPermit(x)))(ffiInput._0),
+          arr.map((x: Bytes) => new zkgroup.DonationPermit(x)))(ffiInput._0),
       };
     case 1:
       return {
@@ -1314,7 +1663,7 @@ export function returnConverterCreateLoginReceiptCredentialArgs(
       ffiInput.payment_processor
     ),
     purchaseIdentifier: identity(ffiInput.purchase_identifier),
-    receiptCredentialRequestContext: ((x) =>
+    receiptCredentialRequestContext: ((x: Bytes) =>
       new zkgroup.ReceiptCredentialRequestContext(x))(
       ffiInput.receipt_credential_request_context
     ),
@@ -1332,7 +1681,7 @@ export function returnConverterCreateLoginReceiptCredentialOut(
   switch (ffiInput.__type) {
     case 0:
       return {
-        success: ((x) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
+        success: ((x: Bytes) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
       };
     case 1:
       return {
@@ -1348,6 +1697,28 @@ export function returnConverterCreateLoginReceiptCredentialOut(
         'Unknown FFI return enum type for CreateLoginReceiptCredentialOut'
       );
   }
+}
+
+export function returnConverterCurrencyConfiguration(
+  ffiInput: Native.ReturnFfiCurrencyConfiguration
+): CurrencyConfiguration {
+  return {
+    minimum: identity(ffiInput.minimum),
+    oneTimeDonationAmounts: bigintMapResultConverter<
+      Array<number>,
+      Array<number>
+    >(identity)(ffiInput.one_time_donation_amounts),
+    subscriptionAmounts: bigintMapResultConverter<number, number>(identity)(
+      ffiInput.subscription_amounts
+    ),
+    backupSubscriptionAmounts: bigintMapResultConverter<number, number>(
+      identity
+    )(ffiInput.backup_subscription_amounts),
+    supportedPaymentMethods: ((arr: Array<ReturnFfiPaymentMethodInternal>) =>
+      arr.map(returnConverterPaymentMethodInternal))(
+      ffiInput.supported_payment_methods
+    ),
+  };
 }
 
 export function returnConverterCurrencyConversionsInternal(
@@ -1417,11 +1788,15 @@ export function returnConverterDeviceCapabilityInternal(
     case 3:
       return 'sparsePostQuantumRatchet';
     case 4:
-      return 'profilesV2';
-    case 5:
       return 'usernameChangeSyncMessage';
-    case 6:
+    case 5:
       return 'optionalPhoneNumber';
+    case 6:
+      return 'replyPrivately';
+    case 7:
+      return 'contactDelete';
+    case 8:
+      return 'adminRemoveAndDelete';
 
     default:
       ffiInput satisfies never;
@@ -1429,6 +1804,42 @@ export function returnConverterDeviceCapabilityInternal(
         'Unknown FFI return enum type for DeviceCapabilityInternal'
       );
   }
+}
+
+export function returnConverterExtendAvatarTtlOut(
+  ffiInput: Native.ReturnFfiExtendAvatarTtlOut
+): ExtendAvatarTtlOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        found: identity(ffiInput._0),
+      };
+    case 1:
+      return 'notFound';
+    case 2:
+      return 'invalidCredentials';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for ExtendAvatarTtlOut');
+  }
+}
+
+export function returnConverterFetchedProfile(
+  ffiInput: Native.ReturnFfiFetchedProfile
+): FetchedProfile {
+  return {
+    profile: returnConverterProfile(ffiInput.profile),
+    etag: liftNull(identity)(ffiInput.etag),
+    v2DataHash: liftNull(identity)(ffiInput.v2_data_hash),
+    identityKey: EcKeys.PublicKey._fromNativeHandle(ffiInput.identity_key),
+    unidentifiedAccessKeyFingerprint: liftNull(identity)(
+      ffiInput.unidentified_access_key_fingerprint
+    ),
+    unrestrictedUnidentifiedAccess: identity(
+      ffiInput.unrestricted_unidentified_access
+    ),
+  };
 }
 
 export function returnConverterFinishMfaVerificationOut(
@@ -1514,6 +1925,63 @@ export function returnConverterGetAccountIdentityOut(
     default:
       ffiInput satisfies never;
       throw new Error('Unknown FFI return enum type for GetAccountIdentityOut');
+  }
+}
+
+export function returnConverterGetAvatarCredentialArgs(
+  ffiInput: Native.ReturnFfiGetAvatarCredentialArgs
+): GetAvatarCredentialArgs {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    keyPair: ((x: Bytes) => new zkgroup.ZkCredentialKeyPair(x))(
+      ffiInput.key_pair
+    ),
+    rotationId: identity(ffiInput.rotation_id),
+    serverPublicParams: ((x: Bytes) =>
+      new zkgroup.GenericServerPublicParams(x))(ffiInput.server_public_params),
+    currentTimeSeconds: identity(ffiInput.current_time_seconds),
+  };
+}
+
+export function returnConverterGetAvatarUploadFormArgs(
+  ffiInput: Native.ReturnFfiGetAvatarUploadFormArgs
+): GetAvatarUploadFormArgs {
+  return {
+    credential: ((x: Bytes) =>
+      new zkgroup.AvatarUploadCredentialPresentation(x))(ffiInput.credential),
+    uploadLength: identity(ffiInput.upload_length),
+  };
+}
+
+export function returnConverterGetAvatarUploadFormLegacyArgs(
+  ffiInput: Native.ReturnFfiGetAvatarUploadFormLegacyArgs
+): GetAvatarUploadFormLegacyArgs {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
+  };
+}
+
+export function returnConverterGetAvatarUploadFormOut(
+  ffiInput: Native.ReturnFfiGetAvatarUploadFormOut
+): GetAvatarUploadFormOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: returnConverterS3UploadFormInternal(ffiInput._0),
+      };
+    case 1:
+      return 'invalidCredential';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for GetAvatarUploadFormOut'
+      );
   }
 }
 
@@ -1620,6 +2088,56 @@ export function returnConverterGetMessageBackupInfoOut(
   }
 }
 
+export function returnConverterGetPreKeysArgs(
+  ffiInput: Native.ReturnFfiGetPreKeysArgs
+): GetPreKeysArgs {
+  return {
+    auth: returnConverterTestingUserBasedAuthorization(ffiInput.auth),
+    target: ((__bytes: Bytes) =>
+      ServiceId.parseFromServiceIdFixedWidthBinary(__bytes))(ffiInput.target),
+    deviceId: identity(ffiInput.device_id),
+  };
+}
+
+export function returnConverterGetPreKeysOut(
+  ffiInput: Native.ReturnFfiGetPreKeysOut
+): GetPreKeysOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: {
+          identityKey: identity(ffiInput.identity_key),
+          bundleCount: identity(ffiInput.bundle_count),
+        },
+      };
+    case 1:
+      return 'notFound';
+    case 2:
+      return 'unauthorized';
+    case 3:
+      return 'unexpected';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetPreKeysOut');
+  }
+}
+
+export function returnConverterGetProfileArgs(
+  ffiInput: Native.ReturnFfiGetProfileArgs
+): GetProfileArgs {
+  return {
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
+    etag: liftNull(identity)(ffiInput.etag),
+    avatarCdnConfigValidUrls: ((arr: Array<string>) => arr.map(identity))(
+      ffiInput.avatar_cdn_config_valid_urls
+    ),
+  };
+}
+
 export function returnConverterGetProfileKeyCredentialArgs(
   ffiInput: Native.ReturnFfiGetProfileKeyCredentialArgs
 ): GetProfileKeyCredentialArgs {
@@ -1662,6 +2180,24 @@ export function returnConverterGetProfileKeyCredentialOut(
   }
 }
 
+export function returnConverterGetProfileOut(
+  ffiInput: Native.ReturnFfiGetProfileOut
+): GetProfileOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: liftNull(returnConverterFetchedProfile)(ffiInput._0),
+      };
+    case 1:
+      return {
+        failure: returnConverterAuthGetProfileError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for GetProfileOut');
+  }
+}
+
 export function returnConverterGetStickerUploadFormsOut(
   ffiInput: Native.ReturnFfiGetStickerUploadFormsOut
 ): GetStickerUploadFormsOut {
@@ -1701,7 +2237,7 @@ export function returnConverterGetSubscriptionReceiptCredentialArgs(
 ): GetSubscriptionReceiptCredentialArgs {
   return {
     subscriberId: identity(ffiInput.subscriber_id),
-    receiptCredentialRequestContext: ((x) =>
+    receiptCredentialRequestContext: ((x: Bytes) =>
       new zkgroup.ReceiptCredentialRequestContext(x))(
       ffiInput.receipt_credential_request_context
     ),
@@ -1717,7 +2253,7 @@ export function returnConverterGetSubscriptionReceiptCredentialOut(
   switch (ffiInput.__type) {
     case 0:
       return {
-        success: ((x) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
+        success: ((x: Bytes) => new zkgroup.ReceiptCredential(x))(ffiInput._0),
       };
     case 1:
       return {
@@ -1842,6 +2378,17 @@ export function returnConverterListMfaKeysOut(
       ffiInput.__type satisfies never;
       throw new Error('Unknown FFI return enum type for ListMfaKeysOut');
   }
+}
+
+export function returnConverterLoginConfiguration(
+  ffiInput: Native.ReturnFfiLoginConfiguration
+): LoginConfiguration {
+  return {
+    level: identity(ffiInput.level),
+    playProductId: identity(ffiInput.play_product_id),
+    playOptionId: identity(ffiInput.play_option_id),
+    appStoreProductId: identity(ffiInput.app_store_product_id),
+  };
 }
 
 export function returnConverterLoginReceiptLevel(
@@ -1984,6 +2531,29 @@ export function returnConverterMyTestStruct(
   };
 }
 
+export function returnConverterPaymentMethodInternal(
+  ffiInput: Native.ReturnFfiPaymentMethodInternal
+): PaymentMethodInternal {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'card';
+    case 1:
+      return 'sepaDebit';
+    case 2:
+      return 'ideal';
+    case 3:
+      return 'payPal';
+    case 4:
+      return 'googlePlayBilling';
+    case 5:
+      return 'appleAppStore';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for PaymentMethodInternal');
+  }
+}
+
 export function returnConverterPaymentProviderInternal(
   ffiInput: Native.ReturnFfiPaymentProviderInternal
 ): PaymentProviderInternal {
@@ -2005,6 +2575,46 @@ export function returnConverterPaymentProviderInternal(
   }
 }
 
+export function returnConverterProfile(
+  ffiInput: Native.ReturnFfiProfile
+): Profile {
+  return {
+    givenName: identity(ffiInput.given_name),
+    familyName: identity(ffiInput.family_name),
+    about: identity(ffiInput.about),
+    aboutEmoji: identity(ffiInput.about_emoji),
+    avatar: liftNull(identity)(ffiInput.avatar),
+    phoneNumberSharing: liftNull(identity)(ffiInput.phone_number_sharing),
+    paymentAddress: liftNull(identity)(ffiInput.payment_address),
+    badgeIds: ((arr: Array<string>) => arr.map(identity))(ffiInput.badge_ids),
+  };
+}
+
+export function returnConverterProfileFieldWithMaxLength(
+  ffiInput: Native.ReturnFfiProfileFieldWithMaxLength
+): ProfileFieldWithMaxLength {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'givenName';
+    case 1:
+      return 'familyName';
+    case 2:
+      return 'about';
+    case 3:
+      return 'aboutEmoji';
+    case 4:
+      return 'avatar';
+    case 5:
+      return 'paymentAddress';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for ProfileFieldWithMaxLength'
+      );
+  }
+}
+
 export function returnConverterProfileKeyCredentialRequestError(
   ffiInput: Native.ReturnFfiProfileKeyCredentialRequestError
 ): ProfileKeyCredentialRequestError {
@@ -2020,6 +2630,47 @@ export function returnConverterProfileKeyCredentialRequestError(
         'Unknown FFI return enum type for ProfileKeyCredentialRequestError'
       );
   }
+}
+
+export function returnConverterProfileValidationErrorInternal(
+  ffiInput: Native.ReturnFfiProfileValidationErrorInternal
+): ProfileValidationErrorInternal {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        fieldTooLong: {
+          field: returnConverterProfileFieldWithMaxLength(ffiInput.field),
+          len: identity(ffiInput.len),
+          maxLen: identity(ffiInput.max_len),
+        },
+      };
+    case 1:
+      return 'avatarUrlInvalid';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for ProfileValidationErrorInternal'
+      );
+  }
+}
+
+export function returnConverterPurchaseProductConfiguration(
+  ffiInput: Native.ReturnFfiPurchaseProductConfiguration
+): PurchaseProductConfiguration {
+  return {
+    currencies: stringMapResultConverter<
+      ReturnFfiCurrencyConfiguration,
+      CurrencyConfiguration
+    >(returnConverterCurrencyConfiguration)(ffiInput.currencies),
+    badgeLevels: bigintMapResultConverter<
+      ReturnFfiBadgeLevelConfiguration,
+      BadgeLevelConfiguration
+    >(returnConverterBadgeLevelConfiguration)(ffiInput.badge_levels),
+    backup: returnConverterBackupConfiguration(ffiInput.backup),
+    sepaMaximumEuros: identity(ffiInput.sepa_maximum_euros),
+    login: returnConverterLoginConfiguration(ffiInput.login),
+  };
 }
 
 export function returnConverterReceiptCredentialError(
@@ -2294,6 +2945,75 @@ export function returnConverterSetOneTimeKemPreKeysArgs(
   };
 }
 
+export function returnConverterSetProfileArgs(
+  ffiInput: Native.ReturnFfiSetProfileArgs
+): SetProfileArgs {
+  return {
+    rngSeed: identity(ffiInput.rng_seed),
+    aci: ((__bytes: Bytes) => Aci.parseFromServiceIdFixedWidthBinary(__bytes))(
+      ffiInput.aci
+    ),
+    profileKey: ((x: Bytes) => new zkgroup.ProfileKey(x))(ffiInput.profile_key),
+    profile: returnConverterProfile(ffiInput.profile),
+    expectedCurrentDataHash: liftNull(identity)(
+      ffiInput.expected_current_data_hash
+    ),
+    expectedCurrentProfileKeyVersion: liftNull(
+      (x: Bytes) => new zkgroup.ProfileKeyVersion(x)
+    )(ffiInput.expected_current_profile_key_version),
+    avatarCdnConfigValidUrls: ((arr: Array<string>) => arr.map(identity))(
+      ffiInput.avatar_cdn_config_valid_urls
+    ),
+  };
+}
+
+export function returnConverterSetProfileError(
+  ffiInput: Native.ReturnFfiSetProfileError
+): SetProfileError {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        invalidProfile: returnConverterProfileValidationErrorInternal(
+          ffiInput._0
+        ),
+      };
+    case 1:
+      return 'expectedDataWriteConflict';
+    case 2:
+      return {
+        expectedVersionWriteConflict: liftNull(
+          (x: Bytes) => new zkgroup.ProfileKeyVersion(x)
+        )(ffiInput.current_profile_version),
+      };
+    case 3:
+      return 'paymentsForbiddenInRegion';
+    case 4:
+      return 'indeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetProfileError');
+  }
+}
+
+export function returnConverterSetProfileOut(
+  ffiInput: Native.ReturnFfiSetProfileOut
+): SetProfileOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: identity(ffiInput._0),
+      };
+    case 1:
+      return {
+        failure: returnConverterSetProfileError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for SetProfileOut');
+  }
+}
+
 export function returnConverterSetSignedEcPreKeyArgs(
   ffiInput: Native.ReturnFfiSetSignedEcPreKeyArgs
 ): SetSignedEcPreKeyArgs {
@@ -2395,6 +3115,17 @@ export function returnConverterStartWebAuthnRegistrationOut(
   }
 }
 
+export function returnConverterTaggedBadges(
+  ffiInput: Native.ReturnFfiTaggedBadges
+): TaggedBadges {
+  return {
+    badges: stringMapResultConverter<ReturnFfiBadge, Badge>(
+      returnConverterBadge
+    )(ffiInput.badges),
+    etag: identity(ffiInput.etag),
+  };
+}
+
 export function returnConverterTestStreamChunk(
   ffiInput: Native.ReturnFfiTestStreamChunk
 ): TestStreamChunk {
@@ -2412,6 +3143,97 @@ export function returnConverterTestingAnySignedPreKey(
     key: identity(ffiInput.key),
     sig: identity(ffiInput.sig),
   };
+}
+
+export function returnConverterTestingUserBasedAuthorization(
+  ffiInput: Native.ReturnFfiTestingUserBasedAuthorization
+): TestingUserBasedAuthorization {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        accessKey: identity(ffiInput.key),
+      };
+    case 1:
+      return {
+        groupSendToken: identity(ffiInput.token),
+      };
+    case 2:
+      return 'unrestricted';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for TestingUserBasedAuthorization'
+      );
+  }
+}
+
+export function returnConverterUnauthGetProfileArgs(
+  ffiInput: Native.ReturnFfiUnauthGetProfileArgs
+): UnauthGetProfileArgs {
+  return {
+    inner: returnConverterGetProfileArgs(ffiInput.inner),
+    auth: returnConverterUnauthProfileAuthorization(ffiInput.auth),
+  };
+}
+
+export function returnConverterUnauthGetProfileError(
+  ffiInput: Native.ReturnFfiUnauthGetProfileError
+): UnauthGetProfileError {
+  switch (ffiInput.__type) {
+    case 0:
+      return 'profileNotFound';
+    case 1:
+      return {
+        profileDecodeError: identity(ffiInput.log_safe),
+      };
+    case 2:
+      return 'failedUnidentifiedAuthorization';
+
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for UnauthGetProfileError');
+  }
+}
+
+export function returnConverterUnauthGetProfileOut(
+  ffiInput: Native.ReturnFfiUnauthGetProfileOut
+): UnauthGetProfileOut {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        success: liftNull(returnConverterFetchedProfile)(ffiInput._0),
+      };
+    case 1:
+      return {
+        failure: returnConverterUnauthGetProfileError(ffiInput._0),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error('Unknown FFI return enum type for UnauthGetProfileOut');
+  }
+}
+
+export function returnConverterUnauthProfileAuthorization(
+  ffiInput: Native.ReturnFfiUnauthProfileAuthorization
+): UnauthProfileAuthorization {
+  switch (ffiInput.__type) {
+    case 0:
+      return {
+        accessKey: identity(ffiInput._0),
+      };
+    case 1:
+      return {
+        groupSend: ((x: Bytes) => new zkgroup.GroupSendFullToken(x))(
+          ffiInput._0
+        ),
+      };
+    default:
+      ffiInput satisfies never;
+      throw new Error(
+        'Unknown FFI return enum type for UnauthProfileAuthorization'
+      );
+  }
 }
 
 export function argConverterBadgeVisibility(
@@ -2585,16 +3407,24 @@ export function argConverterDeviceCapabilityInternal(
     return { __type: 3 };
   }
 
-  if (niceInput === 'profilesV2') {
+  if (niceInput === 'usernameChangeSyncMessage') {
     return { __type: 4 };
   }
 
-  if (niceInput === 'usernameChangeSyncMessage') {
+  if (niceInput === 'optionalPhoneNumber') {
     return { __type: 5 };
   }
 
-  if (niceInput === 'optionalPhoneNumber') {
+  if (niceInput === 'replyPrivately') {
     return { __type: 6 };
+  }
+
+  if (niceInput === 'contactDelete') {
+    return { __type: 7 };
+  }
+
+  if (niceInput === 'adminRemoveAndDelete') {
+    return { __type: 8 };
   }
 
   niceInput satisfies never;
@@ -2758,6 +3588,50 @@ export function argConverterPaymentProviderInternal(
   throw new Error('Cannot match on PaymentProviderInternal argument');
 }
 
+export function argConverterProfile(niceInput: Profile): Native.ArgFfiProfile {
+  const {
+    givenName: given_name,
+    familyName: family_name,
+    about: about,
+    aboutEmoji: about_emoji,
+    avatar: avatar,
+    phoneNumberSharing: phone_number_sharing,
+    paymentAddress: payment_address,
+    badgeIds: badge_ids,
+  } = niceInput;
+  return {
+    given_name: identity(given_name),
+    family_name: identity(family_name),
+    about: identity(about),
+    about_emoji: identity(about_emoji),
+    avatar: liftNull(identity)(avatar),
+    phone_number_sharing: liftNull(identity)(phone_number_sharing),
+    payment_address: liftNull(identity)(payment_address),
+    badge_ids: ((arr: Array<string>) => arr.map(identity))(badge_ids),
+  };
+}
+
+export function argConverterUnauthProfileAuthorization(
+  niceInput: UnauthProfileAuthorization
+): Native.ArgFfiUnauthProfileAuthorization {
+  if ('accessKey' in niceInput) {
+    return {
+      __type: 0,
+      _0: identity(niceInput.accessKey),
+    };
+  }
+
+  if ('groupSend' in niceInput) {
+    return {
+      __type: 1,
+      _0: ByteArray.prototype.getContents.call(niceInput.groupSend),
+    };
+  }
+
+  niceInput satisfies never;
+  throw new Error('Cannot match on UnauthProfileAuthorization argument');
+}
+
 export async function AuthenticatedChatConnection_answer_challenge({
   asyncContext,
   abortSignal,
@@ -2896,7 +3770,8 @@ export async function AuthenticatedChatConnection_create_donation_permits({
   requestContext: zkgroup.DonationPermitRequestContext;
   serverParams: Native.Wrapper<Native.ServerPublicParams>;
 }): Promise<Array<zkgroup.DonationPermit>> {
-  return ((arr: Array<Bytes>) => arr.map((x) => new zkgroup.DonationPermit(x)))(
+  return ((arr: Array<Bytes>) =>
+    arr.map((x: Bytes) => new zkgroup.DonationPermit(x)))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.AuthenticatedChatConnection_create_donation_permits(
@@ -3062,6 +3937,90 @@ export async function AuthenticatedChatConnection_get_account_identity({
     )
   );
 }
+export async function AuthenticatedChatConnection_get_avatar_credential({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  keyPair: key_pair,
+  rotationId: rotation_id,
+  serverPublicParams: server_public_params,
+  currentTimeSeconds: current_time_seconds,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  aci: Aci;
+  keyPair: zkgroup.ZkCredentialKeyPair;
+  rotationId: bigint;
+  serverPublicParams: zkgroup.GenericServerPublicParams;
+  currentTimeSeconds: bigint;
+  rng: Rng | undefined;
+}): Promise<zkgroup.AvatarUploadCredential> {
+  return ((x: Bytes) => new zkgroup.AvatarUploadCredential(x))(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_avatar_credential(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(key_pair),
+        identity(rotation_id),
+        ByteArray.prototype.getContents.call(server_public_params),
+        identity(current_time_seconds),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_get_avatar_upload_form_legacy({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  profileKey: profile_key,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+}): Promise<S3UploadFormInternal> {
+  return returnConverterS3UploadFormInternal(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_avatar_upload_form_legacy(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_get_badges({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  etag: etag,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  etag: Bytes | null;
+}): Promise<TaggedBadges | null> {
+  return liftNull(returnConverterTaggedBadges)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_badges(
+        asyncContext,
+        identity(chat),
+        liftNull(identity)(etag)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_get_capabilities({
   asyncContext,
   abortSignal,
@@ -3155,6 +4114,37 @@ export async function AuthenticatedChatConnection_get_pre_key_count({
       Native.AuthenticatedChatConnection_get_pre_key_count(
         asyncContext,
         identity(chat)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_get_profile({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  profileKey: profile_key,
+  etag: etag,
+  avatarCdnConfig: avatar_cdn_config,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  etag: Bytes | null;
+  avatarCdnConfig: Native.Wrapper<Native.AvatarCdnUrlValidationConfig>;
+}): Promise<FetchedProfile | null> {
+  return liftNull(returnConverterFetchedProfile)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_get_profile(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key),
+        liftNull(identity)(etag),
+        identity(avatar_cdn_config)
       )
     )
   );
@@ -3542,6 +4532,48 @@ export async function AuthenticatedChatConnection_set_one_time_kem_pre_keys({
     )
   );
 }
+export async function AuthenticatedChatConnection_set_profile({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  rng: rng,
+  aci: aci,
+  profileKey: profile_key,
+  profile: profile,
+  expectedCurrentDataHash: expected_current_data_hash,
+  expectedCurrentProfileKeyVersion: expected_current_profile_key_version,
+  avatarCdnConfig: avatar_cdn_config,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  rng: Rng | undefined;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  profile: Profile;
+  expectedCurrentDataHash: Bytes | null;
+  expectedCurrentProfileKeyVersion: zkgroup.ProfileKeyVersion | null;
+  avatarCdnConfig: Native.Wrapper<Native.AvatarCdnUrlValidationConfig>;
+}): Promise<Bytes> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_profile(
+        asyncContext,
+        identity(chat),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key),
+        argConverterProfile(profile),
+        liftNull(identity)(expected_current_data_hash),
+        liftNull((profileKeyVersion: zkgroup.ProfileKeyVersion) =>
+          profileKeyVersion.getContents()
+        )(expected_current_profile_key_version),
+        identity(avatar_cdn_config)
+      )
+    )
+  );
+}
 export async function AuthenticatedChatConnection_set_registration_lock({
   asyncContext,
   abortSignal,
@@ -3638,6 +4670,31 @@ export async function AuthenticatedChatConnection_set_username_link({
         identity(chat),
         identity(username_ciphertext),
         identity(keep_link_handle)
+      )
+    )
+  );
+}
+export async function AuthenticatedChatConnection_set_zk_credential_key({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  rng: rng,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.AuthenticatedChatConnection>;
+  rng: Rng | undefined;
+}): Promise<[zkgroup.ZkCredentialKeyPair, bigint]> {
+  return (([a, b]: [Bytes, bigint]): [zkgroup.ZkCredentialKeyPair, bigint] => [
+    ((x: Bytes) => new zkgroup.ZkCredentialKeyPair(x))(a),
+    identity(b),
+  ])(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.AuthenticatedChatConnection_set_zk_credential_key(
+        asyncContext,
+        identity(chat),
+        ((__rng) => __rng?.__deterministicRngSeedForTesting ?? -1)(rng)
       )
     )
   );
@@ -3918,6 +4975,15 @@ export function TESTING_DeleteAccountTests(): Array<GrpcTestCase<void, void>> {
   )(Native.TESTING_DeleteAccountTests());
 }
 
+export function TESTING_DeleteAvatarTests(): Array<
+  GrpcTestCase<zkgroup.AvatarUploadCredentialPresentation, boolean>
+> {
+  return grpcTestCaseConverter(
+    (x: Bytes) => new zkgroup.AvatarUploadCredentialPresentation(x),
+    identity
+  )(Native.TESTING_DeleteAvatarTests());
+}
+
 export function TESTING_DeleteBackupMediaTests(): Array<
   GrpcTestCase<Array<BridgeDeleteBackupMediaItem>, Array<DeleteBackupMediaOut>>
 > {
@@ -3945,6 +5011,15 @@ export function TESTING_DeleteUsernameLinkTests(): Array<
     identity,
     identity
   )(Native.TESTING_DeleteUsernameLinkTests());
+}
+
+export function TESTING_ExtendAvatarTtlTests(): Array<
+  GrpcTestCase<zkgroup.AvatarUploadCredentialPresentation, ExtendAvatarTtlOut>
+> {
+  return grpcTestCaseConverter(
+    (x: Bytes) => new zkgroup.AvatarUploadCredentialPresentation(x),
+    returnConverterExtendAvatarTtlOut
+  )(Native.TESTING_ExtendAvatarTtlTests());
 }
 
 export function TESTING_FinishMfaVerificationTests(): Array<
@@ -3983,6 +5058,33 @@ export function TESTING_GetAccountIdentityTests(): Array<
   )(Native.TESTING_GetAccountIdentityTests());
 }
 
+export function TESTING_GetAvatarCredentialTests(): Array<
+  GrpcTestCase<GetAvatarCredentialArgs, zkgroup.AvatarUploadCredential | null>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetAvatarCredentialArgs,
+    liftNull((x: Bytes) => new zkgroup.AvatarUploadCredential(x))
+  )(Native.TESTING_GetAvatarCredentialTests());
+}
+
+export function TESTING_GetAvatarUploadFormLegacyTests(): Array<
+  GrpcTestCase<GetAvatarUploadFormLegacyArgs, S3UploadFormInternal>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetAvatarUploadFormLegacyArgs,
+    returnConverterS3UploadFormInternal
+  )(Native.TESTING_GetAvatarUploadFormLegacyTests());
+}
+
+export function TESTING_GetAvatarUploadFormTests(): Array<
+  GrpcTestCase<GetAvatarUploadFormArgs, GetAvatarUploadFormOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetAvatarUploadFormArgs,
+    returnConverterGetAvatarUploadFormOut
+  )(Native.TESTING_GetAvatarUploadFormTests());
+}
+
 export function TESTING_GetBackupCdnCredentialsTests(): Array<
   GrpcTestCase<number, GetCdnCredentialsOut>
 > {
@@ -3999,6 +5101,15 @@ export function TESTING_GetBackupSvrBCredentialsTests(): Array<
     identity,
     returnConverterGetSvrBCredentialsOut
   )(Native.TESTING_GetBackupSvrBCredentialsTests());
+}
+
+export function TESTING_GetBadgesTests(): Array<
+  GrpcTestCase<Bytes | null, TaggedBadges | null>
+> {
+  return grpcTestCaseConverter(
+    liftNull(identity),
+    liftNull(returnConverterTaggedBadges)
+  )(Native.TESTING_GetBadgesTests());
 }
 
 export function TESTING_GetCapabilitiesTests(): Array<
@@ -4064,6 +5175,24 @@ export function TESTING_GetPreKeyCountTests(): Array<
   )(Native.TESTING_GetPreKeyCountTests());
 }
 
+export function TESTING_GetPreKeysTests(): Array<
+  GrpcTestCase<GetPreKeysArgs, GetPreKeysOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetPreKeysArgs,
+    returnConverterGetPreKeysOut
+  )(Native.TESTING_GetPreKeysTests());
+}
+
+export function TESTING_GetProductConfigurationTests(): Array<
+  GrpcTestCase<void, PurchaseProductConfiguration>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    returnConverterPurchaseProductConfiguration
+  )(Native.TESTING_GetProductConfigurationTests());
+}
+
 export function TESTING_GetProfileKeyCredentialTests(): Array<
   GrpcTestCase<GetProfileKeyCredentialArgs, GetProfileKeyCredentialOut>
 > {
@@ -4071,6 +5200,15 @@ export function TESTING_GetProfileKeyCredentialTests(): Array<
     returnConverterGetProfileKeyCredentialArgs,
     returnConverterGetProfileKeyCredentialOut
   )(Native.TESTING_GetProfileKeyCredentialTests());
+}
+
+export function TESTING_GetProfileTests(): Array<
+  GrpcTestCase<GetProfileArgs, GetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterGetProfileArgs,
+    returnConverterGetProfileOut
+  )(Native.TESTING_GetProfileTests());
 }
 
 export function TESTING_GetStickerUploadFormTests(): Array<
@@ -4342,6 +5480,18 @@ export function TESTING_MyTestStruct_to_string({
   );
 }
 
+export function TESTING_ProfileFieldMaxLengths(): Array<
+  [ProfileFieldWithMaxLength, number]
+> {
+  return ((arr: Array<[ReturnFfiProfileFieldWithMaxLength, number]>) =>
+    arr.map(
+      ([a, b]: [ReturnFfiProfileFieldWithMaxLength, number]): [
+        ProfileFieldWithMaxLength,
+        number
+      ] => [returnConverterProfileFieldWithMaxLength(a), identity(b)]
+    ))(Native.TESTING_ProfileFieldMaxLengths());
+}
+
 export function TESTING_RedeemBackupReceiptTests(): Array<
   GrpcTestCase<Bytes, RedeemBackupReceiptOut>
 > {
@@ -4473,6 +5623,24 @@ export function TESTING_SetOneTimeKemPreKeysTests(): Array<
   )(Native.TESTING_SetOneTimeKemPreKeysTests());
 }
 
+export function TESTING_SetProfileTests(): Array<
+  GrpcTestCase<SetProfileArgs, SetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetProfileArgs,
+    returnConverterSetProfileOut
+  )(Native.TESTING_SetProfileTests());
+}
+
+export function TESTING_SetProfileValidationTests(): Array<
+  GrpcTestCase<SetProfileArgs, SetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterSetProfileArgs,
+    returnConverterSetProfileOut
+  )(Native.TESTING_SetProfileValidationTests());
+}
+
 export function TESTING_SetRegistrationLockTests(): Array<
   GrpcTestCase<Bytes, void>
 > {
@@ -4507,6 +5675,20 @@ export function TESTING_SetUsernameLinkTests(): Array<
     returnConverterSetUsernameLinkArgs,
     returnConverterSetUsernameLinkOut
   )(Native.TESTING_SetUsernameLinkTests());
+}
+
+export function TESTING_SetZkCredentialKeyTests(): Array<
+  GrpcTestCase<void, [zkgroup.ZkCredentialKeyPair, bigint] | null>
+> {
+  return grpcTestCaseConverter(
+    identity,
+    liftNull(
+      ([a, b]: [Bytes, bigint]): [zkgroup.ZkCredentialKeyPair, bigint] => [
+        ((x: Bytes) => new zkgroup.ZkCredentialKeyPair(x))(a),
+        identity(b),
+      ]
+    )
+  )(Native.TESTING_SetZkCredentialKeyTests());
 }
 
 export function TESTING_StartMfaVerificationTests(): Array<
@@ -4567,6 +5749,15 @@ export async function TESTING_TokioAsyncContext_FutureSuccessBytes({
       )
     )
   );
+}
+
+export function TESTING_UnauthGetProfileTests(): Array<
+  GrpcTestCase<UnauthGetProfileArgs, UnauthGetProfileOut>
+> {
+  return grpcTestCaseConverter(
+    returnConverterUnauthGetProfileArgs,
+    returnConverterUnauthGetProfileOut
+  )(Native.TESTING_UnauthGetProfileTests());
 }
 
 export function TESTING_conversion_BridgeVecData32_identity({
@@ -4917,6 +6108,45 @@ export function TESTING_conversion_MapStringString_to_string({
   );
 }
 
+export function TESTING_conversion_OptionBool_identity({
+  x: x,
+}: {
+  x: boolean | null;
+}): boolean | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionBool_identity(liftNull(identity)(x))
+  );
+}
+export async function TESTING_conversion_OptionBool_identity_async({
+  asyncContext,
+  abortSignal,
+  x: x,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  x: boolean | null;
+}): Promise<boolean | null> {
+  return liftNull(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.TESTING_conversion_OptionBool_identity_async(
+        asyncContext,
+        liftNull(identity)(x)
+      )
+    )
+  );
+}
+
+export function TESTING_conversion_OptionBool_to_string({
+  x: x,
+}: {
+  x: boolean | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionBool_to_string(liftNull(identity)(x))
+  );
+}
+
 export function TESTING_conversion_OptionalBytes_identity({
   x: x,
 }: {
@@ -4956,16 +6186,16 @@ export function TESTING_conversion_OptionalBytes_to_string({
   );
 }
 
-export function TESTING_conversion_OptionalData32_to_string({
+export function TESTING_conversion_OptionalData32_identity({
   x: x,
 }: {
   x: Bytes | null;
-}): string {
-  return identity(
-    Native.TESTING_conversion_OptionalData32_to_string(liftNull(identity)(x))
+}): Bytes | null {
+  return liftNull(identity)(
+    Native.TESTING_conversion_OptionalData32_identity(liftNull(identity)(x))
   );
 }
-export async function TESTING_conversion_OptionalData32_to_string_async({
+export async function TESTING_conversion_OptionalData32_identity_async({
   asyncContext,
   abortSignal,
   x: x,
@@ -4973,15 +6203,25 @@ export async function TESTING_conversion_OptionalData32_to_string_async({
   asyncContext: TokioAsyncContext;
   abortSignal?: AbortSignal;
   x: Bytes | null;
-}): Promise<string> {
-  return identity(
+}): Promise<Bytes | null> {
+  return liftNull(identity)(
     await asyncContext.makeCancellable(
       abortSignal,
-      Native.TESTING_conversion_OptionalData32_to_string_async(
+      Native.TESTING_conversion_OptionalData32_identity_async(
         asyncContext,
         liftNull(identity)(x)
       )
     )
+  );
+}
+
+export function TESTING_conversion_OptionalData32_to_string({
+  x: x,
+}: {
+  x: Bytes | null;
+}): string {
+  return identity(
+    Native.TESTING_conversion_OptionalData32_to_string(liftNull(identity)(x))
   );
 }
 
@@ -5797,7 +7037,7 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
   purchaseTime: Timestamp;
   expectedLevel: LoginReceiptLevel;
 }): Promise<zkgroup.ReceiptCredential> {
-  return ((x) => new zkgroup.ReceiptCredential(x))(
+  return ((x: Bytes) => new zkgroup.ReceiptCredential(x))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.UnauthenticatedChatConnection_create_login_receipt_credential(
@@ -5811,6 +7051,128 @@ export async function UnauthenticatedChatConnection_create_login_receipt_credent
         identity(server_params),
         identity(purchase_time),
         argConverterLoginReceiptLevel(expected_level)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_delete_avatar({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+}): Promise<void> {
+  return identity(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_delete_avatar(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_extend_avatar_ttl({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+}): Promise<string | null> {
+  return liftNull(identity)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_extend_avatar_ttl(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_get_avatar_upload_form({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  credential: credential,
+  uploadLength: upload_length,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  credential: zkgroup.AvatarUploadCredentialPresentation;
+  uploadLength: number;
+}): Promise<S3UploadFormInternal> {
+  return returnConverterS3UploadFormInternal(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_get_avatar_upload_form(
+        asyncContext,
+        identity(chat),
+        ByteArray.prototype.getContents.call(credential),
+        identity(upload_length)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_get_product_configuration({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+}): Promise<PurchaseProductConfiguration> {
+  return returnConverterPurchaseProductConfiguration(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_get_product_configuration(
+        asyncContext,
+        identity(chat)
+      )
+    )
+  );
+}
+export async function UnauthenticatedChatConnection_get_profile({
+  asyncContext,
+  abortSignal,
+  chat: chat,
+  aci: aci,
+  profileKey: profile_key,
+  auth: auth,
+  etag: etag,
+  avatarCdnConfig: avatar_cdn_config,
+}: {
+  asyncContext: TokioAsyncContext;
+  abortSignal?: AbortSignal;
+  chat: Native.Wrapper<Native.UnauthenticatedChatConnection>;
+  aci: Aci;
+  profileKey: zkgroup.ProfileKey;
+  auth: UnauthProfileAuthorization;
+  etag: Bytes | null;
+  avatarCdnConfig: Native.Wrapper<Native.AvatarCdnUrlValidationConfig>;
+}): Promise<FetchedProfile | null> {
+  return liftNull(returnConverterFetchedProfile)(
+    await asyncContext.makeCancellable(
+      abortSignal,
+      Native.UnauthenticatedChatConnection_get_profile(
+        asyncContext,
+        identity(chat),
+        serviceIdArgConverter(aci),
+        ByteArray.prototype.getContents.call(profile_key),
+        argConverterUnauthProfileAuthorization(auth),
+        liftNull(identity)(etag),
+        identity(avatar_cdn_config)
       )
     )
   );
@@ -5855,7 +7217,7 @@ export async function UnauthenticatedChatConnection_get_subscription_receipt_cre
   receiptCredentialRequestContext: zkgroup.ReceiptCredentialRequestContext;
   serverParams: Native.Wrapper<Native.ServerPublicParams>;
 }): Promise<zkgroup.ReceiptCredential> {
-  return ((x) => new zkgroup.ReceiptCredential(x))(
+  return ((x: Bytes) => new zkgroup.ReceiptCredential(x))(
     await asyncContext.makeCancellable(
       abortSignal,
       Native.UnauthenticatedChatConnection_get_subscription_receipt_credential(

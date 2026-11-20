@@ -17,11 +17,28 @@ package org.signal.libsignal.internal
 import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
+import org.signal.libsignal.net.internal.ConnectChatBridge
 import org.signal.libsignal.protocol.SignedPublicPreKey
+import org.signal.libsignal.protocol.groups.state.SenderKeyStore
+import org.signal.libsignal.protocol.logging.Log
+import org.signal.libsignal.protocol.logging.SignalProtocolLogger
+import org.signal.libsignal.protocol.message.CiphertextMessage
+import org.signal.libsignal.protocol.state.IdentityKeyStore
+import org.signal.libsignal.protocol.state.KyberPreKeyStore
+import org.signal.libsignal.protocol.state.PreKeyStore
+import org.signal.libsignal.protocol.state.SessionStore
+import org.signal.libsignal.protocol.state.SignedPreKeyStore
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.Map
 import java.util.UUID
+import java.util.concurrent.Future
 
 // Public so we can call methods on this from Android on-device test code,
 // which behaves differently from unit test code with respect to visibility.
@@ -194,6 +211,9 @@ public object NativeTesting {
   public external fun TESTING_DeleteAccountTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_DeleteAvatarTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_DeleteBackupMediaTests(): Array<Object>
 
   @JvmStatic
@@ -231,6 +251,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_ErrorOnReturnSync(_needsCleanup: Object): Object
+
+  @JvmStatic
+  public external fun TESTING_ExtendAvatarTtlTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_FakeChatConnection_Create(
@@ -399,10 +422,22 @@ public object NativeTesting {
   public external fun TESTING_GetAccountIdentityTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetAvatarCredentialTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_GetAvatarUploadFormLegacyTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_GetAvatarUploadFormTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetBackupCdnCredentialsTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_GetBackupSvrBCredentialsTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_GetBadgesTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_GetCapabilitiesTests(): Array<Object>
@@ -426,7 +461,16 @@ public object NativeTesting {
   public external fun TESTING_GetPreKeyCountTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_GetPreKeysTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_GetProductConfigurationTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_GetProfileKeyCredentialTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_GetProfileTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_GetStickerUploadFormTests(): Array<Object>
@@ -580,6 +624,9 @@ public object NativeTesting {
   public external fun TESTING_ProcessBytestringArray(input: Array<ByteBuffer>): Array<ByteArray>
 
   @JvmStatic
+  public external fun TESTING_ProfileFieldMaxLengths(): Array<*>
+
+  @JvmStatic
   public external fun TESTING_RedeemBackupReceiptTests(): Array<Object>
 
   @JvmStatic
@@ -686,6 +733,12 @@ public object NativeTesting {
   public external fun TESTING_SetOneTimeKemPreKeysTests(): Array<Object>
 
   @JvmStatic
+  public external fun TESTING_SetProfileTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_SetProfileValidationTests(): Array<Object>
+
+  @JvmStatic
   public external fun TESTING_SetPushTokenFcmTests(): Array<Object>
 
   @JvmStatic
@@ -699,6 +752,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_SetUsernameLinkTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_SetZkCredentialKeyTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_SignedPublicPreKey_CheckBridgesCorrectly(
@@ -747,6 +803,9 @@ public object NativeTesting {
     asyncRuntime: ObjectHandle,
     input: Int,
   ): CompletableFuture<Int>
+
+  @JvmStatic
+  public external fun TESTING_UnauthGetProfileTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_conversion_BridgeVecData32_identity(x: Array<*>): Array<*>
@@ -803,19 +862,22 @@ public object NativeTesting {
   public external fun TESTING_conversion_MapStringString_to_string(x: Array<*>): String
 
   @JvmStatic
+  public external fun TESTING_conversion_OptionBool_identity(x: Boolean?): Boolean?
+
+  @JvmStatic
+  public external fun TESTING_conversion_OptionBool_to_string(x: Boolean?): String
+
+  @JvmStatic
   public external fun TESTING_conversion_OptionalBytes_identity(x: ByteArray?): ByteArray?
 
   @JvmStatic
   public external fun TESTING_conversion_OptionalBytes_to_string(x: ByteArray?): String
 
   @JvmStatic
-  public external fun TESTING_conversion_OptionalData32_to_string(x: ByteArray?): String
+  public external fun TESTING_conversion_OptionalData32_identity(x: ByteArray?): ByteArray?
 
   @JvmStatic
-  public external fun TESTING_conversion_OptionalData32_to_string_async(
-    asyncRuntime: ObjectHandle,
-    x: ByteArray?,
-  ): CompletableFuture<String>
+  public external fun TESTING_conversion_OptionalData32_to_string(x: ByteArray?): String
 
   @JvmStatic
   public external fun TESTING_conversion_OptionalFloat_identity(x: Float?): Float?

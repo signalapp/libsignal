@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import type { ChargeFailure } from './Errors.js';
 
 export type StringMapFfiContents<Value> = Array<string | Value>;
+export type BigIntMapFfiContents<Value> = Array<bigint | Value>;
 
 export type Uuid = Bytes;
 
@@ -197,7 +198,7 @@ export const NetRemoteConfigKeys = [
   {%- endfor -%}
 ] as const;
 
-import load from 'node-gyp-build';
+import nativeModule from './NativeLoad.js';
 
 type NativeFunctions = {
   registerErrors: (errorsModule: Record<string, unknown>) => void;
@@ -220,9 +221,7 @@ type NativeFunctions = {
 const { registerErrors,
   initLogger,
 {{ native_fn_names(ctx) }}
-} = load(
-  `${import.meta.dirname}/../`
-) as NativeFunctions;
+} = nativeModule as NativeFunctions;
 
 export { registerErrors,
   initLogger,
