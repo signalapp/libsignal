@@ -78,14 +78,20 @@ public enum class DeviceCapability {
   /** Support for sparse post-quantum ratchets. */
   SPARSE_POST_QUANTUM_RATCHET,
 
-  /** Support for version 2 of the profiles API. */
-  PROFILES_V2,
-
   /** Support for username-change sync messages. */
   USERNAME_CHANGE_SYNC_MESSAGE,
 
   /** Support for accounts without a phone number. */
   OPTIONAL_PHONE_NUMBER,
+
+  /** Support for replying privately to a group message. */
+  REPLY_PRIVATELY,
+
+  /** Support for contact deletion. */
+  CONTACT_DELETE,
+
+  /** Support for group admins removing a member and deleting their messages. */
+  ADMIN_REMOVE_AND_DELETE,
   ;
 
   internal companion object {
@@ -95,9 +101,11 @@ public enum class DeviceCapability {
         DeviceCapabilityInternal.Transfer -> TRANSFER
         DeviceCapabilityInternal.AttachmentBackfill -> ATTACHMENT_BACKFILL
         DeviceCapabilityInternal.SparsePostQuantumRatchet -> SPARSE_POST_QUANTUM_RATCHET
-        DeviceCapabilityInternal.ProfilesV2 -> PROFILES_V2
         DeviceCapabilityInternal.UsernameChangeSyncMessage -> USERNAME_CHANGE_SYNC_MESSAGE
         DeviceCapabilityInternal.OptionalPhoneNumber -> OPTIONAL_PHONE_NUMBER
+        DeviceCapabilityInternal.ReplyPrivately -> REPLY_PRIVATELY
+        DeviceCapabilityInternal.ContactDelete -> CONTACT_DELETE
+        DeviceCapabilityInternal.AdminRemoveAndDelete -> ADMIN_REMOVE_AND_DELETE
       }
   }
 }
@@ -108,9 +116,11 @@ private fun DeviceCapability.toInternal(): DeviceCapabilityInternal =
     DeviceCapability.TRANSFER -> DeviceCapabilityInternal.Transfer
     DeviceCapability.ATTACHMENT_BACKFILL -> DeviceCapabilityInternal.AttachmentBackfill
     DeviceCapability.SPARSE_POST_QUANTUM_RATCHET -> DeviceCapabilityInternal.SparsePostQuantumRatchet
-    DeviceCapability.PROFILES_V2 -> DeviceCapabilityInternal.ProfilesV2
     DeviceCapability.USERNAME_CHANGE_SYNC_MESSAGE -> DeviceCapabilityInternal.UsernameChangeSyncMessage
     DeviceCapability.OPTIONAL_PHONE_NUMBER -> DeviceCapabilityInternal.OptionalPhoneNumber
+    DeviceCapability.REPLY_PRIVATELY -> DeviceCapabilityInternal.ReplyPrivately
+    DeviceCapability.CONTACT_DELETE -> DeviceCapabilityInternal.ContactDelete
+    DeviceCapability.ADMIN_REMOVE_AND_DELETE -> DeviceCapabilityInternal.AdminRemoveAndDelete
   }
 
 public class AuthDevicesService(

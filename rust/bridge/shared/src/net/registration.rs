@@ -452,7 +452,7 @@ fn RegisterAccountResponse_GetAci(response: &RegisterAccountResponse) -> Uuid {
 }
 
 // An account with no phone number has no PNI.
-#[bridge_fn]
+#[bridge_fn(nice_swift = true)]
 fn RegisterAccountResponse_GetPni(response: &RegisterAccountResponse) -> Option<Uuid> {
     response.pni.map(|pni| pni.into())
 }
@@ -474,7 +474,7 @@ fn RegisterAccountResponse_GetUsernameHash(response: &RegisterAccountResponse) -
     response.username_hash.as_deref()
 }
 
-#[bridge_fn]
+#[bridge_fn(nice_swift = true)]
 fn RegisterAccountResponse_GetUsernameLinkHandle(
     response: &RegisterAccountResponse,
 ) -> Option<Uuid> {

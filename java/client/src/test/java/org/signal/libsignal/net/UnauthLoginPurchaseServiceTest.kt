@@ -39,32 +39,44 @@ class UnauthLoginPurchaseServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is CreateLoginReceiptCredentialOut.ExplicitError ->
+            is CreateLoginReceiptCredentialOut.ExplicitError -> {
               when (expected._0) {
-                ReceiptCredentialError.PaymentNotFound ->
+                ReceiptCredentialError.PaymentNotFound -> {
                   actual
                     .assertNonSuccess<_, _, ReceiptCredentialException.PaymentNotFound>()
-                is ReceiptCredentialError.PaymentRequired ->
+                }
+
+                is ReceiptCredentialError.PaymentRequired -> {
                   assertEquals(
                     expected._0.chargeFailure.firstOrNull(),
                     actual
                       .assertNonSuccess<_, _, ReceiptCredentialException.PaymentRequired>()
                       .chargeFailure,
                   )
-                ReceiptCredentialError.PaymentStillProcessing ->
+                }
+
+                ReceiptCredentialError.PaymentStillProcessing -> {
                   actual
                     .assertNonSuccess<_, _, ReceiptCredentialException.PaymentStillProcessing>()
-                ReceiptCredentialError.ReceiptAlreadyIssued ->
+                }
+
+                ReceiptCredentialError.ReceiptAlreadyIssued -> {
                   actual
                     .assertNonSuccess<_, _, ReceiptCredentialException.ReceiptAlreadyIssued>()
+                }
               }
-            is CreateLoginReceiptCredentialOut.Success ->
+            }
+
+            is CreateLoginReceiptCredentialOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<ReceiptCredential>>(actual).result,
               )
-            is CreateLoginReceiptCredentialOut.UnexpectedError ->
+            }
+
+            is CreateLoginReceiptCredentialOut.UnexpectedError -> {
               assertContains(assertIs<RequestResult.ApplicationError>(actual).toString(), expected.contains)
+            }
           }
         },
       )

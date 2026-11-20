@@ -61,8 +61,10 @@ class AuthAccountsServiceTest {
                 assertIs<RequestResult.Success<AccountIdentity>>(actual).result,
               )
             }
-            GetAccountIdentityOut.MissingIdentifiers ->
+
+            GetAccountIdentityOut.MissingIdentifiers -> {
               assertIs<RequestResult.ApplicationError>(actual)
+            }
           }
         },
       )
@@ -160,15 +162,20 @@ class AuthAccountsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GenerateTotpKeyOut.Success ->
+            is GenerateTotpKeyOut.Success -> {
               assertEquals(
                 PendingTotpKey.fromInternal(expected._0),
                 assertIs<RequestResult.Success<PendingTotpKey>>(actual).result,
               )
-            GenerateTotpKeyOut.TooManyTotpKeys ->
+            }
+
+            GenerateTotpKeyOut.TooManyTotpKeys -> {
               actual.assertNonSuccess<_, _, TooManyTotpKeysException>()
-            GenerateTotpKeyOut.TooManyMfaKeys ->
+            }
+
+            GenerateTotpKeyOut.TooManyMfaKeys -> {
               actual.assertNonSuccess<_, _, TooManyMfaKeysException>()
+            }
           }
         },
       )
@@ -192,15 +199,20 @@ class AuthAccountsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is ConfirmTotpKeyOut.Success ->
+            is ConfirmTotpKeyOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<Int>>(actual).result,
               )
-            ConfirmTotpKeyOut.OneTimePasswordNotVerified ->
+            }
+
+            ConfirmTotpKeyOut.OneTimePasswordNotVerified -> {
               actual.assertNonSuccess<_, _, MfaNotVerifiedException>()
-            ConfirmTotpKeyOut.TooManyMfaKeys ->
+            }
+
+            ConfirmTotpKeyOut.TooManyMfaKeys -> {
               actual.assertNonSuccess<_, _, TooManyMfaKeysException>()
+            }
           }
         },
       )
@@ -322,13 +334,16 @@ class AuthAccountsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is StartWebAuthnRegistrationOut.Success ->
+            is StartWebAuthnRegistrationOut.Success -> {
               assertEquals(
                 WebAuthnCreateParameters.fromInternal(expected._0),
                 assertIs<RequestResult.Success<WebAuthnCreateParameters>>(actual).result,
               )
-            StartWebAuthnRegistrationOut.TooManyMfaKeys ->
+            }
+
+            StartWebAuthnRegistrationOut.TooManyMfaKeys -> {
               actual.assertNonSuccess<_, _, TooManyMfaKeysException>()
+            }
           }
         },
       )
@@ -353,15 +368,20 @@ class AuthAccountsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is FinishWebAuthnRegistrationOut.Success ->
+            is FinishWebAuthnRegistrationOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<Int>>(actual).result,
               )
-            FinishWebAuthnRegistrationOut.WebAuthnRegistrationUnsuccessful ->
+            }
+
+            FinishWebAuthnRegistrationOut.WebAuthnRegistrationUnsuccessful -> {
               actual.assertNonSuccess<_, _, WebAuthnRegistrationUnsuccessfulException>()
-            FinishWebAuthnRegistrationOut.TooManyMfaKeys ->
+            }
+
+            FinishWebAuthnRegistrationOut.TooManyMfaKeys -> {
               actual.assertNonSuccess<_, _, TooManyMfaKeysException>()
+            }
           }
         },
       )
@@ -416,9 +436,13 @@ class AuthAccountsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            SetMfaKeyMetadataOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
-            SetMfaKeyMetadataOut.KeyNotFound ->
+            SetMfaKeyMetadataOut.Success -> {
+              assertIs<RequestResult.Success<Unit>>(actual)
+            }
+
+            SetMfaKeyMetadataOut.KeyNotFound -> {
               actual.assertNonSuccess<_, _, MfaKeyNotFoundException>()
+            }
           }
         },
       )
@@ -458,6 +482,7 @@ class AuthAccountsServiceTest {
               val response = assertIs<RequestResult.Success<StartMfaVerificationResponse>>(actual).result
               assertEquals(expected._0, response)
             }
+
             StartMfaVerificationOut.Malformed -> {
               assertIs<UnexpectedResponseException>(
                 assertIs<RequestResult.ApplicationError>(actual).cause,
@@ -483,6 +508,7 @@ class AuthAccountsServiceTest {
             FinishMfaVerificationOut.Success -> {
               assertIs<RequestResult.Success<Unit>>(actual)
             }
+
             FinishMfaVerificationOut.FailedToVerify -> {
               actual.assertNonSuccess<_, _, MfaNotVerifiedException>()
             }
@@ -506,6 +532,7 @@ class AuthAccountsServiceTest {
             is GetEntitlementsOut.Success -> {
               assertEquals(expected._0, assertIs<RequestResult.Success<AccountEntitlements>>(actual).result)
             }
+
             GetEntitlementsOut.Malformed -> {
               assertIs<UnexpectedResponseException>(
                 assertIs<RequestResult.ApplicationError>(actual).cause,
@@ -534,6 +561,7 @@ class AuthAccountsServiceTest {
                 assertIs<RequestResult.Success<Set<DeviceCapability>>>(actual).result,
               )
             }
+
             GetCapabilitiesOut.Malformed -> {
               assertIs<UnexpectedResponseException>(
                 assertIs<RequestResult.ApplicationError>(actual).cause,

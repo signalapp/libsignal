@@ -5065,6 +5065,23 @@ internal enum NativeTestingNice {
         >.convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_ConvertOptionalUuid(
+        present: Bool,
+    ) throws -> UUID? {
+        try IdentityArgConverter<Bool>.convertArgBorrowed(present) { presentFfi in
+            var rawOutput = OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.emptyFfiReturn()
+            try checkError(
+                SignalFfi.signal_testing_convert_optional_uuid(
+                    &rawOutput,
+                    presentFfi,
+                )
+            )
+            return try OptionalReturnConverter<UuidNiceConverter, SignalOptionalOfUuid>.convertReturn(
+                consuming: rawOutput
+            )
+        }
+
+    }
     internal static func TESTING_CopyBackupMediaTests() throws -> [GrpcTestCase<
         [BridgeCopyBackupMediaItem], [CopyBackupMediaOut]
     >] {
@@ -5213,6 +5230,68 @@ internal enum NativeTestingNice {
         )
         return try GrpcTestCaseVecConverter<
             ByteArrayConverter<AvatarUploadCredentialPresentation>, DerivedReturnConverterExtendAvatarTtlOut
+        >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
+        asyncContext: TokioAsyncContext,
+        chat: FakeChatRemote,
+    ) async throws -> (ChatRequest.InternalRequest, UInt64)? {
+        let rawOutput:
+            OptionalReturnConverter<
+                PairOfResultConverter<
+                    BridgeHandleConverter<SignalMutPointerHttpRequest, ChatRequest.InternalRequest>,
+                    IdentityResultConverter<UInt64>, SignalPairOfMutPointerHttpRequestu64
+                >, SignalOptionalOfPairOfMutPointerHttpRequestu64
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerFakeChatRemoteEnd, FakeChatRemote>.convertArgBorrowed(chat)
+                    { chatFfi in
+                        SignalFfi.signal_testing_fake_chat_remote_end_receive_incoming_grpc_request(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+                }
+        return try OptionalReturnConverter<
+            PairOfResultConverter<
+                BridgeHandleConverter<SignalMutPointerHttpRequest, ChatRequest.InternalRequest>,
+                IdentityResultConverter<UInt64>, SignalPairOfMutPointerHttpRequestu64
+            >, SignalOptionalOfPairOfMutPointerHttpRequestu64
+        >.convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
+        asyncContext: TokioAsyncContext,
+        chat: FakeChatRemote,
+    ) async throws -> (ChatRequest.InternalRequest, UInt64)? {
+        let rawOutput:
+            OptionalReturnConverter<
+                PairOfResultConverter<
+                    BridgeHandleConverter<SignalMutPointerHttpRequest, ChatRequest.InternalRequest>,
+                    IdentityResultConverter<UInt64>, SignalPairOfMutPointerHttpRequestu64
+                >, SignalOptionalOfPairOfMutPointerHttpRequestu64
+            >.FfiReturn =
+                try await asyncContext.invokeAsyncFunction {
+                    promiseFfi,
+                    asyncContextFfi in
+                    BridgeHandleRefConverter<SignalMutPointerFakeChatRemoteEnd, FakeChatRemote>.convertArgBorrowed(chat)
+                    { chatFfi in
+                        SignalFfi.signal_testing_fake_chat_remote_end_receive_incoming_request(
+                            promiseFfi,
+                            asyncContextFfi.const(),
+                            chatFfi,
+                        )
+                    }
+                }
+        return try OptionalReturnConverter<
+            PairOfResultConverter<
+                BridgeHandleConverter<SignalMutPointerHttpRequest, ChatRequest.InternalRequest>,
+                IdentityResultConverter<UInt64>, SignalPairOfMutPointerHttpRequestu64
+            >, SignalOptionalOfPairOfMutPointerHttpRequestu64
         >.convertReturn(consuming: rawOutput)
 
     }
@@ -5467,6 +5546,20 @@ internal enum NativeTestingNice {
             )
         )
         return try GrpcTestCaseVecConverter<DerivedReturnConverterGetPreKeysArgs, DerivedReturnConverterGetPreKeysOut>
+            .convertReturn(consuming: rawOutput)
+
+    }
+    internal static func TESTING_GetProductConfigurationTests() throws -> [GrpcTestCase<
+        Void, PurchaseProductConfiguration
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterPurchaseProductConfiguration>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_product_configuration_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterPurchaseProductConfiguration>
             .convertReturn(consuming: rawOutput)
 
     }

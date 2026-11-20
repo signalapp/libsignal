@@ -957,3 +957,48 @@ where Inner.NiceReturn == PublicKey {
         IdentityKey(publicKey: try Inner.convertReturn(consuming: value))
     }
 }
+
+internal enum IntMapReturnConverter<
+    ValueConverter: NiceReturnConverter,
+    Buffer: SignalOwnedBufferOfMaxAligned,
+    PairType: SignalPairOf
+>: NiceReturnConverter
+where
+    Buffer.Element == PairType,
+    PairType.First: FixedWidthInteger & DefaultInit,
+    PairType.Second == ValueConverter.FfiReturn
+{
+    typealias InnerConverter = ArrayReturnConverter<
+        PairOfResultConverter<IdentityResultConverter<PairType.First>, ValueConverter, PairType>, Buffer
+    >
+    typealias NiceReturn = [PairType.First: ValueConverter.NiceReturn]
+    typealias FfiReturn = InnerConverter.FfiReturn
+
+    static func emptyFfiReturn() -> InnerConverter.FfiReturn {
+        InnerConverter.emptyFfiReturn()
+    }
+
+    static func convertReturn(
+        consuming value: FfiReturn
+    ) throws -> [PairType.First: ValueConverter.NiceReturn] {
+        var out: NiceReturn = Dictionary(minimumCapacity: value.buffer().count)
+        try InnerConverter.convertReturnForEach(consuming: value) { out[$0.0] = $0.1 }
+        return out
+    }
+}
+
+internal enum NonHighBitConverter<T: FixedWidthInteger>: NiceReturnConverter {
+    typealias NiceReturn = T?
+    typealias FfiReturn = T
+
+    static func emptyFfiReturn() -> T {
+        .zero
+    }
+
+    static func convertReturn(consuming value: T) throws -> T? {
+        if value.leadingZeroBitCount == 0 {
+            return nil
+        }
+        return value
+    }
+}

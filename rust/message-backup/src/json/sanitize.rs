@@ -268,6 +268,7 @@ impl Visit<Sanitizer> for proto::Contact {
             avatarColor: _,
             keyTransparencyData: _,
             blockedAtTimestamp: _,
+            hiddenAtTimestamp: _,
             sharedName,
             special_fields: _,
         } = self;
@@ -1066,6 +1067,7 @@ impl Visit<Sanitizer> for proto::Quote {
             text,
             attachments,
             type_: _,
+            privateReplyDescriptor: _,
             special_fields: _,
         } = self;
 

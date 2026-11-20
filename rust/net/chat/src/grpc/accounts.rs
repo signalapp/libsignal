@@ -2520,14 +2520,14 @@ pub mod test_cases {
                         capabilities: vec![
                             GrpcDeviceCapability::SparsePostQuantumRatchet.into(),
                             GrpcDeviceCapability::AttachmentBackfill.into(),
-                            GrpcDeviceCapability::ProfilesV2.into(),
+                            GrpcDeviceCapability::OptionalPhoneNumber.into(),
                         ],
                     }),
                 },
                 response: GetCapabilitiesOut::Success(vec![
                     DeviceCapability::SparsePostQuantumRatchet,
                     DeviceCapability::AttachmentBackfill,
-                    DeviceCapability::ProfilesV2,
+                    DeviceCapability::OptionalPhoneNumber,
                 ]),
             },
             GrpcTestCase {

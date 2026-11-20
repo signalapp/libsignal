@@ -2743,6 +2743,9 @@ SignalFfiError* signal_testing_get_pre_key_count_tests(
 SignalFfiError* signal_testing_get_pre_keys_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );
+SignalFfiError* signal_testing_get_product_configuration_tests(
+  SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
+);
 SignalFfiError* signal_testing_get_profile_key_credential_tests(
   SignalOwnedBufferOfGrpcTestCaseBridgedFfi* out
 );

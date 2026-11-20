@@ -101,37 +101,44 @@ class AuthProfilesServiceTest {
         is SetProfileOut.Failure -> {
           val err = expected._0
           when (err) {
-            SetProfileError.ExpectedDataWriteConflict ->
+            SetProfileError.ExpectedDataWriteConflict -> {
               actual
                 .assertNonSuccess<_, _, SetProfileException.ExpectedDataWriteConflict>()
+            }
 
-            is SetProfileError.ExpectedVersionWriteConflict ->
+            is SetProfileError.ExpectedVersionWriteConflict -> {
               assertEquals(
                 actual
                   .assertNonSuccess<_, _, SetProfileException.ExpectedVersionWriteConflict>()
                   .currentProfileVersion,
                 err.currentProfileVersion,
               )
+            }
 
-            is SetProfileError.InvalidProfile ->
+            is SetProfileError.InvalidProfile -> {
               assertEquals(
                 actual.assertNonSuccess<_, _, SetProfileException.InvalidProfile>().profileValidationError,
                 err._0,
               )
+            }
 
-            SetProfileError.PaymentsForbiddenInRegion ->
+            SetProfileError.PaymentsForbiddenInRegion -> {
               actual
                 .assertNonSuccess<_, _, SetProfileException.PaymentsForbiddenInRegion>()
+            }
 
-            SetProfileError.IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles ->
+            SetProfileError.IndeterminatePhoneNumberSharingDisallowedOnOutgoingProfiles -> {
               assertIs<IllegalArgumentException>(
                 assertIs<RequestResult.ApplicationError>(actual, actual.toString()).cause,
                 actual.toString(),
               )
+            }
           }
         }
 
-        is SetProfileOut.Success -> assertContentEquals(actual.assertSuccess(), expected._0)
+        is SetProfileOut.Success -> {
+          assertContentEquals(actual.assertSuccess(), expected._0)
+        }
       }
     }
   }
@@ -194,15 +201,21 @@ class AuthProfilesServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetProfileOut.Failure ->
+            is GetProfileOut.Failure -> {
               when (expected._0) {
-                is AuthGetProfileError.ProfileDecodeError ->
+                is AuthGetProfileError.ProfileDecodeError -> {
                   actual.assertNonSuccess<_, _, ProfileCantBeDecodedException>()
-                AuthGetProfileError.ProfileNotFound ->
+                }
+
+                AuthGetProfileError.ProfileNotFound -> {
                   actual.assertNonSuccess<_, _, ProfileNotFoundException>()
+                }
               }
-            is GetProfileOut.Success ->
+            }
+
+            is GetProfileOut.Success -> {
               assertEquals(expected._0, actual.assertSuccess())
+            }
           }
         },
       )

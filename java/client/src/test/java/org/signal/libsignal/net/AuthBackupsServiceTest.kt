@@ -28,13 +28,23 @@ class AuthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            RedeemBackupReceiptOut.Success -> assertIs<RequestResult.Success<Unit>>(actual)
-            RedeemBackupReceiptOut.InvalidReceipt -> actual.assertNonSuccess<_, _, InvalidReceiptException>()
-            RedeemBackupReceiptOut.MissingBackupId -> actual.assertNonSuccess<_, _, MissingBackupIdException>()
-            RedeemBackupReceiptOut.MissingResponse ->
+            RedeemBackupReceiptOut.Success -> {
+              assertIs<RequestResult.Success<Unit>>(actual)
+            }
+
+            RedeemBackupReceiptOut.InvalidReceipt -> {
+              actual.assertNonSuccess<_, _, InvalidReceiptException>()
+            }
+
+            RedeemBackupReceiptOut.MissingBackupId -> {
+              actual.assertNonSuccess<_, _, MissingBackupIdException>()
+            }
+
+            RedeemBackupReceiptOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(
                 assertIs<RequestResult.ApplicationError>(actual).cause,
               )
+            }
           }
         },
       )

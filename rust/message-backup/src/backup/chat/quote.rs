@@ -22,8 +22,21 @@ pub struct Quote<Recipient> {
     pub target_sent_timestamp: Option<Timestamp>,
     pub attachments: Vec<QuotedAttachment>,
     pub text: Option<MessageText>,
+    pub private_reply: Option<PrivateReply<Recipient>>,
     #[serde(skip)]
     _limit_construction_to_module: (),
+}
+
+/// Validated version of [`proto::quote::PrivateReplyDescriptor`].
+///
+/// A private reply is a reply sent 1:1 to the author of a message in a group.
+#[derive(Debug, serde::Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum PrivateReply<Recipient> {
+    /// The quoted message was in a group that is no longer known.
+    UnknownGroup,
+    /// The quoted message was in this group.
+    Group(Recipient),
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -66,6 +79,12 @@ pub enum QuoteError {
     AttachmentThumbnailWrongFlag(proto::message_attachment::Flag),
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
+    /// unknownPrivateReply is present but false
+    UnknownPrivateReplyIsFalse,
+    /// private reply group {0:?} not found
+    PrivateReplyGroupNotFound(RecipientId),
+    /// private reply group {0:?} is a {1:?}, not a group
+    PrivateReplyInvalidGroup(RecipientId, DestinationKind),
 }
 
 impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestamp>
@@ -80,6 +99,7 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             targetSentTimestamp,
             text,
             attachments,
+            privateReplyDescriptor,
             special_fields: _,
         } = self;
 
@@ -143,12 +163,49 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                 .collect::<Result<_, _>>()
         })?;
 
+        let private_reply = privateReplyDescriptor
+            .map(|descriptor| {
+                use proto::quote::PrivateReplyDescriptor;
+                match descriptor {
+                    PrivateReplyDescriptor::UnknownPrivateReply(true) => {
+                        Ok(PrivateReply::UnknownGroup)
+                    }
+                    PrivateReplyDescriptor::UnknownPrivateReply(false) => {
+                        Err(QuoteError::UnknownPrivateReplyIsFalse)
+                    }
+                    PrivateReplyDescriptor::PrivateReplyGroupRecipientId(group_id) => {
+                        let group_id = RecipientId(group_id);
+                        let (group_data, group) = context
+                            .lookup_pair(&group_id)
+                            .ok_or(QuoteError::PrivateReplyGroupNotFound(group_id))?;
+                        match group_data {
+                            // Any group will do, even one we're no longer a member of.
+                            MinimalRecipientData::Group { master_key: _ } => {
+                                Ok(PrivateReply::Group(group.clone()))
+                            }
+                            MinimalRecipientData::Contact { .. }
+                            | MinimalRecipientData::DistributionList { .. }
+                            | MinimalRecipientData::Self_
+                            | MinimalRecipientData::ReleaseNotes
+                            | MinimalRecipientData::CallLink { .. } => {
+                                Err(QuoteError::PrivateReplyInvalidGroup(
+                                    group_id,
+                                    *group_data.as_ref(),
+                                ))
+                            }
+                        }
+                    }
+                }
+            })
+            .transpose()?;
+
         Ok(Quote {
             author,
             quote_type,
             target_sent_timestamp,
             attachments,
             text,
+            private_reply,
             _limit_construction_to_module: (),
         })
     }
@@ -269,6 +326,7 @@ mod test {
                 quote_type: QuoteType::Normal,
                 target_sent_timestamp: Some(Timestamp::test_value()),
                 attachments: vec![QuotedAttachment::from_proto_test_data()],
+                private_reply: None,
                 _limit_construction_to_module: (),
             }
         }
@@ -300,11 +358,41 @@ mod test {
         Err(QuoteError::InvalidTimestamp(TimestampError("Quote.targetSentTimestamp", MillisecondsSinceEpoch::FAR_FUTURE.0)));
         "invalid targetSentTimestamp"
     )]
+    #[test_case(|x| x.set_unknownPrivateReply(true) => Ok(()); "unknown private reply")]
+    #[test_case(|x| x.set_unknownPrivateReply(false) => Err(QuoteError::UnknownPrivateReplyIsFalse); "unknown private reply false")]
+    #[test_case(|x| x.set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0) => Ok(()); "private reply group")]
+    #[test_case(
+        |x| x.set_privateReplyGroupRecipientId(TestContext::NONEXISTENT_ID.0) =>
+        Err(QuoteError::PrivateReplyGroupNotFound(TestContext::NONEXISTENT_ID));
+        "private reply group not found"
+    )]
+    #[test_case(
+        |x| x.set_privateReplyGroupRecipientId(TestContext::CONTACT_ID.0) =>
+        Err(QuoteError::PrivateReplyInvalidGroup(TestContext::CONTACT_ID, DestinationKind::Contact));
+        "private reply group is contact"
+    )]
     fn quote(modifier: impl FnOnce(&mut proto::Quote)) -> Result<(), QuoteError> {
         let mut attachment = proto::Quote::test_data();
         modifier(&mut attachment);
         attachment
             .try_into_with(&TestContext::default())
             .map(|_| ())
+    }
+
+    #[test_case(|_| {} => None; "not a private reply")]
+    #[test_case(|x| x.set_unknownPrivateReply(true) => Some(PrivateReply::UnknownGroup); "unknown group")]
+    #[test_case(
+        |x| x.set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0) =>
+        matches Some(PrivateReply::Group(_));
+        "known group"
+    )]
+    fn private_reply_descriptor(
+        modifier: impl FnOnce(&mut proto::Quote),
+    ) -> Option<PrivateReply<FullRecipientData>> {
+        let mut quote = proto::Quote::test_data();
+        modifier(&mut quote);
+        let quote: Quote<FullRecipientData> =
+            quote.try_into_with(&TestContext::default()).expect("valid");
+        quote.private_reply
     }
 }

@@ -11,6 +11,7 @@ use itertools::Itertools;
 use libsignal_bridge_types::net::TokioAsyncContext;
 use libsignal_bridge_types::net::chat::remote_derives::{
     BridgeMfaVerificationCredential, CallQualitySurveyInternal, CurrencyConversionsInternal,
+    PurchaseProductConfiguration,
 };
 use libsignal_bridge_types::net::chat::{
     AuthenticatedChatConnection, BridgeCopyBackupMediaItem, BridgeDeleteBackupMediaItem,
@@ -47,7 +48,7 @@ pub struct FakeChatResponse(ResponseProto);
 
 bridge_as_handle!(FakeChatConnection);
 bridge_handle_fns!(FakeChatConnection, clone = false);
-bridge_as_handle!(FakeChatRemoteEnd);
+bridge_as_handle!(FakeChatRemoteEnd, swift_type = "FakeChatRemote");
 bridge_handle_fns!(FakeChatRemoteEnd, clone = false);
 bridge_as_handle!(FakeChatServer);
 bridge_handle_fns!(FakeChatServer, clone = false);
@@ -236,7 +237,7 @@ fn TESTING_FakeChatRemoteEnd_InjectConnectionInterrupted(chat: &FakeChatRemoteEn
         .expect("chat task finished")
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     chat: &FakeChatRemoteEnd,
 ) -> Option<(HttpRequest, u64)> {
@@ -273,7 +274,7 @@ async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingRequest(
     Some((http_request, id.unwrap()))
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn TESTING_FakeChatRemoteEnd_ReceiveIncomingGrpcRequest(
     chat: &FakeChatRemoteEnd,
 ) -> Option<(HttpRequest, u64)> {
@@ -2021,4 +2022,10 @@ fn TESTING_GetProfileTests()
 fn TESTING_UnauthGetProfileTests()
 -> GrpcTestCases<remote_derives::UnauthGetProfileArgs, remote_derives::UnauthGetProfileOut> {
     libsignal_net_chat::grpc::profiles::test_cases::get_profile_unauth_test_cases().into()
+}
+
+#[bridge_fn(nice = true)]
+fn TESTING_GetProductConfigurationTests() -> GrpcTestCases<(), PurchaseProductConfiguration> {
+    libsignal_net_chat::grpc::subscriptions::test_cases::get_product_configuration_test_cases()
+        .into()
 }

@@ -10,6 +10,7 @@ import type { Bytes } from '@signalapp/types';
 import * as Native from './Native.js';
 import type {
   /* eslint-disable @typescript-eslint/no-unused-vars */
+  BigIntMapFfiContents,
   GrpcTestCase,
   StringMapFfiContents,
   {% for (ty, v) in ctx.derived_arg_converters|items -%}
@@ -40,6 +41,7 @@ import {
   liftNull,
   stringMapArgConverter,
   stringMapResultConverter,
+  bigintMapResultConverter,
 } from './NiceConverters.js';
 import { Rng } from './RngForTesting.js';
 import type { ChargeFailure } from './Errors.js';

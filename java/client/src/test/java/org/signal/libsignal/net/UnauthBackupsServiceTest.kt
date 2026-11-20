@@ -221,12 +221,17 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            SimpleBackupTestOut.Success ->
+            SimpleBackupTestOut.Success -> {
               assertIs<RequestResult.Success<Unit>>(actual)
-            SimpleBackupTestOut.CredentialRejected ->
+            }
+
+            SimpleBackupTestOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            SimpleBackupTestOut.MissingResponse ->
+            }
+
+            SimpleBackupTestOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -249,12 +254,17 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            SimpleBackupTestOut.Success ->
+            SimpleBackupTestOut.Success -> {
               assertIs<RequestResult.Success<Unit>>(actual)
-            SimpleBackupTestOut.CredentialRejected ->
+            }
+
+            SimpleBackupTestOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            SimpleBackupTestOut.MissingResponse ->
+            }
+
+            SimpleBackupTestOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -277,12 +287,17 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            SimpleBackupTestOut.Success ->
+            SimpleBackupTestOut.Success -> {
               assertIs<RequestResult.Success<Unit>>(actual)
-            SimpleBackupTestOut.CredentialRejected ->
+            }
+
+            SimpleBackupTestOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            SimpleBackupTestOut.MissingResponse ->
+            }
+
+            SimpleBackupTestOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -306,12 +321,17 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetCdnCredentialsOut.Success ->
+            is GetCdnCredentialsOut.Success -> {
               assertEquals(expected._0, assertIs<RequestResult.Success<BackupCdnCredentials>>(actual).result)
-            GetCdnCredentialsOut.CredentialRejected ->
+            }
+
+            GetCdnCredentialsOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            GetCdnCredentialsOut.MissingResponse ->
+            }
+
+            GetCdnCredentialsOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -334,15 +354,20 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetMessageBackupInfoOut.Success ->
+            is GetMessageBackupInfoOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<MessageBackupInfo>>(actual).result,
               )
-            GetMessageBackupInfoOut.CredentialRejected ->
+            }
+
+            GetMessageBackupInfoOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            GetMessageBackupInfoOut.MissingResponse ->
+            }
+
+            GetMessageBackupInfoOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -365,15 +390,20 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetMediaBackupInfoOut.Success ->
+            is GetMediaBackupInfoOut.Success -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<MediaBackupInfo>>(actual).result,
               )
-            GetMediaBackupInfoOut.CredentialRejected ->
+            }
+
+            GetMediaBackupInfoOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            GetMediaBackupInfoOut.MissingResponse ->
+            }
+
+            GetMediaBackupInfoOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -396,15 +426,20 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is GetSvrBCredentialsOut.Success ->
+            is GetSvrBCredentialsOut.Success -> {
               assertEquals(
                 Pair(expected.username, expected.password),
                 assertIs<RequestResult.Success<Pair<String, String>>>(actual).result,
               )
-            GetSvrBCredentialsOut.CredentialRejected ->
+            }
+
+            GetSvrBCredentialsOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            GetSvrBCredentialsOut.MissingResponse ->
+            }
+
+            GetSvrBCredentialsOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )
@@ -549,15 +584,20 @@ class UnauthBackupsServiceTest {
         },
         check = { expected, actual ->
           when (expected) {
-            is ListMediaOut.Page ->
+            is ListMediaOut.Page -> {
               assertEquals(
                 expected._0,
                 assertIs<RequestResult.Success<ListBackupMediaResponse>>(actual).result,
               )
-            ListMediaOut.CredentialRejected ->
+            }
+
+            ListMediaOut.CredentialRejected -> {
               actual.assertNonSuccess<_, _, RequestUnauthorizedException>()
-            ListMediaOut.MalformedMediaId, ListMediaOut.MissingResponse ->
+            }
+
+            ListMediaOut.MalformedMediaId, ListMediaOut.MissingResponse -> {
               assertIs<UnexpectedResponseException>(assertIs<RequestResult.ApplicationError>(actual).cause)
+            }
           }
         },
       )

@@ -5,7 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     id "base"
     id "signing"
-    id "com.diffplug.spotless" version "7.2.1"
+    id "com.diffplug.spotless" version "8.10.4"
 
     id "org.jetbrains.kotlin.jvm" version "2.2.20" apply false
     id "org.jetbrains.dokka" version "2.1.0" apply false
@@ -22,7 +22,7 @@ repositories {
 }
 
 allprojects {
-    version = "0.108.2"
+    version = "0.108.4"
     group   = "org.signal"
 
     tasks.withType(JavaCompile) {

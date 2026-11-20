@@ -61,6 +61,7 @@ static_assertions = { workspace = true }
 strum = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
+typenum = { workspace = true, features = ["const-generics"] }
 uuid = { workspace = true }
 visibility = { workspace = true }
 zerocopy = { workspace = true }

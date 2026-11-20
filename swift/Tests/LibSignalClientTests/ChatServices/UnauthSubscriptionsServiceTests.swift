@@ -59,6 +59,18 @@ class UnauthSubscriptionsServiceTests: UnauthChatServiceTestBase<any UnauthSubsc
             }
         )
     }
+
+    func testGetPurchaseProductConfiguration() async throws {
+        try await testGrpcCases(
+            try NativeTestingNice.TESTING_GetProductConfigurationTests(),
+            invoke: { api, _ in
+                try await api.getPurchaseProductConfiguration()
+            },
+            check: { expected, actual in
+                XCTAssertEqual(expected, try actual.get())
+            }
+        )
+    }
 }
 
 #endif

@@ -463,6 +463,7 @@ impl Visit<Scrambler> for proto::Contact {
             blocked: _,
             blockedAtTimestamp: _,
             visibility: _,
+            hiddenAtTimestamp: _,
             profileKey,
             profileSharing: _,
             profileGivenName,
@@ -970,6 +971,7 @@ impl Visit<Scrambler> for proto::Quote {
             text,
             attachments,
             type_: _,
+            privateReplyDescriptor: _,
             special_fields: _,
         } = self;
 

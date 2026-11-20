@@ -50,9 +50,11 @@ export type DeviceCapability =
   | 'transfer'
   | 'attachmentBackfill'
   | 'sparsePostQuantumRatchet'
-  | 'profilesV2'
   | 'usernameChangeSyncMessage'
-  | 'optionalPhoneNumber';
+  | 'optionalPhoneNumber'
+  | 'replyPrivately'
+  | 'contactDelete'
+  | 'adminRemoveAndDelete';
 
 // Must be kept in sync with DeviceCapabilityInternal in rust/bridge/shared/types/src/net/chat.rs.
 // This fails to compile if the generated NativeNice.DeviceCapabilityInternal has different cases.

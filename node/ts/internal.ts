@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
+import type { Tagged, UnwrapTagged } from 'type-fest';
 import * as Native from './Native.js';
 import type { TokioAsyncContext } from './net.js';
 
@@ -26,6 +27,34 @@ export class BridgedStringMap {
  * time that a hand-written type matches a generated one.
  */
 export type AssertTrue<T extends true> = T;
+
+/**
+ * Applies {@link UnwrapTagged} to all fields of `T`, recursively.
+ *
+ * Based on type-fest's `PartialDeep` implementation,
+ * <https://github.com/sindresorhus/type-fest/blob/HEAD/source/partial-deep.d.ts>
+ */
+export type StrippingAllTagsDeep<T> = T extends Tagged<
+  unknown,
+  PropertyKey,
+  unknown
+>
+  ? StrippingAllTagsDeep<UnwrapTagged<T>>
+  : T extends Set<infer V>
+  ? Set<StrippingAllTagsDeep<V>>
+  : T extends ReadonlySet<infer V>
+  ? ReadonlySet<StrippingAllTagsDeep<V>>
+  : T extends Map<infer K, infer V>
+  ? Map<StrippingAllTagsDeep<K>, StrippingAllTagsDeep<V>>
+  : T extends ReadonlyMap<infer K, infer V>
+  ? ReadonlyMap<StrippingAllTagsDeep<K>, StrippingAllTagsDeep<V>>
+  : T extends Array<infer V>
+  ? Array<StrippingAllTagsDeep<V>>
+  : T extends ReadonlyArray<infer V>
+  ? ReadonlyArray<StrippingAllTagsDeep<V>>
+  : T extends object
+  ? { [KeyType in keyof T]: StrippingAllTagsDeep<T[KeyType]> }
+  : T;
 
 export function newNativeHandle<T>(handle: T): Native.Wrapper<T> {
   return {

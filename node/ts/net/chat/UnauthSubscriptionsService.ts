@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import { Bytes } from '@signalapp/types';
+import type { EmptyObject, IsEqual } from 'type-fest';
+import { BigUint64, Bytes } from '@signalapp/types';
 
 import { RequestOptions, UnauthenticatedChatConnection } from '../Chat.js';
 import * as NativeNice from '../../NativeNice.js';
@@ -15,6 +16,8 @@ import type {
   ReceiptCredentialErrorReceiptAlreadyIssued,
   StandardNetworkError,
 } from '../../Errors.js';
+import type { PurchaseProductConfiguration } from './PurchaseTypes.js';
+import type { AssertTrue, StrippingAllTagsDeep } from '../../internal.js';
 
 declare module '../Chat' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -59,6 +62,16 @@ export interface UnauthSubscriptionsService {
     },
     options?: RequestOptions
   ) => Promise<zkgroup.ReceiptCredential>;
+
+  /**
+   * Fetches information about Signal's in-app donations and purchases.
+   *
+   * @throws {StandardNetworkError}
+   */
+  getPurchaseProductConfiguration: (
+    request: EmptyObject,
+    options?: RequestOptions
+  ) => Promise<PurchaseProductConfiguration>;
 }
 
 UnauthenticatedChatConnection.prototype.getSubscriptionReceiptCredential =
@@ -76,4 +89,29 @@ UnauthenticatedChatConnection.prototype.getSubscriptionReceiptCredential =
         serverParams,
       }
     );
+  };
+
+UnauthenticatedChatConnection.prototype.getPurchaseProductConfiguration =
+  async function (_request, options?): Promise<PurchaseProductConfiguration> {
+    const result =
+      await NativeNice.UnauthenticatedChatConnection_get_product_configuration({
+        asyncContext: this._asyncContext,
+        abortSignal: options?.abortSignal,
+        chat: this._chatService,
+      });
+    type _MapsAreCompatible = AssertTrue<
+      ReadonlyMap<BigUint64, string> extends ReadonlyMap<bigint, string>
+        ? true
+        : false
+    >;
+    type _OnlyDiffersInTags = AssertTrue<
+      IsEqual<
+        StrippingAllTagsDeep<PurchaseProductConfiguration>,
+        NativeNice.PurchaseProductConfiguration
+      >
+    >;
+    // There's just one property we have to adjust: the login purchase level is treated as i64
+    // rather than u64 in the bridge layer.
+    result.login.level = BigInt.asUintN(64, result.login.level);
+    return result as PurchaseProductConfiguration;
   };

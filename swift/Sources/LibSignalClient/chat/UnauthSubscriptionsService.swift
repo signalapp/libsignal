@@ -37,6 +37,12 @@ public protocol UnauthSubscriptionsService: Sendable {
         receiptCredentialRequestContext: ReceiptCredentialRequestContext,
         serverParams: ServerPublicParams,
     ) async throws -> ReceiptCredential
+
+    /// Fetches information about Signal's in-app donations and purchases.
+    ///
+    /// - Throws:
+    ///   - the standard Signal network errors
+    func getPurchaseProductConfiguration() async throws -> PurchaseProductConfiguration
 }
 
 extension UnauthenticatedChatConnection: UnauthSubscriptionsService {
@@ -51,6 +57,13 @@ extension UnauthenticatedChatConnection: UnauthSubscriptionsService {
             subscriberId: subscriberId,
             receiptCredentialRequestContext: receiptCredentialRequestContext,
             serverParams: serverParams,
+        )
+    }
+
+    public func getPurchaseProductConfiguration() async throws -> PurchaseProductConfiguration {
+        return try await NativeNice.UnauthenticatedChatConnection_get_product_configuration(
+            asyncContext: self.tokioAsyncContext,
+            chat: self
         )
     }
 }

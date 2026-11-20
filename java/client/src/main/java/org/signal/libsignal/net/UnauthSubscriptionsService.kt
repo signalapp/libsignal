@@ -60,4 +60,23 @@ public class UnauthSubscriptionsService(
       onSuccess = { RequestResult.Success(it) },
       onError = { err -> err.toRequestResult<ReceiptCredentialException>() },
     )
+
+  /**
+   * Fetches information about Signal's in-app donations and purchases.
+   *
+   * All exceptions are mapped into [RequestResult]; unexpected ones will be treated as
+   * [RequestResult.ApplicationError].
+   */
+  public fun getPurchaseProductConfiguration(): CompletableFuture<
+    RequestResult<PurchaseProductConfiguration, Nothing>,
+  > =
+    liftExceptions {
+      NativeNice.UnauthenticatedChatConnection_get_product_configuration(
+        asyncCtx = connection.tokioAsyncContext,
+        chat = connection,
+      )
+    }.mapWithCancellation(
+      onSuccess = { RequestResult.Success(it) },
+      onError = { err -> err.toRequestResult() },
+    )
 }

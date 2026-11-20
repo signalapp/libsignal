@@ -230,6 +230,10 @@ pub enum ChatItemError {
     PaymentNotificationNotInContactThread(DestinationKind),
     /// direct story reply found in {0:?} chat
     DirectStoryReplyNotInContactThread(DestinationKind),
+    /// private reply quote found in {0:?} chat
+    PrivateReplyNotInContactThread(DestinationKind),
+    /// private reply quotes a message that wasn't authored by the recipient of the reply
+    PrivateReplyQuoteAuthorMismatch,
     /// chat update not in contact thread: {0:?}
     ChatUpdateNotInContactThread(SimpleChatUpdate),
     /// unexpected update message in Release Notes
@@ -892,6 +896,7 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
         &self,
         recipient_ref: &M::RecipientReference,
         recipient_data: &ChatRecipientKind,
+        self_recipient: Option<&M::RecipientReference>,
     ) -> Result<(), ChatItemError> {
         match self.cached_author_kind {
             ChatItemAuthorKind::Contact { .. } => match recipient_data {
@@ -967,6 +972,63 @@ impl<M: Method + ReferencedTypes> ChatItemData<M> {
                     ));
                 }
             }
+        }
+
+        self.validate_private_reply(recipient_ref, recipient_data, self_recipient)?;
+        for revision in &self.revisions {
+            revision.validate_private_reply(recipient_ref, recipient_data, self_recipient)?;
+        }
+
+        Ok(())
+    }
+
+    fn validate_private_reply(
+        &self,
+        recipient_ref: &M::RecipientReference,
+        recipient_data: &ChatRecipientKind,
+        self_recipient: Option<&M::RecipientReference>,
+    ) -> Result<(), ChatItemError> {
+        let quote = match &self.message {
+            ChatItemMessage::Standard(message) => message.quote.as_deref(),
+            ChatItemMessage::Voice(message) => message.quote.as_ref(),
+            ChatItemMessage::Contact(_)
+            | ChatItemMessage::Sticker(_)
+            | ChatItemMessage::RemoteDeleted
+            | ChatItemMessage::Update(_)
+            | ChatItemMessage::PaymentNotification(_)
+            | ChatItemMessage::GiftBadge(_)
+            | ChatItemMessage::ViewOnce(_)
+            | ChatItemMessage::DirectStoryReply(_)
+            | ChatItemMessage::Poll(_)
+            | ChatItemMessage::AdminDeleted(_) => None,
+        };
+        let Some(quote) = quote.filter(|quote| quote.private_reply.is_some()) else {
+            return Ok(());
+        };
+
+        match recipient_data {
+            ChatRecipientKind::Contact { has_aci: _ } => {}
+            ChatRecipientKind::Self_
+            | ChatRecipientKind::ReleaseNotes
+            | ChatRecipientKind::Group => {
+                return Err(ChatItemError::PrivateReplyNotInContactThread(
+                    (*recipient_data).into(),
+                ));
+            }
+        }
+
+        let quotes_reply_recipient = match self.cached_author_kind {
+            // We sent the reply, so the quoted message must be from the other person.
+            ChatItemAuthorKind::Self_ => M::is_same_reference(&quote.author, recipient_ref),
+            // The other person sent the reply, so the quoted message must be ours.
+            ChatItemAuthorKind::Contact { .. } => self_recipient
+                .is_some_and(|self_recipient| M::is_same_reference(&quote.author, self_recipient)),
+            // Release notes messages only appear in the release notes chat, which was rejected
+            // above.
+            ChatItemAuthorKind::ReleaseNotes => false,
+        };
+        if !quotes_reply_recipient {
+            return Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
         }
 
         Ok(())
@@ -1901,7 +1963,169 @@ mod test {
 
         let item: ChatItemData<Store> =
             message.try_into_with(&context).expect("valid in isolation");
+        let (_, self_data) = context.lookup_pair(&TestContext::SELF_ID).expect("present");
         let (minimal_data, full_data) = context.lookup_pair(&recipient_id).expect("present");
-        item.validate_chat_recipient(full_data, &minimal_data.try_into().unwrap())
+        item.validate_chat_recipient(
+            full_data,
+            &minimal_data.try_into().unwrap(),
+            Some(self_data),
+        )
+    }
+
+    fn quote_mut(item: &mut proto::ChatItem) -> &mut proto::Quote {
+        let message = assert_matches!(
+            &mut item.item,
+            Some(proto::chat_item::Item::StandardMessage(message)) => message
+        );
+        message.quote.as_mut().expect("has quote")
+    }
+
+    fn make_outgoing(item: &mut proto::ChatItem) {
+        item.authorId = TestContext::SELF_ID.0;
+        item.directionalDetails =
+            Some(proto::chat_item::OutgoingMessageDetails::test_data().into());
+    }
+
+    // The test ChatItem is an incoming message from CONTACT_ID that quotes a message from Self.
+    #[test_case(TestContext::CONTACT_ID, |_| {} => Ok(()); "no private reply")]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0) =>
+        Ok(());
+        "incoming quoting self"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| quote_mut(x).set_unknownPrivateReply(true) =>
+        Ok(());
+        "incoming quoting self with unknown group"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            quote_mut(x).authorId = TestContext::CONTACT_ID.0;
+        } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
+        "incoming quoting sender"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            quote_mut(x).set_unknownPrivateReply(true);
+            quote_mut(x).authorId = TestContext::E164_ONLY_ID.0;
+        } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
+        "incoming quoting third party with unknown group"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| quote_mut(x).authorId = TestContext::E164_ONLY_ID.0 =>
+        Ok(());
+        "regular quote of third party"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            make_outgoing(x);
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            quote_mut(x).authorId = TestContext::CONTACT_ID.0;
+        } => Ok(());
+        "outgoing quoting chat recipient"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            make_outgoing(x);
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+        } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
+        "outgoing quoting self"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            make_outgoing(x);
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            quote_mut(x).authorId = TestContext::E164_ONLY_ID.0;
+        } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
+        "outgoing quoting third party"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0) =>
+        Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::Group));
+        "in group chat"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| quote_mut(x).set_unknownPrivateReply(true) =>
+        Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::Group));
+        "unknown group in group chat"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| {
+            // The chat check comes first, even when the quoted author is also wrong.
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            quote_mut(x).authorId = TestContext::CONTACT_ID.0;
+        } => Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::Group));
+        "in group chat with wrong author"
+    )]
+    #[test_case(
+        TestContext::SELF_ID,
+        |x| {
+            make_outgoing(x);
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+        } => Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::Self_));
+        "in Note to Self"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| {
+            x.item = Some(proto::chat_item::Item::StandardMessage(
+                proto::StandardMessage::test_voice_message_data(),
+            ));
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+        } => Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::Group));
+        "voice message in group chat"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            x.item = Some(proto::chat_item::Item::StandardMessage(
+                proto::StandardMessage::test_voice_message_data(),
+            ));
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+        } => Ok(());
+        "voice message in 1:1 chat"
+    )]
+    #[test_case(
+        TestContext::GROUP_ID,
+        |x| {
+            let mut revision = proto::ChatItem::test_data();
+            quote_mut(&mut revision).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            x.revisions = vec![revision];
+        } => Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::Group));
+        "revision in group chat"
+    )]
+    #[test_case(
+        TestContext::RELEASE_NOTES_ID,
+        |x| {
+            x.authorId = TestContext::RELEASE_NOTES_ID.0;
+            quote_mut(x).set_unknownPrivateReply(true);
+        } => Err(ChatItemError::PrivateReplyNotInContactThread(DestinationKind::ReleaseNotes));
+        "in Release Notes"
+    )]
+    #[test_case(
+        TestContext::E164_ONLY_ID,
+        |x| {
+            x.authorId = TestContext::E164_ONLY_ID.0;
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+        } => Ok(());
+        "in 1:1 chat with contact without ACI"
+    )]
+    fn private_reply(
+        recipient_id: RecipientId,
+        modifier: fn(&mut proto::ChatItem),
+    ) -> Result<(), ChatItemError> {
+        validate_chat_recipient(recipient_id, modifier)
     }
 }

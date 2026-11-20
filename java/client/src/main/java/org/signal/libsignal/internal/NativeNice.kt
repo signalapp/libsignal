@@ -17,12 +17,15 @@
 
 package org.signal.libsignal.internal
 
+import org.signal.libsignal.internal.NativeNiceHelpers.argPairConverter
 import org.signal.libsignal.internal.NativeNiceHelpers.convertToObject
 import org.signal.libsignal.internal.NativeNiceHelpers.downcastFromObject
 import org.signal.libsignal.internal.NativeNiceHelpers.identity
+import org.signal.libsignal.internal.NativeNiceHelpers.longMapReturnConverter
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecArg
 import org.signal.libsignal.internal.NativeNiceHelpers.mapBridgeVecReturn
 import org.signal.libsignal.internal.NativeNiceHelpers.mapPair
+import org.signal.libsignal.internal.NativeNiceHelpers.stringMapArgConverter
 import org.signal.libsignal.internal.NativeNiceHelpers.stringMapReturnConverter
 
 /*
@@ -49,11 +52,32 @@ public sealed class AuthCheckResult {
 */
 
 /*
+// org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration
+
+public data class BackupConfiguration(
+  public val levels: Map<Long, org.signal.libsignal.net.PurchaseProductConfiguration.BackupLevelConfiguration>,
+  public val freeTierMediaDays: Int,
+)
+
+*/
+
+/*
 // org.signal.libsignal.net.BackupEntitlement
 
 public data class BackupEntitlement(
   public val level: Long,
   public val expiration: java.time.Instant,
+)
+
+*/
+
+/*
+// org.signal.libsignal.net.PurchaseProductConfiguration.BackupLevelConfiguration
+
+public data class BackupLevelConfiguration(
+  public val storageAllowanceBytes: Long,
+  public val playProductId: String,
+  public val mediaTtlDays: Int,
 )
 
 */
@@ -80,6 +104,16 @@ public data class BadgeEntitlement(
   public val badgeId: String,
   public val expiration: java.time.Instant,
   public val visible: Boolean,
+)
+
+*/
+
+/*
+// org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration
+
+public data class BadgeLevelConfiguration(
+  public val badgeId: String,
+  public val badgeDurationSeconds: Int?,
 )
 
 */
@@ -318,6 +352,19 @@ public data class CopyBackupMediaNextChunk(
   public val termination: Any?,
 )
 
+/*
+// org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration
+
+public data class CurrencyConfiguration(
+  public val minimum: Long,
+  public val oneTimeDonationAmounts: Map<Long, LongArray>,
+  public val subscriptionAmounts: Map<Long, Long>,
+  public val backupSubscriptionAmounts: Map<Long, Long>,
+  public val supportedPaymentMethods: List<org.signal.libsignal.net.PaymentMethod>,
+)
+
+*/
+
 public data class CurrencyConversionsInternal(
   public val timestampMs: java.time.Instant,
   public val currencies: List<org.signal.libsignal.internal.CurrencyInternal>,
@@ -342,11 +389,15 @@ public sealed class DeviceCapabilityInternal {
 
   public data object SparsePostQuantumRatchet : DeviceCapabilityInternal()
 
-  public data object ProfilesV2 : DeviceCapabilityInternal()
-
   public data object UsernameChangeSyncMessage : DeviceCapabilityInternal()
 
   public data object OptionalPhoneNumber : DeviceCapabilityInternal()
+
+  public data object ReplyPrivately : DeviceCapabilityInternal()
+
+  public data object ContactDelete : DeviceCapabilityInternal()
+
+  public data object AdminRemoveAndDelete : DeviceCapabilityInternal()
 }
 
 /*
@@ -411,12 +462,43 @@ public data class ListMediaResponse(
 */
 
 /*
+// org.signal.libsignal.net.PurchaseProductConfiguration.LoginConfiguration
+
+public data class LoginConfiguration(
+  public val level: Long,
+  public val playProductId: String,
+  public val playOptionId: String,
+  public val appStoreProductId: String,
+)
+
+*/
+
+/*
 // org.signal.libsignal.net.LoginReceiptLevel
 
 public sealed class LoginReceiptLevel {
   public data object Normal : LoginReceiptLevel()
 
   public data object Sandbox : LoginReceiptLevel()
+}
+
+*/
+
+/*
+// org.signal.libsignal.net.PaymentMethod
+
+public sealed class PaymentMethodInternal {
+  public data object Card : PaymentMethodInternal()
+
+  public data object SepaDebit : PaymentMethodInternal()
+
+  public data object Ideal : PaymentMethodInternal()
+
+  public data object PayPal : PaymentMethodInternal()
+
+  public data object GooglePlayBilling : PaymentMethodInternal()
+
+  public data object AppleAppStore : PaymentMethodInternal()
 }
 
 */
@@ -483,6 +565,19 @@ public sealed class ProfileValidationErrorInternal {
 
   public data object AvatarUrlInvalid : ProfileValidationErrorInternal()
 }
+
+*/
+
+/*
+// org.signal.libsignal.net.PurchaseProductConfiguration
+
+public data class PurchaseProductConfiguration(
+  public val currencies: Map<String, org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration>,
+  public val badgeLevels: Map<Long, org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration>,
+  public val backup: org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration,
+  public val sepaMaximumEuros: Long,
+  public val login: org.signal.libsignal.net.PurchaseProductConfiguration.LoginConfiguration,
+)
 
 */
 
@@ -574,6 +669,26 @@ public object AuthCheckResult_Invalid_ReturnConverter {
   internal fun fromNative(): Any? = org.signal.libsignal.net.AuthCheckResult.Invalid
 }
 
+public object BackupConfiguration_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    levels: Any?,
+    free_tier_media_days: Any?,
+  ): Any? =
+    org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration(
+      levels =
+        longMapReturnConverter<Object, org.signal.libsignal.net.PurchaseProductConfiguration.BackupLevelConfiguration>({
+          downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration.BackupLevelConfiguration>(
+            it,
+          )
+        })(levels as Array<*>),
+      freeTierMediaDays =
+        identity(free_tier_media_days as Int),
+    )
+}
+
 public object BackupEntitlement_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -587,6 +702,25 @@ public object BackupEntitlement_ReturnConverter {
         identity(level as Long),
       expiration =
         (java.time.Instant::ofEpochMilli)(expiration as Long),
+    )
+}
+
+public object BackupLevelConfiguration_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    storage_allowance_bytes: Any?,
+    play_product_id: Any?,
+    media_ttl_days: Any?,
+  ): Any? =
+    org.signal.libsignal.net.PurchaseProductConfiguration.BackupLevelConfiguration(
+      storageAllowanceBytes =
+        identity(storage_allowance_bytes as Long),
+      playProductId =
+        identity(play_product_id as String),
+      mediaTtlDays =
+        identity(media_ttl_days as Int),
     )
 }
 
@@ -639,6 +773,22 @@ public object BadgeEntitlement_ReturnConverter {
         (java.time.Instant::ofEpochMilli)(expiration as Long),
       visible =
         identity(visible as Boolean),
+    )
+}
+
+public object BadgeLevelConfiguration_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    badge_id: Any?,
+    badge_duration_seconds: Any?,
+  ): Any? =
+    org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration(
+      badgeId =
+        identity(badge_id as String),
+      badgeDurationSeconds =
+        ({ x: Int -> if (x < 0) null else x })(badge_duration_seconds as Int),
     )
 }
 
@@ -1008,6 +1158,35 @@ public object CopyBackupMediaNextChunk_ReturnConverter {
     )
 }
 
+public object CurrencyConfiguration_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    minimum: Any?,
+    one_time_donation_amounts: Any?,
+    subscription_amounts: Any?,
+    backup_subscription_amounts: Any?,
+    supported_payment_methods: Any?,
+  ): Any? =
+    org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration(
+      minimum =
+        identity(minimum as Long),
+      oneTimeDonationAmounts =
+        longMapReturnConverter<LongArray, LongArray>(
+          { identity(it) },
+        )(one_time_donation_amounts as Array<*>),
+      subscriptionAmounts =
+        longMapReturnConverter<Long, Long>({ identity(it) })(subscription_amounts as Array<*>),
+      backupSubscriptionAmounts =
+        longMapReturnConverter<Long, Long>({ identity(it) })(backup_subscription_amounts as Array<*>),
+      supportedPaymentMethods =
+        mapBridgeVecReturn<Object, org.signal.libsignal.net.PaymentMethod>({
+          downcastFromObject<org.signal.libsignal.net.PaymentMethod>(it)
+        })(supported_payment_methods as Array<*>),
+    )
+}
+
 public object CurrencyConversionsInternal_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1090,13 +1269,6 @@ public object DeviceCapabilityInternal_SparsePostQuantumRatchet_ReturnConverter 
   internal fun fromNative(): Any? = DeviceCapabilityInternal.SparsePostQuantumRatchet
 }
 
-public object DeviceCapabilityInternal_ProfilesV2_ReturnConverter {
-  @CalledFromNative
-  @JvmStatic
-  @JvmName("fromNative")
-  internal fun fromNative(): Any? = DeviceCapabilityInternal.ProfilesV2
-}
-
 public object DeviceCapabilityInternal_UsernameChangeSyncMessage_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1109,6 +1281,27 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = DeviceCapabilityInternal.OptionalPhoneNumber
+}
+
+public object DeviceCapabilityInternal_ReplyPrivately_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ReplyPrivately
+}
+
+public object DeviceCapabilityInternal_ContactDelete_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.ContactDelete
+}
+
+public object DeviceCapabilityInternal_AdminRemoveAndDelete_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = DeviceCapabilityInternal.AdminRemoveAndDelete
 }
 
 public object FetchedProfile_ReturnConverter {
@@ -1240,6 +1433,70 @@ public object ListMediaResponse_ReturnConverter {
     )
 }
 
+public object LoginConfiguration_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    level: Any?,
+    play_product_id: Any?,
+    play_option_id: Any?,
+    app_store_product_id: Any?,
+  ): Any? =
+    org.signal.libsignal.net.PurchaseProductConfiguration.LoginConfiguration(
+      level =
+        identity(level as Long),
+      playProductId =
+        identity(play_product_id as String),
+      playOptionId =
+        identity(play_option_id as String),
+      appStoreProductId =
+        identity(app_store_product_id as String),
+    )
+}
+
+public object PaymentMethodInternal_Card_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentMethod.Card
+}
+
+public object PaymentMethodInternal_SepaDebit_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentMethod.SepaDebit
+}
+
+public object PaymentMethodInternal_Ideal_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentMethod.Ideal
+}
+
+public object PaymentMethodInternal_PayPal_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentMethod.PayPal
+}
+
+public object PaymentMethodInternal_GooglePlayBilling_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentMethod.GooglePlayBilling
+}
+
+public object PaymentMethodInternal_AppleAppStore_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(): Any? = org.signal.libsignal.net.PaymentMethod.AppleAppStore
+}
+
 public object PaymentProviderInternal_GooglePlayBilling_ReturnConverter {
   @CalledFromNative
   @JvmStatic
@@ -1368,6 +1625,43 @@ public object ProfileValidationErrorInternal_AvatarUrlInvalid_ReturnConverter {
   @JvmStatic
   @JvmName("fromNative")
   internal fun fromNative(): Any? = org.signal.libsignal.net.ProfileValidationError.AvatarUrlInvalid
+}
+
+public object PurchaseProductConfiguration_ReturnConverter {
+  @CalledFromNative
+  @JvmStatic
+  @JvmName("fromNative")
+  internal fun fromNative(
+    currencies: Any?,
+    badge_levels: Any?,
+    backup: Any?,
+    sepa_maximum_euros: Any?,
+    login: Any?,
+  ): Any? =
+    org.signal.libsignal.net.PurchaseProductConfiguration(
+      currencies =
+        stringMapReturnConverter<Object, org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration>({
+          downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration>(
+            it,
+          )
+        })(currencies as Array<*>),
+      badgeLevels =
+        longMapReturnConverter<Object, org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration>({
+          downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration>(
+            it,
+          )
+        })(badge_levels as Array<*>),
+      backup =
+        downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration>(
+          backup as Object,
+        ),
+      sepaMaximumEuros =
+        identity(sepa_maximum_euros as Long),
+      login =
+        downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration.LoginConfiguration>(
+          login as Object,
+        ),
+    )
 }
 
 public object S3UploadFormInternal_ReturnConverter {
@@ -1802,12 +2096,6 @@ public fun DeviceCapabilityInternal.SparsePostQuantumRatchet.toFfiArgType(): Dev
   DeviceCapabilityInternal_SparsePostQuantumRatchet_FfiArgType
 
 @CalledFromNative
-public object DeviceCapabilityInternal_ProfilesV2_FfiArgType : DeviceCapabilityInternal_FfiArgType()
-
-public fun DeviceCapabilityInternal.ProfilesV2.toFfiArgType(): DeviceCapabilityInternal_ProfilesV2_FfiArgType =
-  DeviceCapabilityInternal_ProfilesV2_FfiArgType
-
-@CalledFromNative
 public object DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType : DeviceCapabilityInternal_FfiArgType()
 
 public fun DeviceCapabilityInternal.UsernameChangeSyncMessage.toFfiArgType(): DeviceCapabilityInternal_UsernameChangeSyncMessage_FfiArgType =
@@ -1819,6 +2107,24 @@ public object DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType : DeviceCa
 public fun DeviceCapabilityInternal.OptionalPhoneNumber.toFfiArgType(): DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType =
   DeviceCapabilityInternal_OptionalPhoneNumber_FfiArgType
 
+@CalledFromNative
+public object DeviceCapabilityInternal_ReplyPrivately_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.ReplyPrivately.toFfiArgType(): DeviceCapabilityInternal_ReplyPrivately_FfiArgType =
+  DeviceCapabilityInternal_ReplyPrivately_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_ContactDelete_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.ContactDelete.toFfiArgType(): DeviceCapabilityInternal_ContactDelete_FfiArgType =
+  DeviceCapabilityInternal_ContactDelete_FfiArgType
+
+@CalledFromNative
+public object DeviceCapabilityInternal_AdminRemoveAndDelete_FfiArgType : DeviceCapabilityInternal_FfiArgType()
+
+public fun DeviceCapabilityInternal.AdminRemoveAndDelete.toFfiArgType(): DeviceCapabilityInternal_AdminRemoveAndDelete_FfiArgType =
+  DeviceCapabilityInternal_AdminRemoveAndDelete_FfiArgType
+
 public fun DeviceCapabilityInternal.toFfiArgTypeObject(): Object =
   convertToObject(
     when (this) {
@@ -1826,9 +2132,11 @@ public fun DeviceCapabilityInternal.toFfiArgTypeObject(): Object =
       is DeviceCapabilityInternal.Transfer -> this.toFfiArgType()
       is DeviceCapabilityInternal.AttachmentBackfill -> this.toFfiArgType()
       is DeviceCapabilityInternal.SparsePostQuantumRatchet -> this.toFfiArgType()
-      is DeviceCapabilityInternal.ProfilesV2 -> this.toFfiArgType()
       is DeviceCapabilityInternal.UsernameChangeSyncMessage -> this.toFfiArgType()
       is DeviceCapabilityInternal.OptionalPhoneNumber -> this.toFfiArgType()
+      is DeviceCapabilityInternal.ReplyPrivately -> this.toFfiArgType()
+      is DeviceCapabilityInternal.ContactDelete -> this.toFfiArgType()
+      is DeviceCapabilityInternal.AdminRemoveAndDelete -> this.toFfiArgType()
     },
   )
 
@@ -3733,6 +4041,23 @@ public object NativeNice {
     return ffiOut
       .makeCancelable(asyncCtx)
       .thenApply { downcastFromObject<org.signal.libsignal.net.S3UploadForm>(it) }
+  }
+
+  public fun UnauthenticatedChatConnection_get_product_configuration(
+    asyncCtx: TokioAsyncContext,
+    chat: org.signal.libsignal.net.UnauthenticatedChatConnection,
+  ): CompletableFuture<org.signal.libsignal.net.PurchaseProductConfiguration> {
+    val ffi_chat = identity(chat)
+    val ffiOut =
+      NativeHandleGuard(asyncCtx).use { asyncCtxHandle ->
+        Native.UnauthenticatedChatConnection_get_product_configuration(
+          asyncCtxHandle.nativeHandle(),
+          ffi_chat,
+        )
+      }
+    return ffiOut
+      .makeCancelable(asyncCtx)
+      .thenApply { downcastFromObject<org.signal.libsignal.net.PurchaseProductConfiguration>(it) }
   }
 
   public fun UnauthenticatedChatConnection_get_profile(

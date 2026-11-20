@@ -28,7 +28,8 @@ use crate::crypto::RandomNumberGenerator;
 use crate::io::{InputStream, SyncInputStream};
 use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::{
-    ChatListener, NodeChatListener, NodeProvisioningListener, PreKeysResponse, ProvisioningListener,
+    ChatListener, NodeChatListener, NodeProvisioningListener, PreKeysResponse,
+    ProvisioningListener, ReceiptLevelHashMap,
 };
 use crate::protocol::StrictPreKeyId;
 use crate::protocol::storage::{
@@ -37,7 +38,7 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, Serialized, U31, U53, U63, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -1688,6 +1689,9 @@ impl<T: NiceArgConverter, S> NiceArgConverter for HashMap<String, T, S> {
     }
 }
 
+/// Converts to an array of alternating keys and values.
+///
+/// This minimizes allocations compared to, say, an array of pairs.
 impl<'a, T: ResultTypeInfo<'a>, S> ResultTypeInfo<'a> for HashMap<String, T, S> {
     type ResultType = JsArray;
 
@@ -1717,6 +1721,44 @@ impl<T: NiceResultConverter, S> NiceResultConverter for HashMap<String, T, S> {
             ffi_type: format!("StringMapFfiContents<{}>", t.ffi_type),
             converter_function: format!(
                 "stringMapResultConverter<{}, {}>({})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+/// Converts to an array of alternating keys and values.
+///
+/// This minimizes allocations compared to, say, an array of pairs.
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for ReceiptLevelHashMap<T> {
+    type ResultType = JsArray;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        let out = cx.empty_array();
+        for (i, (k, v)) in (0..).zip(self) {
+            let k = JsBigInt::from_u64(cx, k);
+            let v = v.convert_into(cx)?;
+            out.prop(cx, i * 2).set(k)?;
+            out.prop(cx, i * 2 + 1).set(v)?;
+        }
+        Ok(out)
+    }
+
+    #[cfg(feature = "metadata")]
+    fn register_ts_ffi_type(ctx: &mut TsMetadataContext) -> String {
+        let t = T::register_ts_ffi_type(ctx);
+        format!("BigIntMapFfiContents<{}>", t)
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter> NiceResultConverter for ReceiptLevelHashMap<T> {
+    fn register_ts_result_converter(ctx: &mut TsMetadataContext) -> TsReturnConverter {
+        let t = T::register_ts_result_converter(ctx);
+        TsReturnConverter {
+            nice_type: format!("Map<bigint, {}>", t.nice_type),
+            ffi_type: format!("BigIntMapFfiContents<{}>", t.ffi_type),
+            converter_function: format!(
+                "bigintMapResultConverter<{}, {}>({})",
                 t.ffi_type, t.nice_type, t.converter_function
             ),
         }
@@ -1860,6 +1902,36 @@ impl<'a> ResultTypeInfo<'a> for i64 {
 }
 nice_identity_result_converter!(i64);
 
+impl<'a> ResultTypeInfo<'a> for U31 {
+    type ResultType = JsNumber;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.number(f64::from(self)))
+    }
+    register_ts_ffi_type!("number");
+}
+nice_identity_result_converter!(U31);
+
+impl<'a> ResultTypeInfo<'a> for U53 {
+    type ResultType = JsNumber;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        Ok(cx.number(f64::from(self)))
+    }
+    register_ts_ffi_type!("number");
+}
+nice_identity_result_converter!(U53);
+
+impl<'a> ResultTypeInfo<'a> for U63 {
+    type ResultType = JsBigInt;
+
+    fn convert_into(self, cx: &mut Cx<'a>) -> JsResult<'a, Self::ResultType> {
+        u64::from(self).convert_into(cx)
+    }
+    register_ts_ffi_type!("bigint");
+}
+nice_identity_result_converter!(U63);
+
 impl<'a> ResultTypeInfo<'a> for String {
     type ResultType = JsString;
     fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
@@ -1965,6 +2037,22 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
     register_ts_ffi_type!("Bytes");
 }
 nice_identity_result_converter!(Vec<u8>);
+
+impl<'a> ResultTypeInfo<'a> for Vec<U53> {
+    // We can't really get an "efficient" bridging for this type.
+    // - Uint32Array is too small, obviously
+    // - BigUint64Array would work, but the use of U53 as the bridging type suggests use as `number`
+    // - Float64Array is compatible with `number` and guarantees a contiguous buffer,
+    //   but has restricted operations.
+    // - Array<number> is probably slightly worse than Float64Array in terms of allocation,
+    //   but offers the most flexibility for the caller.
+    type ResultType = JsArray;
+    fn convert_into(self, cx: &mut Cx<'a>) -> NeonResult<Handle<'a, Self::ResultType>> {
+        BridgeVec::<U53>::from(self).convert_into(cx)
+    }
+    register_ts_ffi_type!("Array<number>");
+}
+nice_identity_result_converter!(Vec<U53>);
 
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JsUint8Array;

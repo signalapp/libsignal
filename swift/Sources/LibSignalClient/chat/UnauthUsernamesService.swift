@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import SignalFfi
 
 public protocol UnauthUsernamesService: Sendable {
     /// Looks up a username hash on the service, like that computed by ``Username``.
@@ -30,48 +29,22 @@ public protocol UnauthUsernamesService: Sendable {
 
 extension UnauthenticatedChatConnection: UnauthUsernamesService {
     public func lookUpUsernameHash(_ hash: Data) async throws -> Aci? {
-        let rawResponse: SignalOptionalOfUuid = try await self.tokioAsyncContext
-            .invokeAsyncFunction { promise, tokioAsyncContext in
-                withNativeHandle { chatService in
-                    hash.withUnsafeBorrowedBuffer { hash in
-                        signal_unauthenticated_chat_connection_look_up_username_hash(
-                            promise,
-                            tokioAsyncContext.const(),
-                            chatService.const(),
-                            hash
-                        )
-                    }
-                }
-            }
-        let uuid = try! invokeFnReturningOptionalUuid { out in
-            out?.pointee = rawResponse
-            return nil
-        }
+        let uuid = try await NativeNice.UnauthenticatedChatConnection_look_up_username_hash(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            hash: hash
+        )
         return uuid.map { Aci(fromUUID: $0) }
     }
 
     public func lookUpUsernameLink(_ uuid: UUID, entropy: Data) async throws -> Username? {
-        var rawResponse: SignalOptionalOfPairOfCStringPtrc_uchar32 = try await self.tokioAsyncContext
-            .invokeAsyncFunction { promise, tokioAsyncContext in
-                withNativeHandle { chatService in
-                    try! withAllBorrowed(uuid, entropy) { uuid, entropy in
-                        signal_unauthenticated_chat_connection_look_up_username_link(
-                            promise,
-                            tokioAsyncContext.const(),
-                            chatService.const(),
-                            uuid,
-                            entropy
-                        )
-                    }
-                }
-            }
-        guard rawResponse.present else {
-            return nil
-        }
-        defer { signal_free_string(rawResponse.value.first) }
-        let name = String(cString: rawResponse.value.first!)
-        let hash = withUnsafeBytes(of: &rawResponse.value.second) { Data($0) }
-        return Username(name, uncheckedHash: hash)
+        let response = try await NativeNice.UnauthenticatedChatConnection_look_up_username_link(
+            asyncContext: self.tokioAsyncContext,
+            chat: self,
+            uuid: uuid,
+            entropy: entropy
+        )
+        return response.map { name, hash in Username(name, uncheckedHash: hash) }
     }
 }
 

@@ -17,11 +17,28 @@ package org.signal.libsignal.internal
 import org.signal.libsignal.internal.NativeHandleGuard.SimpleOwner
 import org.signal.libsignal.net.internal.BridgeChatListener
 import org.signal.libsignal.net.internal.BridgeProvisioningListener
+import org.signal.libsignal.net.internal.ConnectChatBridge
 import org.signal.libsignal.protocol.SignedPublicPreKey
+import org.signal.libsignal.protocol.groups.state.SenderKeyStore
+import org.signal.libsignal.protocol.logging.Log
+import org.signal.libsignal.protocol.logging.SignalProtocolLogger
+import org.signal.libsignal.protocol.message.CiphertextMessage
+import org.signal.libsignal.protocol.state.IdentityKeyStore
+import org.signal.libsignal.protocol.state.KyberPreKeyStore
+import org.signal.libsignal.protocol.state.PreKeyStore
+import org.signal.libsignal.protocol.state.SessionStore
+import org.signal.libsignal.protocol.state.SignedPreKeyStore
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.Map
 import java.util.UUID
+import java.util.concurrent.Future
 
 // Public so we can call methods on this from Android on-device test code,
 // which behaves differently from unit test code with respect to visibility.
@@ -445,6 +462,9 @@ public object NativeTesting {
 
   @JvmStatic
   public external fun TESTING_GetPreKeysTests(): Array<Object>
+
+  @JvmStatic
+  public external fun TESTING_GetProductConfigurationTests(): Array<Object>
 
   @JvmStatic
   public external fun TESTING_GetProfileKeyCredentialTests(): Array<Object>

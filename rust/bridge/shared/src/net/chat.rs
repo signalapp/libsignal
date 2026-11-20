@@ -24,7 +24,7 @@ use libsignal_bridge_types::crypto::RandomNumberGenerator;
 use libsignal_bridge_types::net::chat::remote_derives::{
     AccountEntitlements, BridgeMfaVerificationCredential, CallQualitySurveyInternal,
     CurrencyConversionsInternal, GetStickerUploadFormsResponse, ListMediaResponse,
-    StartMfaVerificationResponse,
+    PurchaseProductConfiguration, StartMfaVerificationResponse,
 };
 use libsignal_bridge_types::net::chat::*;
 use libsignal_bridge_types::net::{ConnectionManager, TokioAsyncContext};
@@ -186,7 +186,7 @@ fn UnauthenticatedChatConnection_info(chat: &UnauthenticatedChatConnection) -> C
     chat.info()
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn UnauthenticatedChatConnection_look_up_username_hash(
     chat: &UnauthenticatedChatConnection,
     hash: Box<[u8]>,
@@ -197,7 +197,7 @@ async fn UnauthenticatedChatConnection_look_up_username_hash(
         .map(|aci| aci.into()))
 }
 
-#[bridge_io(TokioAsyncContext)]
+#[bridge_io(TokioAsyncContext, nice_swift = true)]
 async fn UnauthenticatedChatConnection_look_up_username_link(
     chat: &UnauthenticatedChatConnection,
     uuid: Uuid,
@@ -1575,6 +1575,17 @@ async fn AuthenticatedChatConnection_answer_challenge(
         .await
         .answer_challenge(token, answer)
         .await
+}
+
+#[bridge_io(TokioAsyncContext, nice = true)]
+async fn UnauthenticatedChatConnection_get_product_configuration(
+    chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
+) -> Result<PurchaseProductConfiguration, RequestError<Infallible>> {
+    chat.require_grpc()
+        .await
+        .get_purchase_product_configuration()
+        .await
+        .map(Into::into)
 }
 
 #[cfg(test)]

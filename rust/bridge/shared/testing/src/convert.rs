@@ -322,7 +322,7 @@ fn TESTING_RoundTripU64(input: u64) -> u64 {
     input
 }
 
-#[bridge_fn]
+#[bridge_fn(nice_swift = true)]
 fn TESTING_ConvertOptionalUuid(present: bool) -> Option<Uuid> {
     present.then_some(uuid::uuid!("abababab-1212-8989-baba-565656565656"))
 }

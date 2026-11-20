@@ -34,7 +34,7 @@ use crate::message_backup::MessageBackupValidationOutcome;
 use crate::net::chat::remote_derives::BridgeWebAuthnAuthenticationParameters;
 use crate::net::chat::{
     ChatListener, JavaBridgeChatListener, JavaBridgeProvisioningListener, JniChatListener,
-    JniProvisioningListener, PreKeysResponse, ProvisioningListener,
+    JniProvisioningListener, PreKeysResponse, ProvisioningListener, ReceiptLevelHashMap,
 };
 use crate::net::registration::{ConnectChatBridge, RegistrationPushToken};
 use crate::protocol::StrictPreKeyId;
@@ -46,7 +46,7 @@ use crate::protocol::storage::{
 };
 use crate::support::{
     Array, AsType, BridgeHandleRef, BridgeVec, BridgedCallbacks, DisplayIntLabel,
-    FixedLengthBincodeSerializable, Serialized, extend_lifetime,
+    FixedLengthBincodeSerializable, Serialized, U31, U53, U63, extend_lifetime,
 };
 
 #[cfg(feature = "metadata")]
@@ -1795,6 +1795,54 @@ impl ResultTypeInfo<'_> for u64 {
     }
 }
 
+impl ResultTypeInfo<'_> for U31 {
+    type ResultType = jint;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(int);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i32::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U31, "Int");
+
+impl ResultTypeInfo<'_> for U53 {
+    type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(long);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i64::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U53, "Long");
+
+impl ResultTypeInfo<'_> for U63 {
+    type ResultType = jlong;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!(long);
+    fn convert_into(self, env: &mut jni::Env) -> Result<Self::ResultType, BridgeLayerError> {
+        // Note that we don't check bounds here.
+        i64::from(self).convert_into(env)
+    }
+}
+nice_identity_result_converter!(U63, "Long");
+
+/// Uses a compact i32 representation for the bridge, but the nice type goes back to a boxed `Int?`.
+impl ResultTypeInfo<'_> for Option<U31> {
+    type ResultType = jint;
+    fn convert_into(self, env: &mut jni::Env<'_>) -> Result<Self::ResultType, BridgeLayerError> {
+        self.map_or(-1, i32::from).convert_into(env)
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Option<U31> {
+    fn register_kt_result_converter(_ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        KtReturnConverter {
+            nice_type: "Int?".to_string(),
+            ffi_type: "Int".to_string(),
+            converter_function: "({ x: Int -> if (x < 0) null else x })".to_string(),
+        }
+    }
+}
+
 /// Reinterprets the bits of the timestamp's `u64` as a Java `long`.
 ///
 /// Note that this is different from the implementation of [`ArgTypeInfo`] for `Timestamp`.
@@ -1907,6 +1955,33 @@ impl<'a> ResultTypeInfo<'a> for Vec<u8> {
 }
 nice_identity_result_converter!(Vec<u8>, "ByteArray");
 impl_result_type_info_for_option!(Vec<u8>);
+
+impl<'a> ResultTypeInfo<'a> for Vec<i64> {
+    type ResultType = JLongArray<'a>;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!([long]);
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        JLongArray::new(env, self.len())
+            .and_then(|array| {
+                array.set_region(env, 0, &self)?;
+                Ok(array)
+            })
+            .check_exceptions(env, "Vec<i64>::convert_into")
+    }
+}
+nice_identity_result_converter!(Vec<i64>, "LongArray");
+
+impl<'a> ResultTypeInfo<'a> for Vec<U53> {
+    type ResultType = JLongArray<'a>;
+    const JNI_SIGNATURE: &'static str = jni_sig_str!([long]);
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        // Vecs are good at reusing storage.
+        self.into_iter()
+            .map(i64::from)
+            .collect_vec()
+            .convert_into(env)
+    }
+}
+nice_identity_result_converter!(Vec<U53>, "LongArray");
 
 impl<'a> ResultTypeInfo<'a> for bytes::Bytes {
     type ResultType = JByteArray<'a>;
@@ -2485,6 +2560,9 @@ where
     }
 }
 
+/// Converts to an array of alternating keys and values.
+///
+/// This minimizes allocations compared to, say, an array of pairs.
 impl<'a, T: ResultTypeInfo<'a>, S> ResultTypeInfo<'a> for HashMap<String, T, S> {
     type ResultType = JavaArrayStar<'a>;
 
@@ -2513,6 +2591,44 @@ impl<T: NiceResultConverter, S> NiceResultConverter for HashMap<String, T, S> {
             ffi_type: "Array<*>".into(),
             converter_function: format!(
                 "stringMapReturnConverter<{}, {}>({{ {}(it) }})",
+                t.ffi_type, t.nice_type, t.converter_function
+            ),
+        }
+    }
+}
+
+/// Converts to an array of alternating keys and values.
+///
+/// This minimizes allocations compared to, say, an array of pairs.
+impl<'a, T: ResultTypeInfo<'a>> ResultTypeInfo<'a> for ReceiptLevelHashMap<T> {
+    type ResultType = JavaArrayStar<'a>;
+
+    fn convert_into(self, env: &mut jni::Env<'a>) -> Result<Self::ResultType, BridgeLayerError> {
+        const CONTEXT: &str = "ReceiptLevelHashMap<T>::convert_into()";
+        let arr = JObjectArray::<JObject>::new(env, self.len() * 2, JObject::null())
+            .check_exceptions(env, CONTEXT)?;
+        for (i, (k, v)) in self.into_iter().enumerate() {
+            // Preserve all bits of a receipt level.
+            let k = k as jlong;
+            let k = box_primitive_if_needed(env, k.into())?.auto();
+            let v = v.convert_into(env)?;
+            let v = box_primitive_if_needed(env, v.into())?.auto();
+            arr.set_element(env, i * 2, k)
+                .and_then(|()| arr.set_element(env, i * 2 + 1, v))
+                .check_exceptions(env, CONTEXT)?;
+        }
+        Ok(JavaArrayStar(arr))
+    }
+}
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter> NiceResultConverter for ReceiptLevelHashMap<T> {
+    fn register_kt_result_converter(ctx: &mut KtMetadataContext) -> KtReturnConverter {
+        let t = T::register_kt_result_converter(ctx);
+        KtReturnConverter {
+            nice_type: format!("Map<Long, {}>", t.nice_type),
+            ffi_type: "Array<*>".into(),
+            converter_function: format!(
+                "longMapReturnConverter<{}, {}>({{ {}(it) }})",
                 t.ffi_type, t.nice_type, t.converter_function
             ),
         }
