@@ -29,7 +29,7 @@ pub use proto::{
     StoredTreeHead, TreeHead, UpdateRequest, UpdateResponse,
 };
 pub use verify::Error;
-use verify::{verify_distinguished, verify_monitor, verify_search};
+use verify::{verify_monitor, verify_search};
 pub use vrf::PublicKey as VrfPublicKey;
 
 use crate::proto::AuditorTreeHead;
@@ -264,17 +264,6 @@ impl KeyTransparency {
         })
     }
 
-    /// Checks that the provided FullTreeHead has a valid consistency proof relative
-    /// to the provided distinguished head.
-    pub fn verify_distinguished(
-        &self,
-        full_tree_head: &FullTreeHead,
-        last_tree_head: Option<&LastTreeHead>,
-        last_distinguished_tree_head: &LastTreeHead,
-    ) -> Result<(), verify::Error> {
-        verify_distinguished(full_tree_head, last_tree_head, last_distinguished_tree_head)
-    }
-
     /// Checks that the output of a Monitor operation is valid and updates the
     /// client's stored data.
     pub fn verify_monitor<'a>(
@@ -355,7 +344,8 @@ impl MonitoringData {
         implicit::next_monitor(&self.entries())
     }
 
-    /// The entries field of a MonitorKey structure.
+    /// The log positions with an observed version of the key, in ascending
+    /// order.
     pub fn entries(&self) -> Vec<u64> {
         let mut out: Vec<u64> = self.ptrs.keys().copied().collect();
         out.sort();

@@ -26,6 +26,18 @@ pub enum Error {
 
 type Result<T> = std::result::Result<T, Error>;
 
+/// Decodes a point as RFC 8032, Section 5.1.3 specifies.
+///
+/// Returns `None` if `bytes` is not the canonical encoding of a point on the
+/// curve.
+fn string_to_point(bytes: [u8; 32]) -> Option<EdwardsPoint> {
+    // `decompress` also accepts encodings with y at or above p, and x = 0 with
+    // the sign bit set. These re-encode to different bytes.
+    CompressedEdwardsY(bytes)
+        .decompress()
+        .filter(|pt| pt.compress().0 == bytes)
+}
+
 fn encode_to_curve_try_and_increment(salt: &[u8], data: &[u8]) -> EdwardsPoint {
     let mut hasher = Sha512::new();
 
@@ -37,9 +49,7 @@ fn encode_to_curve_try_and_increment(salt: &[u8], data: &[u8]) -> EdwardsPoint {
 
         let r = hasher.finalize_reset();
 
-        if let Some(pt) =
-            CompressedEdwardsY(*r.first_chunk().expect("hash has enough bytes")).decompress()
-        {
+        if let Some(pt) = string_to_point(*r.first_chunk().expect("hash has enough bytes")) {
             let maybe_res = pt.mul_by_cofactor();
             if !maybe_res.is_identity() {
                 return maybe_res;
@@ -83,7 +93,7 @@ impl TryFrom<[u8; 32]> for PublicKey {
     type Error = Error;
 
     fn try_from(public_key: [u8; 32]) -> Result<Self> {
-        match CompressedEdwardsY(public_key).decompress() {
+        match string_to_point(public_key) {
             None => Err(Error::InvalidCurvePoint),
             Some(pt) if pt.is_small_order() => Err(Error::InvalidCurvePoint),
             Some(pt) => Ok(PublicKey {
@@ -113,9 +123,7 @@ impl PublicKey {
             s_bytes,
         } = zerocopy::transmute_ref!(proof);
 
-        let gamma = CompressedEdwardsY(*gamma_bytes)
-            .decompress()
-            .ok_or(Error::InvalidProof)?;
+        let gamma = string_to_point(*gamma_bytes).ok_or(Error::InvalidProof)?;
 
         let mut c_bytes = [0u8; 32];
         c_bytes[..16].copy_from_slice(c_lower_bytes);
@@ -159,6 +167,7 @@ impl PublicKey {
 mod tests {
     use const_str::hex;
     use proptest::proptest;
+    use test_case::test_case;
 
     use super::*;
 
@@ -199,6 +208,28 @@ mod tests {
             beta: hex!("645427e5d00c62a23fb703732fa5d892940935942101e456ecca7bb217c61c45"),
         },
     ];
+
+    // y = 2^255 - 1 = p + 18, sign bit set
+    const Y_ABOVE_P: [u8; 32] = [0xff; 32];
+    // y = 18, sign bit set: the same point as above
+    const Y_CANONICAL: [u8; 32] =
+        hex!("1200000000000000000000000000000000000000000000000000000000000080");
+
+    #[test_case(Y_CANONICAL => true; "canonical")]
+    #[test_case(Y_ABOVE_P => false; "y above p")]
+    #[test_case([0; 32] => true; "zero")]
+    #[test_case(hex!("edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f") => false; "y is p")]
+    #[test_case(hex!("0100000000000000000000000000000000000000000000000000000000000080") => false; "x is zero with sign bit")]
+    #[test_case(hex!("0200000000000000000000000000000000000000000000000000000000000000") => false; "not on curve")]
+    fn string_to_point_is_some(bytes: [u8; 32]) -> bool {
+        string_to_point(bytes).is_some()
+    }
+
+    #[test_case(Y_CANONICAL => matches Ok(()); "canonical")]
+    #[test_case(Y_ABOVE_P => matches Err(Error::InvalidCurvePoint); "y above p")]
+    fn public_key_try_from(bytes: [u8; 32]) -> Result<()> {
+        PublicKey::try_from(bytes).map(|_| ())
+    }
 
     #[test]
     fn test_encode_to_curve_try_and_increment() {

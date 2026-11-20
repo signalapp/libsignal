@@ -63,8 +63,7 @@ message SearchProof {
   repeated bytes inclusion = 3;
 }
 
-// UpdateValue wraps the new value for a key with an optional signature from the
-// service provider.
+// UpdateValue wraps the new value for a key.
 message UpdateValue {
   bytes value = 1;
 }
