@@ -1941,7 +1941,7 @@ pub mod remote_derives {
     #[derive(BridgedAsValue)]
     #[bridge(
         arg = false,
-        ffi = false,
+        ffi_nice_type = "PurchaseProductConfiguration",
         jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration"
     )]
     pub struct PurchaseProductConfiguration {
@@ -1988,7 +1988,7 @@ pub mod remote_derives {
     #[derive(BridgedAsValue)]
     #[bridge(
         arg = false,
-        ffi = false,
+        ffi_nice_type = "PurchaseProductConfiguration.CurrencyConfiguration",
         jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.CurrencyConfiguration"
     )]
     pub struct CurrencyConfiguration {
@@ -2054,7 +2054,7 @@ pub mod remote_derives {
     #[derive(BridgedAsValue)]
     #[bridge(
         arg = false,
-        ffi = false,
+        ffi_nice_type = "PurchaseProductConfiguration.BadgeLevelConfiguration",
         jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BadgeLevelConfiguration"
     )]
     pub struct BadgeLevelConfiguration {
@@ -2090,7 +2090,7 @@ pub mod remote_derives {
     #[derive(BridgedAsValue)]
     #[bridge(
         arg = false,
-        ffi = false,
+        ffi_nice_type = "PurchaseProductConfiguration.BackupConfiguration",
         jni_nice_type = "org.signal.libsignal.net.PurchaseProductConfiguration.BackupConfiguration"
     )]
     pub struct BackupConfiguration {

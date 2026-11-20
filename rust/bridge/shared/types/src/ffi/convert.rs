@@ -29,7 +29,7 @@ use crate::ffi::FfiInputStreamStruct;
 use crate::io::{FfiSyncInputStreamStruct, InputStream, SyncInputStream};
 use crate::net::chat::{
     ChatListener, FfiChatListenerStruct, FfiProvisioningListenerStruct, PreKeysResponse,
-    ProvisioningListener,
+    ProvisioningListener, ReceiptLevelHashMap,
 };
 use crate::net::registration::{
     ConnectChatBridge, RegistrationCreateSessionRequest, RegistrationPushToken,
@@ -1450,6 +1450,21 @@ impl NiceResultConverter for Vec<u8> {
     }
 }
 
+// Array<UInt64> is the correct choice for this type, so we can use BridgeVec's implementation.
+// (Note U53 is exported as UInt64.)
+impl ResultTypeInfo for Vec<U53> {
+    type ResultType = <BridgeVec<U53> as ResultTypeInfo>::ResultType;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        BridgeVec::<U53>::from(self).convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Vec<U53> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        BridgeVec::<U53>::register_swift_result_converter(ctx)
+    }
+}
+
 impl ResultTypeInfo for bytes::Bytes {
     type ResultType = OwnedBufferOf<std::ffi::c_uchar>;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
@@ -1495,6 +1510,23 @@ impl ResultTypeInfo for Option<u64> {
     type ResultType = u64;
     fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
         Ok(self.unwrap_or(u64::MAX))
+    }
+}
+
+/// Uses a compact u32 representation for the bridge, but the nice type goes back to a boxed `UInt32?`.
+impl ResultTypeInfo for Option<U31> {
+    type ResultType = u32;
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        self.map_or(u32::MAX, u32::from).convert_into()
+    }
+}
+#[cfg(feature = "metadata")]
+impl NiceResultConverter for Option<U31> {
+    fn register_swift_result_converter(_ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        SwiftReturnConverter {
+            nice_type: "UInt32?".to_string(),
+            converter_type: "NonHighBitConverter<UInt32>".to_string(),
+        }
     }
 }
 
@@ -2009,6 +2041,38 @@ impl<T: NiceResultConverter + ResultTypeInfo, S> NiceResultConverter for HashMap
             nice_type: format!("[String:{}]", t.nice_type),
             converter_type: format!(
                 "StringMapReturnConverter<{}, {}, {}>",
+                t.converter_type,
+                buffer_type.swift_name(),
+                pair_type.swift_name(),
+            ),
+        }
+    }
+}
+
+impl<T: ResultTypeInfo> ResultTypeInfo for ReceiptLevelHashMap<T> {
+    type ResultType = <BridgeVec<(u64, T)> as ResultTypeInfo>::ResultType;
+
+    fn convert_into(self) -> SignalFfiResult<Self::ResultType> {
+        // TODO: we could avoid the intermediate copy into a Vec<>. Not worth it at this time.
+        BridgeVec(self.into_iter().collect()).convert_into()
+    }
+}
+
+#[cfg(feature = "metadata")]
+impl<T: NiceResultConverter + ResultTypeInfo> NiceResultConverter for ReceiptLevelHashMap<T> {
+    fn register_swift_result_converter(ctx: &mut SwiftMetadataContext) -> SwiftReturnConverter {
+        let t = T::register_swift_result_converter(ctx);
+        let pair_type =
+            <PairOf<<u64 as ResultTypeInfo>::ResultType, T::ResultType> as IsCType>::register_c_type(
+                ctx,
+            );
+        let buffer_type = <OwnedBufferOfMaxAligned<
+            PairOf<<u64 as ResultTypeInfo>::ResultType, T::ResultType>,
+        > as IsCType>::register_c_type(ctx);
+        SwiftReturnConverter {
+            nice_type: format!("[UInt64:{}]", t.nice_type),
+            converter_type: format!(
+                "IntMapReturnConverter<{}, {}, {}>",
                 t.converter_type,
                 buffer_type.swift_name(),
                 pair_type.swift_name(),

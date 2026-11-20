@@ -5549,6 +5549,20 @@ internal enum NativeTestingNice {
             .convertReturn(consuming: rawOutput)
 
     }
+    internal static func TESTING_GetProductConfigurationTests() throws -> [GrpcTestCase<
+        Void, PurchaseProductConfiguration
+    >] {
+        var rawOutput = GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterPurchaseProductConfiguration>
+            .emptyFfiReturn()
+        try checkError(
+            SignalFfi.signal_testing_get_product_configuration_tests(
+                &rawOutput,
+            )
+        )
+        return try GrpcTestCaseVecConverter<VoidConverter, DerivedReturnConverterPurchaseProductConfiguration>
+            .convertReturn(consuming: rawOutput)
+
+    }
     internal static func TESTING_GetProfileKeyCredentialTests() throws -> [GrpcTestCase<
         GetProfileKeyCredentialArgs, GetProfileKeyCredentialOut
     >] {

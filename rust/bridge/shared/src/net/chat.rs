@@ -1577,7 +1577,7 @@ async fn AuthenticatedChatConnection_answer_challenge(
         .await
 }
 
-#[bridge_io(TokioAsyncContext, nice = true, ffi = false)]
+#[bridge_io(TokioAsyncContext, nice = true)]
 async fn UnauthenticatedChatConnection_get_product_configuration(
     chat: BridgeHandleRef<'_, UnauthenticatedChatConnection>,
 ) -> Result<PurchaseProductConfiguration, RequestError<Infallible>> {
