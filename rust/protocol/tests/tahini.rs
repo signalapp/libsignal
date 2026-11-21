@@ -731,7 +731,7 @@ fn test_prekey_rewrap_on_locally_initiated_session_rejected() {
 /// are dropped (cap enforced). Messages encrypted to evicted sessions should fail.
 #[test]
 fn test_max_archived_sessions_cap() {
-    // MAX_ARCHIVED_SESSIONS = 2 (from consts.rs; not re-exported publicly)
+    // Mirrors consts::MAX_ARCHIVED_SESSIONS, which is not re-exported publicly.
     const MAX_ARCHIVED_SESSIONS: usize = 3;
 
     let mut w = TahiniWorld::new();
