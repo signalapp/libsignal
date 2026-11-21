@@ -176,8 +176,8 @@ async fn crossed_initiations() -> (Peer, Peer, CiphertextMessage, StdRng) {
 #[test_case(LastAct::Send, MAX_DIR_CHANGES - 1, MAX_DIR_CHANGES, false; "reaches threshold")]
 #[test_case(LastAct::Send, MAX_DIR_CHANGES, 0, true; "crosses threshold")]
 #[test_case(LastAct::ReceiveInactive, MAX_DIR_CHANGES, MAX_DIR_CHANGES, false; "consecutive inactive receive")]
-#[test_case(LastAct::ReceiveActive, 3, 3, false; "receive after active receive")]
-#[test_case(LastAct::Unset, 0, 0, false; "no preceding send")]
+#[test_case(LastAct::ReceiveActive, 3, 4, false; "receive after legacy active receive")]
+#[test_case(LastAct::Unset, 0, 1, false; "no preceding send")]
 fn fresh_losing_initiation_records_receive(
     last_act: LastAct,
     counter: u32,
