@@ -322,6 +322,7 @@ impl Visit<Sanitizer> for proto::Group {
             blocked: _,
             avatarColor: _,
             blockedAtTimestamp: _,
+            deletedTombstone: _,
             special_fields: _,
         } = self;
 
