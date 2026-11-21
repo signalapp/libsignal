@@ -1,6 +1,6 @@
 {
   "name": "@signalapp/libsignal-client-darwin",
-  "version": "0.108.4",
+  "version": "0.108.5",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/signalapp/libsignal.git"

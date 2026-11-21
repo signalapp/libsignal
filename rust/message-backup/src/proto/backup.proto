@@ -314,6 +314,7 @@ message Group {
   bool blocked = 6;
   optional AvatarColor avatarColor = 7;
   uint64 blockedAtTimestamp = 8; // if `blocked` is true, 0 means unknown block time
+  bool deletedTombstone = 9;
 
   // These are simply plaintext copies of the groups proto from Groups.proto.
   // They should be kept completely in-sync with Groups.proto.

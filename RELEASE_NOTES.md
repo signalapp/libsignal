@@ -9,6 +9,6 @@ v0.106.1
 v0.106.2
 v0.108.0
 v0.108.4
+v0.108.5
 
-- Expose REPLY_PRIVATELY, CONTACT_DELETE, and ADMIN_REMOVE_AND_DELETE capabilities.
-- Remove the PROFILES_V2 capability, which the server no longer recognizes.
+- backups: Support the new deletedTombstone field on Group.

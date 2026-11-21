@@ -565,6 +565,7 @@ impl Visit<Scrambler> for proto::Group {
             blocked: _,
             blockedAtTimestamp: _,
             avatarColor: _,
+            deletedTombstone: _,
             special_fields: _,
         } = self;
         masterKey.randomize(&mut visitor.rng);
