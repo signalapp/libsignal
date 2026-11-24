@@ -1,0 +1,144 @@
+// Quotes whose author is a contact that no longer exists, represented by a DeletedContact.
+[
+  {
+    "backupTimeMs": 123456,
+    "version": 1,
+    "mediaRootBackupKey": "q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=",
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY",
+        "defaultSentMediaQuality": "STANDARD",
+        "appTheme": "SYSTEM",
+        "callsUseLessDataSetting": "MOBILE_DATA_ONLY",
+        "unreadBadgeType": "UNREAD_MESSAGES"
+      },
+      "androidSpecificSettings": {
+        "useSystemEmoji": true,
+        "screenshotSecurity": true,
+        "navigationBarSize": "NORMAL"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 1,
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 2,
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 3,
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 4,
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 5,
+      "deletedContact": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 6,
+      "group": {
+        "masterKey": "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQ=",
+        "whitelisted": true,
+        "hideStory": false,
+        "storySendMode": "DEFAULT",
+        "snapshot": {
+          "title": {
+            "title": "Bounty Hunters"
+          },
+          "avatarUrl": "",
+          "version": 1,
+        }
+      }
+    }
+  },
+  {
+    "chat": {
+      "id": 1,
+      "recipientId": 6, // Bounty Hunters
+      "archived": false,
+      "markedUnread": false,
+      "dontNotifyForMentionsIfMuted": false,
+    }
+  },
+  // Han quotes a message whose author has since been deleted.
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 2000,
+      "incoming": {
+        "dateReceived": 2001,
+        "dateServerSent": 2001,
+        "read": true,
+        "sealedSender": true,
+      },
+      "standardMessage": {
+        "text": {
+          "body": "Who said that?",
+        },
+        "quote": {
+          "targetSentTimestamp": 600,
+          "authorId": 5,
+          "text": {
+            "body": "He's no good to me dead",
+          },
+          "type": "NORMAL",
+        }
+      }
+    }
+  },
+]

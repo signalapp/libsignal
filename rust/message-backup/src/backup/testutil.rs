@@ -109,6 +109,8 @@ static CALL_LINK_RECIPIENT: LazyLock<FullRecipientData> = LazyLock::new(|| {
 });
 static RELEASE_NOTES_RECIPIENT: LazyLock<FullRecipientData> =
     LazyLock::new(|| FullRecipientData::new(Destination::ReleaseNotes));
+static DELETED_CONTACT_RECIPIENT: LazyLock<FullRecipientData> =
+    LazyLock::new(|| FullRecipientData::new(Destination::DeletedContact));
 
 impl TestContext {
     pub(super) const CONTACT_ID: RecipientId = RecipientId(123456789);
@@ -118,6 +120,7 @@ impl TestContext {
     pub(super) const GROUP_ID: RecipientId = RecipientId(7000000);
     pub(super) const CALL_LINK_ID: RecipientId = RecipientId(0xCA77);
     pub(super) const RELEASE_NOTES_ID: RecipientId = RecipientId(9000);
+    pub(super) const DELETED_CONTACT_ID: RecipientId = RecipientId(0xDE1E7ED);
     pub(super) const NONEXISTENT_ID: RecipientId = RecipientId(9999);
 }
 
@@ -134,6 +137,7 @@ impl LookupPair<RecipientId, MinimalRecipientData, FullRecipientData> for TestCo
             Self::GROUP_ID => &GROUP_RECIPIENT,
             Self::CALL_LINK_ID => &CALL_LINK_RECIPIENT,
             Self::RELEASE_NOTES_ID => &RELEASE_NOTES_RECIPIENT,
+            Self::DELETED_CONTACT_ID => &DELETED_CONTACT_RECIPIENT,
             _ => return None,
         };
         Some((recipient.as_ref(), recipient))

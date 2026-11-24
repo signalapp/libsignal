@@ -211,7 +211,8 @@ impl SerializeOrder for FullRecipientData {
                     lhs.root_key.cmp(&rhs.root_key)
                 }
                 (Destination::Self_(_), Destination::Self_(_))
-                | (Destination::ReleaseNotes, Destination::ReleaseNotes) => {
+                | (Destination::ReleaseNotes, Destination::ReleaseNotes)
+                | (Destination::DeletedContact, Destination::DeletedContact) => {
                     std::cmp::Ordering::Equal
                 }
                 _ => unreachable!("discriminants are equal"),
@@ -224,6 +225,7 @@ impl SerializeOrder for FullRecipientData {
                 Destination::Group(_) => 3,
                 Destination::DistributionList(_) => 4,
                 Destination::CallLink(_) => 5,
+                Destination::DeletedContact => 6,
             };
             discriminant(lhs).cmp(&discriminant(rhs))
         }

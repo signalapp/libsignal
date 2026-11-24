@@ -448,6 +448,7 @@ impl Visit<Scrambler> for proto::Recipient {
                 Destination::Self_(dest) => dest.accept(visitor),
                 Destination::ReleaseNotes(dest) => dest.accept(visitor),
                 Destination::CallLink(dest) => dest.accept(visitor),
+                Destination::DeletedContact(dest) => dest.accept(visitor),
             }
         }
     }
@@ -738,6 +739,12 @@ impl Visit<Scrambler> for proto::Self_ {
 }
 
 impl Visit<Scrambler> for proto::ReleaseNotes {
+    fn accept(&mut self, _visitor: &mut Scrambler) {
+        let Self { special_fields: _ } = self;
+    }
+}
+
+impl Visit<Scrambler> for proto::DeletedContact {
     fn accept(&mut self, _visitor: &mut Scrambler) {
         let Self { special_fields: _ } = self;
     }

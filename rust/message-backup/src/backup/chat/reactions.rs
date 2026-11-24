@@ -93,7 +93,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             MinimalRecipientData::Group { .. }
             | MinimalRecipientData::DistributionList { .. }
             | MinimalRecipientData::ReleaseNotes
-            | MinimalRecipientData::CallLink { .. } => Err(ReactionError::InvalidAuthor(
+            | MinimalRecipientData::CallLink { .. }
+            | MinimalRecipientData::DeletedContact => Err(ReactionError::InvalidAuthor(
                 author_id,
                 *author_data.as_ref(),
             )),
@@ -227,6 +228,10 @@ mod test {
     #[test_case(
         |x| x.authorId = TestContext::GROUP_ID.0 => Err(ReactionError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group));
         "invalid author id"
+    )]
+    #[test_case(
+        |x| x.authorId = TestContext::DELETED_CONTACT_ID.0 => Err(ReactionError::InvalidAuthor(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact));
+        "deleted contact author"
     )]
     #[test_case(
         |x| x.authorId = TestContext::PNI_ONLY_ID.0 => Err(ReactionError::AuthorHasNoAciOrE164(TestContext::PNI_ONLY_ID));

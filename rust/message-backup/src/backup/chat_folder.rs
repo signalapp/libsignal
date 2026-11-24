@@ -177,7 +177,9 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>> TryIntoWith<
                     | DestinationKind::Self_
                     | DestinationKind::Group
                     | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
-                    DestinationKind::DistributionList | DestinationKind::CallLink => {
+                    DestinationKind::DistributionList
+                    | DestinationKind::CallLink
+                    | DestinationKind::DeletedContact => {
                         Err(ChatFolderError::IncludedMemberWrongKind(id, *kind))
                     }
                 }
@@ -204,7 +206,9 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>> TryIntoWith<
                     | DestinationKind::Self_
                     | DestinationKind::Group
                     | DestinationKind::ReleaseNotes => Ok(recipient.clone()),
-                    DestinationKind::DistributionList | DestinationKind::CallLink => {
+                    DestinationKind::DistributionList
+                    | DestinationKind::CallLink
+                    | DestinationKind::DeletedContact => {
                         Err(ChatFolderError::ExcludedMemberWrongKind(id, *kind))
                     }
                 }
@@ -316,6 +320,8 @@ mod test {
     #[test_case(|x| x.includedRecipientIds.push(TestContext::GROUP_ID.0) => Ok(()); "include a group even though all groups are included by default")]
     #[test_case(|x| x.includedRecipientIds.push(TestContext::RELEASE_NOTES_ID.0) => Ok(()); "including release notes")]
     #[test_case(|x| x.excludedRecipientIds.push(TestContext::RELEASE_NOTES_ID.0) => Ok(()); "excluding release notes")]
+    #[test_case(|x| x.includedRecipientIds.push(TestContext::DELETED_CONTACT_ID.0) => Err(ChatFolderError::IncludedMemberWrongKind(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact)); "including deleted contact is not okay")]
+    #[test_case(|x| x.excludedRecipientIds.push(TestContext::DELETED_CONTACT_ID.0) => Err(ChatFolderError::ExcludedMemberWrongKind(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact)); "excluding deleted contact is not okay")]
     #[test_case(|x| x.id = vec![] => Err(ChatFolderError::MissingId); "must have an id")]
     #[test_case(|x| x.id = vec![0xa1; 15] => Err(ChatFolderError::InvalidId); "id must be 16 bytes")]
     fn folder(mutator: fn(&mut proto::ChatFolder)) -> Result<(), ChatFolderError> {

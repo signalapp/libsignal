@@ -1,0 +1,153 @@
+// Group chat items that reference a contact that no longer exists, represented by a DeletedContact.
+[
+  {
+    "backupTimeMs": 123456,
+    "version": 1,
+    "mediaRootBackupKey": "q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=",
+  },
+  {
+    "account": {
+      "profileKey": "YQKRq+3DQklInaOaMcmlzZnN0m/1hzLiaONX7gB12dg=",
+      "givenName": "Boba",
+      "familyName": "Fett",
+      "avatarUrlPath": "",
+      "accountSettings": {
+        "readReceipts": false,
+        "sealedSenderIndicators": true,
+        "typingIndicators": false,
+        "linkPreviews": false,
+        "notDiscoverableByPhoneNumber": false,
+        "preferContactAvatars": false,
+        "universalExpireTimerSeconds": 0,
+        "preferredReactionEmoji": [],
+        "displayBadgesOnProfile": false,
+        "keepMutedChatsArchived": false,
+        "hasSetMyStoriesPrivacy": false,
+        "hasViewedOnboardingStory": false,
+        "storiesDisabled": false,
+        "storyViewReceiptsEnabled": false,
+        "hasSeenGroupStoryEducationSheet": false,
+        "hasCompletedUsernameOnboarding": false,
+        "phoneNumberSharingMode": "NOBODY",
+        "defaultSentMediaQuality": "STANDARD",
+        "appTheme": "SYSTEM",
+        "callsUseLessDataSetting": "MOBILE_DATA_ONLY",
+        "unreadBadgeType": "UNREAD_MESSAGES"
+      },
+      "androidSpecificSettings": {
+        "useSystemEmoji": true,
+        "screenshotSecurity": true,
+        "navigationBarSize": "NORMAL"
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 1,
+      "self": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 2,
+      "releaseNotes": {}
+    }
+  },
+  {
+    "recipient": {
+      "id": 3,
+      "distributionList": {
+        "distributionId": "AAAAAAAAAAAAAAAAAAAAAA==",
+        "distributionList": {
+          "allowReplies": true,
+          "memberRecipientIds": [],
+          "name": "My Story",
+          "privacyMode": "ALL"
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 4,
+      "contact": {
+        "aci": "X4xWjQEZR72BqruHybcZlQ==",
+        "profileKey": "YtHHVK+Wo4nPcVpWhC3roMEDu2Tw6kYc9JpLRMq1Q94=",
+        "profileSharing": true,
+        "profileFamilyName": "Solo",
+        "profileGivenName": "Han",
+        "registered": {},
+        "hideStory": false,
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 5,
+      "group": {
+        "masterKey": "ZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQ=",
+        "whitelisted": true,
+        "hideStory": false,
+        "storySendMode": "DEFAULT",
+        "snapshot": {
+          "title": {
+            "title": "Bounty Hunters"
+          },
+          "avatarUrl": "",
+          "version": 1,
+        }
+      }
+    }
+  },
+  {
+    "recipient": {
+      "id": 6,
+      "deletedContact": {}
+    }
+  },
+  {
+    "chat": {
+      "id": 1,
+      "recipientId": 5, // Bounty Hunters
+      "archived": false,
+      "markedUnread": false,
+      "dontNotifyForMentionsIfMuted": false,
+    }
+  },
+  // A deleted contact, acting as an admin, deleted a message from Han.
+  {
+    "chatItem": {
+      "authorId": 4,
+      "chatId": 1,
+      "dateSent": 1000,
+      "incoming": {
+        "dateReceived": 1001,
+        "dateServerSent": 1001,
+        "read": true,
+        "sealedSender": true,
+      },
+      "adminDeletedMessage": {
+        "adminId": 6,
+      }
+    }
+  },
+  // A deleted contact started and rang a group call.
+  {
+    "chatItem": {
+      "authorId": 1,
+      "chatId": 1,
+      "dateSent": 2000,
+      "directionless": {},
+      "updateMessage": {
+        "groupCall": {
+          "callId": "1",
+          "state": "MISSED",
+          "ringerRecipientId": "6",
+          "startedCallRecipientId": "6",
+          "startedCallTimestamp": "2000",
+          "read": true,
+        }
+      }
+    }
+  },
+]

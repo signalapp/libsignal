@@ -127,7 +127,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             MinimalRecipientData::Self_
             // As of Sep 2024, the release notes channel doesn't currently quote messages,
             // but there's no reason it couldn't.
-            | MinimalRecipientData::ReleaseNotes => {
+            | MinimalRecipientData::ReleaseNotes
+            | MinimalRecipientData::DeletedContact => {
                 Ok(author.clone())
             }
             MinimalRecipientData::Group { .. }
@@ -187,7 +188,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                             | MinimalRecipientData::DistributionList { .. }
                             | MinimalRecipientData::Self_
                             | MinimalRecipientData::ReleaseNotes
-                            | MinimalRecipientData::CallLink { .. } => {
+                            | MinimalRecipientData::CallLink { .. }
+                            | MinimalRecipientData::DeletedContact => {
                                 Err(QuoteError::PrivateReplyInvalidGroup(
                                     group_id,
                                     *group_data.as_ref(),
@@ -346,6 +348,9 @@ mod test {
         x.authorId = TestContext::GROUP_ID.0
     } => Err(QuoteError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
     #[test_case(|x| {
+        x.authorId = TestContext::DELETED_CONTACT_ID.0
+    } => Ok(()); "deleted contact author")]
+    #[test_case(|x| {
         x.authorId = TestContext::PNI_ONLY_ID.0
     } => Err(QuoteError::AuthorHasNoAciOrE164(TestContext::PNI_ONLY_ID)); "pni-only author")]
     #[test_case(|x| x.type_ = proto::quote::Type::UNKNOWN.into() => Err(QuoteError::TypeUnknown); "unknown type")]
@@ -370,6 +375,11 @@ mod test {
         |x| x.set_privateReplyGroupRecipientId(TestContext::CONTACT_ID.0) =>
         Err(QuoteError::PrivateReplyInvalidGroup(TestContext::CONTACT_ID, DestinationKind::Contact));
         "private reply group is contact"
+    )]
+    #[test_case(
+        |x| x.set_privateReplyGroupRecipientId(TestContext::DELETED_CONTACT_ID.0) =>
+        Err(QuoteError::PrivateReplyInvalidGroup(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact));
+        "private reply group is deleted contact"
     )]
     fn quote(modifier: impl FnOnce(&mut proto::Quote)) -> Result<(), QuoteError> {
         let mut attachment = proto::Quote::test_data();
