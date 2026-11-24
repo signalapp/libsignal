@@ -3809,3 +3809,81 @@ fn proptest_session_resets() {
         .expect("sync");
     });
 }
+
+#[test]
+fn evicted_receiver_chain_rejects_delayed_message() -> TestResult {
+    async {
+        // A skipped message is rejected once its receiver chain has been
+        // pushed out. The session keeps at most five receiver chains, so
+        // five later DH ratchet steps drop the chain that held the skip.
+        let alice_address =
+            ProtocolAddress::new("+14151111111".to_owned(), DeviceId::new(1).unwrap());
+        let bob_address =
+            ProtocolAddress::new("+14151111112".to_owned(), DeviceId::new(1).unwrap());
+
+        let mut alice_store = TestStoreBuilder::new().store;
+        let mut bob_store_builder = TestStoreBuilder::new()
+            .with_pre_key(1.into())
+            .with_signed_pre_key(1.into())
+            .with_kyber_pre_key(1.into());
+        let bob_bundle = bob_store_builder.make_bundle_with_latest_keys(DeviceId::new(1).unwrap());
+
+        initiate(&mut alice_store, &bob_address, &alice_address, &bob_bundle).await?;
+
+        let held_back = encrypt(&mut alice_store, &bob_address, &alice_address, "skip-0").await?;
+        let delivered = encrypt(&mut alice_store, &bob_address, &alice_address, "init-1").await?;
+
+        let bob_store = &mut bob_store_builder.store;
+        let plaintext = decrypt(
+            bob_store,
+            &alice_address,
+            &bob_address,
+            &deserialize_ciphertext(delivered.serialize(), delivered.message_type())?,
+        )
+        .await?;
+        assert_eq!(plaintext, b"init-1");
+
+        for turn in 1..=5 {
+            let from_bob = format!("b{turn}");
+            let bob_message = encrypt(bob_store, &alice_address, &bob_address, &from_bob).await?;
+            let got = decrypt(
+                &mut alice_store,
+                &bob_address,
+                &alice_address,
+                &deserialize_ciphertext(bob_message.serialize(), bob_message.message_type())?,
+            )
+            .await?;
+            assert_eq!(got, from_bob.as_bytes());
+
+            let from_alice = format!("a{turn}");
+            let alice_message =
+                encrypt(&mut alice_store, &bob_address, &alice_address, &from_alice).await?;
+            let got = decrypt(
+                bob_store,
+                &alice_address,
+                &bob_address,
+                &deserialize_ciphertext(alice_message.serialize(), alice_message.message_type())?,
+            )
+            .await?;
+            assert_eq!(got, from_alice.as_bytes());
+        }
+
+        let err = decrypt(
+            bob_store,
+            &alice_address,
+            &bob_address,
+            &deserialize_ciphertext(held_back.serialize(), held_back.message_type())?,
+        )
+        .await
+        .expect_err("delayed message from an evicted receiver chain");
+        assert_matches!(
+            err,
+            SignalProtocolError::InvalidMessage(CiphertextMessageType::PreKey, ref msg)
+                if msg == "decryption failed"
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}

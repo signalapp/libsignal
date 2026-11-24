@@ -1054,6 +1054,319 @@ fn parse_empty_multi_recipient_sealed_sender() {
     assert!(SealedSenderV2SentMessage::parse(&[]).is_err());
 }
 
+fn expect_sealed_sender_message<T>(result: Result<T, SignalProtocolError>, expected: &str) {
+    match result {
+        Err(SignalProtocolError::InvalidSealedSenderMessage(msg)) if msg.contains(expected) => {}
+        Err(other) => {
+            panic!("expected sealed-sender error containing {expected:?}, got {other:?}")
+        }
+        Ok(_) => panic!("expected sealed-sender error containing {expected:?}, got Ok"),
+    }
+}
+
+#[test]
+fn test_sealed_sender_rejects_self_send() -> Result<(), SignalProtocolError> {
+    async {
+        let mut rng = OsRng.unwrap_err();
+        let alice_device_id = DeviceId::new(23).unwrap();
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let alice_e164 = "+14151111111".to_owned();
+        let alice_address = ProtocolAddress::new(alice_uuid.clone(), alice_device_id);
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let alice_pair = alice_store.get_identity_key_pair().await?;
+        // The sender must be able to look up the destination identity, which is her own.
+        alice_store
+            .identity_store
+            .save_identity(&alice_address, alice_pair.identity_key())
+            .await?;
+
+        let trust_root = KeyPair::generate(&mut rng);
+        let server_key = KeyPair::generate(&mut rng);
+        let server_cert =
+            ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+        let expires = Timestamp::from_epoch_millis(1605722925);
+        let sender_cert = SenderCertificate::new(
+            alice_uuid.clone(),
+            Some(alice_e164.clone()),
+            *alice_pair.public_key(),
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut rng,
+        )?;
+        let usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::Plaintext,
+            sender_cert,
+            b"to myself".to_vec(),
+            ContentHint::Default,
+            None,
+        )?;
+        let ciphertext = sealed_sender_encrypt_from_usmc(
+            &alice_address,
+            &usmc,
+            &alice_store.identity_store,
+            &mut rng,
+        )
+        .await?;
+
+        // A message whose certificate names the local uuid and device is rejected.
+        let result = sealed_sender_decrypt(
+            &ciphertext,
+            &trust_root.public_key,
+            expires,
+            Some(alice_e164),
+            alice_uuid,
+            alice_device_id,
+            &mut alice_store.identity_store,
+            &mut alice_store.session_store,
+            &mut alice_store.pre_key_store,
+            &alice_store.signed_pre_key_store,
+            &mut alice_store.kyber_pre_key_store,
+        )
+        .await;
+        match result {
+            Err(SignalProtocolError::SealedSenderSelfSend) => {}
+            other => panic!("expected self-send rejection, got {other:?}"),
+        }
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn test_sealed_sender_v1_identity_matches_certificate() -> Result<(), SignalProtocolError> {
+    async {
+        let mut rng = OsRng.unwrap_err();
+        let alice_device_id = DeviceId::new(23).unwrap();
+        let bob_device_id = DeviceId::new(42).unwrap();
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+        let bob_address = ProtocolAddress::new(bob_uuid, bob_device_id);
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let bob_store = support::test_in_memory_protocol_store()?;
+        let bob_pair = bob_store.get_identity_key_pair().await?;
+        alice_store
+            .identity_store
+            .save_identity(&bob_address, bob_pair.identity_key())
+            .await?;
+
+        let trust_root = KeyPair::generate(&mut rng);
+        let server_key = KeyPair::generate(&mut rng);
+        let server_cert =
+            ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+        let wrong_identity = KeyPair::generate(&mut rng);
+        let expires = Timestamp::from_epoch_millis(1605722925);
+        // The certificate names a key that is not the identity used to encrypt.
+        let sender_cert = SenderCertificate::new(
+            alice_uuid,
+            None,
+            wrong_identity.public_key,
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut rng,
+        )?;
+        let usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::Plaintext,
+            sender_cert,
+            b"not my key".to_vec(),
+            ContentHint::Default,
+            None,
+        )?;
+        let ciphertext = sealed_sender_encrypt_from_usmc(
+            &bob_address,
+            &usmc,
+            &alice_store.identity_store,
+            &mut rng,
+        )
+        .await?;
+
+        let result = sealed_sender_decrypt_to_usmc(&ciphertext, &bob_store.identity_store).await;
+        expect_sealed_sender_message(result, "sender certificate key does not match message key");
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn test_sealed_sender_v1_inner_mac() -> Result<(), SignalProtocolError> {
+    async {
+        let mut rng = OsRng.unwrap_err();
+        let alice_device_id = DeviceId::new(23).unwrap();
+        let bob_device_id = DeviceId::new(42).unwrap();
+        let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+        let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+        let bob_address = ProtocolAddress::new(bob_uuid, bob_device_id);
+        let mut alice_store = support::test_in_memory_protocol_store()?;
+        let bob_store = support::test_in_memory_protocol_store()?;
+        let alice_pair = alice_store.get_identity_key_pair().await?;
+        let bob_pair = bob_store.get_identity_key_pair().await?;
+        alice_store
+            .identity_store
+            .save_identity(&bob_address, bob_pair.identity_key())
+            .await?;
+
+        let trust_root = KeyPair::generate(&mut rng);
+        let server_key = KeyPair::generate(&mut rng);
+        let server_cert =
+            ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+        let expires = Timestamp::from_epoch_millis(1605722925);
+        let sender_cert = SenderCertificate::new(
+            alice_uuid,
+            None,
+            *alice_pair.public_key(),
+            alice_device_id,
+            expires,
+            server_cert,
+            &server_key.private_key,
+            &mut rng,
+        )?;
+        let usmc = UnidentifiedSenderMessageContent::new(
+            CiphertextMessageType::Plaintext,
+            sender_cert,
+            b"mac me".to_vec(),
+            ContentHint::Default,
+            None,
+        )?;
+        let mut ciphertext = sealed_sender_encrypt_from_usmc(
+            &bob_address,
+            &usmc,
+            &alice_store.identity_store,
+            &mut rng,
+        )
+        .await?;
+        // The inner ciphertext's MAC is the last byte of the v1 blob.
+        *ciphertext.last_mut().expect("non-empty") ^= 0x01;
+
+        let result = sealed_sender_decrypt_to_usmc(&ciphertext, &bob_store.identity_store).await;
+        expect_sealed_sender_message(
+            result,
+            "failed to decrypt sealed sender v1 message contents",
+        );
+
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+async fn one_ssv2_received_message()
+-> Result<(Vec<u8>, InMemSignalProtocolStore), SignalProtocolError> {
+    let mut rng = OsRng.unwrap_err();
+    let alice_device_id = DeviceId::new(23).unwrap();
+    let bob_device_id = DeviceId::new(42).unwrap();
+    let alice_uuid = "9d0652a3-dcc3-4d11-975f-74d61598733f".to_string();
+    let bob_uuid = "796abedb-ca4e-4f18-8803-1fde5b921f9f".to_string();
+    let alice_address = ProtocolAddress::new(alice_uuid.clone(), alice_device_id);
+    let bob_address = ProtocolAddress::new(bob_uuid, bob_device_id);
+    let mut alice_store = support::test_in_memory_protocol_store()?;
+    let mut bob_store = support::test_in_memory_protocol_store()?;
+    let alice_pubkey = *alice_store.get_identity_key_pair().await?.public_key();
+    let bob_pre_key_bundle = create_pre_key_bundle(&mut bob_store, &mut rng).await?;
+    process_prekey_bundle(
+        &bob_address,
+        &alice_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        &bob_pre_key_bundle,
+        SystemTime::now(),
+        &mut rng,
+    )
+    .await?;
+
+    let trust_root = KeyPair::generate(&mut rng);
+    let server_key = KeyPair::generate(&mut rng);
+    let server_cert =
+        ServerCertificate::new(1, server_key.public_key, &trust_root.private_key, &mut rng)?;
+    let expires = Timestamp::from_epoch_millis(1605722925);
+    let sender_cert = SenderCertificate::new(
+        alice_uuid,
+        None,
+        alice_pubkey,
+        alice_device_id,
+        expires,
+        server_cert,
+        &server_key.private_key,
+        &mut rng,
+    )?;
+    let message = message_encrypt(
+        b"v2",
+        &bob_address,
+        &alice_address,
+        &mut alice_store.session_store,
+        &mut alice_store.identity_store,
+        SystemTime::now(),
+        &mut rng,
+    )
+    .await?;
+    let usmc = UnidentifiedSenderMessageContent::new(
+        message.message_type(),
+        sender_cert,
+        message.serialize().to_vec(),
+        ContentHint::Default,
+        None,
+    )?;
+    let recipients = [&bob_address];
+    let sent = sealed_sender_multi_recipient_encrypt(
+        &recipients,
+        &alice_store
+            .session_store
+            .load_existing_sessions(&recipients)?,
+        [],
+        &usmc,
+        &alice_store.identity_store,
+        &mut rng,
+    )
+    .await?;
+    let (_, received) = extract_single_ssv2_received_message(&sent);
+    assert_eq!(received[0], 0x22);
+    assert!(received.len() > 81);
+    Ok((received, bob_store))
+}
+
+#[test]
+fn test_sealed_sender_v2_authentication_tag() -> Result<(), SignalProtocolError> {
+    async {
+        let (mut ciphertext, bob_store) = one_ssv2_received_message().await?;
+        // Received v2 layout: version, 32-byte encapsulated key, 16-byte tag, ephemeral, message.
+        ciphertext[33] ^= 0x01;
+        let result = sealed_sender_decrypt_to_usmc(&ciphertext, &bob_store.identity_store).await;
+        expect_sealed_sender_message(
+            result,
+            "sender certificate key does not match authentication tag",
+        );
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
+#[test]
+fn test_sealed_sender_v2_ephemeral_public_matches() -> Result<(), SignalProtocolError> {
+    async {
+        let mut rng = OsRng.unwrap_err();
+        let (mut ciphertext, bob_store) = one_ssv2_received_message().await?;
+        let other = KeyPair::generate(&mut rng).public_key.serialize();
+        assert_eq!(other.len(), 33);
+        // Replace the ephemeral public key with a different valid curve point.
+        ciphertext[49..81].copy_from_slice(&other[1..]);
+        let result = sealed_sender_decrypt_to_usmc(&ciphertext, &bob_store.identity_store).await;
+        expect_sealed_sender_message(
+            result,
+            "derived ephemeral key did not match key provided in message",
+        );
+        Ok(())
+    }
+    .now_or_never()
+    .expect("sync")
+}
+
 #[test]
 fn test_sealed_sender_multi_recipient_redundant_empty_devices() -> Result<(), SignalProtocolError> {
     async {
