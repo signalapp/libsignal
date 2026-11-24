@@ -351,10 +351,12 @@ enum ProfileDecodeError {
     /// A profile data v2 buffer claimed padding size {padding_size}, but not all the bytes of
     /// padding were that size
     ProfileV2DataInvalidPaddingByte { padding_size: u8 },
+    /// Profile v2 encrypted data of size {len}, is too small to have a tag.
+    ProfileV2DataTooSmallForTag { len: usize },
     /// Profile v2 encrypted data of size {len}, is too small to have a nonce.
     ProfileV2DataTooSmallForNonce { len: usize },
-    /// Profile v2 encrypted data failed decryption
-    ProfileV2DataFailedDecryption,
+    /// Profile v2 encrypted data had mismatched tag
+    ProfileV2DataMismatchedTag,
     /// Profile v1 encrypted field {field:?} of size {len}, is too small to have a nonce.
     ProfileV1FieldTooSmallForNonce {
         field: profile_utils::v1::Field,
@@ -629,20 +631,23 @@ impl<T: GrpcServiceProvider> Auth<T> {
         .ok_or_else(|| RequestError::Unexpected {
             log_safe: "Missing response".into(),
         })? {
-            GetProfileResponseEnum::Profile(profile_result) => {
-                profile_utils::v2::decrypt_profile(profile_key, profile_result, avatar_cdn_config)
-                    .map(Some)
-                    .map_err(|e| match e {
-                        profile_utils::Error::ProfileDecodeError(e) => {
-                            RequestError::Other(AuthGetProfileError::ProfileDecodeError {
-                                log_safe: e.log_safe_display().to_string(),
-                            })
-                        }
-                        profile_utils::Error::Unexpected { log_safe } => {
-                            RequestError::Unexpected { log_safe }
-                        }
+            GetProfileResponseEnum::Profile(profile_result) => profile_utils::v2::decrypt_profile(
+                aci,
+                profile_key,
+                profile_result,
+                avatar_cdn_config,
+            )
+            .map(Some)
+            .map_err(|e| match e {
+                profile_utils::Error::ProfileDecodeError(e) => {
+                    RequestError::Other(AuthGetProfileError::ProfileDecodeError {
+                        log_safe: e.log_safe_display().to_string(),
                     })
-            }
+                }
+                profile_utils::Error::Unexpected { log_safe } => {
+                    RequestError::Unexpected { log_safe }
+                }
+            }),
             // We only care that the EtagMatched protobuf oneof variant is selected; we don't care
             // about its value. In practice, the server will set it to true.
             GetProfileResponseEnum::EtagMatched(true | false) => Ok(None),
@@ -1009,18 +1014,23 @@ impl<T: GrpcServiceProvider> Unauth<T> {
             log_safe: "Missing response".into(),
         })? {
             get_profile_anonymous_response::Response::Profile(profile_result) => {
-                profile_utils::v2::decrypt_profile(profile_key, profile_result, avatar_cdn_config)
-                    .map(Some)
-                    .map_err(|e| match e {
-                        profile_utils::Error::ProfileDecodeError(e) => {
-                            RequestError::Other(UnauthGetProfileError::ProfileDecodeError {
-                                log_safe: e.log_safe_display().to_string(),
-                            })
-                        }
-                        profile_utils::Error::Unexpected { log_safe } => {
-                            RequestError::Unexpected { log_safe }
-                        }
-                    })
+                profile_utils::v2::decrypt_profile(
+                    aci,
+                    profile_key,
+                    profile_result,
+                    avatar_cdn_config,
+                )
+                .map(Some)
+                .map_err(|e| match e {
+                    profile_utils::Error::ProfileDecodeError(e) => {
+                        RequestError::Other(UnauthGetProfileError::ProfileDecodeError {
+                            log_safe: e.log_safe_display().to_string(),
+                        })
+                    }
+                    profile_utils::Error::Unexpected { log_safe } => {
+                        RequestError::Unexpected { log_safe }
+                    }
+                })
             }
             get_profile_anonymous_response::Response::ProfileV1(legacy_profile_result) => {
                 profile_utils::v1::decrypt_profile(
