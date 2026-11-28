@@ -122,6 +122,7 @@ pub enum MinimalRecipientData {
     CallLink {
         root_key: CallLinkRootKey,
     },
+    DeletedContact,
 }
 
 impl MinimalRecipientData {
@@ -191,7 +192,8 @@ impl TryFrom<&MinimalRecipientData> for ChatRecipientKind {
             MinimalRecipientData::Self_ => Self::Self_,
             MinimalRecipientData::ReleaseNotes => Self::ReleaseNotes,
             kind @ (MinimalRecipientData::DistributionList { .. }
-            | MinimalRecipientData::CallLink { .. }) => return Err(*kind.as_ref()),
+            | MinimalRecipientData::CallLink { .. }
+            | MinimalRecipientData::DeletedContact) => return Err(*kind.as_ref()),
         })
     }
 }
@@ -264,6 +266,7 @@ pub enum Destination<R> {
     Self_(SelfData),
     ReleaseNotes,
     CallLink(CallLink),
+    DeletedContact,
 }
 
 /// Represents a phone number in E.164 format.
@@ -417,6 +420,7 @@ impl AsRef<DestinationKind> for MinimalRecipientData {
             Self::Self_ => &DestinationKind::Self_,
             Self::ReleaseNotes => &DestinationKind::ReleaseNotes,
             Self::CallLink { .. } => &DestinationKind::CallLink,
+            Self::DeletedContact => &DestinationKind::DeletedContact,
         }
     }
 }
@@ -455,6 +459,7 @@ impl<R> From<Destination<R>> for MinimalRecipientData {
             Destination::Self_(_) => Self::Self_,
             Destination::ReleaseNotes => Self::ReleaseNotes,
             Destination::CallLink(CallLink { root_key, .. }) => Self::CallLink { root_key },
+            Destination::DeletedContact => Self::DeletedContact,
         }
     }
 }
@@ -508,6 +513,7 @@ impl<R> AsRef<DestinationKind> for Destination<R> {
             Destination::Self_(_) => &DestinationKind::Self_,
             Destination::ReleaseNotes => &DestinationKind::ReleaseNotes,
             Destination::CallLink(_) => &DestinationKind::CallLink,
+            Destination::DeletedContact => &DestinationKind::DeletedContact,
         }
     }
 }
@@ -548,6 +554,9 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             }
             RecipientDestination::CallLink(call_link) => {
                 Destination::CallLink(call_link.try_into_with(context)?)
+            }
+            RecipientDestination::DeletedContact(proto::DeletedContact { special_fields: _ }) => {
+                Destination::DeletedContact
             }
         })
     }
@@ -800,7 +809,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                             | MinimalRecipientData::DistributionList { .. }
                             | MinimalRecipientData::Self_
                             | MinimalRecipientData::ReleaseNotes
-                            | MinimalRecipientData::CallLink { .. } => {
+                            | MinimalRecipientData::CallLink { .. }
+                            | MinimalRecipientData::DeletedContact => {
                                 Err(RecipientError::DistributionListMemberWrongKind(
                                     id,
                                     *recipient_data.as_ref(),
@@ -1179,6 +1189,11 @@ mod test {
         |x| x.mut_distributionList().memberRecipientIds.push(TestContext::SELF_ID.0) =>
         Err(RecipientError::DistributionListMemberWrongKind(TestContext::SELF_ID, DestinationKind::Self_));
         "member_is_not_a_contact"
+    )]
+    #[test_case(
+        |x| x.mut_distributionList().memberRecipientIds.push(TestContext::DELETED_CONTACT_ID.0) =>
+        Err(RecipientError::DistributionListMemberWrongKind(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact));
+        "member_is_deleted_contact"
     )]
     #[test_case(
         |x| x.mut_distributionList().memberRecipientIds.push(TestContext::E164_ONLY_ID.0) =>

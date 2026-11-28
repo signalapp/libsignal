@@ -220,6 +220,8 @@ pub enum CompletionError {
     DuplicateSelfRecipient(RecipientId, RecipientId),
     /// {0:?} and {1:?} both represent the release notes channel
     DuplicateReleaseNotesRecipient(RecipientId, RecipientId),
+    /// {0:?} and {1:?} both represent the deleted contact placeholder
+    DuplicateDeletedContactRecipient(RecipientId, RecipientId),
 }
 
 impl<M: Method + ReferencedTypes> TryFrom<PartialBackup<M>> for CompletedBackup<M> {
@@ -380,6 +382,7 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
         );
         let mut self_recipient = None;
         let mut release_notes_recipient = None;
+        let mut deleted_contact_recipient = None;
         let mut call_link_root_keys =
             AssumedRandomInputHasher::map_with_capacity::<HashBytesAllAtOnce<&[u8]>, RecipientId>(
                 recipients
@@ -447,6 +450,13 @@ impl<M: Method + ReferencedTypes> CompletedBackup<M> {
                         return Err(CompletionError::DuplicateReleaseNotesRecipient(id1, id2));
                     }
                     release_notes_recipient = Some(id);
+                }
+                MinimalRecipientData::DeletedContact => {
+                    if let Some(previous) = deleted_contact_recipient {
+                        let [id1, id2] = sort_recipient_ids(previous, id);
+                        return Err(CompletionError::DuplicateDeletedContactRecipient(id1, id2));
+                    }
+                    deleted_contact_recipient = Some(id);
                 }
                 MinimalRecipientData::CallLink { root_key } => {
                     insert_or_error(
@@ -1521,6 +1531,7 @@ mod test {
             (CompletionError::DuplicateCallLinkRootKey, proto::recipient::Destination::CallLink(proto::CallLink::test_data())),
             (CompletionError::DuplicateSelfRecipient, proto::recipient::Destination::Self_(Default::default())),
             (CompletionError::DuplicateReleaseNotesRecipient, proto::recipient::Destination::ReleaseNotes(Default::default())),
+            (CompletionError::DuplicateDeletedContactRecipient, proto::recipient::Destination::DeletedContact(Default::default())),
         ]
     )]
     fn duplicate_non_contact_recipient<M: Method + ReferencedTypes>(

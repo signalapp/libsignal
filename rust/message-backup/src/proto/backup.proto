@@ -216,6 +216,7 @@ message Recipient {
     Self self = 5;
     ReleaseNotes releaseNotes = 6;
     CallLink callLink = 7;
+    DeletedContact deletedContact = 8;
   }
 }
 
@@ -403,6 +404,8 @@ message Self {
 }
 
 message ReleaseNotes {}
+
+message DeletedContact {}
 
 message Chat {
   uint64 id = 1; // generated id for reference only within this file

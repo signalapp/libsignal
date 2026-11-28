@@ -19,6 +19,7 @@ use libsignal_protocol::IdentityKey;
 use prost::Message;
 use rand::CryptoRng;
 use sha2::Digest;
+use subtle::ConstantTimeEq;
 use zkgroup::profiles::{ProfileKey, ProfileKeyVersion};
 
 use super::{
@@ -119,23 +120,59 @@ impl FetchedProfile {
 pub(super) mod v2 {
     use super::*;
 
-    const AAD_PROFILE_DATA: &[u8] = b"20261020_ProfilesV2_ProfileData";
+    type Ctr = ctr::Ctr128BE<Aes256>;
+    const NONCE_SIZE: usize = 16;
+    const TAG_SIZE: usize = 32;
+
+    pub(super) struct ProfilesV2Key {
+        data_key: [u8; 32],
+        mac_key: Hmac<Sha256>,
+    }
+    impl ProfilesV2Key {
+        pub fn new(aci: Aci, raw_key: &[u8; 32]) -> Self {
+            let hkdf = Hkdf::<Sha256>::from_prk(raw_key.as_slice()).expect("valid size");
+            let mut key_material = [0; 32 + 32];
+            hkdf.expand(b"20261123 Profilesv2 data", &mut key_material)
+                .expect("can expand key material");
+            let (data_key, mac_key) = key_material.split_first_chunk::<32>().expect("valid size");
+            let mut mac_key: Hmac<Sha256> =
+                hmac::KeyInit::new_from_slice(mac_key).expect("valid size");
+            // NOTE: this is a fixed-length we're always adding.
+            mac_key.update(aci.service_id_fixed_width_binary().as_slice());
+            Self {
+                data_key: *data_key,
+                mac_key,
+            }
+        }
+
+        fn stream_cipher(&self, iv: &[u8; NONCE_SIZE]) -> Ctr {
+            Ctr::new((&self.data_key).into(), iv.into())
+        }
+
+        pub(super) fn mac_profile(&self, ciphertext_plus_nonce: &[u8]) -> [u8; TAG_SIZE] {
+            let mut mac = self.mac_key.clone();
+            mac.update(ciphertext_plus_nonce);
+            mac.finalize().into()
+        }
+    }
+
     pub(super) fn unpadded_encrypt_profile_data(
-        key: &Aes256Gcm,
+        key: &ProfilesV2Key,
         rng: &mut dyn CryptoRng,
         plaintext: Vec<u8>,
     ) -> Vec<u8> {
         let mut in_out = plaintext;
-        // TODO: when we upgrade to rand 0.10, use Nonce::generate_from_rng()
-        let mut nonce = aes_gcm::Nonce::default();
+        in_out.reserve(NONCE_SIZE + TAG_SIZE);
+        let mut nonce = [0; NONCE_SIZE];
         rng.fill_bytes(&mut nonce);
-        key.encrypt_in_place(&nonce, AAD_PROFILE_DATA, &mut in_out)
-            .expect("vec allocation cannot fail");
+        key.stream_cipher(&nonce).apply_keystream(&mut in_out);
         in_out.extend_from_slice(&nonce);
+        let tag = key.mac_profile(&in_out);
+        in_out.extend_from_slice(&tag);
         in_out
     }
     pub(super) fn encrypt_profile_data(
-        key: &Aes256Gcm,
+        key: &ProfilesV2Key,
         rng: &mut dyn CryptoRng,
         mut plaintext: Vec<u8>,
     ) -> Vec<u8> {
@@ -143,20 +180,29 @@ pub(super) mod v2 {
         unpadded_encrypt_profile_data(key, rng, plaintext)
     }
     fn decrypt_profile_data(
-        key: &Aes256Gcm,
+        key: &ProfilesV2Key,
         mut in_out: Vec<u8>,
     ) -> Result<Vec<u8>, ProfileDecodeError> {
-        let Some((_, nonce)) = in_out.split_last_chunk() else {
-            return Err(ProfileDecodeError::ProfileV2DataTooSmallForNonce { len: in_out.len() });
+        let len = in_out.len();
+        let Some((_, tag)) = in_out.split_last_chunk::<TAG_SIZE>() else {
+            return Err(ProfileDecodeError::ProfileV2DataTooSmallForTag { len });
         };
-        let nonce = Array(*nonce);
+        let tag = *tag;
+        in_out.truncate(in_out.len() - tag.len());
+        if !bool::from(tag.ct_eq(&key.mac_profile(&in_out))) {
+            return Err(ProfileDecodeError::ProfileV2DataMismatchedTag);
+        }
+        let Some((_, nonce)) = in_out.split_last_chunk::<NONCE_SIZE>() else {
+            return Err(ProfileDecodeError::ProfileV2DataTooSmallForNonce { len });
+        };
+        let nonce = *nonce;
         in_out.truncate(in_out.len() - nonce.len());
-        key.decrypt_in_place(&nonce, AAD_PROFILE_DATA, &mut in_out)
-            .map_err(|_| ProfileDecodeError::ProfileV2DataFailedDecryption)?;
+        key.stream_cipher(&nonce).apply_keystream(&mut in_out);
         padding::unpad(in_out)
     }
 
     pub(crate) fn decrypt_profile(
+        aci: Aci,
         profile_key: &ProfileKey,
         profile_result: ProfilesV2GrpcResult,
         avatar_cdn_config: &AvatarCdnUrlValidationConfig,
@@ -179,11 +225,15 @@ pub(super) mod v2 {
             }
             None
         };
-        let key = Aes256Gcm::new(&Array(profile_key.bytes));
+        let v2_key = v2::ProfilesV2Key::new(aci, &profile_key.bytes);
         let v2_data_hash = sha2::Sha256::digest(&profile_result.data).0;
-        let data = decrypt_profile_data(&key, profile_result.data)?;
-        let payment_address =
-            super::v1::decrypt_payment_address(&key, &profile_result.payment_address)?;
+        let data = decrypt_profile_data(&v2_key, profile_result.data)?;
+        let payment_address = if !profile_result.payment_address.is_empty() {
+            let v1_key = Aes256Gcm::new(&Array(profile_key.bytes));
+            super::v1::decrypt_payment_address(&v1_key, &profile_result.payment_address)?
+        } else {
+            None
+        };
         let PlaintextProfileData {
             given_name,
             family_name,
@@ -266,7 +316,12 @@ pub(super) mod v2 {
         }
     }
 
+    use aes_gcm::aes::Aes256;
+    use ctr::cipher::{KeyIvInit, StreamCipher};
+    use hkdf::{Hkdf, HmacImpl};
+    use hmac::Hmac;
     use libcrux_sha3::portable::incremental::{CShake, CShake256, left_encode, right_encode};
+    use sha2::Sha256;
     /// TupleHash256
     ///
     /// See <https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf>, page 13
@@ -655,6 +710,7 @@ pub(super) fn build_set_profile_request(
 ) -> (SetProfileRequest, ProfileDataHash) {
     let new_profile_key_version = profile_key.get_profile_key_version(aci);
     let key = Aes256Gcm::new(&Array(profile_key.bytes));
+    let v2_key = v2::ProfilesV2Key::new(aci, &profile_key.bytes);
     let Profile {
         given_name,
         family_name,
@@ -675,7 +731,7 @@ pub(super) fn build_set_profile_request(
         phone_number_sharing,
     };
     let data = plaintext.encode_to_vec();
-    let data = v2::encrypt_profile_data(&key, rng, data);
+    let data = v2::encrypt_profile_data(&v2_key, rng, data);
     let data_hash = sha2::Sha256::digest(&data);
     let request = SetProfileRequest {
         version: new_profile_key_version.as_ref().to_vec(),
@@ -1688,6 +1744,7 @@ pub(super) mod test_cases {
             for mut test in roundtrip_test_cases() {
                 assert_eq!(
                     v2::decrypt_profile(
+                        test.aci,
                         &test.profile_key,
                         test.v2_result.clone(),
                         &test.avatar_cdn_config
@@ -1782,11 +1839,12 @@ pub(super) mod test_cases {
             let profile_key = ProfileKey { bytes: [0x23; _] };
             let test_vector: ProfilesV2GrpcResult = ProfilesV2GrpcResult {
                 data: BASE64_STANDARD.decode(
-                    "hcQ0RCoIlqP5a0y16rDNjLjnRAZPAgwhD6c/SIQugJqTrolglyklKP81tBJt9bvcNnm/njzZO/Bxa\
-                    3tehFZ/xBGRzL5NoYNieOq2Py+lF5iultIBE9itPSko/tWMkwc6vC8jz7aXBSibJ/t0S2yc2hsv38N\
-                    /IYd6RReaFk+sZSGpsqPy1j2l8NcMt2/mHt4TMwHPwtHpRO6MVriyHVT+19939J6L9CoZ1ex5ADTsx\
-                    KuIMi+5RZIMkoPZ7U+jNudLWT7M9xAYKkvrLiEOY9GmxEuG8xDONvCdvhDAPJuK3MqCjMB739vTekP\
-                    y6bMqtByCyuJAVp2pEoo0n8kAkBZxDRy7+YrRv5E2hAHOr1y+bFY44veT7gchG8XSgg=="
+                    "PHMLjXvEvMSCxpgtkD1RY+06P5GgrLU7kR1wyeSbwAvd7s+QTwkkYgcK8mVNa7jhHxS4OgqBQEGy9\
+                    dQJiCW/f1fYFtxpj/9aiqoLq/MShbimVynrs5B9G17XYFch/WL9hRFy6wFp4/OeFgp88rtWph9S2IZ\
+                    xEzPS4sz6Pyml/fHgxSAinsnyFeJWFSFzrfcr0Q9YBSS+ItrL/ql29bKQfW60VwC6S/XfXjowKjNbD\
+                    80flQYX8LoZEXacLD5YuP4laqZLeaP3uuhbh3r9HmKrQOZW26ZzNOS4h5WGaOzPBoN7cMxjLODlUmo\
+                    +lu3bOaUIRsocAR1jXmHbkUWpXA7rEqykAWf73RoRA36f1EDj1YsVezyY33DF1jOD4Gtp9nt0e4+ng\
+                    iuDjfS1TQCbHTGD"
                 ).expect("valid"),
                 payment_address: BASE64_STANDARD.decode(
                     "VzaW2lA3ODh5R9wj7i38lDEBpPOo+cJqnAlnyIRPQnPndkhYbRiPUDS9FatBSsyKTW//JNGDH1vYy\
@@ -1819,6 +1877,22 @@ pub(super) mod test_cases {
                 payment_address: Some(vec![0xec; 128]),
                 badge_ids,
             };
+            let aci = Aci::from_uuid_bytes([0xac; _]);
+            println!(
+                "{}",
+                BASE64_STANDARD.encode(
+                    build_set_profile_request(
+                        &mut seeded_rng(1234),
+                        aci,
+                        &profile_key,
+                        profile.clone(),
+                        None,
+                        None
+                    )
+                    .0
+                    .data
+                )
+            );
             let true_profile = FetchedProfile {
                 profile,
                 etag: None,
@@ -1829,7 +1903,7 @@ pub(super) mod test_cases {
             };
             assert_eq!(
                 true_profile,
-                v2::decrypt_profile(&profile_key, test_vector, &cdn0_config())
+                v2::decrypt_profile(aci, &profile_key, test_vector, &cdn0_config())
                     .expect("can decrypt")
             );
         }
@@ -1866,12 +1940,12 @@ pub(super) mod test_cases {
         fn test_profile_decode_invalid_protobuf() {
             let mut test = a_roundtrip_test();
             test.v2_result.data = v2::encrypt_profile_data(
-                &Aes256Gcm::new(&Array(test.profile_key.bytes)),
+                &v2::ProfilesV2Key::new(test.aci, &test.profile_key.bytes),
                 &mut seeded_rng(3141),
                 vec![0xff; 13],
             );
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2InvalidProtobuf)
             );
@@ -1880,11 +1954,11 @@ pub(super) mod test_cases {
         #[test]
         fn test_profile_decode_empty_encrypted_profile() {
             let mut test = a_roundtrip_test();
-            let key = Aes256Gcm::new(&Array(test.profile_key.bytes));
+            let key = v2::ProfilesV2Key::new(test.aci, &test.profile_key.bytes);
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV2DataEmptyProfileBufferCannotContainPadding
@@ -1895,11 +1969,11 @@ pub(super) mod test_cases {
         #[test]
         fn test_profile_decode_zero_padded() {
             let mut test = a_roundtrip_test();
-            let key = Aes256Gcm::new(&Array(test.profile_key.bytes));
+            let key = v2::ProfilesV2Key::new(test.aci, &test.profile_key.bytes);
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![1, 2, 3, 0]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2BufferZeroPadding)
             );
@@ -1908,11 +1982,11 @@ pub(super) mod test_cases {
         #[test]
         fn test_profile_decode_padding_too_big() {
             let mut test = a_roundtrip_test();
-            let key = Aes256Gcm::new(&Array(test.profile_key.bytes));
+            let key = v2::ProfilesV2Key::new(test.aci, &test.profile_key.bytes);
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![1, 2, 3, 255]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV2DataTooSmallForClaimedPadding {
@@ -1926,11 +2000,11 @@ pub(super) mod test_cases {
         #[test]
         fn test_profile_decode_invalid_padding_byte() {
             let mut test = a_roundtrip_test();
-            let key = Aes256Gcm::new(&Array(test.profile_key.bytes));
+            let key = v2::ProfilesV2Key::new(test.aci, &test.profile_key.bytes);
             test.v2_result.data =
                 v2::unpadded_encrypt_profile_data(&key, &mut seeded_rng(74423), vec![1, 2, 255, 2]);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataInvalidPaddingByte {
                     padding_size: 2,
@@ -1939,14 +2013,30 @@ pub(super) mod test_cases {
         }
 
         #[test]
-        fn test_profile_decode_too_small_for_nonce() {
+        fn test_profile_decode_too_small_for_tag() {
             let mut test = a_roundtrip_test();
             test.v2_result.data = vec![1, 2, 3];
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
+                    .expect_err("failure"),
+                Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataTooSmallForTag {
+                    len: 3
+                })
+            );
+        }
+
+        #[test]
+        fn test_profile_decode_too_small_for_nonce() {
+            let mut test = a_roundtrip_test();
+            test.v2_result.data = vec![1, 2];
+            let key = v2::ProfilesV2Key::new(test.aci, &test.profile_key.bytes);
+            let tag = key.mac_profile(&test.v2_result.data);
+            test.v2_result.data.extend_from_slice(tag.as_slice());
+            assert_eq!(
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataTooSmallForNonce {
-                    len: 3
+                    len: 34
                 })
             );
         }
@@ -1959,12 +2049,26 @@ pub(super) mod test_cases {
                 .iter_mut()
                 .for_each(|byte| *byte = !*byte);
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &cdn0_config())
+                v2::decrypt_profile(test.aci, &test.profile_key, test.v2_result, &cdn0_config())
                     .expect_err("failure"),
-                Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataFailedDecryption)
+                Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataMismatchedTag)
             );
         }
 
+        #[test]
+        fn test_profile_decode_aci_is_bound() {
+            let test = a_roundtrip_test();
+            assert_eq!(
+                v2::decrypt_profile(
+                    Aci::from_uuid_bytes([0xbd; _]),
+                    &test.profile_key,
+                    test.v2_result,
+                    &cdn0_config()
+                )
+                .expect_err("failure"),
+                Error::ProfileDecodeError(ProfileDecodeError::ProfileV2DataMismatchedTag)
+            );
+        }
         impl v1::Field {
             const ALL: &[v1::Field] = &[
                 v1::Field::PhoneNumberSharing,
@@ -2087,8 +2191,13 @@ pub(super) mod test_cases {
             );
             test.v2_result.payment_address = test.v1_result.payment_address;
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &test.avatar_cdn_config)
-                    .expect_err("failure"),
+                v2::decrypt_profile(
+                    test.aci,
+                    &test.profile_key,
+                    test.v2_result,
+                    &test.avatar_cdn_config
+                )
+                .expect_err("failure"),
                 Error::ProfileDecodeError(
                     ProfileDecodeError::ProfileV1FieldTooShortToIncludeLength { field }
                 )
@@ -2116,8 +2225,13 @@ pub(super) mod test_cases {
             );
             test.v2_result.payment_address = test.v1_result.payment_address;
             assert_eq!(
-                v2::decrypt_profile(&test.profile_key, test.v2_result, &test.avatar_cdn_config)
-                    .expect_err("failure"),
+                v2::decrypt_profile(
+                    test.aci,
+                    &test.profile_key,
+                    test.v2_result,
+                    &test.avatar_cdn_config
+                )
+                .expect_err("failure"),
                 Error::ProfileDecodeError(ProfileDecodeError::ProfileV1FieldTooShortForLength {
                     field,
                     len: 0,

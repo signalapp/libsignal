@@ -43,7 +43,7 @@ pub struct PinDetails {
 pub enum PinMessageError {
     /// author id is not present
     UnknownAuthorId,
-    /// author id is not self nor contact
+    /// author id is not self nor an existing contact
     InvalidAuthorId,
     /// {0}
     InvalidTimestamp(#[from] TimestampError),
@@ -73,7 +73,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             MinimalRecipientData::Group { .. }
             | MinimalRecipientData::DistributionList { .. }
             | MinimalRecipientData::ReleaseNotes
-            | MinimalRecipientData::CallLink { .. } => return Err(Self::Error::InvalidAuthorId),
+            | MinimalRecipientData::CallLink { .. }
+            | MinimalRecipientData::DeletedContact => return Err(Self::Error::InvalidAuthorId),
         }
         let target_sent_timestamp = Timestamp::from_millis(
             targetSentTimestamp,
@@ -192,6 +193,7 @@ mod test {
     #[test_case(|x| x.authorId = TestContext::GROUP_ID.0 => Err(PinMessageError::InvalidAuthorId); "author is group")]
     #[test_case(|x| x.authorId = TestContext::CALL_LINK_ID.0 => Err(PinMessageError::InvalidAuthorId); "author is call link")]
     #[test_case(|x| x.authorId = TestContext::RELEASE_NOTES_ID.0 => Err(PinMessageError::InvalidAuthorId); "author is release notes")]
+    #[test_case(|x| x.authorId = TestContext::DELETED_CONTACT_ID.0 => Err(PinMessageError::InvalidAuthorId); "author is deleted contact")]
     fn pin_message_update(modify: fn(&mut PinMessageUpdateProto)) -> Result<(), PinMessageError> {
         let mut update = PinMessageUpdateProto::test_data();
         modify(&mut update);

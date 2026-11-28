@@ -103,7 +103,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             MinimalRecipientData::Group { .. }
             | MinimalRecipientData::DistributionList { .. }
             | MinimalRecipientData::ReleaseNotes
-            | MinimalRecipientData::CallLink { .. } => return Err(Self::Error::InvalidVoterId),
+            | MinimalRecipientData::CallLink { .. }
+            | MinimalRecipientData::DeletedContact => return Err(Self::Error::InvalidVoterId),
         }
 
         Ok(PollVote {
@@ -323,6 +324,7 @@ mod test {
     #[test_case(|x| x.voterId = TestContext::GROUP_ID.0 => Err(PollError::InvalidVoterId); "group voter")]
     #[test_case(|x| x.voterId = TestContext::CALL_LINK_ID.0 => Err(PollError::InvalidVoterId); "call link voter")]
     #[test_case(|x| x.voterId = TestContext::RELEASE_NOTES_ID.0 => Err(PollError::InvalidVoterId); "release notes voter")]
+    #[test_case(|x| x.voterId = TestContext::DELETED_CONTACT_ID.0 => Err(PollError::InvalidVoterId); "deleted contact voter")]
     #[test_case(|x| x.voterId = TestContext::NONEXISTENT_ID.0 => Err(PollError::UnknownVoterId); "nonexistent voter")]
     fn poll_vote(modify: fn(&mut PollVoteProto)) -> Result<(), PollError> {
         let mut vote = PollVoteProto::default();

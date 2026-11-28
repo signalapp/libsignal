@@ -10,5 +10,6 @@ v0.106.2
 v0.108.0
 v0.108.4
 v0.108.5
+v0.108.7
 
-- backups: Support the new deletedTombstone field on Group.
+- Change profiles v2 encryption

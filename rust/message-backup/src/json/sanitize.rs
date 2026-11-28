@@ -238,6 +238,7 @@ impl Visit<Sanitizer> for proto::Recipient {
                 Destination::Self_(x) => x.accept(visitor),
                 Destination::ReleaseNotes(x) => x.accept(visitor),
                 Destination::CallLink(x) => x.accept(visitor),
+                Destination::DeletedContact(x) => x.accept(visitor),
             }
         }
     }
@@ -439,6 +440,12 @@ impl Visit<Sanitizer> for proto::Self_ {
 }
 
 impl Visit<Sanitizer> for proto::ReleaseNotes {
+    fn accept(&mut self, _visitor: &mut Sanitizer) {
+        let Self { special_fields: _ } = self;
+    }
+}
+
+impl Visit<Sanitizer> for proto::DeletedContact {
     fn accept(&mut self, _visitor: &mut Sanitizer) {
         let Self { special_fields: _ } = self;
     }
