@@ -112,7 +112,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
                     kind @ (DestinationKind::DistributionList
                     | DestinationKind::Self_
                     | DestinationKind::ReleaseNotes
-                    | DestinationKind::CallLink) => {
+                    | DestinationKind::CallLink
+                    | DestinationKind::DeletedContact) => {
                         Err(NotificationProfileError::MemberWrongKind(id, *kind))
                     }
                 }
@@ -308,6 +309,7 @@ mod test {
     } => Err(NotificationProfileError::DuplicateDay(DayOfWeek::Monday)); "duplicate weekday")]
     #[test_case(|x| x.allowedMembers = vec![] => Ok(()); "no member exceptions selected")]
     #[test_case(|x| x.allowedMembers = vec![TestContext::SELF_ID.0] => Err(NotificationProfileError::MemberWrongKind(TestContext::SELF_ID, DestinationKind::Self_)); "cannot include Self")]
+    #[test_case(|x| x.allowedMembers = vec![TestContext::DELETED_CONTACT_ID.0] => Err(NotificationProfileError::MemberWrongKind(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact)); "cannot include deleted contact")]
     #[test_case(|x| x.allowedMembers = vec![TestContext::CONTACT_ID.0, TestContext::CONTACT_ID.0] => Err(NotificationProfileError::DuplicateMember(TestContext::CONTACT_ID)); "cannot include duplicates")]
     #[test_case(|x| x.allowedMembers = vec![1000] => Err(NotificationProfileError::UnknownMember(RecipientId(1000))); "unknown member")]
     #[test_case(

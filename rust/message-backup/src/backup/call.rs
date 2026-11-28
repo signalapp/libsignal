@@ -242,9 +242,9 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                         pni: _,
                         username: _,
                     } => Err(CallError::CallStarterHasNoAci(id)),
-                    MinimalRecipientData::Contact { .. } | MinimalRecipientData::Self_ => {
-                        Ok(starter.clone())
-                    }
+                    MinimalRecipientData::Contact { .. }
+                    | MinimalRecipientData::Self_
+                    | MinimalRecipientData::DeletedContact => Ok(starter.clone()),
                     MinimalRecipientData::Group { .. }
                     | MinimalRecipientData::DistributionList { .. }
                     | MinimalRecipientData::ReleaseNotes
@@ -268,9 +268,9 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
                         pni: _,
                         username: _,
                     } => Err(CallError::RingerHasNoAci(id)),
-                    MinimalRecipientData::Contact { .. } | MinimalRecipientData::Self_ => {
-                        Ok(ringer.clone())
-                    }
+                    MinimalRecipientData::Contact { .. }
+                    | MinimalRecipientData::Self_
+                    | MinimalRecipientData::DeletedContact => Ok(ringer.clone()),
                     MinimalRecipientData::Group { .. }
                     | MinimalRecipientData::DistributionList { .. }
                     | MinimalRecipientData::ReleaseNotes
@@ -347,7 +347,10 @@ impl<C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusualTimestam
             | DestinationKind::DistributionList
             | DestinationKind::Group
             | DestinationKind::ReleaseNotes
-            | DestinationKind::Self_ => return Err(CallError::InvalidAdHocRecipient(recipient)),
+            | DestinationKind::Self_
+            | DestinationKind::DeletedContact => {
+                return Err(CallError::InvalidAdHocRecipient(recipient));
+            }
         };
 
         {
@@ -453,6 +456,7 @@ pub(crate) mod test {
 
     pub(crate) const TEST_CALL_LINK_RECIPIENT_ID: RecipientId = RecipientId(987654);
     pub(crate) const TEST_PNI_RECIPIENT_ID: RecipientId = RecipientId(987655);
+    pub(crate) const TEST_DELETED_CONTACT_RECIPIENT_ID: RecipientId = RecipientId(987656);
     pub(crate) const NONEXISTENT_RECIPIENT: RecipientId = RecipientId(9999999999999999999);
 
     impl proto::AdHocCall {
@@ -522,10 +526,13 @@ pub(crate) mod test {
                 LazyLock::new(|| MinimalRecipientData::CallLink {
                     root_key: TEST_CALL_LINK_ROOT_KEY.into(),
                 });
+            static DELETED_CONTACT_RECIPIENT: MinimalRecipientData =
+                MinimalRecipientData::DeletedContact;
             match key {
                 RecipientId(proto::Recipient::TEST_ID) => Some((&CONTACT_RECIPIENT, key)),
                 &TEST_CALL_LINK_RECIPIENT_ID => Some((&CALL_LINK_RECIPIENT, key)),
                 &TEST_PNI_RECIPIENT_ID => Some((&PNI_RECIPIENT, key)),
+                &TEST_DELETED_CONTACT_RECIPIENT_ID => Some((&DELETED_CONTACT_RECIPIENT, key)),
                 _ => None,
             }
         }
@@ -594,6 +601,9 @@ pub(crate) mod test {
     #[test_case(|x| {
         x.ringerRecipientId = Some(TEST_CALL_LINK_RECIPIENT_ID.0)
     } => Err(CallError::InvalidRingerRecipient(TEST_CALL_LINK_RECIPIENT_ID, DestinationKind::CallLink)); "invalid ringer")]
+    #[test_case(|x| {
+        x.ringerRecipientId = Some(TEST_DELETED_CONTACT_RECIPIENT_ID.0)
+    } => Ok(()); "deleted contact ringer")]
     #[test_case(
         |x| x.ringerRecipientId = Some(TEST_PNI_RECIPIENT_ID.0) =>
         Err(CallError::RingerHasNoAci(TEST_PNI_RECIPIENT_ID));
@@ -608,6 +618,9 @@ pub(crate) mod test {
     #[test_case(|x| {
         x.startedCallRecipientId = Some(TEST_CALL_LINK_RECIPIENT_ID.0)
     } => Err(CallError::InvalidCallStarter(TEST_CALL_LINK_RECIPIENT_ID, DestinationKind::CallLink)); "invalid call starter")]
+    #[test_case(|x| {
+        x.startedCallRecipientId = Some(TEST_DELETED_CONTACT_RECIPIENT_ID.0)
+    } => Ok(()); "deleted contact call starter")]
     #[test_case(
         |x| x.startedCallRecipientId = Some(TEST_PNI_RECIPIENT_ID.0) =>
         Err(CallError::CallStarterHasNoAci(TEST_PNI_RECIPIENT_ID));
@@ -651,6 +664,10 @@ pub(crate) mod test {
     #[test_case(
         |x| x.recipientId = proto::Recipient::TEST_ID => Err(CallError::InvalidAdHocRecipient(RecipientId(proto::Recipient::TEST_ID)));
         "ad_hoc_recipient_not_call"
+    )]
+    #[test_case(
+        |x| x.recipientId = TEST_DELETED_CONTACT_RECIPIENT_ID.0 => Err(CallError::InvalidAdHocRecipient(TEST_DELETED_CONTACT_RECIPIENT_ID));
+        "ad_hoc_recipient_deleted_contact"
     )]
     #[test_case(
         |x| x.callTimestamp = MillisecondsSinceEpoch::FAR_FUTURE.0 =>

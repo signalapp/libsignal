@@ -183,6 +183,9 @@ fn main() {
                             "Recipient.ReleaseNotes"
                         }
                         proto::backup::recipient::Destination::CallLink(_) => "Recipient.CallLink",
+                        proto::backup::recipient::Destination::DeletedContact(_) => {
+                            "Recipient.DeletedContact"
+                        }
                         _ => "Recipient.unknown",
                     }
                 }

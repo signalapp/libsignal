@@ -642,7 +642,8 @@ impl<
             (
                 MinimalRecipientData::Group { .. }
                 | MinimalRecipientData::DistributionList { .. }
-                | MinimalRecipientData::CallLink { .. },
+                | MinimalRecipientData::CallLink { .. }
+                | MinimalRecipientData::DeletedContact,
                 _,
             ) => Err(ChatItemError::InvalidAuthor(
                 author_id,
@@ -1112,7 +1113,8 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R> + ReportUnusu
             MinimalRecipientData::Group { .. }
             | MinimalRecipientData::DistributionList { .. }
             | MinimalRecipientData::ReleaseNotes
-            | MinimalRecipientData::CallLink { .. } => Err(OutgoingSendError::InvalidRecipient(
+            | MinimalRecipientData::CallLink { .. }
+            | MinimalRecipientData::DeletedContact => Err(OutgoingSendError::InvalidRecipient(
                 recipient_id,
                 *recipient_data.as_ref(),
             )),
@@ -1377,6 +1379,9 @@ mod test {
         x.recipientId = TestContext::CALL_LINK_ID.0;
     } => Err(ChatError::InvalidRecipient(TestContext::CALL_LINK_ID, DestinationKind::CallLink)); "call link chat")]
     #[test_case(|x| {
+        x.recipientId = TestContext::DELETED_CONTACT_ID.0;
+    } => Err(ChatError::InvalidRecipient(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact)); "deleted contact chat")]
+    #[test_case(|x| {
         x.recipientId = 0;
     } => Err(ChatError::NoRecipient(RecipientId(0))); "unknown recipient")]
     #[test_case(|x| {
@@ -1444,6 +1449,7 @@ mod test {
 
     #[test_case(|x| x.authorId = 0xffff => Err(ChatItemError::AuthorNotFound(RecipientId(0xffff))); "unknown_author")]
     #[test_case(|x| x.authorId = TestContext::GROUP_ID.0 => Err(ChatItemError::InvalidAuthor(TestContext::GROUP_ID, DestinationKind::Group)); "invalid author")]
+    #[test_case(|x| x.authorId = TestContext::DELETED_CONTACT_ID.0 => Err(ChatItemError::InvalidAuthor(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact)); "deleted contact author")]
     #[test_case(|x| x.authorId = TestContext::PNI_ONLY_ID.0 => Err(ChatItemError::IncomingMessageFromContactWithoutAciOrE164(TestContext::PNI_ONLY_ID)); "pni-only author")]
     #[test_case(|x| x.directionalDetails = None => Err(ChatItemError::NoDirection(HasUnknownFields::No)); "no_direction")]
     #[test_case(|x| {
@@ -1504,6 +1510,18 @@ mod test {
             }
             .into(),
         ) => Err(ChatItemError::Outgoing(OutgoingSendError::InvalidRecipient(TestContext::GROUP_ID, DestinationKind::Group))); "outgoing invalid recipient"
+    )]
+    #[test_case(
+        |x| x.directionalDetails = Some(
+            proto::chat_item::OutgoingMessageDetails {
+                sendStatus: vec![proto::SendStatus {
+                    recipientId: TestContext::DELETED_CONTACT_ID.0,
+                    ..proto::SendStatus::test_data()
+                }],
+                ..proto::chat_item::OutgoingMessageDetails::test_data()
+            }
+            .into(),
+        ) => Err(ChatItemError::Outgoing(OutgoingSendError::InvalidRecipient(TestContext::DELETED_CONTACT_ID, DestinationKind::DeletedContact))); "outgoing deleted contact recipient"
     )]
     #[test_case(|x| x.directionalDetails = Some(proto::chat_item::DirectionlessMessageDetails::default().into()) => Err(ChatItemError::DirectionlessMessage); "directionless_non_update")]
     #[test_case(|x| {
@@ -2047,6 +2065,23 @@ mod test {
             quote_mut(x).authorId = TestContext::E164_ONLY_ID.0;
         } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
         "outgoing quoting third party"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            quote_mut(x).authorId = TestContext::DELETED_CONTACT_ID.0;
+        } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
+        "incoming quoting deleted contact"
+    )]
+    #[test_case(
+        TestContext::CONTACT_ID,
+        |x| {
+            make_outgoing(x);
+            quote_mut(x).set_privateReplyGroupRecipientId(TestContext::GROUP_ID.0);
+            quote_mut(x).authorId = TestContext::DELETED_CONTACT_ID.0;
+        } => Err(ChatItemError::PrivateReplyQuoteAuthorMismatch);
+        "outgoing quoting deleted contact"
     )]
     #[test_case(
         TestContext::GROUP_ID,

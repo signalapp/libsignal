@@ -40,7 +40,9 @@ impl<R: Clone, C: LookupPair<RecipientId, MinimalRecipientData, R>>
             return Err(Self::Error::UnknownAdminId(admin_id));
         };
         match admin_data {
-            MinimalRecipientData::Self_ | MinimalRecipientData::Contact { .. } => {}
+            MinimalRecipientData::Self_
+            | MinimalRecipientData::Contact { .. }
+            | MinimalRecipientData::DeletedContact => {}
             MinimalRecipientData::Group { .. }
             | MinimalRecipientData::DistributionList { .. }
             | MinimalRecipientData::ReleaseNotes
@@ -106,6 +108,7 @@ mod test {
             RecipientId(TestContext::RELEASE_NOTES_ID.0),
             DestinationKind::ReleaseNotes
         )); "admin is release notes")]
+    #[test_case(|x| x.adminId = TestContext::DELETED_CONTACT_ID.0 => Ok(()); "admin is deleted contact")]
     fn admin_deleted_message(
         modify: fn(&mut AdminDeletedMessageProto),
     ) -> Result<(), AdminDeletedMessageError> {
