@@ -672,9 +672,15 @@ impl SessionRecord {
             record_structure::SessionManagementState::Tahini(state) => state,
         });
 
+        // Pre-Tahini records may hold up to 40 archived sessions. Enforce the
+        // Tahini cap on load rather than waiting for the next archive, so the
+        // oldest sessions stop being usable for decryption right away.
+        let mut previous_sessions = record.previous_sessions;
+        previous_sessions.truncate(consts::MAX_ARCHIVED_SESSIONS);
+
         Ok(Self {
             current_session: record.current_session.map(|s| s.into()),
-            previous_sessions: record.previous_sessions,
+            previous_sessions,
             session_management_state,
         })
     }
@@ -949,7 +955,17 @@ impl SessionRecord {
         }
 
         for (i, previous) in self.archived_sessions().enumerate() {
-            if session_id.ct_eq(previous?.session_id()).into() {
+            // Skip a corrupt archived session rather than failing the lookup, as
+            // trial decryption does: one bad entry must not block every new
+            // session from this peer.
+            let previous = match previous {
+                Ok(previous) => previous,
+                Err(e) => {
+                    log::warn!("find_session_by_id: skipping corrupt archived session {i}: {e}");
+                    continue;
+                }
+            };
+            if session_id.ct_eq(previous.session_id()).into() {
                 return Ok(Some(SessionLocation::Archived(i)));
             }
         }
